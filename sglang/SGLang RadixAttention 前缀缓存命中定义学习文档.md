@@ -1,4 +1,4 @@
-# SGLang Prefix Cache 命中定义学习文档
+# SGLang RadixAttention 前缀缓存命中定义学习文档
 
 本文面向第一次理解 SGLang prefix cache 命中语义的同学，整理原文《KV Cache 前缀匹配的设计分野》的 SGLang 相关内容。本文只关注 SGLang，不展开原文中的其他框架；本文是第三方资料整理型学习笔记，未做 SGLang 源码级复核。
 

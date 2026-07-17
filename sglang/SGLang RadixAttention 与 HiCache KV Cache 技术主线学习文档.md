@@ -1,4 +1,4 @@
-# SGLang KV Cache 技术主线学习文档
+# SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档
 
 本文面向第一次了解 SGLang KV Cache 演进线的同学，整理原文《SGLang 如何管理 KV Cache：从 RadixAttention 到 HiCache 的底层技术主线》的图文内容。本文是第三方资料整理型学习笔记，只基于原文和配图做结构化归纳，不做 SGLang 源码级复核。
 
