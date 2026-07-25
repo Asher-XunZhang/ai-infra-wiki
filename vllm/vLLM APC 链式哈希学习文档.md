@@ -1,6 +1,6 @@
 # vLLM APC 链式哈希学习文档
 
-本文面向第一次理解 vLLM Automatic Prefix Caching 的同学，整理原文《KV Cache 前缀匹配的设计分野》的 vLLM 相关内容。本文只关注 vLLM，不展开原文中的其他框架；本文是第三方资料整理型学习笔记，未做 vLLM 源码级复核。
+本文面向第一次理解 vLLM Automatic Prefix Caching 的同学，整理原文《KV Cache 前缀匹配的设计分野》的 vLLM 相关内容。本文只关注 vLLM，不展开原文中的其他框架；本文是第三方资料整理型学习资料，未做 vLLM 源码级复核。
 
 ## 0. 阅读基线与范围
 
