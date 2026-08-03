@@ -7,24 +7,39 @@
 
 核心结论是：Chunked Prefill 管单轮计算时间片，KV token capacity 管请求能否长期驻留。减小 chunk 可以降低一次 Prefill 的峰值和阻塞，但不会让已经生成的 KV 消失。
 
-本文是第三方资料整理型学习资料，不是当前 SGLang 源码审计或容量承诺。
+本文是第三方资料整理型学习资料，并用本地 SGLang 源码抽查了 Chunked Prefill 的关键调度路径；它不是完整源码审计或容量承诺。
 
 ## 0. 阅读基线与范围
 
 | 项目 | 内容 |
 | --- | --- |
-| 原文一 | 《SGLang Chunked Prefill — 原理与代码实现》 |
+| 原文一 | 《SGLang推理优化-Chunked Prefill》 |
+| 链接 | https://mp.weixin.qq.com/s/ZeEt-AyxGXcXjPuk6jnAEg |
+| 作者/账号 | kason_zhang / LLM高性能计算 |
+| 发布时间 | 2026-06-09 |
+| 原文二 | 《SGLang Chunked Prefill — 原理与代码实现》 |
 | 链接 | https://mp.weixin.qq.com/s/od6pBMeNMPVlaQyTgTsbAQ |
-| 作者/机构 | AI 原力注入 |
+| 作者/账号 | GrissomFI / AI 原力注入 |
 | 发布时间 | 2026-06-13 |
-| 原文二 | 《SGLang推理优化-Scheduler 内存和核心参数估算》 |
+| 原文三 | 《SGLang推理优化-Scheduler 内存和核心参数估算》 |
 | 链接 | https://mp.weixin.qq.com/s/UqUroTBI5Hliheck6QRufg |
 | 作者/机构 | LLM高性能计算 |
 | 发布时间 | 2026-06-10 |
-| 读取时间 | 2026-07-25 |
+| 读取时间 | 2026-08-03 |
 | 整理范围 | Chunked Prefill 生命周期、KV 容量估算、核心调度参数、PD 两侧调参 |
-| 不展开内容 | 当前源码逐行复核、DSV4 精确 pool 实现证明、自动调参脚本交付 |
-| 验证边界 | 公式用于估算；最终容量以目标版本启动日志和压力测试为准 |
+| 不展开内容 | 全量源码逐行审计、DSV4 精确 pool 实现证明、自动调参脚本交付 |
+| 验证边界 | 调度结论做静态源码抽查；公式与性能数字仍需用目标部署验证 |
+
+**源码抽查基线**
+
+| 项目 | 内容 |
+| --- | --- |
+| 源码目录 | `/Users/mac/Documents/Documents/工作/sglang` |
+| 分支 | `muxi-main` |
+| commit | `453b33c46be575da6973b31c2d89d9455679110d` |
+| 工作区状态 | 有本地修改与未跟踪文件；本文只读，不清理、不修改 |
+| 抽查范围 | `server_args.py`、`scheduler.py`、`schedule_policy.py`、`scheduler_output_processor_mixin.py` |
+| 运行验证 | 未运行服务或 benchmark |
 
 ### 怎么读本文
 
@@ -73,7 +88,13 @@ flowchart TB
 
 **图意解读：** 动画展示长 Prefill 被拆成多轮 EXTEND，并在轮次边界重新参与调度。图中队列变化属于控制面；每个 chunk 对应的数据面仍是正常模型 forward 和 KV 写入。动画用于理解时间片，不保证当前版本一定以相同顺序混合 Decode。
 
-### 2.2 四个关键字段
+### 2.2 原文总览图
+
+![SGLang Scheduler Chunked Prefill 总览](../images/sglang-chunked-prefill/03-scheduler-overview.png)
+
+**图意解读：** 图把配置、请求字段、三轮 EXTEND 和最终 Decode 放在同一张地图里。控制面由 `Scheduler.chunked_req`、`PrefillAdder` 与缓存索引串起；数据面仍是每轮正常 forward 和 KV 写入。图中的“中间 chunk 不进入 running”描述的是默认非 mixed 路径；当前源码开启 `--enable-mixed-chunk` 后，可把已有 running Decode 合入该 EXTEND batch。
+
+### 2.3 四个关键字段
 
 | 字段 | 本轮前 | 截断后 | 下一轮 |
 | --- | --- | --- | --- |
@@ -82,7 +103,7 @@ flowchart TB
 | `extend_input_len` | 所有未算 token | 不超过 chunk 额度 | 重新计算剩余量 |
 | chunk 状态 | 未完成 | 标记仍需继续 | 最后 chunk 后清零 |
 
-### 2.3 一个 20K 未命中的例子
+### 2.4 一个 20K 未命中的例子
 
 假设：
 
@@ -128,7 +149,7 @@ Prefill 中间 chunk 的任务是补齐 prompt 历史，不代表完整 prompt �
 
 ### 3.3 调度顺序的版本边界
 
-原文分析的代码路径表现为 Prefill-first，且存在 `chunked_req` 时会优先使它继续，从而让多个 chunk 连续执行；新到达短请求仍可能被打包进后续 EXTEND batch。
+原文分析的代码路径表现为 Prefill-first，且存在 `chunked_req` 时会优先使它继续，从而让多个 chunk 连续执行；新到达短请求仍可能被打包进后续 EXTEND batch。当前本地源码仍先调用 `get_new_batch_prefill()`，只有没有 Prefill batch 时才走 `update_running_batch()`，所以这个结论对默认非 mixed 路径仍成立。
 
 不要把它泛化为：
 
@@ -136,9 +157,21 @@ Prefill 中间 chunk 的任务是补齐 prompt 历史，不代表完整 prompt �
 chunk1 -> decode -> chunk2 -> decode
 ```
 
-新版本可能有 mixed chunk、prefill delayer 或其他策略。稳定结论只有：
+但当前源码同时存在 `--enable-mixed-chunk`、prefill delayer 和 PP dynamic chunking。打开 mixed chunk 且兼容条件满足时，Scheduler 会调用 `mix_with_running()`，把 running Decode 合进 EXTEND batch。稳定结论只有：
 
 > 切 chunk 把一次不可抢占的长 forward 变成多个可重新做调度决策的边界。
+
+### 3.4 当前源码锚点
+
+| 行为 | 源码锚点 | 抽查结论 |
+| --- | --- | --- |
+| 初始化 | `scheduler.py::init_chunked_prefill` | 一个 `chunked_req` 主槽位；mixed 由显式开关控制 |
+| 每轮选 batch | `scheduler.py::get_next_batch_to_run` | 默认先尝试 Prefill，再尝试 Decode |
+| 续传 chunk | `scheduler.py::_get_new_batch_prefill_raw` | 先恢复完整输入，再用 `add_chunked_req` 推进 |
+| mixed batch | `scheduler.py` 的 `Mixed-style chunked prefill` 分支 | 满足条件时 `mix_with_running()` |
+| 截断与所有权 | `schedule_policy.py::add_one_req` / `add_chunked_req` | 单一 chunk 槽位，截断受预算和对齐约束 |
+| 中间结果 | `scheduler_output_processor_mixin.py::process_batch_result_prefill` | 中间 chunk 不作为正常生成 token 对外输出 |
+| 参数校验 | `server_args.py` | 普通路径要求 chunk size 可被 page size 整除；dynamic chunking 面向 PP |
 
 ## 4. `PrefillAdder` 在决定什么
 
@@ -418,6 +451,8 @@ flowchart LR
 
 具体比例不能从一篇文章复制；应分别 profile 两种角色。
 
+这里还要区分两种“PD”：本节是把 Prefill、Decode 放到不同 worker 的 **PD 分离**；把 Prefill chunk 与 Decode token 合到同一次 forward 的 **P-D 共推**，见 [Chunked Prefill 与 Prefill-Decode 共推学习文档](../llm-inference/Chunked%20Prefill%20与%20Prefill-Decode%20共推学习文档.md)。
+
 ## 11. 与 HiCache 的协同
 
 Chunked Prefill 每完成一段，就可能把它登记为下一轮可命中的本地前缀。HiCache 再把这个索引扩展到 L2/L3：
@@ -486,14 +521,20 @@ HiCache 详情见：
 
 复杂 pool 的字段、默认 page size 和压缩比例会变。必须以目标实现为准。
 
+### 误解五：切成 chunk 后，每段之间一定会执行 Decode
+
+chunk 只提供重新调度的边界。当前 SGLang 默认仍是 Prefill-first；只有 mixed chunk 开启且输入、logprob、speculative 等兼容条件允许时，Prefill 与 running Decode 才会同轮执行。
+
 ## 14. 一句话总结
 
 SGLang Chunked Prefill 用跨轮状态把长 prompt 切成可调度时间片；显存容量则由权重、动态预留、每 token KV 字节数和 page 对齐共同决定。先算 KV token capacity，再定运行并发，最后用 TTFT/ITL 与吞吐共同选择 chunk。
 
 ## 15. 参考与延伸
 
+- 《SGLang推理优化-Chunked Prefill》：https://mp.weixin.qq.com/s/ZeEt-AyxGXcXjPuk6jnAEg
 - 《SGLang Chunked Prefill — 原理与代码实现》：https://mp.weixin.qq.com/s/od6pBMeNMPVlaQyTgTsbAQ
 - 《SGLang推理优化-Scheduler 内存和核心参数估算》：https://mp.weixin.qq.com/s/UqUroTBI5Hliheck6QRufg
 - [SGLang 调度器请求生命周期与重叠调度学习文档](SGLang%20调度器请求生命周期与重叠调度学习文档.md)
+- [Chunked Prefill 与 Prefill-Decode 共推学习文档](../llm-inference/Chunked%20Prefill%20与%20Prefill-Decode%20共推学习文档.md)
 
-原文提到的估算脚本不在本仓库，本篇也未生成或验证该脚本。所有数值仅作估算起点。
+原文提到的估算脚本不在本仓库，本篇也未生成或验证该脚本。源码抽查只确认上述控制流和参数边界；所有性能与容量数值仍仅作估算起点。

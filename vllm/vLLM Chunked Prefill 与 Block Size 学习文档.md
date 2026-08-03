@@ -6,21 +6,36 @@
 
 最短答案是：**block 是存储与寻址粒度，chunk 是计算与调度粒度。** 它们会在边界对齐上发生关系，但解决的是两类不同问题。
 
-本文是第三方资料整理型学习资料，不是 vLLM 当前版本的源码审计。原文给出的默认值和函数路径可能随 V1 演进变化，使用时要回到目标版本配置定义确认。
+本文是第三方资料整理型学习资料，并用本地 vLLM V1 源码抽查了调度与 block 分配路径。原文给出的默认值和函数路径可能随 V1 演进变化，使用时仍要回到目标版本确认。
 
 ## 0. 阅读基线与范围
 
 | 项目 | 内容 |
 | --- | --- |
-| 原文标题 | 《深入理解vLLM核心概念Chunked Prefill 与 Block Size：一个长 prompt 已经切分成很多 block 了，为什么 prefill 还要再 chunk？》 |
-| 原文链接 | https://mp.weixin.qq.com/s/5hcw--cKbztk7LAQvkoedQ |
+| 原文一 | 《大模型推理优化之Chunked Prefill 技术解析》 |
+| 链接 | https://mp.weixin.qq.com/s/MHUs3f9fbIA7QbKpYNTXrw |
+| 作者/账号 | 糖小白 / 糖嘟嘟的AI学习笔记 |
+| 发布时间 | 2026-07-30 |
+| 原文二 | 《深入理解vLLM核心概念Chunked Prefill 与 Block Size：一个长 prompt 已经切分成很多 block 了，为什么 prefill 还要再 chunk？》 |
+| 链接 | https://mp.weixin.qq.com/s/5hcw--cKbztk7LAQvkoedQ |
 | 作者/机构 | 一研 |
 | 发布时间 | 2026-07-01 |
-| 读取时间 | 2026-07-25 |
+| 读取时间 | 2026-08-03 |
 | 资料类型 | 技术图文 |
-| 整理范围 | vLLM 中 KV block 与 prefill chunk 的正交关系、对齐、预算和调参 |
+| 整理范围 | vLLM 中 KV block 与 prefill chunk 的正交关系、统一 token budget、混合调度和调参 |
 | 不展开内容 | SGLang Chunked Prefill、vLLM 全量 scheduler 源码、特定混合模型状态缓存 |
-| 验证边界 | 基于原文整理并修正部分过度绝对化表述；未对目标版本运行实验 |
+| 验证边界 | 基于原文整理并用本地源码修正过度绝对化表述；未运行实验 |
+
+**源码抽查基线**
+
+| 项目 | 内容 |
+| --- | --- |
+| 源码目录 | `/Users/mac/Documents/Documents/工作/vllm` |
+| 分支 | `main` |
+| commit | `f727951d3f0dbeb9acdb8a2f7ebfecaeb67090b3` |
+| 工作区状态 | 干净；本文只读 |
+| 抽查范围 | `vllm/config/scheduler.py`、`vllm/v1/core/sched/scheduler.py`、`vllm/v1/core/kv_cache_manager.py` |
+| 运行验证 | 未启动服务或执行 benchmark |
 
 ### 术语速查
 
@@ -63,7 +78,7 @@ flowchart TB
 
 ![vLLM 中 Chunked Prefill 的调度流程](../images/vllm-chunked-prefill/01-scheduler-flow.png)
 
-**图意解读：** 图的控制权在 Scheduler：它先看请求还有多少未计算 token，再用本轮预算截断 `num_new_tokens`，随后由 KV Cache Manager 为这部分 token 分配 slots/blocks。block table 是执行输入的一部分，不会反过来自动决定 chunk 大小。图中参数名是文章读取时的版本示意，不能视为所有版本固定接口。
+**图意解读：** 图的控制权在 Scheduler：它先看请求还有多少未计算 token，再用本轮预算截断 `num_new_tokens`，随后由 KV Cache Manager 为这部分 token 分配 slots/blocks。block table 是执行输入的一部分，不会反过来自动决定 chunk 大小。图中“统一按 block size 对齐”的步骤是原文的简化模型；当前本地 vLLM 对普通 Attention 不执行这个通用截断，只在 Mamba 等特殊缓存模式需要时走 block-aligned split。
 
 ## 2. Block Size：解决“算完放哪里”
 
@@ -130,46 +145,50 @@ chunk=2K:
 
 所以 Chunked Prefill 是延迟和吞吐之间的时间片选择，不是免费优化。
 
-## 4. 两者在哪里发生关系：边界对齐
+## 4. 两者在哪里发生关系：容量与缓存提交
 
-### 4.1 为什么中间 chunk 偏好完整 block
+### 4.1 原文的“chunk 必须对齐 block”需要降级
 
-如果一个非最终 chunk 停在半个 block：
+原文把中间 chunk 统一向下对齐到 `block_size`，并把半块描述成脏数据或不可管理。这个说法可以帮助建立分页直觉，但不是当前 vLLM 普通 Attention Scheduler 的通用不变量。
 
-- 这个 block 的后半部分尚未计算；
-- 其内容 hash 还不稳定，不适合作为完整前缀缓存单元；
-- 下一轮需要保留“部分填充”元数据；
-- 回收和共享逻辑更复杂。
-
-因此，调度器通常会让**非最终 chunk**在 block 边界结束。
-
-### 4.2 不要把它说成“任何 chunk 都必须整除”
-
-原文把“不对齐会产生脏数据、无法管理”写得较绝对。更准确的理解是：
-
-- 中间 chunk 往往向下对齐到完整 block。
-- prompt 的最后一段可以不足一个 block；有效 token 数会被单独记录。
-- 最后一个部分 block 是合法存储状态，只是通常不能当作稳定的完整 block 前缀共享。
-
-也就是说，对齐是为了简化缓存、抢占和后续调度，不是因为 GPU 绝对无法写半块。
-
-### 4.3 一个修正后的例子
-
-假设：
+当前源码在 running 和 waiting 两条路径中，核心截断都是：
 
 ```text
-prompt = 5,000 tokens
-block_size = 16
-每轮最多给该请求 2,048 tokens
+num_new_tokens = min(请求剩余量, long prefill cap, token_budget)
 ```
 
-| 轮次 | 调度 token | 累计完成 | 是否 block 对齐 |
-| --- | ---: | ---: | --- |
-| 1 | 2,048 | 2,048 | 是 |
-| 2 | 2,048 | 4,096 | 是 |
-| 3 | 904 | 5,000 | 最终 chunk，可含部分尾块 |
+随后把这个数量交给 `KVCacheManager.allocate_slots()`。普通路径没有再执行 `num_new_tokens // block_size * block_size`。
 
-最终共需要 `ceil(5000 / 16) = 313` 个逻辑 block；最后一块只有 8 个有效 token。没有必要为了对齐虚构额外 prompt token。
+### 4.2 部分 block 是可管理状态
+
+KV Manager 会根据“已经计算多少 token + 本轮新增多少 token”计算需要的 slots/blocks；最后一个 block 可以只填一部分，并用有效 token 进度区分可读范围。因此：
+
+- 物理 block 可以已经分配，但只含部分有效 KV。
+- 后续 chunk 可以继续向同一逻辑尾块追加。
+- Prefix Cache 能否公开某个 block，取决于缓存提交规则，不等于 allocator 不能管理半块。
+- 回收仍按 block 进行，但请求进度按 token 记录。
+
+当前源码甚至包含 partial-tail pin、copy-on-write 与 connector 对齐处理，进一步说明“半块必然非法”不成立。
+
+### 4.3 哪些路径确实需要对齐
+
+当前 Scheduler 在 `need_mamba_block_aligned_split` 为真时调用 `_mamba_block_aligned_split()`。这是混合 Attention/Mamba 状态缓存的后端约束，不应泛化为所有 Transformer KV Cache。
+
+更稳妥的表述是：
+
+> chunk 与 block 在分配容量、缓存提交、共享和特殊状态缓存约束上相遇，但普通 vLLM chunk 大小不必天然是 block size 的整数倍。
+
+### 4.4 一个 5,000-token 例子
+
+假设 `block_size=16`、本轮总 budget 为 2,048，且没有其他请求消耗 budget：
+
+| 轮次 | 可能调度 token | 累计完成 | KV 存储视角 |
+| --- | ---: | ---: | --- |
+| 1 | 2,048 | 2,048 | 128 个完整 blocks |
+| 2 | 2,048 | 4,096 | 累计 256 个完整 blocks |
+| 3 | 904 | 5,000 | 再需 57 blocks，最后一块 8 个有效 token |
+
+这个例子恰好前两轮对齐，是因为 2,048 本身可被 16 整除。若本轮有 7 个 Decode token 先占预算，Prefill 获得 2,041 tokens，普通 Attention 路径也不必为了 block 边界把它强制降到 2,032。
 
 ## 5. 三种预算不要混为一谈
 
@@ -195,19 +214,20 @@ sum(每个 decode 请求的新 token
 <= max_num_batched_tokens
 ```
 
-### 5.3 部分 Prefill 并发预算
+### 5.3 Admission 与部分 Prefill 驻留预算
 
 它回答：
 
-> 同时允许多少个长 prompt 处于“做了一部分、还没做完”的状态？
+> 一个长 prompt 只算首个 chunk 后，是否允许它进入 running 并持续占有 KV？
 
-部分 prefill 越多：
+当前本地源码没有原文列出的 `max_num_partial_prefills`、`max_long_partial_prefills` 配置；这两个名字不能写成当前版本事实。当前路径更依赖：
 
-- 公平性和短请求穿插空间可能变好；
-- 但更多请求长期占据 KV blocks；
-- 状态管理和调度搜索更复杂。
+- `max_num_seqs` 限制 running 请求总数；
+- `scheduler_reserve_full_isl=True` 默认在接纳 waiting 请求时检查完整输入是否能装进 KV Cache，而不只检查首个 chunk；
+- `watermark` 可保留空闲 block 余量，减少内存紧张时反复 preemption；
+- partial prefill 一旦进入 `running`，后续轮次与 Decode 请求一起竞争 token budget。
 
-相关配置名称在不同版本中可能包括 `max_num_partial_prefills`、`max_long_partial_prefills` 等，必须查目标版本。
+这类“先检查完整 ISL”的 admission 策略，正是为了避免只看小 chunk 而过量接纳长请求。
 
 ## 6. Scheduler 与 KV Manager 如何配合
 
@@ -216,18 +236,19 @@ sum(每个 decode 请求的新 token
 ```mermaid
 sequenceDiagram
     participant S as Scheduler
-    participant R as Request
+    participant R as Running requests
+    participant W as Waiting requests
     participant K as KV Cache Manager
     participant E as Model Executor
 
-    S->>R: 读取未计算 token 数
-    S->>S: 受本轮预算和 chunk 阈值截断
-    S->>S: 非最终 chunk 按 block 边界调整
-    S->>K: 为 num_new_tokens 申请 slots/blocks
-    K-->>S: 返回 block table / slots
+    S->>R: 先按未计算量推进 running
+    S->>S: 扣减统一 token budget
+    S->>W: 用剩余 budget 接纳 waiting
+    S->>K: 分别为 num_new_tokens 申请 slots/blocks
+    K-->>S: 返回 blocks 或拒绝接纳
     S->>E: 提交本轮执行
     E-->>S: 返回采样与完成进度
-    S->>R: 更新 num_computed_tokens
+    S->>R: 更新 num_computed_tokens / 生命周期
 ```
 
 ### 6.2 两者的契约
@@ -243,6 +264,18 @@ KV Manager 保证：
 - 分配的 block 在本轮执行期间有效；
 - block table 能映射所有历史与新增 token；
 - 引用中的共享 block 不被错误回收。
+
+### 6.3 当前 V1 的“无阶段”心智模型
+
+当前 `Scheduler.schedule()` 源码明确说明，它不维护一个全局“现在是 Prefill 阶段”或“现在是 Decode 阶段”。每个请求只需要追踪：
+
+```text
+已有 token 总数 - 已完成计算 token 数
+```
+
+差值很大时，本轮推进的是 Prefill chunk；差值接近 1 时，本轮推进的是普通 Decode。Scheduler 先遍历 `running`，再用剩余 budget 接纳 `waiting`，因此同一个 `SchedulerOutput` 可以天然包含两类请求。
+
+这也修正了原文二中的伪代码：不能简单写成“先给所有 running 请求各 1 个 Decode token，再单独调用 `_schedule_prefills()`”。当前源码没有这两个独立函数，`running` 本身也可能包含未完成 Prefill 的请求。
 
 ## 7. 与 Prefix Cache 的交互
 
@@ -321,7 +354,7 @@ chunk 通常包含很多 blocks。二者相等会造成极多调度轮次，通�
 
 ### 误解三：所有 chunk 都必须是 block 的整数倍
 
-中间 chunk 倾向对齐；最终 chunk 可以包含部分尾块。有效长度由元数据维护。
+当前普通 Attention Scheduler 没有这个统一要求；特殊 Mamba 状态缓存路径才显式做 block-aligned split。Allocator 可以管理部分尾块，Prefix Cache 的可复用提交边界是另一个问题。
 
 ### 误解四：chunk 越小越低延迟
 
@@ -339,7 +372,7 @@ chunk 通常包含很多 blocks。二者相等会造成极多调度轮次，通�
 | Decode ITL 周期性尖峰 | 尖峰是否与 prefill chunk 同步 | 大 chunk 干扰 decode |
 | GPU 利用率不高、轮次很多 | chunk 大小、CPU 调度、kernel launch | chunk 过小 |
 | KV 很快满 | live tokens、partial prefill 数、APC 保留 | 部分请求长期占块 |
-| APC 命中少一小截 | tokenization、完整 block 边界 | 尾部不足完整 block |
+| APC 命中少一小截 | tokenization、hash block 与最后 token 重算规则 | 可复用命中长度不等于文本共同前缀 |
 | 配置项不存在 | vLLM tag 与文档版本 | 原文参数已重命名或迁移 |
 
 ## 11. 一句话总结
@@ -348,7 +381,9 @@ Block 把“已经算出的 KV”切成可分配、可寻址的存储单元；Ch
 
 ## 12. 参考与延伸
 
+- 《大模型推理优化之Chunked Prefill 技术解析》：https://mp.weixin.qq.com/s/MHUs3f9fbIA7QbKpYNTXrw
 - 《深入理解vLLM核心概念Chunked Prefill 与 Block Size：一个长 prompt 已经切分成很多 block 了，为什么 prefill 还要再 chunk？》：https://mp.weixin.qq.com/s/5hcw--cKbztk7LAQvkoedQ
 - [vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档](vLLM%20从连续批处理到%20PagedAttention%20的引擎工作流学习文档.md)
+- [Chunked Prefill 与 Prefill-Decode 共推学习文档](../llm-inference/Chunked%20Prefill%20与%20Prefill-Decode%20共推学习文档.md)
 
-本文基于原文整理，没有对文中默认参数做当前版本源码复核。最终 chunk、混合调度和配置名称以目标 vLLM 版本为准。
+本文基于原文整理，并对上述本地 commit 做了静态源码抽查；没有运行服务或复现性能。最终 chunk、混合调度、缓存提交和配置名称仍以目标 vLLM 版本为准。

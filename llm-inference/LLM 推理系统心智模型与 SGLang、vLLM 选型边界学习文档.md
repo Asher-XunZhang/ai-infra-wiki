@@ -323,6 +323,7 @@ flowchart TD
 
 | 你正在追的问题 | 建议阅读 |
 | --- | --- |
+| Chunked Prefill 与 P-D 共推、PD 分离怎样区分 | [Chunked Prefill 与 Prefill-Decode 共推学习文档](Chunked%20Prefill%20与%20Prefill-Decode%20共推学习文档.md) |
 | block 与 chunk 为什么同时存在 | [vLLM Chunked Prefill 与 Block Size 学习文档](../vllm/vLLM%20Chunked%20Prefill%20与%20Block%20Size%20学习文档.md) |
 | SGLang 长 prompt 和显存参数 | [SGLang Chunked Prefill 与调度器显存预算学习文档](../sglang/SGLang%20Chunked%20Prefill%20与调度器显存预算学习文档.md) |
 | SGLang 的三层 KV 数据结构 | [SGLang KV Pool、请求视图与 HiCache 工程学习文档](../sglang/SGLang%20KV%20Pool、请求视图与%20HiCache%20工程学习文档.md) |
