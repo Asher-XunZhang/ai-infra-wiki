@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">vLLM V1 KV Cache ownership and lifecycle</title>
+  <desc id="desc">Three-layer diagram showing Scheduler policy, logical block metadata, and Worker physical KV tensors, plus the allocation lifecycle.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7fafc"/>
+      <stop offset="1" stop-color="#eef4ff"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#40536d"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#1f2937" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .title { font: 700 34px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #172033; }
+      .subtitle { font: 400 17px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #536078; }
+      .layer-title { font: 700 24px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #172033; }
+      .node-title { font: 650 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #172033; }
+      .body { font: 400 15px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #465269; }
+      .small { font: 500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #5c6a82; }
+      .flow { fill: none; stroke: #40536d; stroke-width: 2.5; marker-end: url(#arrow); }
+      .dash { fill: none; stroke: #76859d; stroke-width: 2; stroke-dasharray: 8 7; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <text x="72" y="66" class="title">vLLM V1 KV Cache：策略、元数据与真实数据的所有权</text>
+  <text x="72" y="98" class="subtitle">整理者重绘 · 基于 main@f727951d · 箭头表示每轮调度信息流，不代表 tensor 一定跨进程复制</text>
+
+  <g filter="url(#shadow)">
+    <rect x="70" y="145" width="1460" height="168" rx="20" fill="#fff7df" stroke="#e8c866" stroke-width="2"/>
+    <rect x="70" y="342" width="1460" height="205" rx="20" fill="#eaf7f1" stroke="#63b391" stroke-width="2"/>
+    <rect x="70" y="576" width="1460" height="242" rx="20" fill="#edf2ff" stroke="#7187d8" stroke-width="2"/>
+  </g>
+
+  <text x="100" y="185" class="layer-title">① Scheduler 策略层</text>
+  <text x="100" y="212" class="body">决定谁运行、给多少 token、容量不足时抢占谁；不直接读写 K/V tensor</text>
+  <rect x="420" y="175" width="270" height="90" rx="14" fill="#ffffff" stroke="#d1a937"/>
+  <text x="445" y="210" class="node-title">Scheduler.schedule</text>
+  <text x="445" y="238" class="body">running / waiting / preempt</text>
+  <rect x="780" y="175" width="270" height="90" rx="14" fill="#ffffff" stroke="#d1a937"/>
+  <text x="805" y="210" class="node-title">SchedulerOutput</text>
+  <text x="805" y="238" class="body">block ids · zero · COW</text>
+  <rect x="1140" y="175" width="300" height="90" rx="14" fill="#ffffff" stroke="#d1a937"/>
+  <text x="1165" y="210" class="node-title">请求状态</text>
+  <text x="1165" y="238" class="body">WAITING / RUNNING / REMOTE</text>
+  <path d="M690 220 H780" class="flow"/>
+  <path d="M1050 220 H1140" class="flow"/>
+
+  <text x="100" y="382" class="layer-title">② Engine Core 逻辑元数据层</text>
+  <text x="100" y="409" class="body">拥有逻辑 block 生命周期：命中、引用、分配、缓存、LRU、释放；不持有 K/V 数值</text>
+  <rect x="350" y="425" width="270" height="82" rx="14" fill="#ffffff" stroke="#3d9471"/>
+  <text x="375" y="458" class="node-title">KVCacheManager</text>
+  <text x="375" y="484" class="body">请求级总入口</text>
+  <rect x="665" y="425" width="300" height="82" rx="14" fill="#ffffff" stroke="#3d9471"/>
+  <text x="690" y="458" class="node-title">KVCacheCoordinator</text>
+  <text x="690" y="484" class="body">跨 group 对齐</text>
+  <rect x="1010" y="425" width="250" height="82" rx="14" fill="#ffffff" stroke="#3d9471"/>
+  <text x="1035" y="458" class="node-title">Type Manager</text>
+  <text x="1035" y="484" class="body">Full / SWA / Mamba</text>
+  <rect x="1300" y="425" width="180" height="82" rx="14" fill="#ffffff" stroke="#3d9471"/>
+  <text x="1325" y="458" class="node-title">BlockPool</text>
+  <text x="1325" y="484" class="body">hash · ref · LRU</text>
+  <path d="M620 466 H665" class="flow"/>
+  <path d="M965 466 H1010" class="flow"/>
+  <path d="M1260 466 H1300" class="flow"/>
+
+  <text x="100" y="616" class="layer-title">③ Worker 物理数据层</text>
+  <text x="100" y="643" class="body">持有预分配张量，把逻辑 block id 翻译成 kernel 可用地址；不决定请求优先级和 LRU</text>
+  <rect x="310" y="670" width="250" height="90" rx="14" fill="#ffffff" stroke="#536bc2"/>
+  <text x="335" y="705" class="node-title">BlockTables</text>
+  <text x="335" y="733" class="body">req × group × block</text>
+  <rect x="650" y="670" width="250" height="90" rx="14" fill="#ffffff" stroke="#536bc2"/>
+  <text x="675" y="705" class="node-title">Slot mappings</text>
+  <text x="675" y="733" class="body">token → physical slot</text>
+  <rect x="990" y="670" width="250" height="90" rx="14" fill="#ffffff" stroke="#536bc2"/>
+  <text x="1015" y="705" class="node-title">Attention backend</text>
+  <text x="1015" y="733" class="body">读历史 · 写新 KV</text>
+  <rect x="1330" y="670" width="150" height="90" rx="14" fill="#ffffff" stroke="#536bc2"/>
+  <text x="1355" y="705" class="node-title">KV tensors</text>
+  <text x="1355" y="733" class="body">真实数据</text>
+  <path d="M560 715 H650" class="flow"/>
+  <path d="M900 715 H990" class="flow"/>
+  <path d="M1240 715 H1330" class="flow"/>
+
+  <path d="M900 265 C900 315 500 330 500 425" class="dash"/>
+  <text x="655" y="328" class="small">分配请求进入逻辑块管理</text>
+  <path d="M800 507 C800 555 435 570 435 670" class="dash"/>
+  <text x="555" y="566" class="small">下发 block ids / copy / zero</text>
+  <path d="M1390 670 C1390 590 1425 570 1425 507" class="dash"/>
+  <text x="1260" y="560" class="small">完成后登记 hash；free 时只减引用</text>
+
+  <text x="72" y="865" class="subtitle">关键边界：BlockPool 管“这块能否复用/驱逐”，Worker tensor 管“这块现在装着什么数值”。</text>
+</svg>
