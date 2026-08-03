@@ -87,7 +87,7 @@ flowchart LR
 
 ### 1.2 四条不同的流
 
-![vLLM V1 KV Connector 控制面与数据面](./images/vllm-kv-connector/01-control-data-plane.svg)
+![vLLM V1 KV Connector 控制面与数据面](../images/vllm-kv-connector/01-control-data-plane.svg)
 
 > 整理者重绘：图中灰色细线表示 lookup、metadata、完成与失败通知，绿色粗线表示真正的 KV bytes。外部介质可以不同，但“KV Manager 分配目标页、Worker 执行 I/O、完成后再改变请求状态”这一闭环不变。
 

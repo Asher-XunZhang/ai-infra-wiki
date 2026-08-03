@@ -90,7 +90,7 @@ flowchart LR
 
 ### 1.2 核心所有权
 
-![vLLM V1 KV Cache 所有权分层图](./images/vllm-kv-cache/01-kv-cache-ownership.svg)
+![vLLM V1 KV Cache 所有权分层图](../images/vllm-kv-cache/01-kv-cache-ownership.svg)
 
 > 整理者重绘：这张图用于突出三层所有权及信息流。它把同进程函数调用与跨进程消息统一画成逻辑箭头，不表示每条箭头都会复制 KV tensor；真实 K/V 始终由 Worker 数据面持有。
 
