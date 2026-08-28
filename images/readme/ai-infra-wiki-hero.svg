@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="620" viewBox="0 0 1600 620" role="img" aria-labelledby="title desc">
+  <title id="title">AI Infra Wiki</title>
+  <desc id="desc">A neon technical map connecting scheduling, KV cache, parallelism, SGLang, and vLLM.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#070b17"/>
+      <stop offset="0.55" stop-color="#0b1024"/>
+      <stop offset="1" stop-color="#111032"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#58f6d4"/>
+      <stop offset="0.5" stop-color="#58a6ff"/>
+      <stop offset="1" stop-color="#c084fc"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#58f6d4" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0.2"/>
+    </linearGradient>
+    <radialGradient id="orb">
+      <stop offset="0" stop-color="#5eead4" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#5eead4" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" fill="none" stroke="#7c8db5" stroke-opacity="0.09" stroke-width="1"/>
+    </pattern>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+    <clipPath id="frame">
+      <rect width="1600" height="620" rx="32"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <rect width="1600" height="620" fill="url(#bg)"/>
+    <rect width="1600" height="620" fill="url(#grid)"/>
+    <circle cx="1350" cy="90" r="380" fill="url(#orb)"/>
+    <circle cx="1160" cy="520" r="260" fill="#6d5dfc" opacity="0.1" filter="url(#soft)"/>
+    <path d="M0 516C286 390 424 612 704 476C1010 327 1170 500 1600 312V620H0Z" fill="#58a6ff" opacity="0.035"/>
+
+    <g opacity="0.55">
+      <path d="M1062 142L1248 90L1443 175L1363 338L1161 365L1033 262Z" fill="none" stroke="url(#line)" stroke-width="2"/>
+      <path d="M1062 142L1161 365M1248 90L1363 338M1443 175L1033 262M1161 365L1443 175M1062 142L1363 338" fill="none" stroke="#6487bd" stroke-opacity="0.33"/>
+    </g>
+
+    <g font-family="Inter, SF Pro Display, PingFang SC, Microsoft YaHei, sans-serif">
+      <g transform="translate(78 62)">
+        <rect width="302" height="38" rx="19" fill="#101a31" stroke="#334263"/>
+        <circle cx="22" cy="19" r="5" fill="#58f6d4" filter="url(#glow)"/>
+        <text x="40" y="25" fill="#a9b7d3" font-size="15" font-weight="650" letter-spacing="2">OPEN KNOWLEDGE SYSTEM</text>
+      </g>
+
+      <text x="76" y="211" fill="#f4f8ff" font-size="86" font-weight="800" letter-spacing="-3">AI INFRA</text>
+      <text x="76" y="302" fill="url(#accent)" font-size="92" font-weight="850" letter-spacing="8" filter="url(#glow)">WIKI</text>
+      <rect x="78" y="332" width="620" height="3" rx="1.5" fill="url(#accent)"/>
+      <text x="78" y="385" fill="#c8d3e7" font-size="25" font-weight="500">从一次请求出发，理解现代 LLM 推理系统</text>
+      <text x="78" y="426" fill="#7f91b2" font-size="18" letter-spacing="0.6">SCHEDULING · KV CACHE · PARALLELISM · DISTRIBUTED INFERENCE</text>
+
+      <g transform="translate(78 493)">
+        <g>
+          <rect width="180" height="50" rx="13" fill="#0e1f2a" stroke="#3ad7bd" stroke-opacity="0.55"/>
+          <text x="90" y="32" text-anchor="middle" fill="#75f3d8" font-size="16" font-weight="700" letter-spacing="1.2">LLM INFERENCE</text>
+        </g>
+        <g transform="translate(196)">
+          <rect width="140" height="50" rx="13" fill="#101c30" stroke="#58a6ff" stroke-opacity="0.6"/>
+          <text x="70" y="32" text-anchor="middle" fill="#77b7ff" font-size="16" font-weight="700" letter-spacing="1.5">SGLANG</text>
+        </g>
+        <g transform="translate(352)">
+          <rect width="124" height="50" rx="13" fill="#18162e" stroke="#b083ff" stroke-opacity="0.6"/>
+          <text x="62" y="32" text-anchor="middle" fill="#c4a1ff" font-size="16" font-weight="700" letter-spacing="1.5">VLLM</text>
+        </g>
+      </g>
+
+      <g transform="translate(1018 92)">
+        <g transform="translate(220 0)" filter="url(#glow)">
+          <circle r="11" fill="#58f6d4"/>
+          <circle r="22" fill="none" stroke="#58f6d4" stroke-opacity="0.35"/>
+        </g>
+        <g transform="translate(425 91)" filter="url(#glow)">
+          <circle r="10" fill="#58a6ff"/>
+          <circle r="21" fill="none" stroke="#58a6ff" stroke-opacity="0.35"/>
+        </g>
+        <g transform="translate(345 254)" filter="url(#glow)">
+          <circle r="11" fill="#c084fc"/>
+          <circle r="23" fill="none" stroke="#c084fc" stroke-opacity="0.3"/>
+        </g>
+        <g transform="translate(143 273)" filter="url(#glow)">
+          <circle r="9" fill="#58a6ff"/>
+        </g>
+        <g transform="translate(15 170)" filter="url(#glow)">
+          <circle r="8" fill="#58f6d4"/>
+        </g>
+
+        <g transform="translate(61 130)">
+          <rect width="164" height="70" rx="15" fill="#0b1426" stroke="#38506d"/>
+          <rect x="14" y="14" width="6" height="42" rx="3" fill="#58f6d4"/>
+          <text x="34" y="31" fill="#7f91b2" font-size="12" letter-spacing="1.5">CONTROL</text>
+          <text x="34" y="53" fill="#e5edfa" font-size="18" font-weight="700">SCHEDULER</text>
+        </g>
+        <g transform="translate(262 138)">
+          <rect width="164" height="70" rx="15" fill="#0b1426" stroke="#38506d"/>
+          <rect x="14" y="14" width="6" height="42" rx="3" fill="#58a6ff"/>
+          <text x="34" y="31" fill="#7f91b2" font-size="12" letter-spacing="1.5">MEMORY</text>
+          <text x="34" y="53" fill="#e5edfa" font-size="18" font-weight="700">KV CACHE</text>
+        </g>
+        <g transform="translate(161 279)">
+          <rect width="186" height="70" rx="15" fill="#0b1426" stroke="#4c3f72"/>
+          <rect x="14" y="14" width="6" height="42" rx="3" fill="#c084fc"/>
+          <text x="34" y="31" fill="#7f91b2" font-size="12" letter-spacing="1.5">TOPOLOGY</text>
+          <text x="34" y="53" fill="#e5edfa" font-size="18" font-weight="700">PARALLELISM</text>
+        </g>
+      </g>
+    </g>
+
+    <g transform="translate(1287 528)" fill="#7284a7" font-family="monospace" font-size="13">
+      <text x="0" y="0">TRACE → UNDERSTAND → VERIFY</text>
+      <rect x="238" y="-12" width="10" height="14" fill="#58f6d4" opacity="0.8"/>
+    </g>
+  </g>
+  <rect x="1" y="1" width="1598" height="618" rx="31" fill="none" stroke="#7180a0" stroke-opacity="0.26" stroke-width="2"/>
+</svg>
