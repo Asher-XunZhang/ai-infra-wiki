@@ -165,6 +165,7 @@ flowchart TB
 - [推理引擎与集群推理层分工](<./llm-inference/推理引擎与集群推理层分工学习文档.md>) — 区分单实例执行能力与集群级控制面职责。
 - [Chunked Prefill 与 Prefill-Decode 共推](<./llm-inference/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) — 从静态批处理走向连续批处理与分块调度。
 - [KV Cache 容量优化技术地图](<./llm-inference/KV Cache 容量优化技术地图学习文档.md>) — GQA、MLA、滑窗、跨层共享与稀疏注意力的统一地图。
+- [KV Cache 与推理调度协同优化](<./llm-inference/KV Cache 与推理调度协同优化学习文档.md>) — 从十篇论文拆清请求派发、缓存保留、跨模型转换、按头裁剪与物理页回收，并核对性能证据边界。
 - [KV Cache Salt 全链路键空间](<./llm-inference/KV Cache Salt 全链路键空间学习文档.md>) — 理解租户隔离、前缀身份与缓存键空间。
 - [Context Parallel、PCP 与 DCP 总体学习](<./llm-inference/Context Parallel、PCP 与 DCP 总体学习文档.md>) — 序列切分、通信与负载均衡的整体坐标系。
 - [PCP 长上下文 Prefill 并行](<./llm-inference/PCP 长上下文 Prefill 并行学习文档.md>) — 聚焦长上下文 Prefill 的 token 分片与注意力合并。

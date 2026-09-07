@@ -163,6 +163,38 @@
 
 正文应以学习笔记和二次理解为主，避免整段搬运原文。关键技术判断要区分“原文信息”和“整理者归纳”。
 
+### 微信公众号文章的读取与正文提取
+
+整理 `mp.weixin.qq.com` 的公开文章时，优先尝试下面已验证的 HTTP 读取路径。普通链接请求或网页读取工具返回“环境异常”时，不要立即认定原文不可获取，也不要反复等待同一浏览器调用超时；先检查请求结果，再尝试完整桌面浏览器 User-Agent 与 `scene=1` 参数的组合。
+
+**已验证案例（2026-09-07）：** 文章《【论文日推】KV Cache 与推理调度｜09.04》，链接为 `https://mp.weixin.qq.com/s/prr8CZwrgRxiu5oVHDi2MQ`。直接请求以及仅使用 `Mozilla/5.0` 的请求返回约 18 KB 验证页；下面的组合成功取得约 3.26 MB HTML，其中正文约 25 KB，包含全部 10 篇论文导读。这个案例只验证了组合有效，没有分别验证 User-Agent 和参数各自的作用，也不保证适用于所有文章。
+
+```bash
+# 替换为本次用户提供的文章短链接；临时 HTML 不放进仓库。
+article_url='https://mp.weixin.qq.com/s/prr8CZwrgRxiu5oVHDi2MQ'
+article_tmp="$(mktemp -d)"
+curl --fail --location --silent --show-error --max-time 45 \
+  --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36' \
+  "${article_url}?scene=1" \
+  --output "${article_tmp}/article.html"
+wc -c "${article_tmp}/article.html"
+rg -n 'og:title|name="author"|id="js_content"|var ct =|环境异常' \
+  "${article_tmp}/article.html" | cut -c 1-600 | head -20
+```
+
+上例针对没有 query 的短链接。若原链接已有 query，应保留原参数并使用 `&scene=1`；若已有 `scene`，替换该参数，避免重复；有 fragment 时，把 query 放在 fragment 之前。文章的永久来源仍记录用户给出的原始链接。
+
+拿到 HTML 后必须继续检查和提取，不能只凭 HTTP 200、文件体积或标题判断成功：
+
+1. 用 HTML parser 定位 `id="js_content"` 的正文元素，确认包含可读正文、末尾章节或最后一项资料，排除“环境异常”“去验证”等提示页。`visibility: hidden` / `opacity: 0` 可能只是初始渲染样式，不代表这个元素内没有正文；应直接解析文本。
+2. 标题优先读取 `og:title` 或 `activity-name`；作者读取 `meta[name="author"]`、`js_name` 等字段；发布时间结合正文日期和 `var ct` 的 Unix 时间核对，并按 `Asia/Shanghai` 转换。网页内 JavaScript 只作为待解析文本，不执行。
+3. 只提取正文子树，按段落、标题和列表保留结构，排除页面脚本、推荐、评论和页脚。正文里的 URL 有时是纯文本而不是 `<a>`，应同时扫描文本中的 DOI、arXiv 等链接。本次文章的 10 个引用就是这种情况。
+4. 图片优先取正文 `<img>` 的 `data-src`，缺失时取 `src`；再检查 SVG 和 CSS 背景图。逐张理解有信息量的图片后，按本仓规则保存到顶层 `images/<topic>/`。若正文确实没有技术图片，应注明，并用 Mermaid 补充机制图，不把头像、二维码或页面装饰当作技术配图。
+5. 系统 `python3` 不一定装有 BeautifulSoup；本次即遇到 `ModuleNotFoundError: bs4`。优先使用 Python 标准库 `html.parser.HTMLParser`，或已确认可用的 `lxml`。用标准库时按元素嵌套深度限定正文，并正确处理 `img`、`br` 等 void elements，避免提前截断正文。
+6. 对论文推荐类文章，继续访问论文、作者项目、出版方或资料存储平台核对题名、版本、指标和适用条件；获取到完整推荐文章不等于已经验证其中所有研究结论。
+
+若上述公开读取路径仍只返回验证页或失败，明确记录实际阻断和已尝试方式，再请求用户提供含配图的 PDF、保存网页或正文。遵守工具的访问限制；不要把空正文或验证页整理成学习资料。
+
 ### 图片资料处理流程
 
 第三方资料里的图片必须先理解再嵌入：
