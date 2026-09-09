@@ -4,7 +4,7 @@
 
 > 一个请求从进入 `waiting_queue`，到完成 Prefill、参与 Decode、流式输出并释放资源，中间经历了哪些对象和状态？
 
-本文把四篇 Scheduler 分析与一篇架构总览合并成一条主线，避免分别复述。它是第三方资料整理型学习资料，不是当前 SGLang 源码审计；函数名和代码关系用于建立阅读地图，使用前应在目标 commit 上重新确认。
+本文把三篇 Scheduler 分析合并成一条主线，避免分别复述。它是第三方资料整理型学习资料，2026-09-09 补充官方固定版本的静态抽查；历史文章中的字段和调用形式仍需与目标版本区分。先建立全局地图可读[调度机制总览与学习路线](<./SGLang 调度机制总览与学习路线.md>)。
 
 ## 0. 阅读基线与范围
 
@@ -12,20 +12,22 @@
 
 | 原文 | 作者/机构 | 发布时间 | 链接 |
 | --- | --- | --- | --- |
-| 《小进探索sglang：sglang中的scheduler调度原理和代码解析》 | 小进在学大模型 | 2025-12-08 | https://mp.weixin.qq.com/s/baB0ozQrVuaqZrTphSCUvg |
-| 《从 KV Cache 到 Zero Overhead Scheduling，一文读懂 SGLang 的调度巧思》 | 智猩猩AI（转载）；原作者 Chayenne Zhao | 2026-01-12 | https://mp.weixin.qq.com/s/-O5W_4CGD0XJMAtHckn3nw |
-| 同上原始文章 | Chayenne Zhao | 2026-01-12 | https://zhuanlan.zhihu.com/p/1992587332189197731?share_code=XlfqtsjMrMgv&utm_psn=2064184295120548792 |
-| 《SGLang推理优化-调度器核心ScheduleBatch》 | LLM高性能计算 | 2026-06-05 | https://mp.weixin.qq.com/s/e--Z3OKzilcZuJFoi7Hizg |
-| 《SGLang Overview：设计哲学与关键机制》 | 页面署名“青稞AI”，正文署名“方弦” | 2026-04-08 | https://mp.weixin.qq.com/s/ACaY5jXblT4Br1RRVAqqUw |
+| 《小进探索sglang：sglang中的scheduler调度原理和代码解析》 | lil2j / 小进在学大模型 | 2025-12-08 | https://mp.weixin.qq.com/s/baB0ozQrVuaqZrTphSCUvg |
+| 《从 KV Cache 到 Zero Overhead Scheduling，一文读懂 SGLang 的调度巧思》 | 智猩猩AI（转载，页面署名“关注AI Infra”）；原作者 Chayenne Zhao | 2026-01-12 | https://mp.weixin.qq.com/s/-O5W_4CGD0XJMAtHckn3nw |
+| 《SGLang推理优化-调度器核心ScheduleBatch》 | kason_zhang / LLM高性能计算 | 2026-06-05 | https://mp.weixin.qq.com/s/e--Z3OKzilcZuJFoi7Hizg |
 
 | 项目 | 内容 |
 | --- | --- |
-| 读取时间 | 2026-07-25 |
+| 读取时间 | 初次整理 2026-07-25；本次完整重读 2026-09-09 |
 | 整理范围 | 生成请求主循环、请求与 batch 状态、Prefill/Decode admission、资源回收、Overlap Scheduling |
 | 不展开内容 | PP event loop、DP Attention 的 rank 细节、Speculative Decoding 内部算法、PD 分离传输 |
-| 验证边界 | 第三方源码解读的交叉整理；未把任一文章的行号当作当前主分支事实 |
+| 验证边界 | 第三方资料交叉整理，附固定 commit 静态抽查；未运行服务、性能测试或并发正确性实验 |
 
-第二个图文链接与第 17 个知乎链接是同一篇内容的转载与原文，本文将它们视为一组来源，而不是两份独立证据。
+第二篇页面标注[知乎原始文章](https://zhuanlan.zhihu.com/p/1992587332189197731)。转载和原文属于一组来源，不能算作两份独立证据。原先引用的《SGLang Overview：设计哲学与关键机制》不再作为本文的技术依据；本次来源筛选和排除理由见总览文档。
+
+**静态抽查基线：** 官方 `sgl-project/sglang` commit `6e312af8c25ccedd1dcd2583358be038ab4875b0`，读取日 2026-09-09。读取固定版文件的临时副本，没有检出分支或修改本地 SGLang 仓库；实际读取目录和工作区边界见[总览基线](<./SGLang 调度机制总览与学习路线.md>)第 0.3 节。本文仍保留历史主线伪代码，用来说明行为；具体签名变化见第 12 节。
+
+配图均来自三篇原文，已逐张检查。保留的原图、SHA256 和未采用图像的原因见[配图记录](../images/sglang-scheduler/SOURCES.md)。没有采用含错误分支或严重文字错误的三张原图。
 
 ### 0.2 怎么读本文
 
@@ -43,9 +45,9 @@
 | `running_batch` | 已完成 Prefill、可继续 Decode 的请求集合 |
 | `chunked_req` | 长 Prompt 做了一部分、但还不能进入普通 Decode 的请求 |
 | `new_batch` | 当前轮新构造的 EXTEND/Prefill batch |
-| `last_batch` | 上一轮真正提交执行的 batch |
+| `last_batch` | 上一轮提交执行的 batch；Overlap 下不代表 CPU 已完成收尾 |
 | `cur_batch` | 当前轮选择并执行的 batch |
-| `ScheduleBatch` | CPU Scheduler 侧的批状态和调度元数据 |
+| `ScheduleBatch` | Scheduler 管理的批状态和调度元数据，字段可引用 CPU/GPU tensor |
 | EXTEND | 新 Prefill、缓存后缀计算或 Chunked Prefill 的 forward mode |
 | DECODE | 活跃请求每个继续生成一个 token 的 forward mode |
 | Admission | 判断一个请求是否能安全进入本轮 |
@@ -77,18 +79,16 @@ Scheduler 同时负责：
 ### 1.3 最小主线
 
 ```mermaid
-flowchart LR
-    A[Tokenized request] --> B[process_input_requests]
-    B --> C[waiting_queue]
-    C --> D[get_new_batch_prefill]
-    D --> E[EXTEND ScheduleBatch]
-    E --> F[run_batch]
-    F --> G[last_batch]
-    G --> H[下一轮开头过滤/合并]
-    H --> I[running_batch]
-    I --> J[update_running_batch]
-    J --> K[DECODE ScheduleBatch]
-    K --> F
+flowchart TD
+    A["Tokenized request"] -->|"process_input_requests"| B["waiting_queue"]
+    B --> C["get_new_batch_prefill<br/>尝试构造 EXTEND batch"]
+    C -->|"成功"| D["run_batch<br/>提交本轮计算与采样"]
+    C -->|"没有新 Prefill"| G["update_running_batch<br/>检查并准备 DECODE"]
+    G -->|"有可执行 Decode"| D
+    G -->|"无可执行批"| I["Idle / 后台维护"]
+    D --> E["last_batch<br/>记录上轮执行批"]
+    E --> F["下一轮仅对上轮 EXTEND 过滤并合并<br/>排除完成项与未完成 chunk"]
+    F --> C
 ```
 
 最重要的一点是：**EXTEND 执行完不会在同一行代码里立即变成 DECODE。** 它通常先成为 `last_batch`，下一轮调度开头再经过过滤并入 `running_batch`。
@@ -114,9 +114,11 @@ flowchart LR
 | 数据结构 | 主要管理者 | 包含什么 | 为什么存在 |
 | --- | --- | --- | --- |
 | `ScheduleBatch` | Scheduler | `Req`、长度、pool index、采样配置、forward mode | 做 CPU 侧调度决策 |
-| `ModelWorkerBatch` | Worker 边界 | forward 所需的紧凑字段 | 减少跨边界传输和耦合 |
+| `ModelWorkerBatch` | Worker 接口 | forward 所需的紧凑字段 | 隔离接口和字段依赖，不意味着独立进程 |
 | `ForwardBatch` | Model Runner | GPU tensor、positions、Attention metadata | 直接喂给模型和 kernel |
 | `GenerationBatchResult` | Worker -> Scheduler | token、logits/采样信息、异步同步对象 | 推进请求状态 |
+
+这是历史文章介绍的对象地图，不是“每层必有一次 IPC”的传输图，也不代表所有字段始终零拷贝。固定版 `ForwardBatch.init_new()` 既接收已有 tensor，也为部分 metadata 构造 tensor 并执行设备拷贝。Scheduler 在 CPU 上执行 Python 控制逻辑，但持有的 tensor 可以在 GPU 上。
 
 ```mermaid
 flowchart LR
@@ -240,6 +242,8 @@ if new_batch is not None:
 
 原文所分析的主线是 Prefill-first：只要能安全构造 EXTEND batch，本轮就选择它。这里的“优先”仍受 batch full、请求槽位、KV 预算、prefill delayer 和特殊模式约束。
 
+**不要把 Prefill-first 叫作 FCFS。** 前者决定 Prefill 和 Decode 哪个阶段先执行；后者决定等待请求的尝试顺序。选择 FCFS 时仍可能 Prefill-first，选择 LPM 时也仍需做资源 admission。
+
 ### 4.4 阶段四：没有 Prefill 才推进 Decode
 
 ```text
@@ -267,6 +271,8 @@ if running_batch not empty:
 
 排序只决定“先尝试谁”，不保证一定 admission。
 
+固定版 `server_args.py` 的策略声明默认是 `fcfs`。显式选择 `lpm` 时，`SchedulePolicy._determine_active_policy()` 在等待队列大于 128 的分支退回 FCFS；这个条件不能反推默认策略是 LPM，也不能只凭注释给整个算法标注 `O(n²)`。模型专用钩子、优先级功能和最终配置仍需分别检查。
+
 ### 5.2 每个请求先重新建立输入视图
 
 `Req.init_next_round_input()` 一类逻辑通常会：
@@ -288,7 +294,7 @@ extend_input_len = len(fill_ids) - len(prefix_indices)
 | Request slots | 还能接纳几条请求 |
 | Input token budget | 本轮还能处理多少 prefill token |
 | KV capacity | 除去 running 请求未来需求后还能分多少 slots |
-| Chunk budget | 单个长请求本轮最多推进多少 |
+| Chunk budget | 本轮还剩多少 chunk 额度，各请求从同一余量扣减 |
 
 还可能检查：
 
@@ -297,6 +303,8 @@ extend_input_len = len(fill_ids) - len(prefix_indices)
 - 多模态输入预算；
 - preemption 是否允许；
 - HiCache load 是否已完成。
+
+固定版 `PrefillAdder.rem_chunk_tokens` 是 adder 的共享余量，并非给每条请求重新发一份额度；mixed Decode 也可先消耗其中一部分。数值例子见[Chunk 预算专题](<./SGLang Chunked Prefill 与调度器显存预算学习文档.md>)第 8.1 节。
 
 ### 5.4 `prepare_for_extend()` 是 admission 落地
 
@@ -418,6 +426,12 @@ waiting_queue = []
 - Prefill-first 为什么会影响 ITL；
 - `max_prefill_tokens` 为什么不只是显存参数。
 
+例子假定只有所列 input budget 起约束，KV、请求槽位和未来输出预算均够用，chunk 额度未进一步截断，并关闭 mixed。它是说明控制流的抽象装箱，不是可照抄的配置实验。
+
+![原文中新请求 B 经 Prefill 并入 A 的跨轮状态表](../images/sglang-scheduler/07-request-merge-timeline.png)
+
+**图意解读：** 原图用 A 已在运行、B 刚到达的情形展示 `last_batch` 的交接作用。表中“Prefill 完成”和“合入 running”是两个边界。普通生成中 B 通常在最终 Prefill 时已有首 token，后续第一次 Decode 生成的是再下一个 token；不采用原文相邻文字中将其记作首 token 的说法。
+
 ## 8. Overlap Scheduling：怎样隐藏 CPU Bubble
 
 ### 8.1 Normal 模式的同步链
@@ -435,18 +449,19 @@ GPU forward N
 ### 8.2 理想重叠
 
 ```mermaid
-gantt
-    title Overlap Scheduler 的逻辑时间线
-    dateFormat X
-    axisFormat %L
-    section GPU
-    Forward/Sample N   :0, 6
-    Forward/Sample N+1 :6, 12
-    section CPU
-    Prepare N+1        :1, 4
-    Postprocess N      :4, 7
-    Prepare N+2        :7, 11
+sequenceDiagram
+    participant C as CPU Scheduler
+    participant G as GPU forward stream
+    C->>G: 异步提交 batch N
+    Note over C,G: GPU 执行 N 时，CPU 可准备 N+1
+    C->>G: 提交 N+1 的可执行部分
+    Note over C,G: 保持 token 和 metadata 的真实依赖
+    C->>C: 等待 N 的必要结果，处理 N
+    C->>G: 必要时提交 N+1 的延迟采样
+    C->>C: 继续准备下一批
 ```
+
+**图意解读：** 这是整理者画的逻辑顺序，不是测量时间线。CPU 发出命令不等于 GPU 已完成；普通采样和依赖 grammar 的延迟采样路径也不能混为一谈。
 
 一个抽象 event loop 是：
 
@@ -482,9 +497,62 @@ Overlap 只能隐藏落在 GPU forward 窗口内的 CPU 工作。以下情况仍
 
 所以应通过 profiler 看迭代间 gap，而不是只看开关是否启用。
 
-## 9. Scheduler 与 KV 三层结构的接口
+### 8.5 SGLang 固定版怎样表达这些依赖
+
+[官方 v0.4 介绍](https://www.lmsys.org/blog/2024-12-04-sglang-v0-4/#zero-overhead-batch-scheduler)明确将其解释为 CPU 调度与 GPU 计算的重叠，并提到 future token 和 CUDA event。CPU 仍执行调度；“零开销”描述的是关键路径上尽量看不到调度气泡。
+
+在本次固定版中可找到如下锚点：
+
+| 行为 | 固定源码锚点 | 读代码时关注什么 |
+| --- | --- | --- |
+| 建立 schedule stream | [`Scheduler` 事件循环入口](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/managers/scheduler.py#L1870) | 与 `forward_stream` 分离，避免无关顺序阻塞 |
+| 先提交当前批，再处理前批 | [`event_loop_overlap`](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/managers/scheduler.py#L1944) | `result_queue.append((batch.copy(), batch_result))` 保存执行快照 |
+| 输入 token 在设备侧接力 | [`resolve_forward_inputs` 与结果 relay 调用](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/managers/scheduler.py#L4340) | 下一轮取得真实 token 前，生产者必须已写好对应 future 状态 |
+| CPU 读取结果前等待 | [`BatchResultProcessor.process_batch_result_prefill`](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/managers/scheduler_components/batch_result_processor.py#L253) | 相关路径先同步 `copy_done`，再读取 CPU 输出 |
+| 部分批次不重叠 | [`is_disable_overlap_for_batch`](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/managers/scheduler.py#L2021) | 连续 Prefill、grammar/spec 等条件会改变同步位置 |
+| 防止后写覆盖前读 | [`_apply_war_barrier`](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/managers/scheduler.py#L1892) | 让 schedule stream 的后续写等待必要 shared-read event，或退回等待 forward stream |
+
+`batch.copy()` 解决的是执行批元数据被下一轮改写的问题，不能当作深拷贝全部 GPU 内存的证明。stream wait 约束设备命令顺序，也不会把其间的 Python EOS 判断“搬到 GPU 上”。
+
+### 8.6 一条 EOS 请求暴露的生命周期问题
+
+假设 N 的结果是 EOS，但 CPU 尚未读取它，N+1 的某些工作已经提交。这时应分别问：
+
+1. **逻辑状态**：请求是否已被标记结束，是否还会对外输出？
+2. **批元数据**：已经发射的执行快照里是否仍有该请求？
+3. **物理资源**：GPU 是否仍会读写请求映射或 KV slots？
+4. **回收资格**：哪一个事件或同步边界保证后续复用不会覆盖在途访问？
+
+```mermaid
+flowchart LR
+    A["采样结果产生"] --> B["CPU 得知 EOS"]
+    B --> C["请求逻辑结束"]
+    D["在途计算及共享读写退役"] --> E["物理资源具备安全复用条件"]
+    C --> E
+```
+
+**图意解读：** 两条条件共同决定可回收性；这是一张生命周期检查图，不表示源码里只有一个统一“退役”函数。上述静态锚点证明实现显式处理依赖，不能代替对所有 backend、abort、快速 slot 复用场景的运行验证。
+
+### 8.7 怎样验证 Overlap 是否有效
+
+建议在相同模型、硬件、后端、请求长度、缓存状态和负载协议下比较启用与关闭 Overlap，检查最终生效配置，完成预热并重复运行。本文没有执行该对照。
+
+| 观察 | 可能说明 | 还不能证明 |
+| --- | --- | --- |
+| 批间 GPU gap 缩短，完成吞吐提高 | 关键路径中的等待减少 | CPU 消耗已归零 |
+| GPU gap 仍大，CPU 调度段更长 | CPU 工作超出可隐藏窗口 | 再加 stream 必然有效 |
+| 平均 TPOT 改善、尾部 ITL 变差 | 平均值掩盖了部分请求停顿 | 用户体验整体改善 |
+| 关闭 Overlap 后故障消失 | 并发顺序或生命周期值得重点排查 | 已定位到某个确定的根因 |
+
+填充与排空阶段没有完整重叠窗口；小 batch、grammar、同步拷贝和 backend 差异也会影响收益。性能结果必须附测试条件。
+
+## 9. Scheduler 与 KV 三种结构的接口
 
 本篇只保留接口关系：
+
+![前缀索引、请求寻址表和实际 KV 的对应关系](../images/sglang-scheduler/06-prefix-slot-mapping.jpg)
+
+**图意解读：** 原图中已命中的 A/B 对应 slots 10/11，新计算 C/D 分配到 slots 12/20；请求视图把它们拼成逻辑连续的序列。图内 L1/L2/L3 是作者对三个抽象层的编号，**不是 HiCache 的 GPU/Host/外部存储三级**。树保存可复用前缀与位置关系，request pool 保存寻址视图，KV pool 保存真实张量。图中“插入”箭头不能解释为任意时刻都可发布尚未完成计算的 KV。
 
 ```mermaid
 flowchart LR
@@ -535,6 +603,8 @@ flowchart LR
 
 ## 12. 源码阅读路线
 
+**固定版与历史文章的差异：** 本次官方 commit 中，`get_next_batch_to_run(running_batch, last_batch)` 返回 `NextBatchPlan`，event loop 从 `plan.running_batch` 和 `plan.batch_to_run` 取值。旧文中直接返回 batch 的伪代码只表达控制流，不是当前可执行 API。请求接收已可在 `scheduler_components/request_receiver.py` 阅读，结果处理在 `scheduler_components/batch_result_processor.py`，不能仅凭旧 mixin 文件名查找失败就判断功能消失。
+
 在目标 SGLang commit 上建议按职责搜索，而不是照搬文章行号：
 
 1. `scheduler.py`：event loop、`get_next_batch_to_run`、Prefill/Decode 分支。
@@ -563,6 +633,7 @@ SGLang Scheduler 的主线是一个受 KV 预算约束的请求状态机：EXTEN
 - 《从 KV Cache 到 Zero Overhead Scheduling，一文读懂 SGLang 的调度巧思》转载：https://mp.weixin.qq.com/s/-O5W_4CGD0XJMAtHckn3nw
 - 同文原始链接：https://zhuanlan.zhihu.com/p/1992587332189197731?share_code=XlfqtsjMrMgv&utm_psn=2064184295120548792
 - 《SGLang推理优化-调度器核心ScheduleBatch》：https://mp.weixin.qq.com/s/e--Z3OKzilcZuJFoi7Hizg
-- 《SGLang Overview：设计哲学与关键机制》：https://mp.weixin.qq.com/s/ACaY5jXblT4Br1RRVAqqUw
+- [调度机制总览与学习路线](<./SGLang 调度机制总览与学习路线.md>)：来源筛选、官方基线和八条资料去向。
+- [固定版 ForwardBatch](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/model_executor/forward_batch_info.py#L748)：区分字段复用与设备拷贝。
 
-本文基于上述资料整理。涉及具体类、字段和时序的判断，需要在目标版本源码上复核。
+本文以第三方资料为主，附有限官方静态抽查；第 8 节的同步与对象生命周期说明不构成 GPU 并发正确性的测试报告。

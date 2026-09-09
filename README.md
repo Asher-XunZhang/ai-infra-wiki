@@ -107,7 +107,7 @@ flowchart LR
 
 推荐按“入口 → 主循环 → 核心对象 → 数据通路”阅读：
 
-- SGLang：[调度器请求生命周期与重叠调度](<./sglang/SGLang 调度器请求生命周期与重叠调度学习文档.md>) → [Chunked Prefill 与调度器显存预算](<./sglang/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) → [PD 分离下的 PP](<./sglang/PD 分离下的 PP 源码学习文档.md>)
+- SGLang：[调度机制总览与学习路线](<./sglang/SGLang 调度机制总览与学习路线.md>) → [调度器请求生命周期与重叠调度](<./sglang/SGLang 调度器请求生命周期与重叠调度学习文档.md>) → [Chunked Prefill 与调度器显存预算](<./sglang/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) → [PD 分离下的 PP](<./sglang/PD 分离下的 PP 源码学习文档.md>)
 - vLLM：[引擎工作流](<./vllm/vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>) → [KV Cache 全生命周期](<./vllm/vLLM V1 KV Cache 管理全生命周期源码学习文档.md>) → [KV Connector 架构](<./vllm/vLLM V1 KV Connector 架构与实现地图源码学习文档.md>)
 
 不要从单个函数硬啃。先确认它在整条请求链路上负责哪一步，再向对象状态与边界条件下钻。
@@ -130,6 +130,8 @@ flowchart LR
 </details>
 
 ## 知识星图
+
+调度专题可从[总览与学习路线](<./sglang/SGLang 调度机制总览与学习路线.md>)开始：先拆清路由、队列排序、admission 和 Overlap，再用请求生命周期与 64K→16K 的 chunk 对照理解性能取舍。来源清单记录了八条资料的采用、排除和核对依据。
 
 同一个机制经常横跨多条主线。下面这张图适合用来判断“下一篇该往哪里跳”。
 
@@ -197,8 +199,9 @@ flowchart TB
 
 > 从 Scheduler 主循环出发，沿请求状态、KV 所有权与并行拓扑深入源码。
 
-- [SGLang 调度器请求生命周期与重叠调度](<./sglang/SGLang 调度器请求生命周期与重叠调度学习文档.md>) — 请求如何跨过 waiting、running 与输出阶段。
-- [SGLang Chunked Prefill 与调度器显存预算](<./sglang/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) — 调度器如何在 token budget 与显存之间做选择。
+- [SGLang 调度机制总览与学习路线](<./sglang/SGLang 调度机制总览与学习路线.md>) — 路由、排序、admission 与执行时序的分工；八条来源筛选和官方核对。
+- [SGLang 调度器请求生命周期与重叠调度](<./sglang/SGLang 调度器请求生命周期与重叠调度学习文档.md>) — waiting/EXTEND/running、FutureMap、结果快照与异步资源退役。
+- [SGLang Chunked Prefill 与调度器显存预算](<./sglang/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) — 共享 chunk 额度、64K→16K 的显存与吞吐取舍、PD 和数值路径边界。
 - [SGLang RadixAttention 前缀缓存命中定义](<./sglang/SGLang RadixAttention 前缀缓存命中定义学习文档.md>) — 逐步拆开 token 匹配、树节点与物理 KV 复用。
 - [SGLang RadixAttention 与 HiCache KV Cache 技术主线](<./sglang/SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>) — 从 GPU Radix Cache 延伸到分层缓存。
 - [SGLang KV Pool、请求视图与 HiCache 工程](<./sglang/SGLang KV Pool、请求视图与 HiCache 工程学习文档.md>) — 区分物理池、逻辑请求视图与缓存控制面。

@@ -9,6 +9,8 @@
 
 本文是第三方资料整理型学习资料，并用本地 SGLang 源码抽查了 Chunked Prefill 的关键调度路径；它不是完整源码审计或容量承诺。
 
+2026-09-09 补充“64K 调到 16K”的显存、PD 吞吐与数值边界，并按官方固定版本修正第 8.1 节的 chunk 共享额度示例。初学者可先读[调度机制总览与学习路线](<./SGLang 调度机制总览与学习路线.md>)。
+
 ## 0. 阅读基线与范围
 
 | 项目 | 内容 |
@@ -25,12 +27,15 @@
 | 链接 | https://mp.weixin.qq.com/s/UqUroTBI5Hliheck6QRufg |
 | 作者/机构 | LLM高性能计算 |
 | 发布时间 | 2026-06-10 |
-| 读取时间 | 2026-08-03 |
+| 新增原文四 | [《Prefill chunk size 从 64K 调到 16K：省显存，也能提吞吐吗？》](https://mp.weixin.qq.com/s/8fPRQaX8ik03r4yAtmRMjA) |
+| 作者/账号与发布时间 | 魏新宇 / 大魏分享；2026-09-07 22:53:53（Asia/Shanghai） |
+| 资料类型 | 技术博客、机制图与论文图整理 |
+| 读取时间 | 前三篇初次整理 2026-08-03；第四篇读取及本文修订 2026-09-09 |
 | 整理范围 | Chunked Prefill 生命周期、KV 容量估算、核心调度参数、PD 两侧调参 |
 | 不展开内容 | 全量源码逐行审计、DSV4 精确 pool 实现证明、自动调参脚本交付 |
 | 验证边界 | 调度结论做静态源码抽查；公式与性能数字仍需用目标部署验证 |
 
-**源码抽查基线**
+**2026-08-03 本地源码抽查基线**
 
 | 项目 | 内容 |
 | --- | --- |
@@ -40,6 +45,10 @@
 | 工作区状态 | 有本地修改与未跟踪文件；本文只读，不清理、不修改 |
 | 抽查范围 | `server_args.py`、`scheduler.py`、`schedule_policy.py`、`scheduler_output_processor_mixin.py` |
 | 运行验证 | 未运行服务或 benchmark |
+
+**2026-09-09 补充抽查基线：** 按第四篇明确引用的官方 commit `6e312af8c25ccedd1dcd2583358be038ab4875b0` 读取 `PrefillAdder`、显存配置钩子、PD Prefill 发送和 AITER 特定分支。使用固定版本临时文件，无分支检出，未修改本地 SGLang 仓库。读取目录与完整边界见[总览基线](<./SGLang 调度机制总览与学习路线.md>)第 0.3 节。本文未重新核验前三篇的所有 benchmark，不将历史本地分支和本次官方快照混成同一基线。
+
+第四篇的四张图均已下载并逐张理解；论文图另核对 Sarathi-Serve v3。原图 URL、出处、SHA256 见[配图记录](../images/sglang-chunk-size-tradeoffs/SOURCES.md)。
 
 ### 怎么读本文
 
@@ -59,7 +68,7 @@
 | `max_total_tokens` | GPU KV pool 可容纳的 token/slot 总容量 |
 | `max_running_requests` | 允许处于运行态的请求数上限 |
 | `max_prefill_tokens` | 一轮 EXTEND batch 的总输入 token 预算 |
-| `chunked_prefill_size` | 单个长请求本轮最多 Prefill 的 token 片段 |
+| `chunked_prefill_size` | 影响本轮可用 chunk 额度；长请求从剩余额度取片段，多请求不各领一份 |
 | `mem_fraction_static` | 权重与 KV 等静态占用希望覆盖的显存比例 |
 | Live tokens | 活跃请求当前必须保留 KV 的 token 数 |
 
@@ -92,7 +101,7 @@ flowchart TB
 
 ![SGLang Scheduler Chunked Prefill 总览](../images/sglang-chunked-prefill/03-scheduler-overview.png)
 
-**图意解读：** 图把配置、请求字段、三轮 EXTEND 和最终 Decode 放在同一张地图里。控制面由 `Scheduler.chunked_req`、`PrefillAdder` 与缓存索引串起；数据面仍是每轮正常 forward 和 KV 写入。图中的“中间 chunk 不进入 running”描述的是默认非 mixed 路径；当前源码开启 `--enable-mixed-chunk` 后，可把已有 running Decode 合入该 EXTEND batch。
+**图意解读：** 图把配置、请求字段、三轮 EXTEND 和最终 Decode 放在同一张地图里。控制面由 `Scheduler.chunked_req`、`PrefillAdder` 与缓存索引串起；数据面仍是每轮正常 forward 和 KV 写入。未完成 Prefill 的长请求不能提前成为普通 Decode 请求；启用 mixed chunk 时，是把其他已可 Decode 的请求混入 EXTEND，不是让未读完 prompt 的请求提前生成。
 
 ### 2.3 四个关键字段
 
@@ -149,7 +158,7 @@ Prefill 中间 chunk 的任务是补齐 prompt 历史，不代表完整 prompt �
 
 ### 3.3 调度顺序的版本边界
 
-原文分析的代码路径表现为 Prefill-first，且存在 `chunked_req` 时会优先使它继续，从而让多个 chunk 连续执行；新到达短请求仍可能被打包进后续 EXTEND batch。当前本地源码仍先调用 `get_new_batch_prefill()`，只有没有 Prefill batch 时才走 `update_running_batch()`，所以这个结论对默认非 mixed 路径仍成立。
+原文分析的代码路径表现为 Prefill-first，且存在 `chunked_req` 时会优先使它继续，从而让多个 chunk 连续执行；新到达短请求仍可能被打包进后续 EXTEND batch。2026-08-03 抽查的本地源码先调用 `get_new_batch_prefill()`，只有没有 Prefill batch 时才走 `update_running_batch()`，所以这个结论对默认非 mixed 路径仍成立。
 
 不要把它泛化为：
 
@@ -157,11 +166,11 @@ Prefill 中间 chunk 的任务是补齐 prompt 历史，不代表完整 prompt �
 chunk1 -> decode -> chunk2 -> decode
 ```
 
-但当前源码同时存在 `--enable-mixed-chunk`、prefill delayer 和 PP dynamic chunking。打开 mixed chunk 且兼容条件满足时，Scheduler 会调用 `mix_with_running()`，把 running Decode 合进 EXTEND batch。稳定结论只有：
+该本地版本同时存在 `--enable-mixed-chunk`、prefill delayer 和 PP dynamic chunking。打开 mixed chunk 且兼容条件满足时，Scheduler 会调用 `mix_with_running()`，把 running Decode 合进 EXTEND batch。稳定结论只有：
 
 > 切 chunk 把一次不可抢占的长 forward 变成多个可重新做调度决策的边界。
 
-### 3.4 当前源码锚点
+### 3.4 2026-08-03 本地源码锚点
 
 | 行为 | 源码锚点 | 抽查结论 |
 | --- | --- | --- |
@@ -181,7 +190,7 @@ chunk1 -> decode -> chunk2 -> decode
 
 ```text
 本轮总 Prefill token 预算
-单请求 chunk 预算
+本轮共享的剩余 chunk 额度
 KV 可分配 slots
 request pool slots
 running batch 的未来 Decode 预留
@@ -371,7 +380,7 @@ max_total_tokens = 760K
 | `max_total_tokens` | KV token pool | 更多 live tokens | 若超过 profile 会被限制或 OOM |
 | `max_running_requests` | 活跃请求数量 | 更高并发上限 | retract、ITL 抖动 |
 | `max_prefill_tokens` | 一轮所有 EXTEND token | Prefill 吞吐 | 单轮阻塞与激活峰值 |
-| `chunked_prefill_size` | 单长请求一轮 token | 少轮次、长请求吞吐 | Decode 干扰、激活峰值 |
+| `chunked_prefill_size` | 本轮 chunk 额度及长请求分段 | 可能减少轮次、改善长请求吞吐 | 更高峰值与更长执行片段 |
 
 ### 8.1 一个容易混淆的关系
 
@@ -382,13 +391,19 @@ max_prefill_tokens = 16384
 chunked_prefill_size = 4096
 ```
 
-一轮可以：
+**2026-09-09 修正：** 不能据此推导一轮能放四个各 4096-token 的 chunk。固定版 [`PrefillAdder`](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/managers/schedule_policy.py#L481) 持有 `rem_chunk_tokens`；构造时可先减去 mixed Decode token，接纳请求后继续扣减同一份余量。
 
-- 放 4 个各 4096-token 的 chunk；
-- 放 1 个 4096-token 长 chunk + 多个短请求；
-- 因 KV/请求槽位不足而只放更少。
+教学例子：假设普通路径、关闭 mixed、无命中、页对齐满足、KV 与请求槽位都充足，初始 chunk 余量为 4096：
 
-`max_prefill_tokens` 是 batch 总预算，`chunked_prefill_size` 是单请求上限。
+| 接纳步骤 | 新 Prefill token | 剩余 chunk 额度 |
+| --- | ---: | ---: |
+| 短请求 R1 | 1000 | 3096 |
+| 短请求 R2 | 1000 | 2096 |
+| 长请求 R3 的本轮片段 | 最多 2096，实际还受页对齐影响 | 至少 0 |
+
+这里的 token 数只说明共享扣账，不是生产配置。若 R1 已消耗整份 4096 额度，就不能因为 `max_prefill_tokens=16384` 再发给 R2 一份 4096。不同预算同时存在，不等于可以相乘；特殊模型、SWA 和动态 chunk 路径还可能调整截断规则。
+
+源码对应：构造函数处理 `num_mixed_decode_tokens`，`_update_prefill_budget()` 扣减本轮 `extend_input_len`；`add_chunked_req()` 与 `add_one_req()` 再受 KV、页边界和特殊状态约束。最终以所选路径计算出的余量为准。
 
 ## 9. 原文 Chunk Benchmark 的边界
 
@@ -523,17 +538,150 @@ HiCache 详情见：
 
 ### 误解五：切成 chunk 后，每段之间一定会执行 Decode
 
-chunk 只提供重新调度的边界。当前 SGLang 默认仍是 Prefill-first；只有 mixed chunk 开启且输入、logprob、speculative 等兼容条件允许时，Prefill 与 running Decode 才会同轮执行。
+chunk 只提供重新调度的边界。本文抽查的普通非 mixed 主线仍是 Prefill-first；只有 mixed chunk 开启且输入、logprob、speculative 等兼容条件允许时，Prefill 与 running Decode 才会同轮执行。
 
-## 14. 一句话总结
+## 14. 64K 调到 16K：一条请求究竟改变了什么
+
+本节起主要整理第四篇文章，并补充官方静态核对。这里 64K、16K 分别表示 **65,536、16,384 tokens**，仅作机制示例，不是两组测得成绩。
+
+### 14.1 分块的是新计算，历史状态继续累积
+
+假设一条 65,536-token 输入，无缓存命中，每轮都能取得足够预算，不考虑其他请求：
+
+| chunk 上限 | 完成输入的理想轮数 | 完成 Prefill 后的逻辑历史 |
+| --- | ---: | ---: |
+| 65,536 | 1 | 65,536 tokens |
+| 16,384 | 4 | 65,536 tokens |
+
+```mermaid
+flowchart TD
+    A["第 1 块：新算 16K"] --> B["第 2 块：新算 16K<br/>使用前 16K 的 KV"]
+    B --> C["第 3 块：新算 16K<br/>使用前 32K 的 KV"]
+    C --> D["第 4 块：新算 16K<br/>使用前 48K 的 KV"]
+    D --> E["输入完成，可产生首 token"]
+```
+
+**图意解读：** 这是整理者针对完整因果注意力绘制的逻辑数据流。每一块都保留相同的历史依赖，并非四个互相隔离的 16K 上下文；SWA、稀疏或混合模型仍按其自身规则访问历史。多请求时，还须按第 8.1 节共享剩余额度，不能保证每轮拿满 16K。
+
+### 14.2 峰值显存和最终 KV 分开记账
+
+![原文引用的官方 Prefill OOM 调优说明](../images/sglang-chunk-size-tradeoffs/01-oom-tuning.png)
+
+**图意解读：** 图中的三类参数分别影响单轮 Prefill、静态显存分配与运行请求上限。对长输入缩小 chunk 可以减少临时峰值，但也可能减慢 Prefill；图内 4096/2048 是官方说明中的示例，不能直接迁移成所有部署的推荐值。[固定版官方调优文档](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/docs/docs/advanced_features/hyperparameter_tuning.mdx#avoid-out-of-memory-errors-by-tuning---chunked-prefill-size---mem-fraction-static-and---max-running-requests)
+
+需要分开两种限制：
+
+- **临时峰值先触顶，KV 池仍有余量：** 缩小 chunk 后若实际峰值下降，可能让原来会 OOM 的负载完成，无需先扩 KV 池。
+- **长期 KV 容量先耗尽：** 仅降低临时峰值没有改变每个请求保留的历史长度。要增加容量，还需同侧实际扩池，或在相同语义下通过前缀共享等方式降低新增物理占用。
+
+共享前缀只计算一份物理 KV 时，不能把所有请求的逻辑长度简单相加当显存占用；反过来，缓存命中率变化也会让两组 chunk 测试失去可比性。
+
+### 14.3 轮数变四倍，不等于耗时变四倍
+
+分块增加调度、元数据、kernel 启动和读取历史 KV 的机会，并改变矩阵乘形状。它没有把已经完成的历史 token 每轮重新完整 Prefill 一遍。实际性能还取决于算子利用率、后端和缓存路径。
+
+![Sarathi-Serve 的不同分块大小 Prefill 开销](../images/sglang-chunk-size-tradeoffs/02-sarathi-prefill-overhead.png)
+
+**图意解读：** 横轴是输入长度 2K/4K/8K；三组柱是 chunk 512/1024/2048；纵轴为相对不分块 Prefill 的耗时，1 表示相当。来源是 Agrawal 等 [Sarathi-Serve v3 Figure 14、§5.4.1](https://arxiv.org/html/2403.02310v3#S5.SS4.SSS1)，对应 Yi-34B、TP2。图说明该配置下小块执行有额外成本，不能用于预测 SGLang 的 16K/64K 差值，也不是本文复现实验。
+
+### 14.4 只改一个 CLI 参数，也可能改变多个实际配置
+
+官方固定版 [`handle_gpu_memory_settings()`](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/arg_groups/memory_hook.py#L246) 有明确分支：
+
+| 条件 | chunk 与定容的关系 |
+| --- | --- |
+| 未显式给 `mem_fraction_static`，不走捕图后定容，且非纯 Decode | chunk 可参与 activation 预留量估算，进而影响默认静态比例 |
+| 显式指定 `mem_fraction_static` | 不能套用上述默认比例派生分支 |
+| 走捕图后定容 | 使用捕图后测得的可用空间等信息，跳过该分支的图/激活预留估计 |
+| 纯 Decode | 用运行请求数与 draft token 等因素估计，不按 Prefill chunk 的同一公式 |
+
+这里的预留是启发式，不能把估算项直接当成“实测省下多少字节”。同文件还会在条件满足时从 chunk 派生 Prefill 图捕获规模，见[图配置分支](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/arg_groups/memory_hook.py#L196)。应记录最终生效参数、实际 KV pool 容量及图配置。
+
+## 15. 从单次 Prefill 走到 PD 全链路吞吐
+
+### 15.1 同一侧显存，才能谈同一侧扩池
+
+![缩小分块与同侧 KV 容量、并发、吞吐的条件关系](../images/sglang-chunk-size-tradeoffs/03-memory-capacity-conditions.png)
+
+**图意解读：** 这是第四篇作者绘制的解释图，非本文生成图或测量结果。每个箭头都需要条件：实际有余量、余量进入同侧池、原限制确实是容量、其他计算与延迟约束仍满足。P/D 使用独立 GPU 时，P 省下的空间不会扩大 D 的 KV 池。图底部还保留了另一条路径：KV 有余量时，可仅通过降低临时峰值解除 OOM。
+
+计算 chunk 与网络传输单位也应拆开。固定版 [`send_kv_chunk()`](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/disaggregation/prefill.py#L1229) 对非最终块的发送边界作 page 对齐；计算分四轮，不代表 KV 总字节数只剩四分之一，更不代表一块等于一个网络包。D 必须满足所选协议的 KV/状态就绪条件，才能继续请求。
+
+### 15.2 分块提供机会，调度策略决定机会怎样使用
+
+![Sarathi-Serve 与历史方案的 Prefill、Decode 时序对照](../images/sglang-chunk-size-tradeoffs/04-sarathi-scheduling-timeline.png)
+
+**图意解读：** A/B 是已经生成的请求，C/D 是新到请求；`p` 表示 Prefill，`d` 表示 Decode。下方通过有限 Prefill 片段和已有 Decode 同批，减少生成停顿。该图来自 [Sarathi-Serve v3 Figure 7](https://arxiv.org/html/2403.02310v3#S3.SS2)，展示论文中的历史机制，不能当成当前 vLLM、SGLang 或其他框架的排名。
+
+将长 Prefill 切成多轮，只是缩短不可重新决策的窗口。要减少正在生成请求的停顿，还要有合适的混批或阶段选择策略。Sarathi 的结果属于研究中的组合设计；在 SGLang 中只改 chunk，不能承诺相同收益，更不能默认每两块之间都会执行 Decode。
+
+### 15.3 全链路先看瓶颈，再解释并发
+
+整理者的容量近似，假设固定 ISL/OSL 分布、没有丢请求、供给充分，并将各阶段单位统一为“请求/秒”：
+
+```text
+可持续完成 QPS ≤ min(P 处理能力, KV 传输能力, D 处理能力)
+```
+
+教学例子：P 最多 4 请求/秒，D 最多 10 请求/秒，传输充足，完成量不可能长期超过 4。只有 P 实际提升到 8 后，全链路才有机会接近 8；D 的单 token 计算不必变快。这个例子没有声称“调小 chunk 会让 P 从 4 变 8”。
+
+请求更多同时留在系统里，可能表示排队更长。要宣布可持续能力提高，必须同时看完成率、TTFT/ITL、失败/拒绝和队列是否持续增长；不能以发送 QPS 或并发上限替代完成吞吐。
+
+## 16. 数值路径与对照方法
+
+### 16.1 数学目标相同，不代表每次生成逐字相同
+
+chunk 不主动改变上下文规则或缓存 dtype，但会改变算子形状、批组成与可能使用的 kernel。浮点归约顺序等变化可能放大为后续生成差异；相同采样设置也不自动保证所有路径的逐位一致性。参考[固定版确定性说明](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/docs/docs/advanced_features/deterministic_inference.mdx)。
+
+第四篇给出一个更具体的例子，本次静态核对成立，但范围必须完整保留：
+
+| 前提或分支 | 固定版观察 |
+| --- | --- |
+| 调用确实进入非 MLA 的 `AiterAttnBackend.forward_extend` 中 `vectorized_5d` helper | 更早返回的专用路径不适用本例 |
+| `extend_prefix_lens_cpu` 存在且整批历史长度均为零 | helper 可直接使用当前 K/V 的路径 |
+| 整批至少一条请求已有历史 | helper 改为从 KV 池收集数据的路径 |
+| 上述池读取路径且缓存为 FP8 | 代码包含将 Q 转为相应 FP8 dtype 的操作 |
+
+源码：[helper 的无历史分支](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/layers/attention/aiter_utils.py#L85)、[FP8 Q 转换](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/layers/attention/aiter_utils.py#L162)、[调用入口](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/layers/attention/aiter_backend.py#L2908)。
+
+因此，关闭跨请求前缀缓存，仍不能消除本请求前一 chunk 产生的历史。这个特定 FP8 例子也不能拿来解释 BF16 KV 的测试。输出变化与准确率降低是两种结论，后者需要同一评测集、分母与重复实验支持。
+
+### 16.2 先选清楚对照问题
+
+以下是**建议的实验设计，未执行**，不构成已验证的运行手册。
+
+| 对照目标 | 固定什么 | 允许改变什么 | 必须报告 |
+| --- | --- | --- | --- |
+| 隔离 chunk 对计算的影响 | 固定 commit、权重、后端、dtype、输入/长度分布、缓存状态、实际 KV 池、其余调度配置 | chunk；无法固定的图/内核派生变化须单列 | Prefill 耗时、峰值、实际执行批与最终配置 |
+| 评估保留自动配置的整体部署效果 | 固定模型、硬件和负载协议 | chunk 及它触发的默认配置联动 | 静态比例、实际池容量、图捕获变化、吞吐与延迟 |
+| 验证省显存能否换并发 | 先确定瓶颈是临时峰值还是长期 KV | 明确记录的并发或同侧容量调整 | 成功/失败、retract、KV 与峰值、TTFT/ITL |
+| 检查数值与精度 | 相同 token 前缀、权重、dtype、采样、评测协议 | 待研究的 chunk 与派生路径 | logits/分数差异、输出差异、准确率与运行间波动 |
+
+每组都应完成模型/执行图预热，同时独立控制前缀缓存的冷暖。热缓存需固定前缀、请求顺序及路由，并核对实际命中；仅仅“服务已预热”不足以说明前缀缓存相同。
+
+### 16.3 闭环吞吐与开环容量分别测
+
+| 负载协议 | 控制量 | 适合回答 |
+| --- | --- | --- |
+| 闭环：完成一条再补一条 | 并发数 | 在该并发下完成多快、单请求等多久 |
+| 开环：按外部节奏到达 | 到达率和到达分布 | 给定延迟目标下，队列是否稳定、可持续承载多少到达负载 |
+
+不能同时把固定并发和固定到达率当作互不影响的独立变量。至少报告统计区间、成功/失败/拒绝数、输入吞吐、输出吞吐、完成 QPS、TTFT、TPOT、相邻 token 间隔分布、KV 使用和峰值显存。平均 TPOT 无法单独解释用户看到的停顿。
+
+PD 还需观察 P/D 各自队列、KV 传输与接收就绪等待。跳过真实 Prefill 的 fake-prefill Decode 测试，不能替代端到端性能或真实 Prefill 数值验证。
+
+## 17. 一句话总结
 
 SGLang Chunked Prefill 用跨轮状态把长 prompt 切成可调度时间片；显存容量则由权重、动态预留、每 token KV 字节数和 page 对齐共同决定。先算 KV token capacity，再定运行并发，最后用 TTFT/ITL 与吞吐共同选择 chunk。
 
-## 15. 参考与延伸
+## 18. 参考与延伸
 
 - 《SGLang推理优化-Chunked Prefill》：https://mp.weixin.qq.com/s/ZeEt-AyxGXcXjPuk6jnAEg
 - 《SGLang Chunked Prefill — 原理与代码实现》：https://mp.weixin.qq.com/s/od6pBMeNMPVlaQyTgTsbAQ
 - 《SGLang推理优化-Scheduler 内存和核心参数估算》：https://mp.weixin.qq.com/s/UqUroTBI5Hliheck6QRufg
+- [《Prefill chunk size 从 64K 调到 16K：省显存，也能提吞吐吗？》](https://mp.weixin.qq.com/s/8fPRQaX8ik03r4yAtmRMjA)：新增第 14～16 节的第三方主来源。
+- [Sarathi-Serve v3](https://arxiv.org/html/2403.02310v3)：第四篇引用的 Figure 7、Figure 14 与消融实验的一手出处。
+- [原图与校验值](../images/sglang-chunk-size-tradeoffs/SOURCES.md)。
 - [SGLang 调度器请求生命周期与重叠调度学习文档](SGLang%20调度器请求生命周期与重叠调度学习文档.md)
 - [Chunked Prefill 与 Prefill-Decode 共推学习文档](../llm-inference/Chunked%20Prefill%20与%20Prefill-Decode%20共推学习文档.md)
 
