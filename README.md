@@ -63,9 +63,10 @@ flowchart LR
 建议先建立“请求、显存、调度”三件套心智模型：
 
 1. [LLM 推理系统心智模型与 SGLang、vLLM 选型边界](<./llm-inference/LLM 推理系统心智模型与 SGLang、vLLM 选型边界学习文档.md>)
-2. [vLLM 从连续批处理到 PagedAttention 的引擎工作流](<./vllm/vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>)
-3. [Chunked Prefill 与 Prefill-Decode 共推](<./llm-inference/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>)
-4. [KV Cache 容量优化技术地图](<./llm-inference/KV Cache 容量优化技术地图学习文档.md>)
+2. [LLM Prefill 与 Decode 阶段源码学习](<./llm-inference/LLM Prefill 与 Decode 阶段源码学习文档.md>)
+3. [vLLM 从连续批处理到 PagedAttention 的引擎工作流](<./vllm/vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>)
+4. [Chunked Prefill 与 Prefill-Decode 共推](<./llm-inference/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>)
+5. [KV Cache 容量优化技术地图](<./llm-inference/KV Cache 容量优化技术地图学习文档.md>)
 
 读完你应该能解释：为什么推理不是“一次 forward”、KV Cache 为什么主导容量，以及调度器为何要同时平衡吞吐与时延。
 
@@ -162,6 +163,7 @@ flowchart TB
 > 先建立不绑定某个代码库的系统坐标系，再进入具体实现。
 
 - [LLM 推理系统心智模型与 SGLang、vLLM 选型边界](<./llm-inference/LLM 推理系统心智模型与 SGLang、vLLM 选型边界学习文档.md>) — 一次请求、核心资源与引擎边界的总入口。
+- [LLM Prefill 与 Decode 阶段源码学习](<./llm-inference/LLM Prefill 与 Decode 阶段源码学习文档.md>) — 从同一个 Transformer 的计算讲清 P/D、首 token、KV 时序与分离部署，结合 SGLang 源码和原始资料。
 - [推理引擎与集群推理层分工](<./llm-inference/推理引擎与集群推理层分工学习文档.md>) — 区分单实例执行能力与集群级控制面职责。
 - [Chunked Prefill 与 Prefill-Decode 共推](<./llm-inference/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) — 从静态批处理走向连续批处理与分块调度。
 - [KV Cache 容量优化技术地图](<./llm-inference/KV Cache 容量优化技术地图学习文档.md>) — GQA、MLA、滑窗、跨层共享与稀疏注意力的统一地图。
