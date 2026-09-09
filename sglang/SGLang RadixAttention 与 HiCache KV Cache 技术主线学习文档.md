@@ -1,6 +1,6 @@
 # SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档
 
-本文面向第一次了解 SGLang KV Cache 演进线的同学，整理原文《SGLang 如何管理 KV Cache：从 RadixAttention 到 HiCache 的底层技术主线》的图文内容。本文是第三方资料整理型学习笔记，只基于原文和配图做结构化归纳，不做 SGLang 源码级复核。
+本文面向第一次了解 SGLang KV Cache 演进线的同学，整理原文《SGLang 如何管理 KV Cache：从 RadixAttention 到 HiCache 的底层技术主线》的图文内容。本文是第三方资料整理型学习笔记，只基于原文和配图做结构化归纳，不做 SGLang 源码级复核。2026-09-09 补入一篇同主题资料，重点澄清不同缓存机制的职责与性能归因，见第 7 节。
 
 ## 0. 阅读基线与范围
 
@@ -12,6 +12,17 @@
 | 读取时间 | 2026-07-17 |
 | 整理范围 | RadixAttention、调度器如何利用前缀树、HiCache、HiSparse、ShadowRadix |
 | 不展开内容 | 不做源码级复核；不展开 Mooncake backend 细节，相关内容见已有 Mooncake x SGLang 文档 |
+
+**补充资料基线（2026-09-09）**
+
+| 项目 | 内容 |
+| --- | --- |
+| 原文标题 | SGLang KV Cache演进：从RadixAttention到ShadowRadix，90万Token吞吐仅降10% |
+| 原文链接 | [补充文章](https://mp.weixin.qq.com/s/LudsqNrhZPjQwntQNeu6iQ) |
+| 作者 / 机构 | 页面作者为“2021年鹅厂员工”，发布账号为 HyperAI |
+| 发布时间 / 读取时间 | 2026-05-13 / 2026-09-09 |
+| 资料类型 | 技术综述，正文无技术图片；复用本文已有原图 |
+| 整理与验证范围 | 归纳 RadixAttention、HiCache、HiSparse、ShadowRadix 的差异；新增性能数字仅记录原文口径，未独立复现、未将它们作为各模块独立贡献的证据 |
 
 **术语速查**
 
@@ -239,13 +250,64 @@ ShadowRadix 的思路是：上层仍然用一棵统一的虚拟前缀索引做�
 
 ---
 
-## 7. 一句话总结
+## 7. 补充阅读：四条演进维度与性能归因
+
+### 人话版：它们不只是前后替代的四个版本
+
+补充文章把几项机制连成演进线。学习时还要注意，它们主要回答的是不同问题，可以在同一套系统里配合：
+
+| 机制 | 首先解决什么 | 不能由此直接推出什么 |
+| --- | --- | --- |
+| RadixAttention | 哪些请求共享同一段 token 前缀，怎样复用和保留状态 | 任意不同模型、adapter 或租户都可混用 |
+| HiCache | 有价值前缀离开 GPU 后，在哪一层保存、怎样恢复 | L3 容量无限，远端命中必然更快 |
+| HiSparse | 活动请求每步只用少量历史时，哪些 KV 需要在 GPU 上 | 只靠路由和跨请求前缀命中就解决 Decode 访存 |
+| ShadowRadix | 同一逻辑前缀关联多个物理布局时，怎样隔离生命周期 | 某个物理池有对象，就代表所有注意力路径都可恢复 |
+
+HiCache 偏向跨请求/跨轮次的历史复用；HiSparse 还要处理一个正在 Decode 的请求内部不断变化的热点工作集。两者可以配合，但不能只用同一个“缓存命中率”评价。
+
+```mermaid
+flowchart TD
+    P["同一逻辑前缀"] --> R["Radix 匹配与共享关系"]
+    R --> H["HiCache：GPU / Host / 外部存储位置"]
+    R --> S["ShadowRadix：多个物理视图"]
+    H --> A["活动请求需要的状态"]
+    S --> A
+    A --> T["HiSparse：本步热点 KV 与换入"]
+    T --> D["继续 Decode"]
+```
+
+**图意解读：** 这是整理者的概念关系图，不是所有模型必经的调用顺序。ShadowRadix 的多池与 HiCache 的多层不是同一维度：前者区分状态视图和生命周期，后者区分存储位置。仍需由引擎确认当前路径所需状态完整。
+
+### “90 万 token 只降约 10%”说明了什么
+
+补充原文列出 DeepSeek-V4、H200 的 4K 上下文 266 token/s、90 万上下文 240 token/s；按这些数字计算，降幅为 `(266-240)/266≈9.77%`。
+
+但文章没有给出足够的模型变体、卡数、并发、精度、输出长度、提交版本和控制变量，不能据此证明“ShadowRadix 单独使吞吐只降 10%”。长上下文结果还受模型稀疏/压缩机制、内核、KV 布局和调度影响。
+
+原文还列出其他案例：
+
+| 原文案例 | 原文报告 | 本次保留的边界 |
+| --- | --- | --- |
+| Novita AI / Qwen3-Coder-480B | TTFT -56%，吞吐约 2 倍，命中率 40%→80% | 业务部署观察；未独立核对其负载、版本和对照设置 |
+| Ant Group / DeepSeek-R1-671B | TTFT 比全量重算基线低 84% | 对照是全量重算，不能移用于原本已高命中的服务 |
+| HiSparse / GLM-5.1-FP8、并发 256 | 吞吐 3–5 倍 | 原文未在该段补全上下文与部署条件；不可当通用加速倍数 |
+
+这些数字分别对应不同工作集和基线，不应相乘，也不能与 266→240 的上下文长度对比混为同一实验。
+
+### 一个具体排障例子
+
+某长上下文请求在 Host 层有完整历史，但本步 Decode 仍然慢。先判断时间花在请求级恢复，还是每层稀疏 top-k 的换入。前者应追 HiCache 的加载与前缀边界，后者应追活动热点区、I/O 和映射更新。存储“有这份数据”与计算“现在能读取这份数据”之间仍有时序条件。
+
+进一步阅读：[Kimi K3 混合缓存与状态传输](<../llm-inference/Kimi K3 混合注意力缓存与 Mooncake 状态传输学习文档.md>)把这条主线扩展到可变递推状态；[KV 与 MoE 权重分层内存](<../llm-inference/KV Cache 与 MoE 权重的分层内存学习文档.md>)区分预取、按需访问和近内存计算。
+
+## 8. 一句话总结
 
 SGLang KV Cache 的主线不是单个缓存技巧，而是一套围绕共享前缀建立的 runtime 哲学：RadixAttention 让共享前缀变成树，HiCache 让树节点跨层流动，HiSparse 让热点 KV 留在 GPU，ShadowRadix 让复杂注意力路径共享索引但隔离生命周期。
 
-## 8. 参考与延伸
+## 9. 参考与延伸
 
 - 原文：<https://mp.weixin.qq.com/s/BakRqb-l2IhHeQFc5TCp1Q>
 - 原文作者：Lychee & Ethan
+- 补充原文：[SGLang KV Cache演进：从RadixAttention到ShadowRadix，90万Token吞吐仅降10%](https://mp.weixin.qq.com/s/LudsqNrhZPjQwntQNeu6iQ)，读取于 2026-09-09；新增数字仅作来源记录。
 - 本文图片来自原文页面，已下载到 `../images/sglang-kv-cache-mainline/`。
 - 本文基于原文整理，未做 SGLang 源码级复核；用于生产决策前需要再对照当前源码和实际负载验证。

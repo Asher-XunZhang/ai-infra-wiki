@@ -114,6 +114,21 @@ flowchart LR
 
 </details>
 
+<details>
+<summary><strong>🧩 路线 E：从全链路优化走到混合状态与新版本组合</strong></summary>
+
+这条路线串起八篇外部资料，先建立性能地图，再理解状态恢复和配置边界：
+
+1. [大模型推理全链路优化](<./llm-inference/大模型推理全链路优化学习文档.md>) — FlashTensor、Jenga、MixQ、FastDecode 与赤兔；文末提供八篇来源的逐项去向。
+2. [Kimi K3 混合注意力缓存与 Mooncake 状态传输](<./llm-inference/Kimi K3 混合注意力缓存与 Mooncake 状态传输学习文档.md>) — token 命中、合法检查点、可变状态和 EPD 数据流。
+3. [SGLang Kimi K3 推理协同优化](<./sglang/SGLang Kimi K3 推理协同优化学习文档.md>) — MXFP4、DSpark、ReplaySSM、PP 与 DCP，并纠正来源中的概念混用。
+4. [KV Cache 与 MoE 权重的分层内存](<./llm-inference/KV Cache 与 MoE 权重的分层内存学习文档.md>) — OasisKV、ReRAM 专家池和 SAC 的数据路径及实测/建模边界。
+5. [SGLang v0.5.19 功能组合与升级边界](<./sglang/SGLang v0.5.19 功能组合与升级边界学习文档.md>) — Beam Search、默认缓存、投机提交和多模态优化的组合条件。
+
+相关基础：[RadixAttention、HiCache、HiSparse 与 ShadowRadix 技术主线](<./sglang/SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>)，已补充长上下文性能数字的归因边界。
+
+</details>
+
 ## 知识星图
 
 同一个机制经常横跨多条主线。下面这张图适合用来判断“下一篇该往哪里跳”。
@@ -165,6 +180,9 @@ flowchart TB
 - [LLM 推理系统心智模型与 SGLang、vLLM 选型边界](<./llm-inference/LLM 推理系统心智模型与 SGLang、vLLM 选型边界学习文档.md>) — 一次请求、核心资源与引擎边界的总入口。
 - [LLM Prefill 与 Decode 阶段源码学习](<./llm-inference/LLM Prefill 与 Decode 阶段源码学习文档.md>) — 从同一个 Transformer 的计算讲清 P/D、首 token、KV 时序与分离部署，结合 SGLang 源码和原始资料。
 - [推理引擎与集群推理层分工](<./llm-inference/推理引擎与集群推理层分工学习文档.md>) — 区分单实例执行能力与集群级控制面职责。
+- [大模型推理全链路优化](<./llm-inference/大模型推理全链路优化学习文档.md>) — 从算子融合、异构分页、混合精度到 CPU/GPU 调度与赤兔，并提供八篇来源的阅读地图。
+- [Kimi K3 混合注意力缓存与 Mooncake 状态传输](<./llm-inference/Kimi K3 混合注意力缓存与 Mooncake 状态传输学习文档.md>) — KDA 检查点、状态所有权、三家引擎缓存设计、Flat KV 与 EPD。
+- [KV Cache 与 MoE 权重的分层内存](<./llm-inference/KV Cache 与 MoE 权重的分层内存学习文档.md>) — 对比 OasisKV 预取、ReRAM 专家池与 SAC 按需访问，拆清数据位置和性能证据。
 - [Chunked Prefill 与 Prefill-Decode 共推](<./llm-inference/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) — 从静态批处理走向连续批处理与分块调度。
 - [KV Cache 容量优化技术地图](<./llm-inference/KV Cache 容量优化技术地图学习文档.md>) — GQA、MLA、滑窗、跨层共享与稀疏注意力的统一地图。
 - [KV Cache 与推理调度协同优化](<./llm-inference/KV Cache 与推理调度协同优化学习文档.md>) — 从十篇论文拆清请求派发、缓存保留、跨模型转换、按头裁剪与物理页回收，并核对性能证据边界。
@@ -194,6 +212,8 @@ flowchart TB
 - [SGLang GLM-5.2 NVFP4 推理优化案例](<./sglang/SGLang GLM-5.2 NVFP4 推理优化案例学习文档.md>) — 一个从 profiler 观察走向量化算子优化的案例。
 - [SGLang v0.5.16 24GB 显存调优案例](<./sglang/SGLang v0.5.16 24GB 显存调优案例学习文档.md>) — 有限显存下的容量、配置与失败边界。
 - [SGLang v0.5.18 推理系统协同演进](<./sglang/SGLang v0.5.18 推理系统协同演进学习文档.md>) — 从版本变化观察调度、缓存与执行层如何协同演进。
+- [SGLang Kimi K3 推理协同优化](<./sglang/SGLang Kimi K3 推理协同优化学习文档.md>) — 纠正 KDA、AttnRes 与 MXFP4 混用，理解 DSpark 状态提交和 PP/DCP 的分工。
+- [SGLang v0.5.19 功能组合与升级边界](<./sglang/SGLang v0.5.19 功能组合与升级边界学习文档.md>) — Beam Search、统一缓存、KDA fused-accept、多模态和服务配置的版本边界。
 
 </details>
 
