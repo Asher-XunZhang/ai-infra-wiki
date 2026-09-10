@@ -1,5 +1,7 @@
 # Frontend DSL 与 Runtime 的关系
 
+> **先建立架构心智模型：** [M12 · DSL与Diffusion及插件边界](<../architecture/12-DSL与Diffusion及插件边界.md>)。先看职责、数据和生命周期，再回到本篇源码细节。
+
 本文是**源码分析型学习资料**，面向已经知道 SGLang 能提供推理服务、但还不清楚 `@sgl.function` 和 `sgl.gen` 在系统哪一层工作的读者。
 
 本篇沿一段“两轮问答”程序走通：**Python 函数 → 表达式 IR → ProgramState / StreamExecutor → RuntimeEndpoint → SRT 的 /generate → 生成结果回到变量和文本**。随后只扩展理解这条主线所需的流式、批量、fork/join、tracing 与错误边界。

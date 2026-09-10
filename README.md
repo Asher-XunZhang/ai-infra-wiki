@@ -107,7 +107,7 @@ flowchart LR
 
 推荐按“入口 → 主循环 → 核心对象 → 数据通路”阅读：
 
-- SGLang 官方源码系统学习：[分阶段目录与学习进度](<./sglang/source-study/README.md>) — 固定官方最新源码基线，按基础、请求、调度、缓存、执行、并行、分离部署与性能工程逐步展开。
+- SGLang 官方源码系统学习：先读[整体架构与心智模型](<./sglang/source-study/architecture/README.md>)，再进入[分阶段源码学习](<./sglang/source-study/README.md>) — 从全景、模块和运行逻辑逐层深入调度、缓存、执行、并行与分离部署。
 - SGLang：[调度机制总览与学习路线](<./sglang/SGLang 调度机制总览与学习路线.md>) → [调度器请求生命周期与重叠调度](<./sglang/SGLang 调度器请求生命周期与重叠调度学习文档.md>) → [Chunked Prefill 与调度器显存预算](<./sglang/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) → [PD 分离下的 PP](<./sglang/PD 分离下的 PP 源码学习文档.md>)
 - vLLM：[引擎工作流](<./vllm/vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>) → [KV Cache 全生命周期](<./vllm/vLLM V1 KV Cache 管理全生命周期源码学习文档.md>) → [KV Connector 架构](<./vllm/vLLM V1 KV Connector 架构与实现地图源码学习文档.md>)
 
