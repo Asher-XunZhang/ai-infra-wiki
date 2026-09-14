@@ -213,6 +213,7 @@ flowchart TB
 - [SGLang Unified Radix Cache](<./sglang/SGLang Unified Radix Cache 学习文档.md>) — 统一前缀树、会话与分层缓存视角。
 - [Mooncake 与 SGLang HiCache](<./sglang/Mooncake 与 SGLang HiCache 学习文档.md>) — 外部 KV 存储接入 SGLang 的控制与数据通路。
 - [SGLang Pipeline Parallel 模式](<./sglang/SGLang Pipeline Parallel 模式学习文档.md>) — PP 进程拓扑、microbatch 与请求反馈回路。
+- [SGLang PP 共识机制源码](<./sglang/SGLang PP 共识机制源码学习文档.md>) — 开源固定版本的五类队列共识、结果回传、槽位时序与资源释放边界。
 - [PD 分离下的 PP 源码](<./sglang/PD 分离下的 PP 源码学习文档.md>) — PD + PP 下控制流、proxy tensor 与 KV 传输的完整链路。
 - [SGLang 数据并行、负载均衡与专家并行边界](<./sglang/SGLang 数据并行、负载均衡与专家并行边界学习文档.md>) — 拆清 DP、路由与 EP 的职责分界。
 - [SGLang Breakable CUDA Graph 与 Prefill 捕获](<./sglang/SGLang Breakable CUDA Graph 与 Prefill 捕获学习文档.md>) — 图捕获策略、动态形状与 Prefill 性能权衡。
