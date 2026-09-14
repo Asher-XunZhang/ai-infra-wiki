@@ -1,0 +1,66 @@
+[
+  {
+    "file": "06-rid-consensus.gif",
+    "size": [
+      1000,
+      760
+    ],
+    "frames": 30,
+    "duration_ms": 19160,
+    "loop": 0,
+    "bytes": 237776,
+    "sha256": "78c63b559666d7eb8d21e901a240979cc9944bde5eee71b60759816b120c7b3c",
+    "scene_start_ms": [
+      0,
+      2300,
+      6580,
+      8880,
+      13160,
+      15460
+    ],
+    "static": "06-rid-consensus-steps.png",
+    "static_sha256": "6e19bddba0fbdc9d0160e4314a38e1e8ccd0ad3eba00502078c711e42c3a265c"
+  },
+  {
+    "file": "07-admission-gates.gif",
+    "size": [
+      1000,
+      760
+    ],
+    "frames": 29,
+    "duration_ms": 16860,
+    "loop": 0,
+    "bytes": 224659,
+    "sha256": "1d9678b8158dc36ecfd8db06039a6371d58fc6e9a361e96d07bb1a2309567db6",
+    "scene_start_ms": [
+      0,
+      2300,
+      4600,
+      8880,
+      11180
+    ],
+    "static": "07-admission-gates-steps.png",
+    "static_sha256": "972d198a31caf7a4ae53d355840bbc411424907b177cb6562bf05550bec8db75"
+  },
+  {
+    "file": "08-abort-deferred-release.gif",
+    "size": [
+      1000,
+      760
+    ],
+    "frames": 29,
+    "duration_ms": 16860,
+    "loop": 0,
+    "bytes": 242914,
+    "sha256": "f4abc5c51ea359f56dc4e31a444bba0917303a14ebf9d209f23af358262d8a6a",
+    "scene_start_ms": [
+      0,
+      4280,
+      6580,
+      10860,
+      13160
+    ],
+    "static": "08-abort-deferred-release-steps.png",
+    "static_sha256": "f7e8e9347d80991e67eea5bb9b36bfa844cd9a7b81ae89df45afabfc8811df04"
+  }
+]

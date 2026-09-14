@@ -55,6 +55,18 @@
 | proxy tensor | 当前 forward 的中间激活 | 不是 KV cache，也不是状态投票消息 |
 | output 回环 | 尾 stage 的 token 等结果回到各 stage | 让各 stage 使用同一份生成结果推进本地状态 |
 
+### 0.4 动画阅读入口
+
+第一次阅读，可以先看下面三张动画，再回到对应章节对照源码。每张约 17～19 秒，循环播放；需要慢慢看或不希望播放动画时，打开旁边的静态步骤图。
+
+| 想先弄懂的问题 | 动画 | 静态版 / 正文 |
+| --- | --- | --- |
+| 各 stage 的意见怎样变成同一份候选名单？ | [逐站汇总 RID](../images/sglang-pp-consensus/06-rid-consensus.gif) | [静态步骤](../images/sglang-pp-consensus/06-rid-consensus-steps.png)；第 4.2 节 |
+| 已在 good 里，为什么还没有开始跑？ | [准入与调度的几道门](../images/sglang-pp-consensus/07-admission-gates.gif) | [静态步骤](../images/sglang-pp-consensus/07-admission-gates-steps.png)；第 6.1 节 |
+| 请求已经取消，KV 槽位为何仍被占用？ | [取消与延迟释放](../images/sglang-pp-consensus/08-abort-deferred-release.gif) | [静态步骤](../images/sglang-pp-consensus/08-abort-deferred-release-steps.png)；第 10.2 节 |
+
+**动画范围：** 三张均为整理者根据本文固定源码绘制的教学示意，画面停顿是阅读节奏，没有计量意义。第一张只演正向候选归约；第二张跟踪单个 Prefill stage；第三张只演满足延迟释放条件后，由后端判安全再释放的路径。它们不替代原有 Mermaid、源码分支和作者实验图片。
+
 ## 1. 为什么 PP 需要共识
 
 ### 1.1 同一条请求，在不同 stage 上是不同的本地对象
@@ -247,6 +259,21 @@ B = B_0 ∪ B_1 ∪ ... ∪ B_(P-1)
 
 若 C 同时出现在某次输入的 good/bad 中，`poll_and_all_reduce_pp()` 的 bad 优先规则会将其映射为 Failed。不要仅凭“RID 在 good 中”判断最终分支。
 
+**动画：一份候选名单怎样经过三个工位。**
+
+![逐站汇总 RID 动画：good 从 ABC 缩为 AB 再缩为 A，bad 从 D 扩为 CD 再扩为 CDE](../images/sglang-pp-consensus/06-rid-consensus.gif)
+
+**图意解读：** 跟着蓝色“候选”标记移动，观察底部累计栏：good 逐步求交集，bad 逐步求并集。最后 A 在 good、B 继续等待、C/D/E 在 bad；终幕按请求类别展示结果，不再代表三个 stage。此时只完成正向汇总，还没有演示结果回传或各站实际出队。[S10]、[S11]、[S13]
+
+<details>
+<summary>不播放动画：展开静态步骤图</summary>
+
+![RID 正向归约的六个关键步骤](../images/sglang-pp-consensus/06-rid-consensus-steps.png)
+
+静态图逐行对应动画的六个状态；回传与名单消费继续阅读第 5 节。
+
+</details>
+
 ### 4.3 transfer：大家都终结，不等于大家都成功
 
 P、D 两端的 transfer helper 都先构造：
@@ -351,6 +378,21 @@ _pp_pd_get_bootstrapped_ids
 `finalize_bootstrap()` 要分配 metadata buffer，读取 Decode prefix 长度，计算待传 KV 的 page 数，调用 sender `init()`，再清除 `pending_bootstrap`。没有 metadata 槽位时返回 False，请求继续留在 bootstrap queue。
 
 因此，看到 WaitingForInput / good RID，既不代表 GPU 已执行 prefill，也不代表请求已经拿到完整推理所需的本地资源。
+
+**动画：拿到开工通知，还要有工作台并排到班次。**
+
+![Prefill 准入动画：A 收到 good 后等待 metadata，初始化成功进入 waiting，再由后续调度选中](../images/sglang-pp-consensus/07-admission-gates.gif)
+
+**图意解读：** A 先因 metadata 槽位不足留在 bootstrap queue；后续资源检查与初始化成功，才移入 waiting queue。蓝色 A 的移动表示逻辑位置变化：进入 waiting 后仍需后续调度选中，不能回填已经选好的当前 batch。这里只跟踪一个 stage，不表示所有 stage 在同一时刻完成迁移。[S10]、[S16]
+
+<details>
+<summary>不播放动画：展开静态步骤图</summary>
+
+![Prefill 从共识资格到本地计算的五个关键步骤](../images/sglang-pp-consensus/07-admission-gates-steps.png)
+
+每一步分别回答资格、资源、队列和执行状态；动画中的“工作台”只类比本地准入资源。
+
+</details>
 
 ### 6.2 一个容易漏读的例外：未被名单覆盖的本地失败
 
@@ -646,6 +688,23 @@ stateDiagram-v2
 
 这里 A、B、S 是教学符号，没有复现上述覆盖。对应到比喻，取消订单不会让已经移动中的机械臂瞬间停止；要判断工作台能否交给下一单，还得确认旧动作是否结束。源码的 deadline 是另一个释放分支，等待时间够长本身不证明旧写入已退场。
 
+**动画：取消的是订单，还要检查旧写入是否已经退场。**
+
+![取消与延迟释放动画：A 退场后继续保留槽位 S，后端判安全并释放后，B 才能尝试申请](../images/sglang-pp-consensus/08-abort-deferred-release.gif)
+
+**图意解读：** A 被取消后，业务队列和 KV 槽位进入不同状态：普通 transfer queue 可以移除 A，延迟释放列表仍持有资源。本例在未安全且未到 deadline 时继续等待；后端报告 release-safe 后归还槽位，B 之后才有机会申请。蓝色“旧写入”只是帮助理解在途风险，不是实际传输采样；后端安全约定仍须单独核对。[S19]、[S23]
+
+动画只演其中一条条件分支：本基线还存在立即释放和 deadline 退路，完整分支看上方 Mermaid。不能从动画中的等待时长推出物理写入已经停止，也不能把资源归还直接等同于 B 已获得该槽位。
+
+<details>
+<summary>不播放动画：展开静态步骤图</summary>
+
+![取消、延迟持有、后端判安全与资源归还的五个关键步骤](../images/sglang-pp-consensus/08-abort-deferred-release-steps.png)
+
+静态图把 A 的逻辑退场与槽位 S 的物理生命周期分开排列，便于对照源码条件。
+
+</details>
+
 ### 10.3 本文能确认到什么程度
 
 可以确认源码在哪些位置传播 RID、重新检查状态、等待 event、调用释放函数。不能只据这些调用就认定特定 GPU/MACA/NPU、RDMA、staging scatter 和快速槽位复用场景全部安全。本文没有执行硬件或传输实验，也没有把内部仓库的 abort 协议结论移植过来。
@@ -831,7 +890,7 @@ rid / bootstrap_room / 所在队列 / forward_mode
 
 首次源码整理按固定版本检查了 68 个函数/类符号、107 处固定版本源码链接（含重复引用），核对五类集合规则、返回名单的对称/不对称行为和深度分支。网络补充继续沿用这些源码锚点，新增来源表、图片解释及明确标记的未合并提案。
 
-补充后重新检查本地链接和图片路径、标题层级、源码引用与改动范围；8 张 Mermaid 图通过 Mermaid 10.9.3 语法解析和浏览器渲染。新增 5 张原图均放在顶层 `images/sglang-pp-consensus/`，并逐张检查图中内容。图片来源记录保留尺寸和原始字节 SHA-256。
+补充后重新检查本地链接和图片路径、标题层级、源码引用与改动范围；8 张 Mermaid 图通过 Mermaid 10.9.3 语法解析和浏览器渲染。新增 5 张原图均放在顶层 `images/sglang-pp-consensus/`，并逐张检查图中内容。后续在同目录补入 3 张原创 GIF 与 3 张静态步骤图；GIF 帧序列、文字布局和循环播放另行核对。图片来源记录及动画 manifest 保留尺寸、时长和 SHA-256。
 
 README 沿用首次整理新增的入口，本次没有再修改；本任务未改动其他主题文件，SGLang 源码工作区状态未变。检查期间仓库另有其他主题新增文件，本次保留这些并行变化。临时抓取、渲染和检查文件在仓库外。上述结果是文档与源码静态核对，不是 SGLang 运行测试。
 
