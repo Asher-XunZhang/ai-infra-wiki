@@ -189,6 +189,10 @@ flowchart TB
 - [Chunked Prefill 与 Prefill-Decode 共推](<./llm-inference/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) — 从静态批处理走向连续批处理与分块调度。
 - [KV Cache 容量优化技术地图](<./llm-inference/KV Cache 容量优化技术地图学习文档.md>) — GQA、MLA、滑窗、跨层共享与稀疏注意力的统一地图。
 - [KV Cache 与推理调度协同优化](<./llm-inference/KV Cache 与推理调度协同优化学习文档.md>) — 从十篇论文拆清请求派发、缓存保留、跨模型转换、按头裁剪与物理页回收，并核对性能证据边界。
+- [跨模型 KV Cache 转换与 Prefill 复用](<./llm-inference/跨模型 KV Cache 转换与 Prefill 复用学习文档.md>) — 源层选择、ridge mapper、RoPE 与质量和端到端成本边界。
+- [Attention–FFN 分离的收益边界与部署选型](<./llm-inference/Attention-FFN 分离的收益边界与部署选型学习文档.md>) — AFD-Ledger、通信 HFU 上界与 AInfer-PD 的目标和证据差异。
+- [多轮 Agent 的 PD 路由与跨数据中心 Prefill](<./llm-inference/多轮 Agent 的 PD 路由与跨数据中心 Prefill 学习文档.md>) — AMPD、PPD、PrfaaS 的状态局部性、动态调度与带宽预算。
+- [P/D 分离的 RDMA、IB 与 GPU 可见性](<./llm-inference/P-D 分离的 RDMA、IB 与 GPU 可见性学习文档.md>) — 从 512 KiB READ 样本到 MR/QP、报文关联、请求聚合与安全回收。
 - [KV Cache Salt 全链路键空间](<./llm-inference/KV Cache Salt 全链路键空间学习文档.md>) — 理解租户隔离、前缀身份与缓存键空间。
 - [Context Parallel、PCP 与 DCP 总体学习](<./llm-inference/Context Parallel、PCP 与 DCP 总体学习文档.md>) — 序列切分、通信与负载均衡的整体坐标系。
 - [PCP 长上下文 Prefill 并行](<./llm-inference/PCP 长上下文 Prefill 并行学习文档.md>) — 聚焦长上下文 Prefill 的 token 分片与注意力合并。
