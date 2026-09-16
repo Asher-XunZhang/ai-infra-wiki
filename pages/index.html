@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Infra Wiki · 交互学习</title>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <h1>AI Infra Wiki · 交互学习</h1>
+  <h2>SGLang PD Prefill 的 PP loop</h2>
+  <p>用 PP=3、五个 micro-batch 的甘特图，观察准备、前向计算、结果回流、L2 ACK 和 KV 释放如何在不同 rank 上交错。</p>
+  <nav>
+    <a href="sglang/pd-prefill-pp-loop/">打开交互图</a>
+    <a href="sglang/pd-prefill-pp-loop/notes.html">阅读源码说明</a>
+    <a href="https://github.com/Asher-XunZhang/ai-infra-wiki">仓库目录</a>
+  </nav>
+  <p>源码固定于 SGLang <code>72d5c5bb73</code>；时间长度为示意值，不是实测。图中可以选择 rank 和 loop，展开操作所属的 batch、请求集合及对应源码。</p>
+</body>
+</html>

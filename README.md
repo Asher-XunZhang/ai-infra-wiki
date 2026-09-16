@@ -26,6 +26,11 @@
 
 ## 这是一座什么样的 Wiki？
 
+### 交互学习
+
+- [PD Prefill · PP=3 loop 甘特图](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/) — 选择 rank 和 loop，查看五个 micro-batch 的计算、L2 ACK、PP 共识与 KV 释放；时间为示意值。
+- [源码说明](<./sglang/PD Prefill PP loop 交互图.md>) — 固定开源提交、逐项操作与适用边界。
+
 AI 推理系统很容易被拆成一堆孤立名词：Continuous Batching、PagedAttention、Radix Cache、PD 分离、TP/PP/EP/CP……但真实系统从来不是按名词运行的。
 
 这个仓库选择另一条路线：
