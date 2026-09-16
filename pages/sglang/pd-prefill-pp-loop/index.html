@@ -20,8 +20,9 @@ html,body{margin:0}body{box-sizing:border-box;padding:24px;background:inherit;li
 </head>
 <body>
 <header class="page-copy">
-  <nav aria-label="页面导航"><a href="../../">学习首页</a><a href="#timeline">直接看交互图</a><a href="#reading-guide">读图指南</a><a href="notes.html">逐项源码说明</a></nav>
+  <nav aria-label="页面导航"><a href="../../">学习首页</a><a href="quick.html">快速入门版：看大步骤 / batch 生命周期</a><a href="#timeline">详细交互图</a><a href="#reading-guide">读图指南</a><a href="notes.html">逐项源码说明</a></nav>
   <h1>PD 分离下，Prefill 侧的 PP 调度是怎样推进的？</h1>
+  <p>第一次接触 PP loop？先看<a href="quick.html">快速入门版</a>：用五个大步骤看一轮在做什么，或跟踪一份 batch 的完整生命周期；再回到本页追踪逐项操作和源码依赖。</p>
   <p><strong>这张图展示 SGLang 在 Prefill / Decode 分离部署时，Prefill 侧使用流水线并行（PP）的调度逻辑。</strong>Prefill 负责处理输入 prompt、执行前向计算并产生 KV cache；Decode 接收所需 KV 后继续逐 token 生成。图里还展示 Prefill 为此推进的握手状态、结果处理、KV 发送与请求释放。</p>
   <p><strong>PP0、PP1、PP2 全部属于 Prefill 侧</strong>，代表模型被切分后的三个流水级。同一份 micro-batch 的激活依次经过 PP0 → PP1 → PP2。Decode 是图外的 KV 接收方，本图没有展开它的调度循环、GPU 计算或设备拓扑。每个 PP rank 也不必等于一颗 GPU：级内 TP / CP 等并行维度未展开。</p>
   <p>本例固定 <strong>PP=3、五份 micro-batch（M1–M5）、<code>pp_async_batch_depth=0</code></strong>，并启用 HiRadix 的 host-memory L2 缓存。它要说明的是：CPU 在一轮 loop 中准备、提交和收尾的对象为什么可能不同，以及这些依赖怎样与 GPU 前向交错。</p>

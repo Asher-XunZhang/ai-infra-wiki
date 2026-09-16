@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>快速入门 · PD Prefill 的 PP loop</title>
+  <meta name="description" content="用五个大步骤看懂 Prefill 侧的一轮 PP loop，或跟随 M1–M5 查看每份 micro-batch 在三个流水级上的生命周期。">
+  <link rel="stylesheet" href="quick.css">
+  <script src="quick-data.js" defer></script>
+  <script src="quick.js" defer></script>
+</head>
+<body>
+<header>
+  <nav aria-label="版本导航"><a href="../../">学习首页</a><a href="quick.html" aria-current="page">快速入门版</a><a href="index.html">详细交互版</a><a href="notes.html">源码说明</a></nav>
+  <p class="eyebrow">PD 分离 · Prefill 侧 · PP=3</p>
+  <h1>先看懂一轮 loop，再跟踪一份 batch</h1>
+  <p>PP0、PP1、PP2 都是 <strong>Prefill 内部的流水级</strong>。本页把细小操作合并成大步骤：看看每一级一轮在忙什么，或跟着一份 batch 从准入走到 KV 传输和释放。Decode 是图外接收方。</p>
+  <p class="muted">M1–M5 表示五份 <strong>micro-batch</strong>，与详细版编号一致；“大颗粒”指操作分组。本例每份 batch 只含一个请求，三份状态槽位 s0–s2 循环复用，<code>pp_async_batch_depth=0</code>。时间 u 为示意值。</p>
+</header>
+<main>
+  <div class="view-tabs" aria-label="观察视角">
+    <button type="button" data-mode="loop" aria-pressed="true">看一轮 loop 在做什么</button>
+    <button type="button" data-mode="batch" aria-pressed="false">跟踪一份 batch 的一生</button>
+  </div>
+  <div id="loop-controls" class="controls">
+    <label>流水级 <select id="rank"><option value="0">PP0 · 首级</option><option value="1">PP1 · 中间级</option><option value="2">PP2 · 末级</option></select></label>
+    <label>本地 loop <select id="loop"></select></label>
+  </div>
+  <div id="batch-controls" class="controls" hidden>
+    <label>跟踪 batch <select id="batch"><option value="1">M1</option><option value="2">M2 · host hit</option><option value="3">M3</option><option value="4">M4 · host hit</option><option value="5">M5</option></select></label>
+    <label>查看阶段 <select id="life-phase"></select></label>
+  </div>
+  <div class="selection" aria-live="polite"><h2 id="selection-title"></h2><p id="selection-text"></p><div id="cross-links" class="inline-actions"></div></div>
+  <p id="chart-hint" class="chart-hint"></p>
+  <div class="chart-tools">
+    <button type="button" id="zoom-in" aria-label="放大时间轴">＋ 放大</button><button type="button" id="zoom-out" aria-label="缩小时间轴">− 缩小</button><button type="button" id="focus">聚焦所选</button><button type="button" id="all">显示全程</button><output id="window"></output>
+  </div>
+  <svg id="chart" role="img" aria-label="三个 Prefill PP 流水级的示意时间轴"></svg>
+  <label class="pan-label">平移时间窗口 <input type="range" id="pan" min="0" step="0.01" value="0"></label>
+  <div id="legend" class="legend" aria-label="大步骤图例"></div>
+  <section aria-labelledby="detail-title"><h2 id="detail-title"></h2><p id="detail-intro"></p><div id="detail"></div></section>
+  <section class="reading">
+    <h2>记住这四件事，就能读这张图</h2>
+    <ol>
+      <li><strong>loop 是调度线程的一轮工作。</strong>一个 L# 外框对应一次本地 <code>for mb_id</code> 迭代，里面可能准备 M3、处理旧 M1，并清理更早的请求。相同 L# 在不同 PP rank 上不同时发生。</li>
+      <li><strong>提交 forward 不等于 GPU 已算完。</strong>loop 视角画 CPU 调度区间；batch 视角单独显示本级 GPU 前向，以及计算前后经历的等待。GPU 可以跨越 CPU loop 边界。</li>
+      <li><strong>有些事属于共享队列。</strong>bootstrap 检查、L2 ACK、控制共识可能处理多个请求或历史状态，不能统一归到当前 M#。M1–M5 在本例共同准入，进入 waiting queue 后再依次选批。</li>
+      <li><strong>算完还没结束。</strong>旧结果回流、本地结果处理、KV 发送和释放各有条件；收到 output 不等于 Decode 已收全 KV，传输结束后也可能继续等待释放共识。</li>
+    </ol>
+    <details><summary>为什么把很多小步骤合并成这五组？</summary>
+      <p>按源码中的连续顺序合并：A → 检查状态；B+C → 缓存与选批；D+E → 提交前向；F+G+H → 结果与共识；I → 转发保存。空槽不会凭空多出 forward，缺失的分组会标为“本轮跳过”。</p>
+      <p>bootstrap 的本地轮询在前、共识回流和准入在后；若强行合成一个连续时间段，会掩盖它跨轮推进的事实。因此它在第一组检查状态，在第四组推进共识。L2 ACK 检查与当前 batch 的缓存准备则合到第二组，但说明中仍区分共享队列与当前 batch。</p>
+      <p>batch 视角按该 batch 的状态区间组织，包含排队和等待。它不表示每段时间都有 CPU/GPU 在执行该操作，也不把共享阶段解释为该 batch 独占资源。两条“激活接续”线概括前向到下级输入就绪的链条，包含发送提交和传输等待；精确逐步依赖请看详细版。</p>
+    </details>
+    <details><summary>数据与源码边界</summary>
+      <p>两种视角都由详细版的同一份模型自动派生，保留相同的示意起止时间和 M#、L#，没有重新编排执行顺序。源码固定于 <a href="https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a">SGLang <code>72d5c5bb73</code></a>；使用 CUDA、HiRadix L2、depth=0 的完整 Prefill 成功路径。</p>
+      <p>本例 M2 / M4 有 host hit；未展开中间 chunk、L3、失败恢复、Decode 内部与级内 TP / CP。图不是 profiler trace，不能用条块长度推算吞吐或加速比；槽位占满也不必然产生空泡。<a href="notes.html">查看完整假设与源码锚点</a>。</p>
+    </details>
+  </section>
+</main>
+</body>
+</html>

@@ -28,6 +28,8 @@
 
 ### 交互学习
 
+- [快速入门：一轮 PP loop / 一份 batch 的生命周期](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html) — 把细操作合并为五个大步骤；两种视角可相互跳转。
+
 - [PD Prefill · PP=3 loop 甘特图](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/) — 选择 rank 和 loop，查看五个 micro-batch 的计算、L2 ACK、PP 共识与 KV 释放；时间为示意值。
 - [源码说明](<./sglang/PD Prefill PP loop 交互图.md>) — 固定开源提交、逐项操作与适用边界。
 
