@@ -58,8 +58,8 @@ def build():
 
     pages = sorted(SOURCE.rglob("*.html"))
     for page in pages:
-        rendered = REFERENCE.sub(lambda m: version_reference(m, page), page.read_text())
-        (OUTPUT / page.relative_to(SOURCE)).write_text(rendered)
+        rendered = REFERENCE.sub(lambda m: version_reference(m, page), page.read_text(encoding='utf-8'))
+        (OUTPUT / page.relative_to(SOURCE)).write_text(rendered, encoding='utf-8')
     print(f"Built {len(pages)} pages with {len(assets)} content-versioned assets in {OUTPUT}; release={release}")
 
 

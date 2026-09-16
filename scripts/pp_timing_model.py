@@ -67,13 +67,13 @@ def build_model(config=None):
                 cpu('term_work','回收上轮 terminal send work','A',.03,[key(r+1,n-1,'term_poll')])
             cpu('chunk','处理旧 chunk / 过滤旧 batch','B',.10,owner='本例无中间 chunk',ref='prefill:1152')
             if r<2 and n:
-                cpu('l2_drain','回收上轮 L2 计数发送','B',.03,[key(r+1,n-1,'l2_load')],ref='hiradix:228')
-            cpu('l2_write','L2 write ACK：PP0 计数→逐级传播','B',.15,
-                [key(r-1,n,'l2_write')] if r else [],'缓存 ACK 队列；非当前 batch 专属','hiradix:1044')
-            cpu('l2_load','L2 load ACK：PP0 计数→逐级传播','B',.15,
-                [key(r-1,n,'l2_load')] if r else [],'缓存 ACK 队列；计数可为 0','hiradix:1098')
+                cpu('l2_drain','回收上轮 L2 计数发送','B',.03,[key(r+1,n-1,'l2_counts')],ref='cache:291')
+            # The pinned default is UnifiedRadixCache: ONE combined count sync,
+            # followed by local write/load completion handling (not two syncs).
+            cpu('l2_counts','L2 write/load ACK：合并计数→逐级传播','B',.30,
+                [key(r-1,n,'l2_counts')] if r else [],'缓存 ACK 队列；write=0，load 按完成队列统计','cache:2741')
             cpu('ack_events','已公布 ACK 的本地 event 检查/等待','B',.08,
-                owner='已完成的历史 L2 操作（本例不额外阻塞）',ref='hiradix:1111')
+                owner='历史 L2 操作；后级可等待本地完成',ref='cache:2855')
             cpu('select','前缀匹配 / KV 预算 / 组 batch' if m else '空队列检查 → 返回 None','C',.48 if m else .10,
                 owner=f'M{m}' if m else '无可计算 batch',ref='scheduler:3693')
             if m:
@@ -82,7 +82,11 @@ def build_model(config=None):
                 load_submit=cpu('start_load','start_loading：H2D 入队 / consumer index','C',.12,
                     owner=f'M{m}' if m in (2,4) else f'M{m}：load 队列为空',ref='controller:914')
             if m in (2,4):
-                prev_load=add(key(r,n,'h2d'),[load_submit,prev_load],loads[r][(m==4)],
+                # start_loading records its start_event on schedule_stream.
+                # The preceding loop queued wait_event(launch_event) for proxy
+                # (PP0/1) or output (PP2). H2D cannot bypass that GPU completion.
+                schedule_gate=key(r,n-1,'gpu') if current(n-1) else None
+                prev_load=add(key(r,n,'h2d'),[load_submit,prev_load,schedule_gate],loads[r][(m==4)],
                     r=r,n=n,kind='h2d',phase='B',label=f'M{m} L2→HBM',owner=f'M{m}',ref='controller:933')
             if m:
                 cpu('prepare_extend','prepare_for_extend / 保存当前 batch','C',.13,owner=f'M{m}',ref='scheduler:3973')
@@ -92,7 +96,8 @@ def build_model(config=None):
                 cpu('proxy_work','等待上轮 proxy send work','D',.04,[key(r+1,n-1,'recv_proxy')],f'M{current(n-1)}','pp:270')
             if m:
                 launch=cpu('launch','提交本级 forward；记录 launch_event','E',.24,owner=f'M{m}',ref='pp:1078')
-                # Model a first KV access gate. Real backends may wait per layer.
+                # Deliberately coarsen per-layer waits to ALL H2D completion.
+                # This is a model-only dependency, not a source batch barrier.
                 gpu=add(key(r,n,'gpu'),[launch,prev_gpu,*([prev_load] if m in (2,4) else [])],compute[r][m-1],
                     r=r,n=n,kind='gpu',phase='E',label=f'M{m}',owner=f'M{m}',ref='pp:1086',launch=launch,previous_gpu=prev_gpu)
                 prev_gpu=gpu
@@ -109,7 +114,11 @@ def build_model(config=None):
             if o:
                 outdep=key(2,n-2,'out_message') if r==0 else key(r-1,n+1,'out_message')
                 recv=cpu('recv_out','等待/接收旧 batch output','F',.12,[outdep],f'M{o}','pp:1049')
-                add(key(r,n,'copy'),[recv],.24,r=r,n=n,kind='copy',phase='H',label='D2H',owner=f'M{o}')
+                # CUDA send-first: PP2 queues wait_event(current q_event) on
+                # schedule_stream before old-output recv. copy_stream then
+                # waits for that stream, even though the copied batch is older.
+                copy_gate=key(r,n,'gpu') if r==2 and m else None
+                add(key(r,n,'copy'),[recv,copy_gate],.24,r=r,n=n,kind='copy',phase='H',label='D2H',owner=f'M{o}',ref='pp:1061')
             # Control consensus is independent from the output tensor ring.
             if r==2 or n>=3:
                 cpu('send_bc','发送 bootstrap 共识回流','G',.10,owner='请求候选集合',ref='pp:658')
@@ -163,14 +172,14 @@ def build_model(config=None):
                 if degree[child]==0: ready.append(child)
         return resolved
 
-    # HiRadix: PP0 publishes ready load-ACK counts, then every rank waits for the
+    # UnifiedRadix: PP0 publishes combined ready counts, then every rank waits for the
     # matching LOCAL completion events. Derive counts from synthetic finish times.
     ack_base={key(r,n,'ack_events'):nodes[key(r,n,'ack_events')]['deps'][:] for r in range(3) for n in range(N)}
     last_ack_rounds=None
     for attempt in range(12):
         resolved=solve();remaining=[4,6];ack_rounds={}
         for n in range(N):
-            poll=nodes[key(0,n,'l2_load')]
+            poll=nodes[key(0,n,'l2_counts')]
             ready_loads=[]
             while remaining and remaining[0]<n and 'start' in poll and nodes[key(0,remaining[0],'h2d')].get('end',float('inf'))<=poll['start']:
                 ready_loads.append(remaining.pop(0))
@@ -239,7 +248,7 @@ def build_model(config=None):
                 cause=causes[0]['label'] if causes else 'CPU 调度 / 准备 / 提交'
                 events.append(dict(id=g['id']+':idle',target=g['id'],r=r,n=n,kind='idle',phase='W',start=a,end=b,label='填充等待' if n==3 else '空泡：'+cause,owner='下一份 '+g['owner'],ref='pp:222'))
             if g['start']>b+.001:
-                events.append(dict(id=g['id']+':layer-wait',target=g['id'],r=r,n=n,kind='idle',phase='W',start=b,end=g['start'],label='GPU 等 L2 layer event',owner=g['owner'],ref='controller:63'))
+                events.append(dict(id=g['id']+':layer-wait',target=g['id'],r=r,n=n,kind='idle',phase='W',start=b,end=g['start'],label='GPU 等全部 H2D（模型粗化）',owner=g['owner'],ref='controller:63'))
             prev_end=g['end']
 
     # CPU order, data dependencies and every batch's producer / consumer relations.
@@ -266,6 +275,9 @@ def build_model(config=None):
         if name=='boot_poll':g['external']='本级 KV sender 的 bootstrap poll 状态（含级内 TP/CP 聚合）；Decode/握手细节未展开。轮询读取状态，不代表等待所有请求 ready。'
         if name in ('term_poll','release'):g['external']='本级 sender.poll() 的 Success/Failed 状态及 TP/CP 聚合；Decode 接收端和传输后端未展开。本图只画成功路径。'
         if name=='select':g['external']='waiting_queue、前缀缓存与 token/KV 预算；本图预设每轮最多选一份请求。'
+        if name=='h2d':g['external']='start_loading 的 start_event 在 schedule_stream 上记录；H2D 流等待该事件，因此承接上一轮 launch_event 的顺序约束。'
+        if name=='copy' and r==2 and current(n):g['external']='末级先在 schedule_stream 等当前 forward 的 q_event 再发送 output；copy_stream.wait_stream(schedule_stream) 将此约束传给旧结果 D2H。不是 CPU 在 wait_event 调用处同步等待。'
+        if name=='gpu' and current(n) in (2,4):g['external']='模型把逐层 KV 就绪粗化成整份 H2D 完成后再开始前向；源码按层 wait_event，可边回载边计算，没有这个整批 barrier。'
         if name=='select' and current(n):extra.append((key(r,2,'recv_bc'),'本例请求已通过 bootstrap 准入'))
         if name=='launch' and r and current(n):extra.append((key(r,n,'recv_proxy'),'当前 batch 的上级激活已接收'))
         if name=='release' and n>=2:
@@ -283,9 +295,9 @@ def build_model(config=None):
 
     data=dict(baseline='72d5c5bb73',units='u（假设时间单位，非实测）',pp=3,depth=0,graph=graph,
               assumptions=['五个单请求 micro-batch；每轮至多选一份；完整 Prefill；成功路径',
-                           '先展开三轮 bootstrap；L2 HiRadix 开启；M2、M4 有 host hit；write_back 且无淘汰写回',
+                           '先展开三轮 bootstrap；UnifiedRadixCache + HiCache cache 模式；M2、M4 有 host hit；write_back 且无淘汰写回',
                            '服务时长为演示值；只模拟代码级依赖，省略真实 CUDA/NCCL 和链路争用',
-                           'GPU L2 等待简化为首个需 KV 层的 event 门控；并非全 batch 固定 barrier'],
+                           '模型等待全部 H2D 后再画 GPU 前向；源码逐层等待，可与回载重叠，无整批 barrier'],
               loops=loops,events=events,releases=release_rows,
               end=max(l['end'] for l in loops),checks={'resolved_nodes':len(resolved),'batches':5,'forward_blocks':15,'released_all':True})
     for e in data['events']:

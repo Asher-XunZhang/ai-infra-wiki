@@ -75,11 +75,14 @@
 <p>建议先在<a href="https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/">交互图页面</a>阅读场景介绍，再看默认 PP0 L6：这一轮提交 M3 前向，同时接收并处理旧 M1 的结果。页面下方的读图指南解释 A–I 阶段、PD bootstrap 与 L2 ACK 的区别、环形槽位关系、操作方法及模型假设；本说明继续提供逐项源码锚点。</p>
 <p>图中 u 是人为设定的示意时间单位。它用于解释源码调用顺序与依赖，不是设备 trace；“槽位占满必然产生空泡”以及具体吞吐、延迟、加速比都不是本图的结论。</p>
 <h2 id="section-1">1. 源码基线与图的边界</h2>
+<p><strong>2026-09-17 源码复核：</strong> 本页继续固定在 <code>72d5c5bb73</code>。本次只读检查 本地 SGLang 仓库（<code>main</code>，HEAD <code>279339f113b79af84f27fd3ac92d0a13bd3f4cbd</code>，工作区干净），通过 <code>git show</code> 读取固定提交，并与本地 HEAD 比较；未运行 GPU 推理。当前 HEAD 已将缓存事件检查移到 PP loop 的 <code>_process_hicache_events()</code>，因此下面 <code>get_new_batch_prefill()</code> 内的定位只适用于固定基线。</p>
+<p><strong>缓存实现选择：</strong> 本例采用普通 FULL attention、未指定自定义缓存 backend 的默认 <code>UnifiedRadixCache</code>，启用 HiCache 的 <code>cache</code> 模式，关闭 external linker。不是旧 <code>HiRadixCache</code>，也不涵盖 <code>buffer_only</code>、SWA 或 Mamba 的特殊恢复路径。固定版本的默认工厂见 <a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/registry.py#L80">registry.py</a>；ACK 合并同步见 <a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/unified_radix_cache.py#L2957">check_hicache_events</a>。</p>
+
 <ul>
 <li>源码仓库：SGLang 官方开源仓，固定提交如下。</li>
 <li>源码读取时间：2026-09-16；源码工作树干净；只读源码分析。</li>
 <li>分支：<code>codex/main</code>，跟踪 <code>upstream/main</code>；固定提交 <code>72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a</code>。本次不更新该基线。</li>
-<li>模式：PD Prefill、PP=3、<code>pp_async_batch_depth=0</code>、CUDA 路径、HiRadix L2 开启。</li>
+<li>模式：PD Prefill、PP=3、<code>pp_async_batch_depth=0</code>、CUDA 路径、UnifiedRadixCache + HiCache L2 开启。</li>
 <li>五份实际 micro-batch 为 M1–M5；三份环形槽位为 s0–s2。<strong>micro-batch 数量不等于槽位数量，也不等于循环次数。</strong></li>
 <li>为突出所有步骤，示例假设五份请求在开头进入 bootstrap；每轮最多选一份单请求 batch；M2/M4 有 L2 host hit；完整 Prefill、正常成功路径。关闭图中不需要的分支：中间 chunk、L3 storage、staging、DP MLP sync、speculative/prebuilt/skip-output、失败或 optimistic pending-bootstrap。</li>
 <li>缓存按 write_back 且本例没有淘汰写回处理，所以 write ACK count 可以是 0；代码仍调用其计数同步路径。</li>
@@ -107,7 +110,7 @@
 </tr>
 <tr>
 <td>B chunk / L2 ACK</td>
-<td><code>process_prefill_chunk()</code>；进入 <code>get_new_batch_prefill()</code>；HiRadix 回收此前的 PP count 发送；write ACK count 同步与本地 event 处理；load ACK count 同步与本地 event 处理</td>
+<td><code>process_prefill_chunk()</code>；进入 <code>get_new_batch_prefill()</code>；UnifiedRadixCache 回收此前的 PP count 发送；合并同步 write/load ACK count；随后处理本地 write/load event</td>
 <td>当前槽位的旧 chunk，以及全局缓存 ACK 队列；本例没有中间 chunk</td>
 </tr>
 <tr>
@@ -229,32 +232,39 @@ next_mb_id = (mb_id + 1) % pp_loop_size
 <li>output tensor 环也独立于这两条控制路径。接收到 token/output 不代表 Decode 已收全 KV。</li>
 </ul>
 <p>源码：<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L591">bootstrap:591</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L633">终态聚合:633</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/disaggregation/prefill.py#L918">release:918</a>。</p>
-<h3>HiRadix L2 ACK 与逐层 H2D 等待</h3>
+<h3>UnifiedRadixCache + HiCache L2 ACK 与逐层 H2D 等待</h3>
 <p>这里的 L2 是 host memory 层，不是 PD bootstrap，也不是 L3 storage。</p>
 <ol>
 <li><code>check_hicache_events()</code> 在空 waiting queue 的提前返回之前调用，所以空 batch loop 仍会推进 L2 ACK。</li>
-<li>PP0 统计连续 ready ACK 的数量，并在本级相关 TP/CP 组做 MIN 归约。</li>
+<li>PP0 分别统计 write/load 队列中连续 ready ACK 的数量，由 <code>_sync_hicache_ready_counts()</code> 合在一个张量中同步，并在本级相关 TP/CP 组做 MIN 归约。同步张量还带有 write_back 回收一致性摘要；本例无 L3 存储队列。</li>
 <li><code>_pp_sync()</code> 把数量沿 PP0 → PP1 → PP2 传播。它<strong>不是把所有 PP rank 的 ready 数一起做 MIN 的全 PP barrier</strong>。</li>
-<li>每级按相同数量弹出自己的 ACK，执行本地 <code>finish_event.synchronize()</code> 并解锁相应缓存节点。因此 PP0 已完成的 load，在后级可能仍触发本地等待。</li>
-<li>当前选中 batch 的 host hit 由 <code>init_load_back()</code> 和 <code>start_loading()</code> 提交；GPU 使用 KV 时另有逐层 event 等待，可与层计算重叠。图只用“首个需要 KV 的层”的门控作简化，不能用图里的整段等待估算真实逐层 overlap 收益。</li>
+<li>每级按相同数量弹出自己的 ACK，执行本地 <code>finish_event.synchronize()</code>；load 完成后释放这次回载的 device/host 锁，并结束加载保护，host 副本仍可保留。因此 PP0 已完成的 load，在后级可能仍触发本地等待。</li>
+<li>当前选中 batch 的 host hit 由 <code>init_load_back()</code> 和 <code>start_loading()</code> 提交；GPU 使用 KV 时另有逐层 event 等待，可与层计算重叠。图把整份 H2D 粗化为一个完成点，并让 GPU 前向等这个完成点；这是模型额外采用的整批门控，源码没有这个整批 barrier，不能用图里的整段等待估算真实逐层 overlap 收益。</li>
 </ol>
-<p>源码：<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler.py#L3709">空队列前检查:3709</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/hiradix_cache.py#L239">HiRadix _all_reduce/_pp_sync:239</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/hiradix_cache.py#L1098">loading_check:1098</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/cache_controller.py#L914">start_loading:914</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/cache_controller.py#L53">layer wait:53</a>。</p>
+<p>源码：<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler.py#L3709">空队列前检查:3709</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/unified_radix_cache.py#L303">UnifiedRadix _all_reduce/_pp_sync:303</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/unified_radix_cache.py#L2855">loading_check:2855</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/cache_controller.py#L914">start_loading:914</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/cache_controller.py#L53">layer wait:53</a>。</p>
+<h3>CUDA 流之间还有两条必要依赖</h3>
+<p>CPU 已经提交异步操作，不代表对应设备流已经执行到那里：</p>
+<ul>
+<li><strong>H2D 启动依赖：</strong> <code>start_loading()</code> 在当前 <code>schedule_stream</code> 上记录 <code>start_event</code>，H2D 流等待这个事件。上一轮非末级为激活发送、末级为 output 发送排入的 <code>wait_event(launch_event/q_event)</code> 仍在调度流上，因此本例 M2/M4 的回载不能越过上一本级前向完成点。<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/cache_controller.py#L923">start_loading</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/l2_transfer.py#L74">H2D start_event</a>。</li>
+<li><strong>末级旧结果 D2H 依赖：</strong> depth=0 的 CUDA 路径先提交当前 output 发送，其前面有 <code>schedule_stream.wait_event(q_event)</code>；随后旧结果的 <code>copy_stream.wait_stream(schedule_stream)</code> 承接该约束。因此末级旧结果的 D2H 也要等本轮当前前向完成。比如 PP2 L6 拷贝 M1，必须晚于本级 M3 前向结束；不能因为对象是旧 M1 就忽略 M3 的事件。<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L991">output 发送</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L1061">D2H 等待</a>。</li>
+</ul>
+<p>图中显式保留这两条必要 event 依赖；<code>wait_event</code> 本身不是 CPU 阻塞。图仍省略通信后端的完整流调度，不用于推断真实 host 等待时间。</p>
 <h2 id="section-6">6. 默认展开 PP0 L6 的读法</h2>
 <p>此 loop 占示意时间 <strong>13.75–29.80 u</strong>，槽位 s2，当前 batch M3，旧结果 M1。</p>
 <ul>
 <li>A/B：接收状态、推进缓存 ACK；其中历史 L2 count 发送在本例产生等待。</li>
 <li>C：准备 M3。本例 M3 无 host hit；不会执行实际 <code>init_load_back()</code>。</li>
 <li>D：等待历史 M2 proxy send work。</li>
-<li>E：提交 M3，GPU 在 <strong>17.21–23.21 u</strong> 计算。</li>
-<li>F：CPU 路径在 <strong>17.21–27.72 u</strong> 等待 M1 output。前 6 u 与本级 M3 的 GPU 计算重叠；M3 在 23.21 u 结束后，依赖尚未就绪。</li>
+<li>E：提交 M3，GPU 在 <strong>18.00–24.00 u</strong> 计算。</li>
+<li>F：CPU 路径在 <strong>18.00–27.72 u</strong> 等待 M1 output。前 6 u 与本级 M3 的 GPU 计算重叠；M3 在 24.00 u 结束后，依赖尚未就绪。</li>
 <li>G/H：接收并处理控制共识、处理 M1 结果、提交 M1 KV。此时“提交 M1 KV”不代表它已完成。</li>
 <li>I：本轮转发、保存后结束。之后才进入 L7 准备 M4；M4 在本例还有 L2 host hit，最终于 <strong>34.61 u</strong> 开始本级计算。</li>
 </ul>
-<p>所以 PP0 从 M3 结束到 M4 开始的 <strong>11.40 u 空泡是多段原因叠加</strong>：旧 output 等待的尾段、其他收尾/下一轮准备、以及 M4 的 L2 layer gate。总览给空泡标注的是主要相交等待，不能把整段都归因于单一通信操作。</p>
+<p>所以 PP0 从 M3 结束到 M4 开始的 <strong>10.61 u 空泡是多段原因叠加</strong>：旧 output 等待的尾段、其他收尾/下一轮准备、以及 M4 的 模型的整份 H2D 门控。总览给空泡标注的是主要相交等待，不能把整段都归因于单一通信操作。</p>
 <p><strong>槽位占满不必然产生空泡。</strong> 环上旧结果和相关通信若及时完成，CPU 准备若被已有 GPU 工作覆盖，下一份可以及时接续；本图选择不均衡耗时来展示依赖来不及完成时出现的空泡。没有用该示意推导性能数字。</p>
 <h2 id="section-7">7. 验证与交互入口</h2>
 <p><a href="https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/">打开交互图</a>。</p>
-<p>依赖模型验证了前驱约束、每级五份前向（共 15 段）、本级 KV 提交晚于前向完成，以及五份请求的各级 release。浏览器检查了 rank/loop 选择、源码链接和不同屏幕宽度下的显示。这些属于静态分析与图的逻辑检查，未运行 SGLang GPU 推理。</p>
+<p>依赖模型验证了前驱约束、每级五份前向（共 15 段）、本级 KV 提交晚于前向完成，以及五份请求的各级 release。2026-09-17 新增的 <code>scripts/test_pp_timing_model.py</code> 对全部十个场景检查 H2D / D2H 的必要源码依赖及合并 ACK 路径，并通过故意删除依赖的反例确认检查能拦住原来的遗漏。构建同时重建详细图与入门图数据。以上属于源码静态复核和教学模型检查，未运行 SGLang GPU 推理。</p>
 <h2 id="section-8">8. 怎样查看每一步的前置关系</h2>
 <p>总览和原先的 loop 放大图已合并为一张可缩放、平移的时间轴。三个 PP rank 共用同一时间窗口，CPU 的所有阶段仍在各自的一条横向泳道。选择「步骤与前置条件」或点击一个步骤，会显示它的入边，并在下方列出前置节点；点击前置节点可以继续追溯。</p>
 <ul>
@@ -299,13 +309,13 @@ next_mb_id = (mb_id + 1) % pp_loop_size
 <td>PP0 L5 的 proxy 消息；继续追溯其发送和 GPU 完成</td>
 </tr>
 <tr>
-<td>PP1 L5 的 L2 load ACK</td>
+<td>PP1 L5 的 L2 合并 ACK 计数</td>
 <td>本地检查的程序顺序</td>
-<td>PP0 L5 公布的 load ACK count</td>
+<td>PP0 L5 公布的 write/load ACK counts</td>
 </tr>
 <tr>
 <td>PP0 L5 的 M2 GPU</td>
-<td>forward 提交、上份 GPU、本例的 H2D layer gate</td>
+<td>forward 提交、上份 GPU、本例的 整份 H2D 门控（模型粗化）</td>
 <td>首级无上游激活；中间级经 recv_proxy 链追溯</td>
 </tr>
 <tr>
@@ -314,5 +324,5 @@ next_mb_id = (mb_id + 1) % pp_loop_size
 <td>名单接收继续追溯 PP2 的终态共识回流</td>
 </tr>
 </tbody></table></div>
-<p>这是一张固定成功路径、固定 batch 分配下的源码依赖示意，不是完整运行时 trace。图中共导出 1669 个已解析模型节点；这包括用于闭合边界的后续节点，不表示实际运行必然执行该数量的操作。</p>
+<p>这是一张固定成功路径、固定 batch 分配下的源码依赖示意，不是完整运行时 trace。图中共导出 1604 个已解析模型节点；这包括用于闭合边界的后续节点，不表示实际运行必然执行该数量的操作。</p>
 </article></main><nav class="lesson-pager" aria-label="继续学习"><a href="index.html" class="previous"><small>上一节 · 02</small><strong>依赖分析 ←</strong><span>追踪每一步的前置条件</span></a><a class="next" href="quick.html?batch=1"><small>回到图中验证理解</small><strong>跟踪 M1 的一生 →</strong><span>结合源码，再看它跨过哪些 loop</span></a></nav><footer class="site-footer"><span>AI Infra Wiki <span class="footer-dot">/</span> 从机制到源码</span><span>图示时间为示意值 · 非性能测量</span><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>
