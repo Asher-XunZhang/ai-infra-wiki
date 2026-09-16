@@ -6,10 +6,29 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>SGLang PD Prefill：PP=3 的 loop 细分</title>
-<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+<meta name="description" content="SGLang PD 分离下 Prefill 侧的 PP 调度交互图。以 PP=3、5 个 micro-batch 解释 CPU loop、GPU 前向、L2 ACK、bootstrap、结果回流及 KV 传输的依赖关系。">
+<style>
+:root{color-scheme:light dark;background:light-dark(rgb(255 255 255),rgb(24 24 24));color:light-dark(#202124,#ececec);font-family:system-ui,sans-serif}
+html,body{margin:0}body{box-sizing:border-box;padding:24px;background:inherit;line-height:1.75}
+.page-copy{max-width:1000px;margin:0 auto}.page-copy h1,.page-copy h2,.page-copy h3{line-height:1.35}.page-copy h2{margin-top:2em}
+.page-copy a{color:light-dark(#1655a8,#8cbfff);overflow-wrap:anywhere}.page-copy code{overflow-wrap:anywhere}
+.page-copy nav{display:flex;flex-wrap:wrap;gap:8px 20px}.page-copy section{scroll-margin-top:20px}
+.page-copy table{border-collapse:collapse;width:100%}.page-copy th,.page-copy td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid light-dark(#ddd,#444);overflow-wrap:anywhere}.page-copy th:first-child,.page-copy td:first-child{width:22%}
+.timeline{max-width:1200px;margin:32px auto;scroll-margin-top:16px}iframe{display:block;width:100%;height:1500px;margin:0 auto;border:0}
+@media(max-width:600px){body{padding:16px}.page-copy h1{font-size:1.65rem}.page-copy th,.page-copy td{padding:8px 6px}}
+</style>
 </head>
 <body>
-<nav style="margin-bottom:1rem"><a href="../../">学习首页</a> · <a href="notes.html">源码说明</a></nav>
+<header class="page-copy">
+  <nav aria-label="页面导航"><a href="../../">学习首页</a><a href="#timeline">直接看交互图</a><a href="#reading-guide">读图指南</a><a href="notes.html">逐项源码说明</a></nav>
+  <h1>PD 分离下，Prefill 侧的 PP 调度是怎样推进的？</h1>
+  <p><strong>这张图展示 SGLang 在 Prefill / Decode 分离部署时，Prefill 侧使用流水线并行（PP）的调度逻辑。</strong>Prefill 负责处理输入 prompt、执行前向计算并产生 KV cache；Decode 接收所需 KV 后继续逐 token 生成。图里还展示 Prefill 为此推进的握手状态、结果处理、KV 发送与请求释放。</p>
+  <p><strong>PP0、PP1、PP2 全部属于 Prefill 侧</strong>，代表模型被切分后的三个流水级。同一份 micro-batch 的激活依次经过 PP0 → PP1 → PP2。Decode 是图外的 KV 接收方，本图没有展开它的调度循环、GPU 计算或设备拓扑。每个 PP rank 也不必等于一颗 GPU：级内 TP / CP 等并行维度未展开。</p>
+  <p>本例固定 <strong>PP=3、五份 micro-batch（M1–M5）、<code>pp_async_batch_depth=0</code></strong>，并启用 HiRadix 的 host-memory L2 缓存。它要说明的是：CPU 在一轮 loop 中准备、提交和收尾的对象为什么可能不同，以及这些依赖怎样与 GPU 前向交错。</p>
+  <p><strong>横轴 u 是人为设定的示意时间单位。</strong>条块长度、等待与空泡用于解释源码顺序和依赖，不是毫秒、设备 trace 或性能测量。源码固定于 <a href="https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a">SGLang 开源提交 <code>72d5c5bb73</code></a>，不随远程 main 自动变化。</p>
+</header>
+<main>
+<section id="timeline" class="timeline" aria-label="Prefill 侧 PP 调度交互图">
 <iframe sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" title="SGLang PD Prefill：PP=3 的 loop 细分" srcdoc="&lt;!doctype html&gt;
 &lt;html lang=&quot;zh-CN&quot; data-visualize-standalone&gt;
 &lt;head&gt;
@@ -1595,8 +1614,110 @@ html&gt;body{padding:0}&lt;/style&gt;
 })();
 &lt;/script&gt;
 
+&lt;script&gt;
+(() =&gt; {
+  const root = document.getElementById('pp-loop-detail');
+  let pending = false;
+  const report = () =&gt; {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() =&gt; {
+      pending = false;
+      parent.postMessage({type: 'pp-chart-height', height: Math.ceil(root.getBoundingClientRect().height) + 4}, '*');
+    });
+  };
+  new ResizeObserver(report).observe(root);
+  window.addEventListener('load', report);
+  report();
+})();
+&lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;
 "></iframe>
+</section>
+<article id="reading-guide" class="page-copy" aria-labelledby="guide-title">
+  <h2 id="guide-title">读图指南：先分清对象，再看时序</h2>
+  <section id="objects">
+    <h3>1. L#、M#、s# 分别是什么？</h3>
+    <table>
+      <thead><tr><th scope="col">图中标记</th><th scope="col">含义与读法</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">M1–M5</th><td>五份实际参与 Prefill 的 micro-batch。一个 batch 在 PP0、PP1、PP2 各执行一次本级前向，所以图中共有 15 段 GPU 前向。本例为便于追踪，每份 batch 只有一个请求；实际服务可以把多个请求组成 batch。</td></tr>
+        <tr><th scope="row">L1、L2、L3…</th><td>某个 PP rank 的本地 loop 编号。CPU 行一个 L# 外框对应 <code>event_loop_pp_disagg_prefill()</code> 内一次 <code>for mb_id</code> 槽位迭代，包含该轮的准备、提交、收尾。它不代表一个 batch 的完整生命周期；不同 rank 的相同 L# 也不要求同时发生。</td></tr>
+        <tr><th scope="row">s0、s1、s2</th><td>循环复用的状态槽位，用来保存 batch 和相关状态。本例槽位数为 <code>pp_size + pp_async_batch_depth = 3</code>。五份 batch 依次使用三份槽位，因此“5 个 micro-batch”与“3 个槽位”并不矛盾。</td></tr>
+        <tr><th scope="row">CPU / GPU / I/O</th><td>CPU 行表示本级调度操作与依赖等待；GPU 行表示本级模型层的前向；I/O 行表示 H2D（host → GPU）回载、发往 Decode 的 KV 在途，以及选中依赖涉及的通信 / 拷贝。GPU 和 I/O 是异步活动，可以跨越 CPU loop 边界。</td></tr>
+        <tr><th scope="row">颜色、斜纹、线条</th><td>颜色对应操作类别，A–I 是本页为阅读源码所作的分组。CPU 斜纹表示模型中的等待，GPU 斜纹表示没有执行图中所建模前向的空档。同一行直接相接的依赖用彩色共边；其他依赖用箭头，实线是本 PP、虚线是跨 PP。窗口外的前置节点用边缘方向提示，具体时间见下方列表。</td></tr>
+      </tbody>
+    </table>
+    <p>“CPU 程序顺序”只表示调度线程的执行先后；“数据 / event”“通信就绪”才指出相应的数据或事件条件。“模型串行假设”“通信配对（模型门控）”是本图的建模约束。可以点击前置步骤继续追溯，区分它们的来源。</p>
+  </section>
+  <section id="loop-order">
+    <h3>2. 一次 Prefill PP loop 按什么顺序做事？</h3>
+    <p>下面按本例 <code>pp_async_batch_depth=0</code> 的源码顺序归纳。CPU 的各段拼接在同一行，GPU 前向在提交后异步推进；同一轮包含的请求集合、当前 batch、旧 batch 不一定相同。</p>
+    <table>
+      <thead><tr><th scope="col">阶段</th><th scope="col">本轮处理什么</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">A · 请求与状态</th><td>恢复槽位状态、接收请求，轮询并传播 PD bootstrap 状态及 KV transfer 终态，处理历史发送 work。这里面对的是请求候选集合和 inflight 集合。</td></tr>
+        <tr><th scope="row">B · 缓存 ACK</th><td>推进旧 chunk 路径和 HiRadix L2 的 write / load ACK 计数同步及本地事件处理。缓存 ACK 检查在空 waiting queue 的提前返回之前，空 batch loop 也会推进它。</td></tr>
+        <tr><th scope="row">C · 当前 batch 准备</th><td>按队列、前缀匹配和 token / KV 预算选批；若命中 host 缓存，安排回载；准备本轮即将提交的 batch。这里不能统一解释为“给下一份 M(i+1) 做准备”。</td></tr>
+        <tr><th scope="row">D / E · 输入与前向</th><td>非首级接收上级激活，回收历史 proxy send work，再提交当前 batch 的本级 forward 并记录事件。CPU 提交结束与 GPU 计算完成是不同时间点。</td></tr>
+        <tr><th scope="row">F · 结果回流</th><td>推进 output 发送、转发及旧槽位结果的接收和预处理，安排 D2H（GPU → host）拷贝。本例是在提交当前 forward 后做这一步。</td></tr>
+        <tr><th scope="row">G / H · 共识与收尾</th><td>推进 bootstrap / release 共识回流；处理旧 batch 的结果，提交其本级 KV 到 Decode；按 release 名单复查更早的 inflight 请求并清理。提交 KV 不代表传输已经完成。</td></tr>
+        <tr><th scope="row">I · 转发与保存</th><td>向下一流水级转发请求和状态；当前激活的发送依赖本级 launch event；保存结果和共识状态，进入下一轮槽位迭代。</td></tr>
+      </tbody>
+    </table>
+    <p>对应源码：<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L220">Prefill PP 主循环</a>。如果把 <code>pp_async_batch_depth</code> 设为大于 0，槽位数会变化，output helper 也会移到 launch 前；本图不能直接当作该配置的时序。</p>
+  </section>
+  <section id="consensus">
+    <h3>3. 为什么图里有多种“共识”和传输？</h3>
+    <ul>
+      <li><strong>PD bootstrap：</strong>确认请求的 KV 传输准备状态。各 Prefill 流水级聚合本地 bootstrap 状态；共识回流后，相应请求才能由 bootstrap 队列进入 waiting queue。由于准入发生在本轮选批之后，最早要到后续迭代才参与选批。</li>
+      <li><strong>L2 ACK：</strong>这里的 L2 是 host memory 缓存层。PP0 统计 ready ACK 数量，并在相关级内组归约，再把 count 沿 PP0 → PP1 → PP2 传播；各级按该数量处理自己的 ACK 和本地完成事件。它不是把所有 PP rank 的 ready 数一起做 MIN 的全 PP barrier，也不是 PD 握手。</li>
+      <li><strong>激活与 output：</strong>激活连接同一份 batch 在不同流水级的前向；output 回流让各级处理相应旧 batch 的结果。这些消息与发往 Decode 的 KV 数据是不同对象。</li>
+      <li><strong>transfer 终态与 release：</strong>KV 发送提交之后，Prefill 仍需轮询传输终态、推进 release 共识，并复查本地状态后清理请求引用 / 发送端。收到 output 不等于 Decode 已收全 KV；release 也不能一概理解为所有缓存物理页都被回收。</li>
+    </ul>
+    <p>逐项锚点见<a href="notes.html">源码说明中的“PD bootstrap / transfer / release”和“HiRadix L2 ACK”</a>。Decode 侧接收、握手和级内 TP / CP 聚合只作为相关状态输入提及，没有在三条 PP 泳道中展开。</p>
+  </section>
+  <section id="walkthrough">
+    <h3>4. 用默认的 PP0 L6 走一遍</h3>
+    <ol>
+      <li>打开图后默认选择 <strong>PP0 · L6 · s2</strong>。本轮当前 batch 是 <strong>M3</strong>，需要处理的旧结果是 <strong>M1</strong>。</li>
+      <li>CPU 完成状态 / ACK 处理与 M3 准备，等待历史发送 work 后提交 M3。示意 GPU 前向发生在 <strong>17.21–23.21 u</strong>。</li>
+      <li>同一轮 CPU 随后等待旧 M1 output，示意区间为 <strong>17.21–27.72 u</strong>。其中一部分与 M3 GPU 前向重叠；M3 完成后，旧结果仍未就绪。</li>
+      <li>继续推进共识回流、M1 结果处理与 KV 提交、转发和保存，结束 L6。之后进入 L7 准备 M4；M4 在本例还有 host hit / H2D 依赖，因此不会紧接 M3 立刻开始 GPU 前向。</li>
+    </ol>
+    <p>这里为什么是“算 M3、收 M1”？本例环长为 3，源码使用 <code>j = (i + 1) % 3</code> 取旧结果槽。在连续每轮提交一份新 batch 的这段示例中，该槽保存两次本地迭代之前的 batch。“槽位 +1”不能读成“未来一份 batch”，也不能把所有阶段套成固定的 M(i+1) / M(i) / M(i−1)。</p>
+    <p>本例安排 L1–L3 做冷启动 bootstrap 推进，L4–L8 依次提交 M1–M5，L6–L10 依次处理旧 M1–M5，后续 loop 继续推进 KV 终态和 release。这是示例的初始条件与选批安排；真实服务不保证恰好三轮准入，也不保证每轮都能选到 batch。</p>
+  </section>
+  <section id="controls">
+    <h3>5. 怎样用交互查看依赖？</h3>
+    <ol>
+      <li>先看默认 PP0 L6，点击“步骤与前置条件”或直接点 CPU / GPU 条块，查看该步的前置列表。</li>
+      <li>点击前置步骤可继续追溯；“对应源码”跳到固定提交的具体行。</li>
+      <li>用“＋ / −”或 Ctrl / ⌘ + 滚轮缩放，横向拖动或移动时间窗口滑块平移。三个 PP rank 始终共享同一时间轴。</li>
+      <li>“聚焦依赖”容纳当前 loop 与直接前置完成点；“显示全程”查看五份 batch 的填充、计算和收尾。</li>
+      <li>展开“当前 loop 的逐项操作、时间、所属对象与源码”，对照一个 loop 内不同分段究竟在处理谁。</li>
+    </ol>
+  </section>
+  <section id="scope">
+    <h3>6. 图的前提与不能据此推断的结论</h3>
+    <p>采用 CUDA 路径、HiRadix L2、完整 Prefill 与正常成功路径；假设 M2 / M4 有 host hit。缓存按 write_back 且本例无淘汰写回，write ACK count 可以为 0，但同步路径仍会被调用。未展开中间 chunk、L3 storage、staging、DP MLP sync、speculative / prebuilt / skip-output、失败恢复或 optimistic pending-bootstrap。</p>
+    <p><strong>槽位占满并不必然产生空泡。</strong>本例选择了不均衡耗时来展示依赖来不及完成时的空档；旧 output、收尾操作、下一轮准备和 L2 layer gate 都可能参与形成空泡，不能把整段空档归因于某一条通信。</p>
+    <p>图使用简化依赖模型，未运行 SGLang GPU 推理，也未复现 CUDA / NCCL 的真实流调度和资源竞争。<code>Work.wait()</code> 对 host / stream 的影响依赖后端；GPU 对 KV 的逐层等待在图中被简化为门控。因此，本图可用于理解调用顺序和依赖，不可直接推算延迟、吞吐、加速比或逐层 overlap 收益。</p>
+    <p>源码基线：<a href="https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a"><code>72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a</code></a>；本地研究分支 <code>codex/main</code> 跟踪官方开源仓；源码读取 2026-09-16。完整模型边界、函数锚点和验证范围见<a href="notes.html">逐项源码说明</a>。</p>
+  </section>
+  <p><a href="#timeline">返回交互图</a> · <a href="../../">返回学习首页</a></p>
+</article>
+</main>
+<script>
+(() => {
+  const frame = document.querySelector('#timeline iframe');
+  window.addEventListener('message', event => {
+    if (event.source !== frame.contentWindow || event.data?.type !== 'pp-chart-height') return;
+    const height = event.data.height;
+    if (Number.isFinite(height) && height > 100 && height < 50000) frame.style.height = height + 'px';
+  });
+})();
+</script>
 </body>
 </html>

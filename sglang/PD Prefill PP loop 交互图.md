@@ -1,5 +1,17 @@
 # PD Prefill：PP=3、5 个 micro-batch 的 loop 细分
 
+## 0. 场景：PD 分离下，Prefill 侧的 PP 调度
+
+这张图展示 **SGLang 在 Prefill / Decode 分离部署时，Prefill 侧使用流水线并行（PP）的调度逻辑**。Prefill 处理输入 prompt、执行前向并产生 KV cache；Decode 接收所需 KV 后继续逐 token 生成。图中还包含 Prefill 为此推进的 bootstrap 状态、结果处理、KV 发送及请求释放。
+
+**PP0、PP1、PP2 全部属于 Prefill 侧**，分别执行该流水级的模型层；同一份 micro-batch 的激活依次经过这三个流水级。Decode 是图外的 KV 接收方，没有作为第四条流水级画入，也未展开其调度循环、GPU 计算或设备拓扑。PP rank 不必等于一颗 GPU，级内 TP / CP 等并行维度未展开。
+
+本例用五份 micro-batch 和三个环形槽位，说明“一次本地 loop 正在准备谁、提交谁、处理谁的旧结果”。M# 表示实际 batch，s# 表示可复用状态槽位，L# 表示一次本地槽位迭代；三者不能混用。CPU、GPU 与 I/O 行共用时间轴，呈现调度线程、异步前向和通信 / 拷贝之间的依赖。
+
+建议先在[交互图页面](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/)阅读场景介绍，再看默认 PP0 L6：这一轮提交 M3 前向，同时接收并处理旧 M1 的结果。页面下方的读图指南解释 A–I 阶段、PD bootstrap 与 L2 ACK 的区别、环形槽位关系、操作方法及模型假设；本说明继续提供逐项源码锚点。
+
+图中 u 是人为设定的示意时间单位。它用于解释源码调用顺序与依赖，不是设备 trace；“槽位占满必然产生空泡”以及具体吞吐、延迟、加速比都不是本图的结论。
+
 ## 1. 源码基线与图的边界
 
 - 本地开源 worktree：`/Users/mac/Documents/Documents/工作/sglang-source-study`。
