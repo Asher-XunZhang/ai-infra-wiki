@@ -12,7 +12,7 @@ from html import unescape
 from pathlib import Path
 
 from build_pp_quick_data import EmbeddedModel, PAGE
-from pp_source_baseline import SOURCE_ANCHORS, SOURCE_COMMIT, SOURCE_FILES, SOURCE_SHORT
+from pp_source_baseline import SOURCE_ANCHORS, SOURCE_COMMIT, SOURCE_FILES, SOURCE_SHORT, STEP_GUIDE_ANCHORS
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,10 +35,13 @@ def check_artifacts():
         assert model['sourceCommit'] == SOURCE_COMMIT and model['baseline'] == SOURCE_SHORT
         refs.update(node['ref'] for node in [*model['graph'].values(), *model['events']])
     assert refs == SOURCE_ANCHORS.keys(), ('source anchors changed', refs ^ SOURCE_ANCHORS.keys())
+    guide = (PAGE / 'step-guide.js').read_text(encoding='utf-8')
+    guide_refs = set(re.findall(r"'((?:pp|cache|controller|scheduler|policy|prefill):\d+)'", guide))
+    assert guide_refs - SOURCE_ANCHORS.keys() == STEP_GUIDE_ANCHORS.keys(), 'Review changed step-guide anchors'
 
     # Both visible badges and source hyperlinks must identify the reviewed SHA.
     links = set()
-    for path in (ROOT / 'pages').rglob('*.html'):
+    for path in [*(ROOT / 'pages').rglob('*.html'), ROOT / 'sglang/PD Prefill PP loop 步骤详解.md']:
         text = unescape(path.read_text(encoding='utf-8'))
         for commit, source, first, last in re.findall(
             r'https://github.com/sgl-project/sglang/blob/([0-9a-f]{40})/'
@@ -61,7 +64,7 @@ def check_checkout(root, links):
     ).strip()
     assert not changed, 'Local SGLang source has changes beyond the pinned commit: ' + changed
     srt = root / 'python/sglang/srt'
-    for ref, expected in SOURCE_ANCHORS.items():
+    for ref, expected in (SOURCE_ANCHORS | STEP_GUIDE_ANCHORS).items():
         key, line = ref.split(':')
         actual = (srt / SOURCE_FILES[key]).read_text(encoding='utf-8').splitlines()[int(line) - 1].strip()
         assert actual == expected, (ref, expected, actual)

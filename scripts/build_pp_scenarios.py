@@ -59,6 +59,8 @@ def build(refresh_baseline=False):
     template.update(nodes=nodes, repeatFrom=12)
     (PAGE/'timing-template.js').write_text('// Generated from the reviewed Python model before solving.\nwindow.PP_TIMING_TEMPLATE = '+encode(template)+';\n', encoding='utf-8')
     build_quick()
+    from build_pp_step_guide import build as build_step_guide
+    build_step_guide()
 
 
 if __name__=='__main__':

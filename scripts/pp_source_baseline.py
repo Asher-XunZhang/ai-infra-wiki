@@ -50,3 +50,30 @@ SOURCE_ANCHORS = {
     'scheduler:3959': 'req.init_next_round_input(self.tree_cache)',
     'scheduler:4058': 'new_batch.prepare_for_extend()',
 }
+
+# Additional anchors reviewed for the beginner step explanations.
+STEP_GUIDE_ANCHORS = {
+    'cache:3210': 'while finish_count > 0:',
+    'cache:3243': 'def init_load_back(',
+    'cache:3290': 'def check_hicache_events(self) -> None:',
+    'cache:333': 'def _all_reduce(self, data: torch.Tensor, tp_reduce_op: torch.distributed.ReduceOp):',
+    'policy:1185': 'with self._lock_node(req.last_node):',
+    'pp:1091': 'batch_result.logits_output is not None',
+    'pp:1100': 'd2h_event.record(self.device_module.current_stream())',
+    'pp:1247': 'event = self.device_module.Event()',
+    'pp:238': 'self._pp_commit_comm_work(self.send_req_work)',
+    'pp:242': 'self._pp_commit_comm_work(send_bootstrapped_work)',
+    'pp:245': 'self._pp_commit_comm_work(send_transfer_work)',
+    'pp:256': 'self.mbs[mb_id] = batch',
+    'pp:589': 'self.waiting_queue.extend(good_reqs)',
+    'pp:705': 'def _pp_commit_comm_work(self: Scheduler, work: List[P2PWork]) -> None:',
+    'pp:735': 'def _pp_send_pyobj_to_next_stage(self: Scheduler, data, async_send: bool = False):',
+    'pp:769': 'def _pp_prepare_tensor_dict(',
+    'pp:825': 'def _pp_recv_typed_dict(',
+    'prefill:1025': 'elif poll == KVPoll.Success:  # transfer done',
+    'prefill:1074': 'maybe_release_metadata_buffer(',
+    'prefill:781': 'next_token_ids = result.next_token_ids.tolist()',
+    'prefill:859': 'maybe_cache_unfinished_req(req, self.tree_cache)',
+    'scheduler:4037': 'new_batch = ScheduleBatch.init_new(',
+    'scheduler:4054': 'new_batch.hicache_consumer_index = (',
+}

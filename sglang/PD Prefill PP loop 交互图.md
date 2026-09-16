@@ -4,6 +4,10 @@
 
 **第一次阅读建议从[快速入门版](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html)开始。** 它以 loop 为主图，选择 M1–M5 后在同一张图中高亮相关操作，并贴附该 batch 的进度带；详细版继续保留逐项操作与前置依赖。
 
+在依赖分析中点击操作、等待段或前置步骤，可查看“在做什么、为什么需要、完成后、当前这一轮、读图边界”。说明按当前模型中的 PP 级、batch、ACK 和实际 release 名单生成；等待段另外列出阻挡它的前置步骤与完成时刻。全部操作的可离线阅读版本见[逐步理解行为与目的](PD%20Prefill%20PP%20loop%20步骤详解.md)。
+
+**结果预处理的术语补充：** 图中的 “D2H” 简写指旧结果的预处理／就绪区间，并不表示每次都会完整复制 token 张量。当前源码在 copy stream 上准备结果，并按输出配置决定拷贝内容；本例关闭 sampling mask，其对应分支只记录 `d2h_event`，后续结果处理还会调用 `next_token_ids.tolist()`。该区间的时长仍是教学占位值，不能用作真实 D2H 传输耗时。见 [结果准备与事件分支](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1084-L1100)、[CPU 使用 token 结果](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L781)。
+
 入门版把源码中的连续步骤合成五组：A 检查状态；B+C 缓存与选批；D+E 输入 / 提交前向；F+G+H 结果与共识；I 转发保存。每个外框仍代表一次本地槽位迭代，段宽保留原模型时间。bootstrap 轮询与共识回流仍分处前后，避免为“合并概念”而修改执行顺序。
 
 每级下沿的生命周期进度带与 loop 共用时间轴，沿用 micro-batch 的 M1–M5 编号，按各级的六个连续状态区间显示：准入与排队、准备缓存 / 输入、本级 GPU 前向、等结果 / 处理、KV 传输、等共识 / 释放。除 GPU 前向段外，这些区间可能包含排队或资源等待，不意味着连续占用 CPU / GPU。共同准入状态来自同一请求集合，不能当成五份独立资源消耗相加。清理终点取本地 release 操作结束，release 名单记录的时间则是进入清理的时刻。
@@ -120,7 +124,7 @@ GPU 行仍以 M# 表示本级前向计算，因为 GPU 是异步资源，某份�
 | C 当前 batch 准备 | 空队列则返回 None；否则前缀匹配、排序；`PrefillBudget` 与 `_select_prefill_admission()` 检查预算，再通过延迟准入；host hit 时 `init_load_back()`；成功后 `_commit_prefill_admission()` 锁定前缀并加入 `can_run_list`，再构造 batch；`ready_to_load_host_cache()` → `start_loading()`，设置 consumer index；`prepare_for_extend()`；保存当前 batch | **这一次即将提交的 M#**；不是固定的下一份 batch |
 | D 激活与 work | 当前 batch 非空时，非首级接收上级 hidden states；随后回收历史 proxy send work | 当前 M# 的输入、上次提交的激活发送 |
 | E 当前 forward | `_pp_launch_batch()`：forward stream 等待 schedule stream，运行本级层，记录 launch event；末级入 output 队列 | 当前 M#；CPU 提交与 GPU 完成分开 |
-| F output | 本例 depth=0，所以在 launch 后执行；回收旧 output send work；末级发送当前 output，中间级转发上一轮保存的 output；接收 `mbs[j]` 的旧 output，安排 D2H 与结果预处理 | 旧结果槽位 j；发送与接收可能对应不同 M# |
+| F output | 本例 depth=0，所以在 launch 后执行；回收旧 output send work；末级发送当前 output，中间级转发上一轮保存的 output；接收 `mbs[j]` 的旧 output，安排结果预处理与就绪事件（图中简写 D2H） | 旧结果槽位 j；发送与接收可能对应不同 M# |
 | G PP 控制共识回流 | 发 bootstrap 共识、release 共识；按 `bmbs[j]` 接收 bootstrap 回流并移入 waiting queue；回收 bootstrap 共识发送；按 `tmbs[j]` 接收 release 名单并回收发送 | 候选请求集合和已终态请求集合；两者也不一定相同 |
 | H 旧结果与 KV | 旧 batch 存在时 `d2h_event.synchronize()`、处理结果、更新 `last_mbs[j]`；正常 final Prefill 进入 inflight 并提交本级 KV 到 Decode；另按 release 名单复查终态，成功时 `release_kv_cache()` → `tree_cache.finish(handle, SUCCESS)` → `sender.clear()`，归还 metadata 并移出 inflight | `mbs[j]` 的旧 batch，以及更早的传输请求 |
 | I 转发与保存 | 非末级转发请求、bootstrap 状态、transfer 终态；有当前 batch 时，schedule stream `wait_event(launch_event)` 后异步发 hidden states；保存 output、release/bootstrap 状态，复位 batch_is_full | 当前激活和队列快照；保存供下一轮转发的结果 |
@@ -183,7 +187,7 @@ next_mb_id = (mb_id + 1) % pp_loop_size
 CPU 已经提交异步操作，不代表对应设备流已经执行到那里：
 
 - **H2D 启动依赖：** `start_loading()` 在当前 `schedule_stream` 上记录 `start_event`，H2D 流等待这个事件。上一轮非末级为激活发送、末级为 output 发送排入的 `wait_event(launch_event/q_event)` 仍在调度流上，因此本例 M2/M4 的回载不能越过上一本级前向完成点。[start_loading](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/cache_controller.py#L950)、[H2D start_event](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/l2_transfer.py#L74)。
-- **末级旧结果 D2H 依赖：** depth=0 的 CUDA 路径先提交当前 output 发送，其前面有 `schedule_stream.wait_event(q_event)`；随后旧结果的 `copy_stream.wait_stream(schedule_stream)` 承接该约束。因此末级旧结果的 D2H 也要等本轮当前前向完成。比如 PP2 L6 拷贝 M1，必须晚于本级 M3 前向结束；不能因为对象是旧 M1 就忽略 M3 的事件。[output 发送](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1000)、[D2H 等待](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1084)。
+- **末级旧结果 D2H 依赖：** depth=0 的 CUDA 路径先提交当前 output 发送，其前面有 `schedule_stream.wait_event(q_event)`；随后旧结果的 `copy_stream.wait_stream(schedule_stream)` 承接该约束。因此末级旧结果的就绪事件也要等本轮当前前向完成。比如 PP2 L6 的 M1 结果就绪事件，必须晚于本级 M3 前向结束；不能因为对象是旧 M1 就忽略 M3 的事件。[output 发送](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1000)、[D2H 等待](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1084)。
 
 图中显式保留这两条必要 event 依赖；`wait_event` 本身不是 CPU 阻塞。图仍省略通信后端的完整流调度，不用于推断真实 host 等待时间。
 

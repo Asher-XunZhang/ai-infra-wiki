@@ -12,6 +12,8 @@ on:
       - 'scripts/test_pp_timing_model.py'
       - 'scripts/test_pp_custom_timing.py'
       - 'scripts/test_pp_dependency_view.py'
+      - 'scripts/build_pp_step_guide.py'
+      - 'scripts/test_pp_step_guide.py'
       - 'scripts/pp_source_baseline.py'
       - 'scripts/check_pp_source.py'
       - '.github/workflows/pages.yml'
@@ -43,6 +45,7 @@ jobs:
           python3 -B scripts/build_pp_scenarios.py
           python3 -B scripts/test_pp_custom_timing.py
           python3 -B scripts/test_pp_dependency_view.py
+          python3 -B scripts/test_pp_step_guide.py
           python3 -B scripts/check_pp_source.py
       - name: Build pages with content-versioned assets
         run: python3 scripts/build_pages.py
