@@ -1,205 +1,97 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>一条请求的生命周期 · PD Prefill · PP=3</title><meta name="description" content="沿一条请求走完 PD 分离下 PP=3 的 Prefill：接入、bootstrap 共识、三级前向、结果回流、KV 传输与释放。">
-<link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="lifecycle.css"><script src="../../site.js" defer></script><script src="lifecycle-model.js" defer></script><script src="operation-lab.js" defer></script><script src="player.js" defer></script><link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23216c51%22%2F%3E%3Ctext%20x%3D%228%22%20y%3D%2224%22%20fill%3D%22white%22%20font-family%3D%22Georgia%2Cserif%22%20font-weight%3D%22bold%22%20font-size%3D%2227%22%3Ea%3C%2Ftext%3E%3C%2Fsvg%3E"></head>
+<link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="lifecycle.css"><script src="../../site.js" defer></script><script src="scenario-engine.js" defer></script><script src="operation-lab.js" defer></script><script src="player.js" defer></script><link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23216c51%22%2F%3E%3Ctext%20x%3D%228%22%20y%3D%2224%22%20fill%3D%22white%22%20font-family%3D%22Georgia%2Cserif%22%20font-weight%3D%22bold%22%20font-size%3D%2227%22%3Ea%3C%2Ftext%3E%3C%2Fsvg%3E"></head>
 <body data-page="lifecycle"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header>
 <div class="site-layout"><aside class="site-sidebar" aria-label="学习导航"><details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary><div class="sidebar-content"><a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a><p class="nav-label">SGLANG · 专题 01</p><h2 class="sidebar-title">PD Prefill 与 PP 调度</h2><nav aria-label="专题阅读顺序"><a class="course-link" href="../../sglang/pd-prefill-pp-loop/quick.html"><span class="course-number">01</span><span><strong>快速入门</strong><small>先看 loop 与 batch 的关系</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/index.html"><span class="course-number">02</span><span><strong>依赖分析</strong><small>追踪每一步的前置条件</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/notes.html"><span class="course-number">03</span><span><strong>源码阅读</strong><small>把图中的行为对应到代码</small></span></a></nav><p class="nav-label">SGLANG · 专题 02</p><h2 class="sidebar-title">一条请求的 Prefill 旅程</h2><nav aria-label="请求生命周期专题"><a class="course-link" href="../../sglang/pd-prefill-lifecycle/index.html" aria-current="page"><span class="course-number">01</span><span><strong>请求生命周期</strong><small>从接入、三级前向到 KV 释放</small></span></a></nav><div class="sidebar-note"><span class="status-dot"></span> 基于固定源码的学习材料<p>先理解整体，再追踪依赖，最后回到源码。</p></div><a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 <span aria-hidden="true">↗</span></a></div></details></aside><div class="site-content">
 
 <main id="main-content" tabindex="-1"><header class="lesson-header"><div class="lesson-kicker"><span class="eyebrow">SGLANG / PD PREFILL</span><span class="lesson-count">专题 02 · 请求生命周期</span></div>
 <h1>一条请求，走完 PP=3 的 Prefill</h1><p>在同一张流水线图中，操控请求 <strong>R</strong> 从接入到释放。观察它此刻到达哪个模块、流动的是什么数据，以及各级仍持有哪些资源。</p>
-<div class="meta-tags"><span>PP = 3</span><span>1 条请求 · 12 个机制阶段</span><span>成功路径 · 可切换 chunk 示例</span><a href="#baseline">源码 <code>279339f113</code> · 查看范围 ↓</a></div></header>
+<div class="meta-tags"><span>PP = 3</span><span>1–4 条请求 · 12 个机制阶段</span><span>正常 / 等待 / 部分失败</span><a href="#baseline">源码 <code>279339f113</code> · 查看范围 ↓</a></div></header>
 <section class="pipeline-player" id="pipeline-player" aria-labelledby="pipeline-heading">
-<div class="player-heading"><div><p class="eyebrow">请求 R · 完整流水线</p><h2 id="pipeline-heading">跟着数据，走过三级 Prefill</h2></div><span class="muted">同一源码基线 · 279339f113</span></div>
-<div class="scenario-choice"><label for="player-scenario">请求示例</label><select id="player-scenario"><option value="chunked">分三块 · 12 token / 每块 4 token</option><option value="single">单块 · 12 token 一次完成</option></select><span id="scenario-note">同一条 R，完整 token 序列保持不变</span></div><div class="player-toolbar" hidden><button id="player-reset" type="button" aria-label="回到接入时刻">↺ 重置</button><button id="player-prev" type="button">← 上一小步</button><button id="player-play" type="button" aria-pressed="false">▶ 播放</button><button id="player-next" type="button">下一小步 →</button><label>速度 <select id="player-speed"><option value="1">1×</option><option value="0.5">0.5×</option><option value="2">2×</option></select></label><label>视图 <select id="player-zoom"><option value="fit">自动布局</option><option value="100">放大阅读</option><option value="125">更大</option></select></label></div>
-<div class="player-position"><span id="player-counter">准备接入</span><label for="player-seek">请求进度</label><input id="player-seek" type="range" min="0" max="0" value="0" disabled><span id="player-mode">手动推进</span></div>
-<div class="player-current-label"><span>当前动作</span><strong id="player-current-title">接入请求 R</strong></div><p class="pipeline-scroll-hint">窄屏可左右滑动查看完整结构；点击组件展开内部的数据变化。</p><div class="pipeline-canvas" tabindex="0" aria-label="流水线图，窄屏可左右滑动"><svg id="pipeline-svg" viewBox="0 0 1680 1040" role="group" aria-label="三级 Prefill 平面结构图，点击任一组件打开内部操作演示">
-<title>请求 R 的平面流水线</title><desc>请求与握手位于上方。中间的三级计算站经激活输送带连接；下方各自保存并发送 KV，检查闸协调释放。线路在设备外的独立通道中行进。点击设备查看内部的数据变换。</desc>
-
-<text class="factory-name" x="250" y="150">PREFILL</text><text class="factory-name" x="1400" y="150">DECODE</text>
-<text class="track-label" x="700" y="66">请求配对 / 接收准备</text>
-<text class="track-label output-track-label" x="30" y="635">结果回流</text><text class="track-label kv-track-label" x="30" y="950">各级 KV 独立交接</text>
-<path class="control-rail" d="M367.5 180 V90 H1355 V218 H1400 M737.5 180 V100 H1355 M1107.5 180 V110 H1355"/>
-<path class="return-rail" d="M1250 512 H1320 V643 H440 V695 M440 695 V658 H810 V695 M810 658 H1180 V695"/>
-<path class="kv-rail" d="M545 770 H567 V930 H1355 V770 H1400 M915 770 H937 V948 H1355 M1285 770 H1307 V966 H1355"/>
-<path class="release-rail" d="M975 768 H959 V1015 H200 V768 H235"/>
-<path class="control-rail" d="M92.5 430 V270 H200 V218 H250"/>
-
-<g class="pipeline-node" data-node="frontend" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M20 430 H165 V570 H20 Z"/>
-<text class="node-title" x="36" y="478" >请求接入</text>
-<text class="node-sub" x="36" y="510" >Tokenizer</text>
-<text class="machine-caption" x="36" y="544" >文本 → IDs</text>
-<g class="work-ticket" transform="translate(151 430)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<path class="local-feed" d="M470 256 V295 H367.5 V305 M367.5 387 V430 M440 585 V695"/>
-<path class="control-rail" d="M485 218 H620"/><path class="conveyor-base" d="M510 512 H620"/>
-<text class="belt-label" x="565" y="486" >激活 →</text>
-<g class="pipeline-node" data-node="p0-bootstrap" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M250 180 H485 V256 H250 Z"/>
-<text class="node-title" x="266" y="214" >入场登记 / 握手</text>
-<text class="node-sub" x="266" y="240" >本地 Req · sender · 共识</text>
-<g class="work-ticket" transform="translate(472 180)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<text class="pp-queue" x="262" y="285" data-rank-queue="0">尚未接入</text>
-<g class="pipeline-node" data-node="p0-schedule" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M270 305 H465 V387 H270 Z"/>
-<text class="node-title" x="289" y="331" >切块 / 选批 / 分配</text>
-<text class="machine-caption" x="310" y="366" >EXTEND batch</text>
-<g class="work-ticket" transform="translate(453 305)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<g class="pipeline-node" data-node="p0-compute" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M250 430 H510 V585 H250 Z"/>
-<text class="node-title" x="268" y="460" >PP0 · 首级前向</text>
-<text class="node-sub" x="268" y="487" >Embedding + L0–L9</text>
-<rect class="machine-window" x="268" y="504" width="224" height="40" rx="6"/>
-<path class="compute-cell" d="M282 514 V535 M289 514 V535"/>
-<path class="compute-cell" d="M316 514 V535 M323 514 V535"/>
-<path class="compute-cell" d="M350 514 V535 M357 514 V535"/>
-<path class="compute-cell" d="M384 514 V535 M391 514 V535"/>
-<path class="compute-cell" d="M418 514 V535 M425 514 V535"/>
-<path class="compute-cell" d="M452 514 V535 M459 514 V535"/>
-<text class="machine-caption" x="268" y="569" >本块新 token → 本级各层</text>
-<g class="work-ticket" transform="translate(497 430)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-
-<text class="machine-caption" x="462" y="622" >写 KV ↓</text>
-<g class="pipeline-node" data-node="p0-transfer" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell silo-shell" d="M335 695 H545 V845 H335 Z"/>
-<text class="node-title" x="353" y="752" >KV 仓 · PP0</text>
-<text class="node-sub" x="353" y="780" >L0–L9 · 结果 / 发送</text>
-<rect class="kv-block" data-kv-chunk="0-0" x="353" y="801" width="49" height="22" rx="4"/>
-<rect class="kv-block" data-kv-chunk="0-1" x="412" y="801" width="49" height="22" rx="4"/>
-<rect class="kv-block" data-kv-chunk="0-2" x="471" y="801" width="49" height="22" rx="4"/>
-<g class="work-ticket" transform="translate(532 695)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<text class="pp-kv" x="335" y="880" data-rank-kv="0">KV · 尚未分配</text>
-<text class="pp-sender" x="335" y="907" data-rank-sender="0">sender · 未创建</text>
-<g class="pipeline-node" data-node="p0-release" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M255 730 H291 L311 750 V786 L291 806 H255 L235 786 V750 Z"/>
-<text class="node-title" x="273" y="760" text-anchor="middle">终态</text>
-<text class="machine-caption" x="273" y="787" text-anchor="middle">释放</text>
-<g class="work-ticket" transform="translate(303 730)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<path class="release-rail" d="M335 770 H311"/>
-<path class="local-feed" d="M840 256 V295 H737.5 V305 M737.5 387 V430 M810 585 V695"/>
-<path class="control-rail" d="M855 218 H990"/><path class="conveyor-base" d="M880 512 H990"/>
-<text class="belt-label" x="935" y="486" >激活 →</text>
-<g class="pipeline-node" data-node="p1-bootstrap" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M620 180 H855 V256 H620 Z"/>
-<text class="node-title" x="636" y="214" >入场登记 / 握手</text>
-<text class="node-sub" x="636" y="240" >本地 Req · sender · 共识</text>
-<g class="work-ticket" transform="translate(842 180)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<text class="pp-queue" x="632" y="285" data-rank-queue="1">尚未接入</text>
-<g class="pipeline-node" data-node="p1-schedule" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M640 305 H835 V387 H640 Z"/>
-<text class="node-title" x="659" y="331" >切块 / 选批 / 分配</text>
-<text class="machine-caption" x="680" y="366" >EXTEND batch</text>
-<g class="work-ticket" transform="translate(823 305)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<g class="pipeline-node" data-node="p1-compute" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M620 430 H880 V585 H620 Z"/>
-<text class="node-title" x="638" y="460" >PP1 · 中间前向</text>
-<text class="node-sub" x="638" y="487" >L10–L19</text>
-<rect class="machine-window" x="638" y="504" width="224" height="40" rx="6"/>
-<path class="compute-cell" d="M652 514 V535 M659 514 V535"/>
-<path class="compute-cell" d="M686 514 V535 M693 514 V535"/>
-<path class="compute-cell" d="M720 514 V535 M727 514 V535"/>
-<path class="compute-cell" d="M754 514 V535 M761 514 V535"/>
-<path class="compute-cell" d="M788 514 V535 M795 514 V535"/>
-<path class="compute-cell" d="M822 514 V535 M829 514 V535"/>
-<text class="machine-caption" x="638" y="569" >本块新 token → 本级各层</text>
-<g class="work-ticket" transform="translate(867 430)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-
-<text class="machine-caption" x="832" y="622" >写 KV ↓</text>
-<g class="pipeline-node" data-node="p1-transfer" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell silo-shell" d="M705 695 H915 V845 H705 Z"/>
-<text class="node-title" x="723" y="752" >KV 仓 · PP1</text>
-<text class="node-sub" x="723" y="780" >L10–L19 · 结果 / 发送</text>
-<rect class="kv-block" data-kv-chunk="1-0" x="723" y="801" width="49" height="22" rx="4"/>
-<rect class="kv-block" data-kv-chunk="1-1" x="782" y="801" width="49" height="22" rx="4"/>
-<rect class="kv-block" data-kv-chunk="1-2" x="841" y="801" width="49" height="22" rx="4"/>
-<g class="work-ticket" transform="translate(902 695)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<text class="pp-kv" x="705" y="880" data-rank-kv="1">KV · 尚未分配</text>
-<text class="pp-sender" x="705" y="907" data-rank-sender="1">sender · 未创建</text>
-<g class="pipeline-node" data-node="p1-release" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M625 730 H661 L681 750 V786 L661 806 H625 L605 786 V750 Z"/>
-<text class="node-title" x="643" y="760" text-anchor="middle">终态</text>
-<text class="machine-caption" x="643" y="787" text-anchor="middle">释放</text>
-<g class="work-ticket" transform="translate(673 730)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<path class="release-rail" d="M705 770 H681"/>
-<path class="local-feed" d="M1210 256 V295 H1107.5 V305 M1107.5 387 V430 M1180 585 V695"/>
-<g class="pipeline-node" data-node="p2-bootstrap" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M990 180 H1225 V256 H990 Z"/>
-<text class="node-title" x="1006" y="214" >入场登记 / 握手</text>
-<text class="node-sub" x="1006" y="240" >本地 Req · sender · 共识</text>
-<g class="work-ticket" transform="translate(1212 180)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<text class="pp-queue" x="1002" y="285" data-rank-queue="2">尚未接入</text>
-<g class="pipeline-node" data-node="p2-schedule" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M1010 305 H1205 V387 H1010 Z"/>
-<text class="node-title" x="1029" y="331" >切块 / 选批 / 分配</text>
-<text class="machine-caption" x="1050" y="366" >EXTEND batch</text>
-<g class="work-ticket" transform="translate(1193 305)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<g class="pipeline-node" data-node="p2-compute" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M990 430 H1250 V585 H990 Z"/>
-<text class="node-title" x="1008" y="460" >PP2 · 末级前向</text>
-<text class="node-sub" x="1008" y="487" >L20–L29 + 输出头</text>
-<rect class="machine-window" x="1008" y="504" width="224" height="40" rx="6"/>
-<path class="compute-cell" d="M1022 514 V535 M1029 514 V535"/>
-<path class="compute-cell" d="M1056 514 V535 M1063 514 V535"/>
-<path class="compute-cell" d="M1090 514 V535 M1097 514 V535"/>
-<path class="compute-cell" d="M1124 514 V535 M1131 514 V535"/>
-<path class="compute-cell" d="M1158 514 V535 M1165 514 V535"/>
-<path class="compute-cell" d="M1192 514 V535 M1199 514 V535"/>
-<text class="machine-caption" x="1008" y="569" >本块新 token → 本级各层</text>
-<g class="work-ticket" transform="translate(1237 430)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-
-<text class="machine-caption" x="1202" y="622" >写 KV ↓</text>
-<g class="pipeline-node" data-node="p2-transfer" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell silo-shell" d="M1075 695 H1285 V845 H1075 Z"/>
-<text class="node-title" x="1093" y="752" >KV 仓 · PP2</text>
-<text class="node-sub" x="1093" y="780" >L20–L29 · 结果 / 发送</text>
-<rect class="kv-block" data-kv-chunk="2-0" x="1093" y="801" width="49" height="22" rx="4"/>
-<rect class="kv-block" data-kv-chunk="2-1" x="1152" y="801" width="49" height="22" rx="4"/>
-<rect class="kv-block" data-kv-chunk="2-2" x="1211" y="801" width="49" height="22" rx="4"/>
-<g class="work-ticket" transform="translate(1272 695)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<text class="pp-kv" x="1075" y="880" data-rank-kv="2">KV · 尚未分配</text>
-<text class="pp-sender" x="1075" y="907" data-rank-sender="2">sender · 未创建</text>
-<g class="pipeline-node" data-node="p2-release" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M995 730 H1031 L1051 750 V786 L1031 806 H995 L975 786 V750 Z"/>
-<text class="node-title" x="1013" y="760" text-anchor="middle">终态</text>
-<text class="machine-caption" x="1013" y="787" text-anchor="middle">释放</text>
-<g class="work-ticket" transform="translate(1043 730)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<path class="release-rail" d="M1075 770 H1051"/>
-<g class="pipeline-node" data-node="decode-bootstrap" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M1400 180 H1645 V256 H1400 Z"/>
-<text class="node-title" x="1418" y="214" >接收准备</text>
-<text class="node-sub" x="1418" y="240" >目的内存 / 索引 / 配对</text>
-<g class="work-ticket" transform="translate(1632 180)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<path class="decode-boundary" d="M1375 300 V600"/>
-<text class="factory-caption" x="1400" y="365" >P / D 交接边界</text>
-<g class="pipeline-node" data-node="decode-kv" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M1400 695 H1645 V845 H1400 Z"/>
-<text class="node-title" x="1418" y="766" >Decode 接收仓</text>
-<text class="node-sub" x="1418" y="795" >各层 prompt KV + 首 token</text>
-<rect class="received-block" data-received="0" x="1418" y="810" width="62" height="26" rx="4"/>
-<text class="machine-caption" x="1449" y="830" text-anchor="middle">PP0</text>
-<rect class="received-block" data-received="1" x="1489" y="810" width="62" height="26" rx="4"/>
-<text class="machine-caption" x="1520" y="830" text-anchor="middle">PP1</text>
-<rect class="received-block" data-received="2" x="1560" y="810" width="62" height="26" rx="4"/>
-<text class="machine-caption" x="1591" y="830" text-anchor="middle">PP2</text>
-<g class="work-ticket" transform="translate(1632 710)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
-<path class="local-feed" d="M1522.5 845 V930"/>
-<g class="pipeline-node" data-node="decode-run" role="button" tabindex="0"><title>打开内部操作演示</title>
-<path class="node-shell" d="M1400 930 H1645 V998 H1400 Z"/>
-<text class="node-title" x="1418" y="958" >继续生成</text>
-<text class="node-sub" x="1418" y="983" >t₀ 作为输入 → 下一 token</text>
-<g class="work-ticket" transform="translate(1632 930)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<div class="player-heading"><h2 id="pipeline-heading">从 token 序列到交接结果</h2><span id="scenario-summary"></span></div>
+<details class="scenario-settings" open><summary>参数与异常场景 <span>修改参数后点击“生成流程”</span></summary>
+<form id="scenario-form"><div class="config-grid">
+<label>教学示例<select id="config-preset"><option value="custom">自定义参数</option><option value="chunks">一条请求 · 分三块</option><option value="single">一条请求 · 一次完成</option><option value="batching">多请求 · 共享预算组批</option><option value="bootstrap">不同 PP 的部分握手失败</option><option value="transfer">Success / Failed 混合终态</option><option value="waiting">握手未就绪 · 等待</option><option value="repoll">release 已到 · 本地未到终态</option><option value="abort">本地取消 · bad 并集</option></select></label>
+<label>请求数量<input id="config-requests" type="number" min="1" max="4" value="1" required><small>R0–R3，最多 4 条</small></label>
+<label>每条请求的 input token length<input id="config-inputLength" type="number" min="1" max="48" value="12" required><small>完整序列，1–48 token</small></label>
+<label>chunk-size / 本批共享预算<input id="config-chunkSize" type="number" min="0" max="96" value="4" required><small>0 = 不切块；非零值须为页大小的倍数</small></label>
+<label>batch-size / 单批请求上限<input id="config-batchSize" type="number" min="1" max="4" value="2" required><small>实际入批数仍受 token 预算限制</small></label>
+<label>KV 页大小<select id="config-pageSize"><option value="1">1 token / 页</option><option value="2" selected>2 token / 页</option><option value="4">4 token / 页</option></select><small>普通 CUDA 路径按页计费</small></label>
+<label>异常条件<select id="config-fault"><option value="none">全部正常</option><option value="bootstrap_fail">部分 PP 握手失败</option><option value="bootstrap_abort">部分 PP 收到取消</option><option value="bootstrap_wait">部分 PP 握手未就绪</option><option value="transfer_fail">部分 PP 传输失败</option><option value="repoll_wait">release 后本地复查仍在传输</option></select></label>
+<label>重复步骤<select id="config-detail"><option value="first">首批详细，后续整段播放</option><option value="all">展开所有批次</option></select></label></div>
+<fieldset id="failure-field" hidden><legend>在哪些 PP 上，让哪些请求失败 / 取消？</legend><div id="failure-matrix" class="failure-matrix"></div><p>各级可以选择不同子集。bootstrap 对 bad 求并；传输阶段对 Success 或 Failed 的终态集合求交。</p></fieldset>
+<div id="wait-field" class="wait-options" hidden><label>发生等待的级<select id="config-waitRank"><option value="0">PP0</option><option value="1">PP1</option><option value="2" selected>PP2</option></select></label><label>请求<select id="config-waitRid"><option>R0</option></select></label><span>传输失败示例中，该位置先保持 Transferring，再到终态；若同时被选为失败，则以 Failed 为准。</span></div>
+<div class="settings-actions"><button class="button-primary" type="submit">生成流程</button><button id="share-scenario" type="button">复制已生成流程链接</button><span id="config-status" role="status"></span></div><p id="config-error" role="alert" hidden></p>
+<p class="settings-scope">固定 PP=3、FCFS、无前缀命中，忽略其他内存压力；保留同一请求的已计算前缀。数值是教学规模，batch-size 是选批容量上限，不是 TP / PP 数量；这是源码因果演示，不是真实运行 trace。</p></form></details>
+<div class="player-toolbar"><button id="player-reset" type="button">↺ 重置</button><button id="player-prev" type="button">← 上一步</button><button id="player-play" type="button" aria-pressed="false">▶ 播放全程</button><button id="player-next" type="button">下一步 →</button><label>速度<select id="player-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label><span id="player-mode">已暂停</span></div>
+<div class="player-position"><span id="player-counter"></span><label for="player-seek">主流程</label><input id="player-seek" type="range" min="0" max="1" value="0"></div>
+<div class="player-current"><span id="group-label"></span><strong id="player-current-title"></strong></div>
+<div class="frame-controls" id="frame-controls" hidden><button id="frame-prev" type="button">← 段内上一帧</button><button id="play-group" type="button">▶ 播放这一整段</button><button id="frame-next" type="button">段内下一帧 →</button><label for="frame-seek">段内进度</label><input id="frame-seek" type="range" min="0" max="1" value="0"><span id="frame-counter"></span></div>
+<section class="operation-lab" id="operation-lab" aria-labelledby="operation-title"><div class="lab-heading"><h3 id="operation-title"></h3><a id="operation-source" target="_blank" rel="noreferrer">对应源码 ↗</a></div><p id="operation-description"></p><div id="operation-visual" class="operation-visual"></div></section>
+<p class="module-description">完整 PP 结构 · 当前操作在图中同步高亮；点击组件查看职责。窄屏可横向滚动。</p><div class="pipeline-canvas" tabindex="0"><svg id="pipeline-svg" viewBox="0 0 1280 480" role="group" aria-label="Prefill PP=3 平面流水线"><title>PP=3 请求处理结构</title><desc>上方握手，中间切块组批与三级前向，下方结果、KV 交接和释放；高亮与主播放器一致。</desc>
+<path class="base-wire" d="M77 166 V102 H155 V66 H180 M290 87 V119 M570 87 V119 M850 87 V119 M290 161 V192 M570 161 V192 M850 161 V192 M400 223 H460 M680 223 H740"/>
+<path class="base-wire output-wire" d="M960 223 H1000 V279 H247.5 V312 M247.5 312 V292 H527.5 V312 M527.5 292 H807.5 V312"/><path class="base-wire kv-wire" d="M315 340 H319 V407 H1024 V340 H1050 M595 340 H599 V423 H1024 V340 H1050 M875 340 H879 V439 H1024 V340 H1050"/>
+<text class="pp-label" x="180" y="27">PP0</text>
+<text class="pp-label" x="460" y="27">PP1</text>
+<text class="pp-label" x="740" y="27">PP2</text>
+<g class="pipeline-node" data-node="frontend" tabindex="0" role="button" aria-label="请求接入"><rect class="node-shell" x="15" y="166" width="125" height="58" rx="5"/><text class="node-title" x="77.5" y="191" text-anchor="middle">请求接入</text>
+<text class="node-sub" x="77.5" y="212" text-anchor="middle">完整 token IDs</text>
+</g>
+<g class="pipeline-node" data-node="p0-bootstrap" tabindex="0" role="button" aria-label="请求 / Bootstrap"><rect class="node-shell" x="180" y="45" width="220" height="42" rx="5"/><text class="node-title" x="290.0" y="72" text-anchor="middle">请求 / Bootstrap</text>
+</g>
+<g class="pipeline-node" data-node="p0-schedule" tabindex="0" role="button" aria-label="切块 · 组 batch · 分配"><rect class="node-shell" x="180" y="119" width="220" height="42" rx="5"/><text class="node-title" x="290.0" y="146" text-anchor="middle">切块 · 组 batch · 分配</text>
+</g>
+<g class="pipeline-node" data-node="p0-compute" tabindex="0" role="button" aria-label="模型前向 · L0–L9"><rect class="node-shell" x="180" y="192" width="220" height="62" rx="5"/><text class="node-title" x="290.0" y="217" text-anchor="middle">模型前向 · L0–L9</text>
+<text class="node-sub" x="290.0" y="238" text-anchor="middle">Embedding</text>
+</g>
+<g class="pipeline-node" data-node="p0-transfer" tabindex="0" role="button" aria-label="结果 / KV"><rect class="node-shell" x="180" y="312" width="135" height="56" rx="5"/><text class="node-title" x="247.5" y="337" text-anchor="middle">结果 / KV</text>
+<text class="node-sub" x="247.5" y="358" text-anchor="middle">PP0 的层</text>
+</g>
+<g class="pipeline-node" data-node="p0-release" tabindex="0" role="button" aria-label="终态"><rect class="node-shell" x="330" y="312" width="70" height="56" rx="5"/><text class="node-title" x="365.0" y="337" text-anchor="middle">终态</text>
+<text class="node-sub" x="365.0" y="358" text-anchor="middle">释放</text>
+</g>
+<g class="pipeline-node" data-node="p1-bootstrap" tabindex="0" role="button" aria-label="请求 / Bootstrap"><rect class="node-shell" x="460" y="45" width="220" height="42" rx="5"/><text class="node-title" x="570.0" y="72" text-anchor="middle">请求 / Bootstrap</text>
+</g>
+<g class="pipeline-node" data-node="p1-schedule" tabindex="0" role="button" aria-label="切块 · 组 batch · 分配"><rect class="node-shell" x="460" y="119" width="220" height="42" rx="5"/><text class="node-title" x="570.0" y="146" text-anchor="middle">切块 · 组 batch · 分配</text>
+</g>
+<g class="pipeline-node" data-node="p1-compute" tabindex="0" role="button" aria-label="模型前向 · L10–L19"><rect class="node-shell" x="460" y="192" width="220" height="62" rx="5"/><text class="node-title" x="570.0" y="217" text-anchor="middle">模型前向 · L10–L19</text>
+<text class="node-sub" x="570.0" y="238" text-anchor="middle">hidden_states / residual</text>
+</g>
+<g class="pipeline-node" data-node="p1-transfer" tabindex="0" role="button" aria-label="结果 / KV"><rect class="node-shell" x="460" y="312" width="135" height="56" rx="5"/><text class="node-title" x="527.5" y="337" text-anchor="middle">结果 / KV</text>
+<text class="node-sub" x="527.5" y="358" text-anchor="middle">PP1 的层</text>
+</g>
+<g class="pipeline-node" data-node="p1-release" tabindex="0" role="button" aria-label="终态"><rect class="node-shell" x="610" y="312" width="70" height="56" rx="5"/><text class="node-title" x="645.0" y="337" text-anchor="middle">终态</text>
+<text class="node-sub" x="645.0" y="358" text-anchor="middle">释放</text>
+</g>
+<g class="pipeline-node" data-node="p2-bootstrap" tabindex="0" role="button" aria-label="请求 / Bootstrap"><rect class="node-shell" x="740" y="45" width="220" height="42" rx="5"/><text class="node-title" x="850.0" y="72" text-anchor="middle">请求 / Bootstrap</text>
+</g>
+<g class="pipeline-node" data-node="p2-schedule" tabindex="0" role="button" aria-label="切块 · 组 batch · 分配"><rect class="node-shell" x="740" y="119" width="220" height="42" rx="5"/><text class="node-title" x="850.0" y="146" text-anchor="middle">切块 · 组 batch · 分配</text>
+</g>
+<g class="pipeline-node" data-node="p2-compute" tabindex="0" role="button" aria-label="模型前向 · L20–L29"><rect class="node-shell" x="740" y="192" width="220" height="62" rx="5"/><text class="node-title" x="850.0" y="217" text-anchor="middle">模型前向 · L20–L29</text>
+<text class="node-sub" x="850.0" y="238" text-anchor="middle">输出头 / 结果</text>
+</g>
+<g class="pipeline-node" data-node="p2-transfer" tabindex="0" role="button" aria-label="结果 / KV"><rect class="node-shell" x="740" y="312" width="135" height="56" rx="5"/><text class="node-title" x="807.5" y="337" text-anchor="middle">结果 / KV</text>
+<text class="node-sub" x="807.5" y="358" text-anchor="middle">PP2 的层</text>
+</g>
+<g class="pipeline-node" data-node="p2-release" tabindex="0" role="button" aria-label="终态"><rect class="node-shell" x="890" y="312" width="70" height="56" rx="5"/><text class="node-title" x="925.0" y="337" text-anchor="middle">终态</text>
+<text class="node-sub" x="925.0" y="358" text-anchor="middle">释放</text>
+</g>
+<g class="pipeline-node" data-node="decode-bootstrap" tabindex="0" role="button" aria-label="Decode · 接收准备"><rect class="node-shell" x="1050" y="45" width="210" height="42" rx="5"/><text class="node-title" x="1155.0" y="72" text-anchor="middle">Decode · 接收准备</text>
+</g>
+<g class="pipeline-node" data-node="decode-kv" tabindex="0" role="button" aria-label="Decode · 接收 KV"><rect class="node-shell" x="1050" y="312" width="210" height="56" rx="5"/><text class="node-title" x="1155.0" y="337" text-anchor="middle">Decode · 接收 KV</text>
+<text class="node-sub" x="1155.0" y="358" text-anchor="middle">按层 / 按 token 区间</text>
+</g>
+<g class="pipeline-node" data-node="decode-run" tabindex="0" role="button" aria-label="Decode · 后续生成"><rect class="node-shell" x="1050" y="403" width="210" height="42" rx="5"/><text class="node-title" x="1155.0" y="430" text-anchor="middle">Decode · 后续生成</text>
+</g>
 <g id="pipeline-routes" aria-hidden="true"></g></svg></div>
-<div class="player-legend"><span class="control">● 请求 / 共识</span><span class="proxy">● 激活</span><span class="output">● 结果 t₀</span><span class="kv">● KV 传输</span><span>设备亮起：正在操作</span><span>R 工单：当前操作位置</span><span>KV 仓：虚线待写入 · 金色保留引用 · 灰色引用已释放</span></div>
-<section class="operation-lab" id="operation-lab" aria-labelledby="lab-title">
-<div class="lab-heading"><div><span class="eyebrow">组件内部 · 数据怎样变化</span><h3 id="lab-title">请求接入</h3></div><button id="lab-follow" type="button">跟随当前动作</button></div>
-<p id="lab-context"></p><div class="lab-stages" id="lab-stages" aria-label="内部操作分镜"></div>
-<div class="lab-transport"><button id="lab-prev" type="button">← 上一帧</button><button id="lab-play" type="button">▶ 演示本组件</button><button id="lab-next" type="button">下一帧 →</button><span id="lab-frame-status" role="status" aria-live="polite"></span></div>
-<div class="lab-visual" id="lab-visual"></div><p id="lab-explanation"></p><a id="lab-source" target="_blank" rel="noreferrer">查看对应源码 ↗</a>
-<p class="lab-note">内部演示用于拆解当前动作，不推进上方请求时间线。token ID 为教学预设；切块预算 4、页大小 2，只演示控制逻辑，不是部署建议。</p></section>
-<div class="player-event" aria-live="polite" aria-atomic="true"><div><p class="eyebrow" id="event-location">HTTP / Tokenizer</p><h3 id="event-title">接入请求 R</h3><p id="event-description">前端准备 token IDs 与 PD 配对信息。</p></div><div class="event-gate"><span>下一步需要</span><p id="event-gate">请求送达 PP0 的调度入口。</p><a id="event-source" href="#step-intake">阅读此阶段源码说明 ↓</a></div></div>
-<details class="module-inspector"><summary>查看模块职责与当前状态</summary><p id="module-description">点击图中的模块，查看它的职责和当前状态。</p><div id="module-actions"></div></details>
-<details class="player-sequence"><summary>展开完整动作序列，跳转到任一小步</summary><ol id="event-list"></ol></details>
-<p class="player-boundary">组件图按职责划分：计算站处理模型层，KV 仓表示本级缓存与发送器，检查闸表示终态与释放；不代表物理部署。按源码依赖展开一种可阅读的事件顺序，非实测时间线。队列与 KV 标签表示本小步结束后的状态。各级可以交错推进；KV 发送无需等待三级都处理完结果。动画快慢只控制阅读节奏。30 层为分层示意。</p>
-<noscript><p>启用 JavaScript 可播放与逐步高亮；下方完整的 12 阶段说明仍可直接阅读。</p></noscript></section>
+<p id="module-description" class="module-description">上方数据变化与下方结构图使用同一个播放时钟。</p>
+<div class="player-legend"><span class="control">请求 / 共识</span><span class="proxy">激活</span><span class="output">结果</span><span class="kv">KV 传输</span><span>实线高亮 = 当前操作 · 浅色 = 已访问</span></div>
+<details class="request-state"><summary>查看每条请求在三个 PP 上的队列与资源状态</summary><div id="request-state"></div></details>
+<details class="player-sequence"><summary>主流程目录 · 后续块合并为一段，可定位到任一步</summary><ol id="event-list"></ol></details>
+<p class="player-boundary">压缩只改变阅读颗粒度：段内仍完整执行切块、组批、三级前向、结果和 KV 发送；最终块还包括终态与清理。各级在实际程序中可以交错；本页不把线性演示当作同步屏障。</p>
+<noscript>请启用 JavaScript 操作演示；下方 12 个机制阶段仍可阅读。</noscript></section>
+
 <section class="chart-panel life-walkthrough" id="walkthrough" aria-labelledby="walk-title"><div class="panel-heading"><div><p class="eyebrow">沿请求逐步走读</p><h2 id="walk-title">12 个阶段，对照源码阅读</h2></div><span class="panel-caption">与上方当前动作同步 · 可点击章节跳转</span></div>
 <p class="life-model-note">以下是 12 个机制阶段，上图将其展开为更细的动作序列；同一阶段可在多个级重复出现。它们不是 12 次 loop 或全局同步时间线。各级可交错推进；尤其步骤 8–9 是各级各自衔接，<strong>没有“三级结果处理完再一起发送 KV”的屏障</strong>。</p>
 <div class="life-layout"><nav class="life-nav" aria-label="请求生命周期步骤"><p class="life-phase">接入与准入</p><a href="#step-intake" data-step="0"><span>01</span>接入请求</a><a href="#step-bootstrap" data-step="1"><span>02</span>创建本地请求</a><a href="#step-admission" data-step="2"><span>03</span>共同准入</a><a href="#step-batch" data-step="3"><span>04</span>组批与分配</a><p class="life-phase">三级前向</p><a href="#step-pp0" data-step="4"><span>05</span>PP0 前向</a><a href="#step-pp1" data-step="5"><span>06</span>PP1 前向</a><a href="#step-pp2" data-step="6"><span>07</span>PP2 与首 token</a><p class="life-phase">结果与交接</p><a href="#step-output" data-step="7"><span>08</span>结果回流</a><a href="#step-transfer" data-step="8"><span>09</span>提交 KV 交接</a><p class="life-phase">完成与释放</p><a href="#step-terminal" data-step="9"><span>10</span>汇合传输终态</a><a href="#step-release" data-step="10"><span>11</span>回流释放名单</a><a href="#step-finish" data-step="11"><span>12</span>清理与应答</a></nav><div class="life-detail"><article class="life-step" id="step-intake" aria-labelledby="title-intake">
@@ -220,7 +112,7 @@
 <details class="life-sources"><summary>对应源码 · 5 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L573">process_bootstrapped_queue ↗</a><small>managers/scheduler_pp_mixin.py:573</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L593">_pp_pd_get_bootstrapped_ids ↗</a><small>managers/scheduler_pp_mixin.py:593</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L660">_pp_pd_send_consensus_bootstrapped_ids ↗</a><small>managers/scheduler_pp_mixin.py:660</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L395">finalize_bootstrap ↗</a><small>disaggregation/prefill.py:395</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L304">回流在选批之后处理 ↗</a><small>managers/scheduler_pp_mixin.py:304</small></li></ul></details></article><article class="life-step" id="step-batch" aria-labelledby="title-batch">
 <p class="eyebrow">接入与准入 / 04</p><h3 id="title-batch" tabindex="-1">选入 Prefill batch，准备输入和 KV 写入位置</h3><p class="life-lead">准入之后，R 仍需等 token 预算和可用显存。被选中时，各级准备执行同一请求所需的本地 batch。</p>
 <div class="life-ranks"><div class="life-rank current"><span>PP0</span><strong>B + 本地 KV 位置</strong></div><div class="life-rank current"><span>PP1</span><strong>对应的本地 B 与位置</strong></div><div class="life-rank current"><span>PP2</span><strong>对应的本地 B 与位置</strong></div></div><p class="life-flow local">每级本地：waiting_queue → PrefillAdder → ScheduleBatch → mbs[slot]</p>
-<div class="life-explanation"><p>get_new_batch_prefill 检查 waiting_queue。init_next_round_input 匹配前缀并确定待算范围，PrefillAdder 根据 token、请求槽位和 chunk 预算选入 R。本例设 P/D 都无前缀命中，prompt 能在一个 chunk 内完成。</p><p>R 被移出 waiting_queue，进入 ScheduleBatch；prepare_for_extend 设置 EXTEND 模式，整理输入、长度信息，并通过 alloc_for_extend 分配请求槽和 KV 位置（out_cache_loc）。PP loop 将本地 batch 放入 mbs[mb_id]。图中将这份单请求 batch 记作 B。</p></div>
+<div class="life-explanation"><p>get_new_batch_prefill 检查 waiting_queue。init_next_round_input 匹配前缀并确定待算范围，PrefillAdder 根据 token、请求槽位和 chunk 预算选入 R。正文先按单请求主线解释；上方参数演示还支持多请求共享预算、分块与异常分支。</p><p>R 被移出 waiting_queue，进入 ScheduleBatch；prepare_for_extend 设置 EXTEND 模式，整理输入、长度信息，并通过 alloc_for_extend 分配请求槽和 KV 位置（out_cache_loc）。PP loop 将本地 batch 放入 mbs[mb_id]。图中将这份单请求 batch 记作 B。</p></div>
 <dl class="life-checkpoints"><div><dt>请求状态</dt><dd>waiting_queue → B（EXTEND）；获得本地请求槽与 KV 位置</dd></div><div><dt>推进条件</dt><dd>资源预算允许，当前本地 batch 已准备；PP1/PP2 还要等上游激活。</dd></div></dl>
 <details class="life-sources"><summary>对应源码 · 4 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L3797">_get_new_batch_prefill_raw ↗</a><small>managers/scheduler.py:3797</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L3959">init_next_round_input / add_one_req ↗</a><small>managers/scheduler.py:3959</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L4037">ScheduleBatch.init_new / prepare_for_extend ↗</a><small>managers/scheduler.py:4037</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L2678">prepare_for_extend ↗</a><small>managers/schedule_batch.py:2678</small></li></ul></details></article><article class="life-step" id="step-pp0" aria-labelledby="title-pp0">
 <p class="eyebrow">三级前向 / 05</p><h3 id="title-pp0" tabindex="-1">PP0：嵌入输入，计算第一段层</h3><p class="life-lead">第一段流水级从 token IDs 开始，把 prompt 变成中间激活，同时写下自己负责的层的 KV。</p>
@@ -278,7 +170,7 @@
 <h2 id="baseline">源码基线与阅读范围</h2><div class="table-scroll"><table><tbody>
 <tr><th>源码目录</th><td><code>D:/Codefiles/sglang</code></td></tr><tr><th>分支 / commit</th><td>main / <code>279339f113b79af84f27fd3ac92d0a13bd3f4cbd</code></td></tr><tr><th>读取时间 / 工作区</th><td>2026-09-17；读取前干净；源码只读，未做 patch 或设备实验</td></tr>
 <tr><th>场景约定</th><td>CUDA，PD Prefill，PP=3，TP=CP=DP=1，pp_async_batch_depth=0；普通 Llama 类 FULL attention 生成请求；以 Mooncake 说明传输提交</td></tr>
-<tr><th>主线假设</th><td>一条 R、各次计算均为单请求 batch B；可选单块或三块（12 token / 块预算 4 / 页大小 2）；P/D 均无前缀命中；不启用 HiCache、L3、staging、投机解码、乐观 Prefill、约束采样；资源足够且请求成功</td></tr>
+<tr><th>主线假设</th><td>可配置 1–4 条请求、输入长度、批共享 chunk 预算、batch 请求容量与页大小；首批详细，后续合并播放；P/D 均无前缀命中；不启用 HiCache、L3、staging、投机解码、乐观 Prefill、约束采样；其他资源足够；支持正常、等待、取消和各级部分失败</td></tr>
 <tr><th>验证边界</th><td>静态源码走读与页面验证；步骤是因果阅读顺序，非实际 trace、性能仿真或同时发生的全局快照</td></tr></tbody></table></div>
 <p>本页固定当前读取的提交 <code>279339f113</code>。loop 入门 / 依赖图已统一到同一提交，但使用 HiCache host-hit 场景；可借它们理解调度交错，不能直接照搬其 L# 编号、耗时或缓存步骤。</p>
 <p><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/PD%20Prefill%20PP%3D3%20请求生命周期源码学习文档.md">阅读对应 Markdown 文档 ↗</a></p></section>

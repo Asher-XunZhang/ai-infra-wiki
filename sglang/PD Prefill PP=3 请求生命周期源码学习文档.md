@@ -13,7 +13,7 @@
 | 工作区状态 | SGLang 与 Wiki 开始时均干净；只在 Wiki 新增学习资料与页面 |
 | 操作边界 | 只读源码分析；页面构建与交互验证；未启动 SGLang，未做 GPU/NCCL/Mooncake 运行实验 |
 | 主线 | CUDA、PD Prefill、PP=3、TP=CP=DP=1、pp_async_batch_depth=0；普通 Llama 类 FULL attention 生成请求；以 Mooncake 说明传输提交 |
-| 示例假设 | 一条 R、各次计算均使用单请求 batch B；正文以单块为主，交互另提供 12 token / 每块 4 token / 页大小 2 的三块示例，P/D 都无前缀命中；资源充足、正常成功 |
+| 示例假设 | 正文以单请求成功路径为主；交互可配置 1–4 条等长请求、输入长度、共享 chunk 预算、请求容量与页大小，支持正常、等待和部分失败。默认 12 token / chunk 预算 4 / 页大小 2。FCFS、P/D 冷缓存，其他内存预算充足 |
 | 不展开 | 外部路由选址、Decode 后续生成；关闭 HiCache/L3/staging、投机解码、乐观 Prefill、约束采样等分支 |
 
 PP loop 页面与本页现已统一到 `279339f113`。两者分别采用 HiCache host-hit 场景与关闭 HiCache 的冷缓存场景，不能直接照搬示例 loop 编号、耗时或缓存步骤。下文是源码事实与显式示例假设的因果整理，不是运行观察或性能时间线。
@@ -50,28 +50,47 @@ flowchart LR
 
 ### 如何操控流水线图
 
-交互页以完整的 PP0 / PP1 / PP2 与 Decode 接收端为主图，保留 12 个机制阶段；单块模式展开为 **44 个动作**，三块模式为 **75 个动作**。这些动作是源码依赖关系的一种线性阅读顺序，不是同等次数的 loop，也不是真实运行 trace；各级准备和通信可以交错。正文阶段编号与图中动作编号分开，组批、结果处理、发送与释放会在各级重复出现。
+主播放器现在由参数驱动。上方数据操作图展示当前输入如何变化，下方平面流水线同时高亮负责的模块；两者共用播放时钟。完整 token 序列、请求边界、本轮范围、KV 累积和每级状态都来自同一份动作快照。仍保留 12 个机制阶段作为源码阅读索引，动作数量由配置生成，不等同于 loop 次数。
 
-总图采用平面矩形和检查节点，以流水线表达职责关系：上方登记台处理请求与握手，选批入口准备 batch，三级计算模块通过激活通道连接。每个计算站向自己的 KV 仓写入缓存；首 token 的结果沿独立轨道回流，各仓分别向 Decode 发货，终态检查闸负责共识和释放。组件形状不是实际部署拓扑，连线上的 `h` 是中间激活，不能理解为同一份 Req 或 KV 随着计算向下一级搬家。
+- **先选示例或修改参数**：支持单块、三块、多请求组批、握手失败、取消、握手等待、混合传输终态和本地复查等待。修改参数后点击“生成流程”；选预设会直接生成。
+- **切块与组批是主流程动作**：先显示共享 token 预算和候选请求，再标出每条完整序列的前缀 / 新增 / 尾部，最后把新增 IDs 按请求边界装入 batch。关闭切块时也展示“选择完整剩余序列 → 组 batch”，不伪造一次切分。
+- **首批详细，后续整段**：默认详细展示第一批；后续每个 batch（单请求时就是一个 chunk）合并成一段，自动跑完整个内部流程。段内可以暂停、前后单步或拖动；最后一块包含终态共识和清理。可改为展开全部批次。多请求时一批可同时包含不同请求的最终块与中间块。
+- **主流程与段内进度分开**：主进度选择阅读步骤；段内进度检查压缩片段里的具体操作。反向跳转恢复相应快照，不继承未来状态。播放速度仅影响阅读节奏。
+- **点击组件**：暂停播放、查看职责，并可定位到该模块的下一次操作。下方源码阶段随当前动作切换。
+- **复制参数链接**：链接保存所有参数、各级失败集合及当前动作；`#step-...` 章节入口仍保留。页面进入后台会暂停；系统减少动态效果时关闭装饰运动，保留数据状态。
 
-当前操作的设备显示 R 工单并高亮。KV 仓中的虚线块表示已分配待写入，金色块表示 KV 已写入且请求仍持有引用，释放后变为灰色虚线；这只表示请求引用已释放，不表示缓存物理内容已清空。Decode 仓中三个分区在本例相应 sender 观察到 Success 后着色。移动速度仅为教学动画，不表示带宽或耗时。
+实色描边表示当前操作，浅色表示访问过。请求资源是否仍占用，要看每级请求状态，而不是模块底色。各级分别发送 KV；PP0 发送不以三级都处理完结果为前提。末尾 Decode 模块只是交接边界，不增加“等 P 全部释放后才能生成”的屏障。
 
-- **播放 / 暂停与速度**：自动逐步高亮模块，沿当前消息路径显示移动标记；速度仅影响阅读节奏。页面转入后台会暂停。系统设置减少动态效果时，保留高亮和箭头，关闭移动标记与闪烁。
-- **前后单步 / 拖动进度**：任意前进或回看。每次从动作前缀重新推导队列、KV 引用与 sender 状态，避免倒退后残留未来状态。
-- **点击模块**：暂停主线，展开该组件的内部操作分镜。默认跟随主线时，分镜只展示当前动作；点击设备后可查看完整职责，再用“跟随当前动作”恢复。原有模块状态和前后操作跳转仍保留。
-- **内部动画 / 单帧推进**：可播放一个组件的输入、处理、输出变化，或逐帧检查。KV 数量、发送游标和资源槽在动作前后快照间切换；内部演示不推进主线，不伪造一次实际运行。
-- **完整动作序列**：展开后可直接跳转；动作链接使用稳定的 `#event-...` 标识。原来的 `#step-...` 阶段链接仍可使用。
-- **缩放 / 窄屏平移**：在小屏幕左右滑动查看三级结构；放大时仍保留全部模块。下方正文和源码锚点与当前动作对应的阶段同步。
+### 参数含义与共享预算
 
-实色描边表示当前操作对象，浅色访问标记仅表示之前经过；是否仍占有资源要看队列、KV 引用与 sender 标签。结果、激活、KV 和控制消息使用不同颜色，不把所有连线都理解成请求对象本身移动。
+| 参数 | 教学含义 | 源码边界 |
+| --- | --- | --- |
+| 请求数量 / input token length | 1–4 条等长请求，每条 1–48 token | 预设整数 IDs，不是真实 tokenizer 编码；所有请求预先到达 |
+| chunk-size | 整个 batch 的 chunk token 预算，0 表示关闭切块 | 对应 `chunked_prefill_size` 的教学规模；非零值必须能被 `page_size` 整除 |
+| batch-size | 一批最多接纳多少条请求 | 表示 `prefill_max_requests` 一类准入容量，其他请求槽与内存约束假设足够；不是 TP/PP 数量 |
+| KV 页大小 | 1、2 或 4 token / 页 | 普通 CUDA 路径按页向上计费，非最终发送取整页；这里使用逻辑位置，不伪造物理页索引 |
+| 每级失败集合 | 可在 PP0、PP1、PP2 选择不同请求子集 | 影响准入、计算请求集合或局部传输终态，不能只改显示颜色 |
+| 等待位置 | 指定某级的某条请求暂未就绪 | 后续条件改变是显式教学假设，不是对真实等待耗时的估计 |
 
-本例安排 PP1 晚于另外两级报告传输完成，以演示“局部成功 → 空终态交集 → 后续重新求交 → release 回流”的等待门槛。这是显式教学假设，不是实测性能。PP0 在自己的清理分支发出 P 侧完成输出，PP1/PP2 随后各自清理；末尾 Decode 模块表示阅读边界，不新增“等待 P 全部释放才开始 Decode”的屏障。
+例如 3 条请求各 6 token、chunk 预算 8、batch 容量 2、页大小 2：B1 选择 R0[0:6] + R1[0:2]；B2 先续算 R1[2:6]，再选 R2[0:4]；B3 续算 R2[4:6]。不能把预算 8 当成每条请求各享有 8。
+
+另一个页计费例子：两条请求各 3 token、预算 6、页大小 2。第一条完整 3 token 计费 4，剩余预算 2 只能给第二条选择 2 token。容量为 2 不代表两条都能完整计算。
+
+源码锚点：[`_get_new_batch_prefill_raw` 的 continuation 优先与选批](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L3857)、[`add_chunked_req`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_policy.py#L950)、[`_select_prefill_admission`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_policy.py#L1278)、[`prepare_for_extend`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L2678)、[chunk 与页大小的参数校验](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/arg_groups/validation_hook.py#L131)。本模型忽略 HiCache、回撤、SWA/Mamba、显存不足、调度延迟和请求到达时序，不用这些教学数值预测真实 batch 序列。
+
+### 用部分失败观察三个不同门槛
+
+1. **bootstrap 准入**：各级 `WaitingForInput` 的 good 求交，Failed 的 bad 求并。本地 `FINISH_ABORT` 也从 good 移除并加入 bad，即使 sender 仍报告就绪。预设 PP0 坏 R0、PP1 坏 R1、PP2 无失败，会得到 bad={R0,R1}，只有 R2 计算。返回的 bad 让各级清理对应请求。[共识与取消源码](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L593)
+2. **传输终态共识**：先在每级收集 Success 或 Failed，再跨 PP 求交。混合例子中，R0 在 PP1 Failed、在 PP2 Transferring，因此暂不进入共同名单；R1 在 PP2 Failed、其他级 Success，已经可以收尾。动画先收尾 R1、保留 R0 的引用，再在剩余级到终态后重做共识。[终态集合源码](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L635)
+3. **名单回流后的本地复查**：请求在 release 名单中，本地当前 poll 仍为瞬态时必须留下，不能释放 KV / metadata。Success 分支清理并调用 sender.clear；Failed 分支调用 `handle_inflight_transfer_failure`，释放引用并中止，不能将它显示为成功，也不虚构该分支调用 sender.clear。[本地复查与清理](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L991)、[失败处理](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L1082)
+
+终态交集传的是 rid，不是统一成功/失败结论。因此同一个 rid 可以在本级成功分支、另一级失败分支收尾。本页的总览“交接异常”是对演示中各级记录的归纳，不代表源码里存在一个相同名称的全局状态或模拟了 Decode 的失败传播。释放的是请求对 KV 的引用，不表示缓存中的物理字节已清空。
 
 ### 图的实现与验证边界
 
-模型位于 `pages/sglang/pd-prefill-lifecycle/lifecycle-model.js`，交互控制在同目录 `player.js`，图结构与源码说明保留在静态 HTML。`node scripts/test_prefill_lifecycle.cjs` 检查激活依赖、KV 发送前置条件、部分终态不能释放、release 许可、本地资源清理以及回看状态的一致性。控制器还通过最小 DOM 替身与可控时钟检查播放、暂停、拖动、重播、速度切换、后台暂停、模块查看和序列终点。它验证教学模型与控制逻辑，不运行真实浏览器、SGLang 或传输后端。
+`scenario-engine.js` 负责参数校验、选批、分块和每请求 × 每 PP 的状态转换；每个原子动作保存前后快照。重复步骤压缩只改变展示分组，不删掉计算、通信或清理动作。`player.js` 管理一个播放时钟、两个进度控制和 URL；`operation-lab.js` 从同一个快照渲染当前数据变化；静态 HTML 保留拓扑、12 阶段说明和源码锚点。
 
-本次修订另做静态页面与脚本检查；没有新增真实浏览器运行或设备实验。与 loop 页面统一使用 `279339f113`，保留关闭 HiCache 的冷缓存配置差异。
+`node scripts/test_prefill_lifecycle.cjs` 检查具体切分结果、共享预算、连续区间、压缩/展开等价性、局部失败与等待、资源引用、本地复查保护和反向跳转。`scripts/test_prefill_lifecycle_browser.cjs` 另用真实 Chromium 检查参数生成、链接恢复、自动播放、段内控制、窄屏布局和减少动态效果。验证对象是教学引擎与网页，没有运行 SGLang / GPU / NCCL / Mooncake；动作顺序是符合所讲依赖的线性阅读顺序，不是完整并发调度模拟器。浏览器测试需要 Playwright、Chromium 和本地静态服务；默认地址为 `http://127.0.0.1:8765/sglang/pd-prefill-lifecycle/`，可用 `PREFILL_TEST_URL` 覆盖。
 
 ### 三块示例：从同一序列切出不同区间
 

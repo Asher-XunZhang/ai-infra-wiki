@@ -14,6 +14,7 @@ on:
       - 'scripts/test_pp_dependency_view.py'
       - 'scripts/build_pp_step_guide.py'
       - 'scripts/test_pp_step_guide.py'
+      - 'scripts/test_prefill_lifecycle.cjs'
       - 'scripts/pp_source_baseline.py'
       - 'scripts/check_pp_source.py'
       - '.github/workflows/pages.yml'
@@ -47,6 +48,8 @@ jobs:
           python3 -B scripts/test_pp_dependency_view.py
           python3 -B scripts/test_pp_step_guide.py
           python3 -B scripts/check_pp_source.py
+      - name: Validate parameterized request lifecycle
+        run: node scripts/test_prefill_lifecycle.cjs
       - name: Build pages with content-versioned assets
         run: python3 scripts/build_pages.py
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5

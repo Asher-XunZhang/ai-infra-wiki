@@ -1,171 +1,88 @@
 (() => {
   'use strict';
-  const baseModel=window.PrefillLifecycle, $=id=>document.getElementById(id);
-  let model=baseModel.scenario($('player-scenario').value==='single'?'single':'chunked');
-  const player=$('pipeline-player'),svg=$('pipeline-svg'),routes=$('pipeline-routes');
-  const articles=[...document.querySelectorAll('.life-step')];
-  const phaseLinks=[...document.querySelectorAll('.life-nav a')];
-  const nodeElements=[...svg.querySelectorAll('[data-node]')];
-  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-  let position=0,playing=false,timer=null,inspected=null;
-  const phaseStart=phase=>model.events.findIndex(event=>event.phase===phase);
-  const labels={control:'请求 / 控制消息',proxy:'中间激活',output:'结果 t₀',kv:'KV / 交接数据'};
-  function element(tag,attrs={}) {
-    const el=document.createElementNS('http://www.w3.org/2000/svg',tag);
-    Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));return el;
-  }
-  function routePath(wire) {
-    const a=model.nodes[wire.from],b=model.nodes[wire.to];
-    const ax=a.x+a.w/2,bx=b.x+b.w/2;
-    const ay=a.y+(a.kind==='compute'?82:a.h/2),by=b.y+(b.kind==='compute'?82:b.h/2);
-    if(wire.route==='entry')return `M${ax} ${a.y} V270 H200 V${by} H${b.x}`;
-    if(wire.route==='return'&&a.kind==='release')return `M${a.x} ${ay} H${a.x-16} V1015 H200 V${by} H${b.x}`;
-    if(wire.route==='return')return `M${a.x+a.w} ${ay} H1370 V20 H200 V${by} H${b.x}`;
-    if(wire.route==='output-return')return `M${a.x+a.w} ${ay} H1320 V643 H${bx} V${b.y}`;
-    if(wire.route==='response')return `M${a.x} ${ay} H200 V${by} H${b.x+b.w}`;
-    if(wire.route==='handshake')return `M${a.x} ${ay} H1355 V${90+b.rank*10} H${bx} V${b.y}`;
-    if(wire.route==='kv')return `M${a.x+a.w} ${ay} H${a.x+a.w+22} V${930+a.rank*18} H1355 V${by} H${b.x}`;
-    if(a.kind==='release'&&b.kind==='release')return `M${a.x} ${ay} H${a.x-16} V1015 H${b.x-16} V${by} H${b.x}`;
-    if(wire.kind==='output')return `M${ax} ${a.y} V658 H${bx} V${b.y}`;
-    if(a.rank===b.rank&&a.rank!==undefined)return `M${ax} ${a.y+a.h} V${(a.y+a.h+b.y)/2} H${bx} V${b.y}`;
-    if(a.x===b.x)return `M${ax} ${a.y+a.h} V${b.y}`;
+  const api=window.PrefillLifecycle,$=id=>document.getElementById(id),player=$('pipeline-player'),svg=$('pipeline-svg');
+  const fields=['requests','inputLength','chunkSize','batchSize','pageSize','fault','waitRank','waitRid','detail'];
+  const articles=[...document.querySelectorAll('.life-step')],phaseLinks=[...document.querySelectorAll('.life-nav a')];
+  let model,eventIndex=0,frameIndex=0,playing=false,onlyGroup=false,timer=null,draftFailures=api.defaults.failed.map(x=>[...x]);
+  const activeFrame=()=>model.events[eventIndex].frames[frameIndex];
+  const activeGroup=()=>model.events[eventIndex];
+  function svgEl(tag,attributes){const el=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attributes))el.setAttribute(k,v);return el;}
+  function path(wire){
+    const a=model.nodes[wire.from],b=model.nodes[wire.to],ax=a.x+a.w/2,bx=b.x+b.w/2,ay=a.y+a.h/2,by=b.y+b.h/2;
+    if(wire.path==='entry')return `M${ax} ${a.y} V102 H155 V${by} H${b.x}`;
+    if(wire.path==='handshake')return `M${a.x} ${ay} H1024 V${96+b.rank*3} H${bx} V${b.y+b.h}`;
+    if(wire.path==='return'&&a.kind==='bootstrap')return `M${a.x+a.w} ${ay} H1014 V102 H155 V${by} H${b.x}`;
+    if(a.kind==='release')return `M${a.x} ${ay} H${a.x-6} V464 H${b.x-6} V${by} H${b.x}`;
+    if(wire.path==='output-return')return `M${a.x+a.w} ${ay} H1008 V279 H${bx} V${b.y}`;
+    if(wire.kind==='output')return `M${ax} ${a.y} V292 H${bx} V${b.y}`;
+    if(wire.path==='kv')return `M${a.x+a.w} ${ay} H${a.x+a.w+6} V${407+a.rank*16} H1024 V${by} H${b.x}`;
     return `M${a.x+a.w} ${ay} H${b.x} V${by}`;
   }
-  function drawRoutes(event) {
-    routes.replaceChildren();
-    const defs=element('defs'),marker=element('marker',{id:'flow-arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:7,markerHeight:7,orient:'auto-start-reverse'});
-    marker.append(element('path',{d:'M0 0 L10 5 L0 10 Z',fill:'var(--flow-current)'}));defs.append(marker);routes.append(defs);
-    for(const wire of event.routes){
-      const d=routePath(wire);
-      routes.append(element('path',{d,class:'active-route','marker-end':'url(#flow-arrow)'}));
-      const packet=element('g',{class:'flow-packet',style:`offset-path:path('${d}');offset-distance:50%`});
-      packet.append(element('rect',{x:-18,y:-13,width:36,height:26,rx:5}));
-      const label=element('text',{y:5});label.textContent={control:event.id==='terminal-1-wait'?'∅':'R',proxy:'h',output:event.middle?'B':'t₀',kv:'KV'}[wire.kind];
-      packet.append(label);routes.append(packet);
-    }
+  function draw(f){
+    player.style.setProperty('--flow-current',`var(--flow-${f.kind})`);
+    for(const el of svg.querySelectorAll('[data-node]')){const id=el.dataset.node;el.classList.toggle('is-active',f.active.includes(id));el.classList.toggle('is-visited',f.after.visited.includes(id));el.setAttribute('aria-label',`${model.nodes[id].title}，${f.active.includes(id)?'当前操作':'查看职责'}`);}
+    const routes=$('pipeline-routes');routes.replaceChildren();
+    const defs=svgEl('defs',{}),marker=svgEl('marker',{id:'flow-arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto'});marker.append(svgEl('path',{d:'M0 0 L10 5 L0 10 Z',fill:'var(--flow-current)'}));defs.append(marker);routes.append(defs);
+    for(const wire of f.routes){const d=path(wire);routes.append(svgEl('path',{class:'active-route',d,'marker-end':'url(#flow-arrow)'}));const p=svgEl('circle',{r:4,class:'flow-packet',style:`offset-path:path('${d}');offset-distance:50%`});routes.append(p);}
   }
-  function inspectNode(id,state=model.snapshot(position)) {
-    inspected=id;const node=model.nodes[id];let detail=node.role;
-    if(node.rank!==undefined){
-      const r=state.ranks[node.rank];
-      detail+=` 本小步结束后：${model.queueLabels[r.queue]}；${model.kvLabels[r.kv]}；sender ${model.senderLabels[r.sender]}；metadata ${r.metadata?'仍占用':'未占用'}；本地 Req ${r.token?'已记录 t₀':'尚未记录 t₀'}。`;
-    }
-    if(id==='decode-kv')detail+=` 已有 ${state.ranks.filter(r=>r.sent).length}/3 个级提交发送，${state.ranks.filter(r=>r.terminal).length}/3 个级报告成功。`;
-    $('module-description').textContent=`${node.title}：${detail} ${model.events[position].active.includes(id)?'当前小步正在操作此模块。':'此模块不是当前小步的操作对象。'}`;
-    $('module-actions').replaceChildren();
-    const previous=model.events.map((event,i)=>({event,i})).filter(({event,i})=>i<position&&event.active.includes(id)).pop();
-    const next=model.events.findIndex((event,i)=>i>position&&event.active.includes(id));
-    for(const [name,index] of [['回看此模块的上一次操作',previous?.i],['跳到此模块的下一次操作',next]]){
-      if(index===undefined||index<0)continue;
-      const button=document.createElement('button');button.type='button';button.textContent=name;
-      button.addEventListener('click',()=>{pause();show(index,true);player.scrollIntoView({block:'start'});});$('module-actions').append(button);
-    }
+  function show(write=true){
+    const g=activeGroup(),f=activeFrame();
+    $('player-counter').textContent=`${eventIndex+1} / ${model.events.length}`;$('player-seek').value=eventIndex;
+    $('player-current-title').textContent=g.title;$('group-label').textContent=g.compressed?'后续块 · 一段完整流程':'详细动作';
+    $('frame-controls').hidden=!g.compressed;$('frame-counter').textContent=`${frameIndex+1} / ${g.frames.length}`;$('frame-seek').max=g.frames.length-1;$('frame-seek').value=frameIndex;
+    $('frame-prev').disabled=frameIndex===0;$('frame-next').disabled=frameIndex===g.frames.length-1;
+    $('player-prev').disabled=eventIndex===0;$('player-next').disabled=eventIndex===model.events.length-1;
+    $('player-seek').setAttribute('aria-valuetext',`${eventIndex+1}：${g.title}`);
+    window.PrefillOperationLab.render(f,model);draw(f);$('module-description').textContent='当前模块：'+f.active.map(id=>model.nodes[id].title).join(' · ')+'。点击组件可查看职责。';
+    articles.forEach((a,i)=>a.hidden=i!==f.phase);phaseLinks.forEach((a,i)=>{if(i===f.phase)a.setAttribute('aria-current','step');else a.removeAttribute('aria-current');});
+    [...$('event-list').children].forEach((li,i)=>li.firstElementChild.setAttribute('aria-current',i===eventIndex?'step':'false'));
+    if(write)history.replaceState(null,'',scenarioUrl(f.key));
+    if(!playing){$('player-play').textContent=eventIndex===model.events.length-1?'↺ 重播':'▶ 播放全程';$('player-mode').textContent='已暂停 · 可单步';}
   }
-  function show(index,writeHash=false) {
-    position=Math.max(0,Math.min(model.events.length-1,index));
-    const event=model.events[position],state=model.snapshot(position);
-    player.style.setProperty('--flow-current',`var(--flow-${event.kind})`);
-    const active=new Set(event.active),visited=new Set(state.visited);
-    nodeElements.forEach(node=>{
-      const id=node.dataset.node;node.classList.toggle('is-active',active.has(id));node.classList.toggle('is-visited',visited.has(id));
-      node.setAttribute('aria-label',`${model.nodes[id].title}，${active.has(id)?'当前操作':visited.has(id)?'已访问':'尚未访问'}，点击查看模块状态`);
-    });
-    state.ranks.forEach((r,i)=>{
-      svg.querySelector(`[data-rank-queue="${i}"]`).textContent=model.queueLabels[r.queue];
-      svg.querySelector(`[data-rank-kv="${i}"]`).textContent=r.released?'KV · 请求引用已释放':`KV · 已写 ${r.cacheEnd}/12 · ${r.holdsKv?'引用保留':'尚未分配'}`;
-      svg.querySelector(`[data-rank-sender="${i}"]`).textContent=`sender · ${model.senderLabels[r.sender]}`;
-      const tank=svg.querySelector(`[data-node="p${i}-transfer"]`);
-      tank.classList.toggle('has-reservation',r.kv==='reserved');
-      tank.classList.toggle('has-kv',r.kv==='written');
-      tank.classList.toggle('is-released',r.released);
-      svg.querySelector(`[data-node="p${i}-compute"]`).classList.toggle('has-computed',r.computed);
-      svg.querySelector(`[data-received="${i}"]`).classList.toggle('is-received',r.terminal);
-      for(let part=0;part<3;part++)svg.querySelector(`[data-kv-chunk="${i}-${part}"]`).classList.toggle('is-filled',r.cacheEnd>part*4&&!r.released);
-    });
-    drawRoutes(event);
-    $('player-counter').textContent=`${String(position+1).padStart(2,'0')} / ${model.events.length}`;
-    $('player-seek').value=position;
-    $('player-seek').setAttribute('aria-valuetext',`${position+1} / ${model.events.length}：${event.title}`);
-    $('event-location').textContent=`${labels[event.kind]} · ${event.active.map(id=>model.nodes[id].title).join(' → ')}`;
-    $('player-current-title').textContent=event.title;
-    $('scenario-note').textContent=event.chunk?`第 ${event.chunk.index} / ${12/model.size} 块 · 新 token [${event.chunk.start}, ${event.chunk.end})`:`同一条 R · 12 token · ${12/model.size} 个 chunk`;
-    $('event-title').textContent=event.title;$('event-description').textContent=event.description;$('event-gate').textContent=event.gate;
-    $('event-source').href=`#${articles[event.phase].id}`;$('event-source').textContent=`阅读第 ${event.phase+1} 阶段的源码说明 ↓`;
-    articles.forEach((article,i)=>{article.hidden=i!==event.phase;});
-    phaseLinks.forEach((link,i)=>{if(i===event.phase)link.setAttribute('aria-current','step');else link.removeAttribute('aria-current');});
-    [...$('event-list').children].forEach((item,i)=>{if(i===position)item.firstElementChild.setAttribute('aria-current','step');else item.firstElementChild.removeAttribute('aria-current');});
-    for(const id of ['player-prev','life-prev'])$(id).disabled=position===0;
-    for(const id of ['player-next','life-next'])$(id).disabled=position===model.events.length-1;
-    $('life-progress').textContent=`动作 ${position+1} / ${model.events.length}`;
-    if(inspected)inspectNode(inspected,state);
-    window.PrefillOperationLab?.update({model,event,state,before:model.snapshot(position-1)});
-    if(playing)window.PrefillOperationLab?.play(4200/Number($('player-speed').value));
-    if(writeHash)history.replaceState(null,'',`#${model.mode==='chunked'?'chunked-':''}event-${event.id}`);
-    if(position===model.events.length-1||!playing)pause();
+  function pause(){playing=false;onlyGroup=false;clearTimeout(timer);timer=null;player.classList.remove('is-playing');$('player-play').textContent='▶ 播放全程';$('player-play').setAttribute('aria-pressed','false');$('play-group').textContent='▶ 播放这一整段';$('player-mode').textContent='已暂停 · 可单步';}
+  function schedule(){clearTimeout(timer);if(!playing)return;const duration=(activeGroup().compressed?650:1800)/Number($('player-speed').value);player.style.setProperty('--flow-duration',`${duration}ms`);timer=setTimeout(()=>{
+    if(frameIndex+1<activeGroup().frames.length)frameIndex++;
+    else if(onlyGroup||eventIndex+1===model.events.length){pause();show();return;}
+    else{eventIndex++;frameIndex=0;}
+    show();schedule();
+  },duration);}
+  function play(groupOnly=false){if(playing){pause();show();return;}if(!groupOnly&&eventIndex===model.events.length-1){eventIndex=0;frameIndex=0;show();}if(groupOnly&&frameIndex===activeGroup().frames.length-1)frameIndex=0;playing=true;onlyGroup=groupOnly;player.classList.add('is-playing');$('player-play').textContent='Ⅱ 暂停';$('player-play').setAttribute('aria-pressed','true');$('play-group').textContent='Ⅱ 暂停';$('player-mode').textContent=groupOnly?'播放当前整段':'播放全程';show();schedule();}
+  function jump(e,f=0){pause();eventIndex=Math.max(0,Math.min(model.events.length-1,e));frameIndex=Math.max(0,Math.min(activeGroup().frames.length-1,f));show();}
+  function populate(){
+    $('event-list').replaceChildren();model.events.forEach((g,i)=>{const li=document.createElement('li'),button=document.createElement('button');button.type='button';button.textContent=g.title;button.addEventListener('click',()=>{jump(i);$('operation-lab').scrollIntoView({block:'start'});});li.append(button);$('event-list').append(li);});$('player-seek').max=model.events.length-1;
+    $('scenario-summary').textContent=`${model.config.requests} 条请求 · ${model.batches} 个 batch · ${model.events.length} 个阅读步骤`;
   }
-  function pause() {
-    playing=false;clearTimeout(timer);timer=null;player.classList.remove('is-playing');
-    window.PrefillOperationLab?.stop();
-    $('player-play').textContent=position===model.events.length-1?'↺ 重播':'▶ 播放';$('player-play').setAttribute('aria-pressed','false');
-    $('player-mode').textContent=position===model.events.length-1?'P 侧已完成':'已暂停 · 可单步';
+  function collectFailures(){return [0,1,2].map(r=>[...document.querySelectorAll(`[data-fail-rank="${r}"]:checked`)].map(x=>x.value));}
+  function failureFields(){
+    const count=Math.max(1,Math.min(4,Number($('config-requests').value)||1)),fault=$('config-fault').value;
+    $('failure-field').hidden=!['bootstrap_fail','bootstrap_abort','transfer_fail'].includes(fault);
+    $('wait-field').hidden=!['bootstrap_wait','transfer_fail','repoll_wait'].includes(fault);
+    $('failure-matrix').replaceChildren();
+    for(let r=0;r<3;r++){const row=document.createElement('div'),title=document.createElement('strong');title.textContent=`PP${r}`;row.append(title);for(let i=0;i<count;i++){const label=document.createElement('label'),input=document.createElement('input');input.type='checkbox';input.dataset.failRank=r;input.value=`R${i}`;input.checked=draftFailures[r]?.includes(input.value);input.addEventListener('change',()=>draftFailures=collectFailures());label.append(input,document.createTextNode(input.value));row.append(label);}$('failure-matrix').append(row);}
+    const rid=$('config-waitRid').value;$('config-waitRid').replaceChildren();for(let i=0;i<count;i++){const option=document.createElement('option');option.value=option.textContent=`R${i}`;$('config-waitRid').append(option);}$('config-waitRid').value=Number(rid.slice(1))<count?rid:'R0';
   }
-  function schedule() {
-    clearTimeout(timer);if(!playing)return;
-    const duration=4200/Number($('player-speed').value);player.style.setProperty('--flow-duration',`${duration}ms`);
-    timer=setTimeout(()=>{if(!playing)return;show(position+1,true);if(playing)schedule();},duration);
-  }
-  function play() {
-    if(playing){pause();return;}if(position===model.events.length-1)show(0,true);
-    playing=true;player.classList.add('is-playing');$('player-play').textContent='Ⅱ 暂停';$('player-play').setAttribute('aria-pressed','true');
-    $('player-mode').textContent='播放中 · 可随时暂停';schedule();window.PrefillOperationLab?.play(4200/Number($('player-speed').value));
-  }
-  function advance(delta){pause();show(position+delta,true);}
+  function fill(config){for(const field of fields)if(field!=='waitRid')$(`config-${field}`).value=config[field];draftFailures=config.failed.map(a=>[...a]);failureFields();$('config-waitRid').value=config.waitRid;}
+  function readForm(){return {...Object.fromEntries(fields.map(k=>[k,$(`config-${k}`).value])),failed:collectFailures()};}
+  function scenarioUrl(key){const url=new URL(location.href);url.search='';for(const k of fields)url.searchParams.set(k,model.config[k]);url.searchParams.set('failed',JSON.stringify(model.config.failed));url.hash=`action=${encodeURIComponent(key)}`;return url.pathname+url.search+url.hash;}
+  function apply(raw,write=true){try{const next=api.createScenario(raw);pause();model=next;eventIndex=frameIndex=0;populate();$('config-error').hidden=true;$('config-status').textContent=`已生成 ${model.batches} 个 batch。`;show(write);return true;}catch(e){$('config-error').hidden=false;$('config-error').textContent=e.message;return false;}}
   function fromHash(){
-    const mode=location.hash.startsWith('#chunked-event-')?'chunked':location.hash.startsWith('#event-')?'single':model.mode;
-    if(mode!==model.mode){model=baseModel.scenario(mode);$('player-scenario').value=mode;populateEvents();}
-    const hash=location.hash.replace('#chunked-event-','#event-');
-    let index=model.events.findIndex(event=>`#event-${event.id}`===hash);
-    if(index<0){const phase=articles.findIndex(article=>`#${article.id}`===location.hash);if(phase>=0)index=phaseStart(phase);}
-    if(index>=0){pause();show(index);player.scrollIntoView({block:'start'});}
+    let key;try{key=decodeURIComponent(location.hash.replace(/^#action=/,''));}catch{return;}
+    const legacy={'#event-intake':'intake','#event-proxy-01':'B1-proxy-0-1','#event-batch-0':'B1-pack','#chunked-event-chunk-2-cut':'B2-cut','#event-handoff':'finish'};key=legacy[location.hash]??key;
+    for(let e=0;e<model.events.length;e++){const f=model.events[e].frames.findIndex(x=>x.key===key);if(f>=0){jump(e,f);return;}}
+    const phase=articles.findIndex(a=>'#'+a.id===location.hash);if(phase>=0){const e=model.events.findIndex(g=>g.frames.some(f=>f.phase===phase));if(e>=0)jump(e,model.events[e].frames.findIndex(f=>f.phase===phase));}
   }
-  function populateEvents(){
-  $('event-list').replaceChildren();
-  model.events.forEach((event,index)=>{
-    const li=document.createElement('li'),button=document.createElement('button');button.type='button';button.textContent=event.title;
-    button.addEventListener('click',()=>{pause();show(index,true);player.scrollIntoView({block:'start'});});li.append(button);$('event-list').append(li);
-  });
-  $('player-seek').max=model.events.length-1;$('player-seek').disabled=false;
-  }
-  populateEvents();
-  $('player-scenario').addEventListener('change',event=>{pause();model=baseModel.scenario(event.target.value);window.PrefillOperationLab?.follow();populateEvents();show(0,true);});
-  document.querySelector('.player-toolbar').hidden=false;
-  document.querySelector('.life-walkthrough').classList.add('is-interactive');document.querySelector('.life-controls').hidden=false;
-  $('life-prev').textContent='← 上一小步';$('life-next').textContent='下一小步 →';
-  $('player-play').addEventListener('click',play);
-  $('player-reset').addEventListener('click',()=>{pause();show(0,true);});
-  ['player-prev','life-prev'].forEach(id=>$(id).addEventListener('click',()=>advance(-1)));
-  ['player-next','life-next'].forEach(id=>$(id).addEventListener('click',()=>advance(1)));
-  $('player-seek').addEventListener('input',event=>{pause();show(Number(event.target.value),true);});
-  $('player-speed').addEventListener('change',schedule);
-  $('player-zoom').addEventListener('change',event=>{svg.style.width=event.target.value==='fit'?'100%':`${1680*Number(event.target.value)/100}px`;});
-  $('event-source').addEventListener('click',event=>{event.preventDefault();pause();const article=articles[model.events[position].phase];article.scrollIntoView({block:'start'});article.querySelector('h3').focus({preventScroll:true});});
-  phaseLinks.forEach((link,phase)=>{
-    link.addEventListener('click',event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;event.preventDefault();pause();show(phaseStart(phase),true);player.scrollIntoView({block:'start'});});
-    link.addEventListener('keydown',event=>{
-      const moves={ArrowDown:phase+1,ArrowRight:phase+1,ArrowUp:phase-1,ArrowLeft:phase-1,Home:0,End:11};
-      if(!(event.key in moves))return;event.preventDefault();const target=Math.max(0,Math.min(11,moves[event.key]));pause();show(phaseStart(target),true);phaseLinks[target].focus();
-    });
-  });
-  nodeElements.forEach(node=>{
-    const inspect=()=>{pause();inspectNode(node.dataset.node);document.querySelector('.module-inspector').open=true;window.PrefillOperationLab?.inspect(node.dataset.node);};
-    node.addEventListener('click',inspect);node.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();inspect();}});
-  });
-  player.addEventListener('keydown',event=>{
-    if(event.target.closest('input,select,button,a,summary,[data-node]'))return;
-    if(event.key==='ArrowLeft'){event.preventDefault();advance(-1);}if(event.key==='ArrowRight'){event.preventDefault();advance(1);}if(event.key===' '){event.preventDefault();play();}
-  });
+  $('scenario-form').addEventListener('submit',e=>{e.preventDefault();if(apply(readForm()))$('config-preset').value='custom';});
+  $('config-preset').addEventListener('change',e=>{if(!api.presets[e.target.value])return;const config=api.normalize(api.presets[e.target.value]);fill(config);apply(config);});
+  $('config-requests').addEventListener('change',()=>{draftFailures=collectFailures();failureFields();});$('config-fault').addEventListener('change',failureFields);
+  $('player-reset').addEventListener('click',()=>jump(0));$('player-prev').addEventListener('click',()=>jump(eventIndex-1));$('player-next').addEventListener('click',()=>jump(eventIndex+1));$('player-play').addEventListener('click',()=>play());
+  $('player-seek').addEventListener('input',e=>jump(Number(e.target.value)));$('frame-prev').addEventListener('click',()=>jump(eventIndex,frameIndex-1));$('frame-next').addEventListener('click',()=>jump(eventIndex,frameIndex+1));$('frame-seek').addEventListener('input',e=>jump(eventIndex,Number(e.target.value)));$('play-group').addEventListener('click',()=>play(true));$('player-speed').addEventListener('change',schedule);
+  $('share-scenario').addEventListener('click',async()=>{const url=new URL(scenarioUrl(activeFrame().key),location.href).href;try{await navigator.clipboard.writeText(url);$('config-status').textContent='已复制当前参数和动作位置。';}catch{$('config-status').textContent='参数已保存在地址栏，可复制当前网址。';}});
+  phaseLinks.forEach((a,phase)=>a.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey)return;e.preventDefault();const index=model.events.findIndex(g=>g.frames.some(f=>f.phase===phase));if(index>=0){jump(index,model.events[index].frames.findIndex(f=>f.phase===phase));$('operation-lab').scrollIntoView({block:'start'});}}));
+  for(const el of svg.querySelectorAll('[data-node]')){const inspect=()=>{pause();const id=el.dataset.node;$('module-description').textContent=`${model.nodes[id].title}：${model.nodes[id].role}`;const flat=model.frames.indexOf(activeFrame()),next=model.frames.findIndex((f,i)=>i>flat&&f.active.includes(id));if(next>=0){const button=document.createElement('button');button.textContent='跳到该组件的下一次操作';button.type='button';button.addEventListener('click',()=>{const target=model.frames[next];for(let e=0;e<model.events.length;e++){const f=model.events[e].frames.indexOf(target);if(f>=0){jump(e,f);$('operation-lab').scrollIntoView({block:'start'});break;}}});$('module-description').append(button);}};el.addEventListener('click',inspect);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();inspect();}});}
+  player.addEventListener('keydown',e=>{if(e.target.closest('input,select,button,a,summary,[data-node]'))return;if(e.key==='ArrowRight'){e.preventDefault();jump(eventIndex+1);}if(e.key==='ArrowLeft'){e.preventDefault();jump(eventIndex-1);}if(e.key===' '){e.preventDefault();play();}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});window.addEventListener('pagehide',pause);window.addEventListener('hashchange',fromHash);
-  window.addEventListener('prefill-lab-play',pause);
-  const motion=()=>player.classList.toggle('reduce-motion',reduced.matches);reduced.addEventListener('change',motion);motion();
-  show(0);pause();fromHash();
+  document.querySelector('.life-walkthrough').classList.add('is-interactive');
+  const params=new URLSearchParams(location.search),raw={};for(const k of fields)if(params.has(k))raw[k]=params.get(k);let initial,invalidLink=false;
+  try{if(params.has('failed'))raw.failed=JSON.parse(params.get('failed'));initial=api.normalize(raw);}catch(e){initial=api.normalize();invalidLink=true;}
+  fill(initial);apply(initial,false);$('config-preset').value=Object.keys(api.presets).find(k=>{const p=api.normalize(api.presets[k]);return fields.every(f=>p[f]===initial[f])&&JSON.stringify(p.failed)===JSON.stringify(initial.failed);})??'custom';fromHash();if(invalidLink)$('config-status').textContent='链接参数无效，已使用默认示例。';
 })();
