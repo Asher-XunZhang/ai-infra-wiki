@@ -10,7 +10,26 @@ import json
 from pp_source_baseline import SOURCE_COMMIT, SOURCE_SHORT
 
 
-def build_model(config=None):
+def timing_parameters(config=None):
+    """Editable service times; CPU multipliers never scale dependency waits."""
+    config = config or {}
+    gpu = [[4.,3.2,6.,3.8,4.5], [4.8,6.6,3.8,6.,3.6], [9.5,4.4,7.6,3.5,5.4]]
+    return dict(
+        gpu=[[round(config.get('gpu_value', value) * config.get('gpu_scale', 1)
+                    * config.get('stage_scale', [1,1,1])[r]
+                    * config.get('batch_scale', [1,1,1,1,1])[m], 8)
+              for m,value in enumerate(row)] for r,row in enumerate(gpu)],
+        h2d=[[round(v * config.get('h2d_scale', 1), 8) for v in row]
+             for row in [[2.2,2.8], [8.2,4.2], [3.,7.8]]],
+        kv=[[round((v+r*.4) * config.get('kv_scale', 1), 8)
+             for v in [3.,5.,3.5,6.,4.]] for r in range(3)],
+        cpu={phase: config.get('cpu_scale', 1) for phase in 'ABCDEFGHI'},
+        proxy=round(.26 * config.get('link_scale', 1), 8),
+        output=round(.22 * config.get('link_scale', 1), 8), control=.16, d2h=.24,
+    )
+
+
+def build_model(config=None, *, export_template=False):
     config = config or {}
     N = config.get("horizon", 22)  # extend beyond the displayed window so delayed ring messages exist
     nodes = {}
@@ -30,6 +49,15 @@ def build_model(config=None):
         elif kind == 'h2d': duration *= config.get('h2d_scale', 1)
         elif kind == 'kv': duration *= config.get('kv_scale', 1)
         elif k.endswith(('proxy_message', 'out_message')): duration *= config.get('link_scale', 1)
+        if timing := config.get('timing'):
+            r, n = attrs['r'], attrs['n']
+            if kind == 'gpu': duration = timing['gpu'][r][current(n)-1]
+            elif kind == 'h2d': duration = timing['h2d'][r][int(current(n)==4)]
+            elif kind == 'kv': duration = timing['kv'][r][old(n)-1]
+            elif kind == 'cpu': duration *= timing['cpu'][attrs['phase']]
+            elif kind == 'copy': duration = timing['d2h']
+            elif kind == 'message':
+                duration = timing['proxy' if k.endswith('proxy_message') else 'output' if k.endswith('out_message') else 'control']
         assert k not in nodes, k
         nodes[k] = dict(id=k, deps=[d for d in deps if d], duration=duration, **attrs)
         return k
@@ -159,6 +187,11 @@ def build_model(config=None):
                     add(key(r,n,'proxy_message'),[proxy,key(r,n,'gpu')],.26,
                         r=r,n=n,kind='message',phase='I',label=f'M{m} 激活',owner=f'M{m}')
             cpu('end','保存 output / 共识状态，结束本轮','I',.04,ref='pp:346')
+
+    if export_template:
+        # Export before ACK/release mutation. Iterations >=12 share one empty-loop
+        # structure; the browser repeats that structure until every batch retires.
+        return list(nodes.values())
 
     # Solve the DAG; references outside the finite horizon remain unresolved.
     def solve():
