@@ -66,7 +66,7 @@
   function macroTexts(l) {
     return [
       '检查候选请求是否准备好，轮询历史 KV 传输状态。对象是候选请求集合和历史传输中的请求，不专属于某一份当前 batch。',
-      '处理共享 L2 缓存完成通知（ACK）；' + (l.current ? '为 M' + l.current + ' 选批、准备缓存。' + ([2,4].includes(l.current) ? '本例有 host hit，需要安排 host → GPU 回载。' : '本例该 batch 无 host hit。') : '检查队列，本轮没有选到新的 batch。'),
+      '选批前先推进共享 L2 缓存完成通知（ACK）；' + (l.current ? '为 M' + l.current + ' 检查预算和准入条件。' + ([2,4].includes(l.current) ? '本例有 host hit，准备回载后提交准入，再构造 batch 并发起 host → GPU 复制。' : '本例无 host hit，通过检查后提交准入并构造 batch。') : '检查队列，本轮没有选到新的 batch。'),
       l.current ? '准备 M' + l.current + ' 的输入，必要时等上级激活及历史发送，再提交本级 forward。这里只是 CPU 提交；高亮 M' + l.current + ' 可在下沿进度带看 GPU 起止时间。' : '本轮不提交 forward；若仍有历史激活发送 work，会在这里处理。',
       '推进 output 回流、bootstrap / release 共识。' + (l.old ? '接收并处理旧 M' + l.old + ' 的结果，提交它的本级 KV 到 Decode。' : '本轮没有旧 batch 要做最终结果处理。') + (l.r === 2 && l.current ? '末级还会推进当前 M' + l.current + ' 的 output 发送。' : '') + (l.released.length ? '本轮实际清理：' + l.released.map(batchName).join('、') + '，与旧结果对象分开看。' : '本轮没有实际释放的 batch。'),
       (l.r < 2 ? '向后转发请求和状态；' + (l.current ? '安排 M' + l.current + ' 激活发送；' : '') : '末级不再向后发送激活；') + '保存本轮状态，进入下一次 loop。'
@@ -105,7 +105,7 @@
     if (lifePhase === 2) return 'M' + batch + ' 在 PP' + r.r + ' 的 GPU 上执行本级模型层。对应提交来自 L' + (r.currentLoop+1) + '；实际计算可跨 CPU loop 边界。' + (r.r < 2 ? '后续激活发送 / 接收完成，才能接上下一流水级的前向。' : '末级前向完成后，相关 output 沿结果路径回流。');
     if (lifePhase === 3) return '本级前向已完成，等待流水线结果与后续调度推进；到 L' + (r.resultLoop+1) + '，M' + batch + ' 作为旧 batch 被处理并提交 KV。这一整段包含等待，不是持续进行 CPU 后处理。';
     if (lifePhase === 4) return '本级 M' + batch + ' 的 KV 已提交给传输后端，处于发往图外 Decode 的在途区间。KV 在途结束与本级引用清理仍是两件事。';
-    return '本级 KV 传输完成后，继续等待终态名单和 release 共识推进；在 L' + (r.releaseLoop+1) + ' 的 ' + fmt(r.releaseStart) + '–' + fmt(p.end) + ' u 执行本地清理。这里只标本级请求引用 / 发送端清理，不宣称回收全部缓存物理页。';
+    return '本级 KV 传输完成后，继续等待终态名单和 release 共识推进；在 L' + (r.releaseLoop+1) + ' 的 ' + fmt(r.releaseStart) + '–' + fmt(p.end) + ' u 执行本地清理。本级依次释放请求 KV 引用、调用 finish(SUCCESS)、清理发送端与 metadata；不宣称回收全部缓存物理页。';
   }
   function renderBatch() {
     const detail = $('#batch-detail'); detail.replaceChildren();

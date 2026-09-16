@@ -1,7 +1,7 @@
 """Source-derived regression checks; no SGLang/GPU runtime is imported.
 
-Contracts: scheduler_pp_mixin.py:991,1062,335; cache_controller.py:923;
-l2_transfer.py:86; unified_radix_cache.py:2957 at 72d5c5bb73.
+Contracts: scheduler_pp_mixin.py:251,1000,1085,337; cache_controller.py:950;
+schedule_policy.py:1186,1210,1263; unified_radix_cache.py:3290 at 279339f113.
 These test necessary ordering, not hardware timing or full stream simulation.
 """
 import copy
@@ -10,9 +10,11 @@ import unittest
 from pp_timing_model import build_model
 from build_pp_scenarios import SCENARIOS
 from build_pp_quick_data import derive_quick
+from pp_source_baseline import SOURCE_COMMIT, SOURCE_SHORT
 
 
 def check_source_contracts(data):
+    assert data['sourceCommit'] == SOURCE_COMMIT and data['baseline'] == SOURCE_SHORT
     graph = data['graph']
 
     def requires(target, producer):
@@ -34,6 +36,12 @@ def check_source_contracts(data):
         # The normal UnifiedRadixCache path combines write/load counts once.
         assert prefix + 'l2_counts' in graph
         assert prefix + 'l2_write' not in graph and prefix + 'l2_load' not in graph
+        requires(prefix + 'select', prefix + 'ack_events')
+        if loop['current']:
+            requires(prefix + 'init_load', prefix + 'select')
+            requires(prefix + 'commit_admission', prefix + 'init_load')
+            requires(prefix + 'start_load', prefix + 'commit_admission')
+            requires(prefix + 'prepare_extend', prefix + 'start_load')
         if loop['current'] in (2, 4):
             requires(prefix + 'h2d', f'{r}:{n-1}:gpu')
         if r == 2 and loop['current'] and loop['old']:
@@ -71,6 +79,18 @@ class TimingSourceContracts(unittest.TestCase):
         data['graph']['0:4:h2d']['deps'].remove('0:3:gpu')
         with self.assertRaisesRegex(AssertionError, 'missing source dependency'):
             check_source_contracts(data)
+
+    def test_materialization_cannot_bypass_admission(self):
+        data = copy.deepcopy(build_model())
+        data['graph']['0:4:init_load']['deps'].remove('0:4:select')
+        with self.assertRaisesRegex(AssertionError, 'missing source dependency'):
+            check_source_contracts(data)
+
+    def test_stale_source_baseline_is_rejected(self):
+        data = build_model()
+        data['sourceCommit'] = '72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a'
+        with self.assertRaises(AssertionError):
+            derive_quick(data, 'stale-source')
 
 
 if __name__ == '__main__':

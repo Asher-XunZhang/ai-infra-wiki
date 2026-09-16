@@ -6,6 +6,7 @@ import re
 from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
+from pp_source_baseline import SOURCE_COMMIT, SOURCE_SHORT
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / "pages/sglang/pd-prefill-pp-loop"
@@ -56,7 +57,7 @@ def owner_batches(owner):
 
 
 def derive_quick(data, source):
-    assert data["baseline"] == "72d5c5bb73" and data["pp"] == 3 and data["depth"] == 0
+    assert data["baseline"] == SOURCE_SHORT and data["sourceCommit"] == SOURCE_COMMIT and data["pp"] == 3 and data["depth"] == 0
     graph = data["graph"]
     phase_group = {p: i for i, phases in enumerate(["A", "BC", "DE", "FGH", "I"]) for p in phases}
     loops = []
@@ -110,7 +111,7 @@ def derive_quick(data, source):
             ranks.append({"r": r, "phases": phases, "admitted": admission["end"], "releaseStart": cleanup["start"], "currentLoop": current["n"], "resultLoop": old["n"], "releaseLoop": release["n"]})
         assert all(ranks[r]["phases"][2]["end"] <= ranks[r+1]["phases"][2]["start"] for r in range(2))
         batches.append({"batch": batch, "ranks": ranks})
-    result = {"sourceCommit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a", "sourceModelSha256": hashlib.sha256(source.encode()).hexdigest(), "end": data["end"], "loops": loops, "batches": batches}
+    result = {"sourceCommit": data["sourceCommit"], "sourceModelSha256": hashlib.sha256(source.encode()).hexdigest(), "end": data["end"], "loops": loops, "batches": batches}
     return result
 
 

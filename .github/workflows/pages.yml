@@ -10,6 +10,8 @@ on:
       - 'scripts/build_pp_quick_data.py'
       - 'scripts/pp_timing_model.py'
       - 'scripts/test_pp_timing_model.py'
+      - 'scripts/pp_source_baseline.py'
+      - 'scripts/check_pp_source.py'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -37,6 +39,7 @@ jobs:
         run: |
           python3 -B scripts/test_pp_timing_model.py
           python3 -B scripts/build_pp_scenarios.py
+          python3 -B scripts/check_pp_source.py
       - name: Build pages with content-versioned assets
         run: python3 scripts/build_pages.py
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5

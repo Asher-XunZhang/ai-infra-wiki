@@ -14,7 +14,7 @@
 | 读取时间 | 2026-07-15 |
 | 工作区状态 | 只读源码，未修改 SGLang。读取时存在未跟踪文件：`docs_new/`、`mainline_diffs.txt`、`reverted_diffs.txt`、`scripts/playground/pd_pp_mtp/`、`scripts/run_prefill_pp_mtp_forward_unit_tests.sh`、`upstream_diffs.txt`、`working_notes/` |
 
-**2026-09-16 独立补充基线：** 第 11.5 节及其图单独采用官方开源 `72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a`，实际读取目录 `/Users/mac/Documents/Documents/工作/sglang-source-study`，分支 `codex/main`，读取 worktree 干净，只读未实验。它不改变本文其余章节的历史 `muxi-main` 基线。
+**2026-09-17 独立补充基线：** 第 11.5 节及其交互图已升级到本地 `D:/Codefiles/sglang` 的 `main` / `279339f113b79af84f27fd3ac92d0a13bd3f4cbd`，读取时源码工作区干净，只读未实验。本文其余章节仍为历史 `muxi-main` 分析，不能当成当前开源版本的逐项说明；当前 PP 主线请读 [PP loop 源码说明](PD%20Prefill%20PP%20loop%20交互图.md)。
 
 **产物假设**
 
@@ -2267,7 +2267,7 @@ flowchart LR
 
 ### 11.5 HiCache：前缀恢复与 PP 协调的独立补充
 
-**本节使用 2026-09-16 读取的官方快照 `72d5c5bb73`，不是上述历史内部分支的同名功能追溯。** 基线与实际源码目录见本文开头，详细锚点见以下两篇专题。
+**本节已按 2026-09-17 本地当前提交 `279339f113` 复核，不是上述历史内部分支的同名功能追溯。** 基线与实际源码目录见本文开头，当前 PP 锚点见 [PP loop 源码说明](PD%20Prefill%20PP%20loop%20交互图.md)；末尾两篇 HiCache 延伸资料保留各自历史基线。
 
 #### 人话版
 
@@ -2278,7 +2278,7 @@ flowchart LR
 | 步骤 | 官方固定源码入口 | 生命周期含义 |
 | --- | --- | --- |
 | 请求匹配 | `Req.init_next_round_input` → `UnifiedTreeCore.match_prefix` | 分开返回设备索引与可恢复 Host 边界 |
-| 候选准入 | `PrefillAdder.add_one_req` → `UnifiedRadixCache.init_load_back` | 先检查预算，回载后用实际索引重算输入 |
+| 候选准入 | `PrefillAdder.add_one_req` → `UnifiedRadixCache.init_load_back` | 先预算/延迟准入检查，再准备回载，成功后提交准入；回载未兑现时重新检查重算预算 |
 | 发起 H2D | `UnifiedRadixCache.ready_to_load_host_cache` → `HiCacheController.start_loading` | batch 关联对应 consumer index |
 | 本层可读 | `LayerDoneCounter.wait_until` | 当前层读取等待对应复制事件 |
 | 有序收尾 | `UnifiedRadixCache._all_reduce/_pp_sync`、`loading_check` | 首 stage 传播消费决策，本地完成后解除传输保护 |
