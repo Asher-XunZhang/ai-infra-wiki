@@ -1078,6 +1078,7 @@ html,body{background:var(--background)!important;color:var(--foreground);font-fa
   &lt;/div&gt;
   &lt;label class=&quot;form-label&quot;&gt;时间窗口 &lt;span class=&quot;tabular-nums&quot; data-window&gt;&lt;/span&gt;&lt;input class=&quot;form-range&quot; type=&quot;range&quot; min=&quot;0&quot; max=&quot;1&quot; step=&quot;0.01&quot; value=&quot;0&quot; data-pan aria-label=&quot;平移时间窗口&quot;&gt;&lt;/label&gt;
   &lt;div class=&quot;text-small text-muted&quot;&gt;横向拖动平移 · Ctrl / ⌘ + 滚轮缩放 · 点击条块查看依赖&lt;/div&gt;
+  &lt;div class=&quot;text-small text-muted&quot; data-dependency-window hidden&gt;&lt;/div&gt;
   &lt;svg class=&quot;gantt-svg overview&quot; role=&quot;img&quot; aria-label=&quot;可缩放平移的统一时间轴；PP0到PP2的GPU、CPU与异步I/O；CPU操作横向拼接，箭头表示选中步骤的前置关系&quot;&gt;&lt;/svg&gt;
   &lt;div class=&quot;gantt-legend text-small&quot;&gt;
     &lt;span&gt;&lt;i style=&quot;background:var(--viz-series-1)&quot;&gt;&lt;/i&gt;GPU 前向 / launch&lt;/span&gt;
@@ -1089,7 +1090,7 @@ html,body{background:var(--background)!important;color:var(--foreground);font-fa
   &lt;/div&gt;
   &lt;div class=&quot;text-small&quot; data-loop-summary aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
   &lt;div class=&quot;selected-op text-small&quot; data-op aria-live=&quot;polite&quot;&gt;&lt;/div&gt;
-  &lt;div class=&quot;text-small&quot;&gt;相邻分段：彩色共边表示依赖；其余依赖：实线箭头＝本 PP，虚线箭头＝跨 PP。← / → 表示前置位于窗口外。I/O 行补显当前依赖涉及的通信 / 拷贝条块。&lt;/div&gt;
+  &lt;div class=&quot;text-small&quot;&gt;相邻分段：彩色共边表示依赖；其余依赖：实线箭头＝本 PP，虚线箭头＝跨 PP。← / → 表示依赖端点位于窗口外；所选步骤起点越界时也保留连线并标注。I/O 行补显当前依赖涉及的通信 / 拷贝条块。&lt;/div&gt;
   &lt;div class=&quot;table-responsive&quot;&gt;&lt;table class=&quot;table table-sm&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;关系&lt;/th&gt;&lt;th&gt;前置步骤（可继续追溯）&lt;/th&gt;&lt;th&gt;完成时间 u&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody data-deps&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;
   &lt;div class=&quot;text-small text-muted&quot;&gt;PP rank 代表流水级；本图不展开级内 TP/CP 芯片。程序顺序、源码数据条件和模型串行假设分别标注；时间仍为示意值。&lt;/div&gt;
   &lt;details&gt;
@@ -1159,22 +1160,29 @@ html,body{background:var(--background)!important;color:var(--foreground);font-fa
       return {y:top+p.r*sh+offset,height};
     }
     function dependencyOverlay(svg,x,top,sh,start,end){
-      const node=selectedNode();if(!node||node.start&lt;start||node.start&gt;=end)return;
-      const target=laneGeometry(node,top,sh),tx=x(node.start);
+      const node=selectedNode(),hint=root.querySelector(&#x27;[data-dependency-window]&#x27;);
+      const targetOff=node&amp;&amp;(node.start&lt;start||node.start&gt;end);
+      hint.hidden=!targetOff;
+      hint.textContent=targetOff?`所选步骤的起点在窗口${node.start&lt;start?&#x27;左&#x27;:&#x27;右&#x27;}侧，连线延续到边缘。点击“聚焦依赖”可查看完整关系。`:&#x27;&#x27;;
+      if(!node)return;
+      // Zooming or panning can move the selected start outside the viewport
+      // while its duration or predecessors are still visible.
+      const target=laneGeometry(node,top,sh),tx=x(clamp(node.start,start,end));
       const layer=el(svg,&#x27;g&#x27;,{&#x27;pointer-events&#x27;:&#x27;none&#x27;,&#x27;data-dependency-overlay&#x27;:&#x27;1&#x27;});
       const defs=el(layer,&#x27;defs&#x27;);for(const [id,c]of [[&#x27;local&#x27;,&#x27;var(--viz-series-1)&#x27;],[&#x27;cross&#x27;,&#x27;var(--viz-series-2)&#x27;]]){const marker=el(defs,&#x27;marker&#x27;,{id:&#x27;dep-&#x27;+id,viewBox:&#x27;0 0 8 8&#x27;,refX:8,refY:4,markerWidth:6,markerHeight:6,orient:&#x27;auto&#x27;});el(marker,&#x27;path&#x27;,{d:&#x27;M0 0 L8 4 L0 8 Z&#x27;,fill:c});}
       edges(node).forEach(edge=&gt;{
-        const p=graph[edge.id],source=laneGeometry(p,top,sh),off=p.end&lt;=start||p.end&gt;end,sx=x(clamp(p.end,start,end)),cross=p.r!==node.r,c=cross?&#x27;var(--viz-series-2)&#x27;:&#x27;var(--viz-series-1)&#x27;;
-        const adjacent=!cross&amp;&amp;p.kind===node.kind&amp;&amp;Math.abs(p.end-node.start)&lt;0.001&amp;&amp;p.end&gt;p.start&amp;&amp;node.end&gt;node.start;
+        const p=graph[edge.id],source=laneGeometry(p,top,sh),off=p.end&lt;start||p.end&gt;end,sx=x(clamp(p.end,start,end)),cross=p.r!==node.r,c=cross?&#x27;var(--viz-series-2)&#x27;:&#x27;var(--viz-series-1)&#x27;;
+        const adjacent=!targetOff&amp;&amp;!off&amp;&amp;!cross&amp;&amp;p.kind===node.kind&amp;&amp;Math.abs(p.end-node.start)&lt;0.001&amp;&amp;p.end&gt;p.start&amp;&amp;node.end&gt;node.start;
         if(adjacent){
           el(layer,&#x27;line&#x27;,{x1:tx,x2:tx,y1:target.y,y2:target.y+target.height,stroke:c,&#x27;stroke-width&#x27;:2.5,&#x27;data-dependency&#x27;:edge.id,&#x27;data-dependency-kind&#x27;:&#x27;boundary&#x27;});
           return;
         }
         const down=target.y&gt;source.y,up=target.y&lt;source.y;
         const sy=source.y+(down?source.height:0),ty=target.y+(up?target.height:0),bend=down||up?(sy+ty)/2:sy-8;
-        el(layer,&#x27;path&#x27;,{d:`M${sx},${sy} L${sx},${bend} L${tx},${bend} L${tx},${ty}`,fill:&#x27;none&#x27;,stroke:c,&#x27;stroke-width&#x27;:1.6,&#x27;stroke-dasharray&#x27;:cross?&#x27;5 3&#x27;:&#x27;none&#x27;,&#x27;marker-end&#x27;:`url(#dep-${cross?&#x27;cross&#x27;:&#x27;local&#x27;})`,&#x27;data-dependency&#x27;:edge.id,&#x27;data-target&#x27;:node.id,&#x27;data-dependency-kind&#x27;:&#x27;arrow&#x27;,&#x27;data-source-offscreen&#x27;:off?&#x27;true&#x27;:&#x27;false&#x27;});
-        if(off)text(layer,sx+(p.end&lt;=start?4:-4),sy-5,p.end&lt;=start?&#x27;←&#x27;:&#x27;→&#x27;,{&#x27;text-anchor&#x27;:p.end&lt;=start?&#x27;start&#x27;:&#x27;end&#x27;});
+        el(layer,&#x27;path&#x27;,{d:`M${sx},${sy} L${sx},${bend} L${tx},${bend} L${tx},${ty}`,fill:&#x27;none&#x27;,stroke:c,&#x27;stroke-width&#x27;:1.6,&#x27;stroke-dasharray&#x27;:cross?&#x27;5 3&#x27;:&#x27;none&#x27;,&#x27;marker-end&#x27;:`url(#dep-${cross?&#x27;cross&#x27;:&#x27;local&#x27;})`,&#x27;data-dependency&#x27;:edge.id,&#x27;data-target&#x27;:node.id,&#x27;data-dependency-kind&#x27;:&#x27;arrow&#x27;,&#x27;data-source-offscreen&#x27;:off?&#x27;true&#x27;:&#x27;false&#x27;,&#x27;data-target-offscreen&#x27;:targetOff?&#x27;true&#x27;:&#x27;false&#x27;});
+        if(off)text(layer,sx+(p.end&lt;start?4:-4),sy-5,p.end&lt;start?&#x27;←&#x27;:&#x27;→&#x27;,{&#x27;text-anchor&#x27;:p.end&lt;start?&#x27;start&#x27;:&#x27;end&#x27;});
       });
+      if(targetOff)text(layer,tx+(node.start&lt;start?4:-4),target.y-18,node.start&lt;start?&#x27;← 所选步骤起点&#x27;:&#x27;所选步骤起点 →&#x27;,{&#x27;text-anchor&#x27;:node.start&lt;start?&#x27;start&#x27;:&#x27;end&#x27;,&#x27;data-target-continuation&#x27;:node.id});
     }
     function mark(svg,e,x,y,h,hatch,lo,hi,label,selected=false){
       if(e.end&lt;=lo||e.start&gt;=hi)return;
