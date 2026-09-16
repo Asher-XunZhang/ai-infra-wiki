@@ -28,6 +28,8 @@
 
 ### 交互学习
 
+- [一条请求的完整 Prefill 生命周期 · PD 分离 / PP=3](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-lifecycle/) — 12 个机制阶段，支持单块 / 三块请求与组件内部动画，逐步观察接入、前向、KV 交接与释放；[源码学习文档](<./sglang/PD Prefill PP=3 请求生命周期源码学习文档.md>)。
+
 - [快速入门：在 PP loop 中高亮 batch 生命周期](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html) — 把细操作合并为五个大步骤；同图高亮 batch 生命周期，支持鼠标拖动平移。
 
 - [PD Prefill · PP=3 loop 甘特图](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/) — 选择 rank 和 loop，查看五个 micro-batch 的计算、L2 ACK、PP 共识与 KV 释放；时间为示意值。

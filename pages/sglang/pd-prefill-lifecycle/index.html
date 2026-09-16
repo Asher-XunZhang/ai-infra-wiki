@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>一条请求的生命周期 · PD Prefill · PP=3</title><meta name="description" content="沿一条请求走完 PD 分离下 PP=3 的 Prefill：接入、bootstrap 共识、三级前向、结果回流、KV 传输与释放。">
+<link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="lifecycle.css"><script src="../../site.js" defer></script><script src="lifecycle-model.js" defer></script><script src="operation-lab.js" defer></script><script src="player.js" defer></script><link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23216c51%22%2F%3E%3Ctext%20x%3D%228%22%20y%3D%2224%22%20fill%3D%22white%22%20font-family%3D%22Georgia%2Cserif%22%20font-weight%3D%22bold%22%20font-size%3D%2227%22%3Ea%3C%2Ftext%3E%3C%2Fsvg%3E"></head>
+<body data-page="lifecycle"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header>
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航"><details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary><div class="sidebar-content"><a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a><p class="nav-label">SGLANG · 专题 01</p><h2 class="sidebar-title">PD Prefill 与 PP 调度</h2><nav aria-label="专题阅读顺序"><a class="course-link" href="../../sglang/pd-prefill-pp-loop/quick.html"><span class="course-number">01</span><span><strong>快速入门</strong><small>先看 loop 与 batch 的关系</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/index.html"><span class="course-number">02</span><span><strong>依赖分析</strong><small>追踪每一步的前置条件</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/notes.html"><span class="course-number">03</span><span><strong>源码阅读</strong><small>把图中的行为对应到代码</small></span></a></nav><p class="nav-label">SGLANG · 专题 02</p><h2 class="sidebar-title">一条请求的 Prefill 旅程</h2><nav aria-label="请求生命周期专题"><a class="course-link" href="../../sglang/pd-prefill-lifecycle/index.html" aria-current="page"><span class="course-number">01</span><span><strong>请求生命周期</strong><small>从接入、三级前向到 KV 释放</small></span></a></nav><div class="sidebar-note"><span class="status-dot"></span> 基于固定源码的学习材料<p>先理解整体，再追踪依赖，最后回到源码。</p></div><a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 <span aria-hidden="true">↗</span></a></div></details></aside><div class="site-content">
+
+<main id="main-content" tabindex="-1"><header class="lesson-header"><div class="lesson-kicker"><span class="eyebrow">SGLANG / PD PREFILL</span><span class="lesson-count">专题 02 · 请求生命周期</span></div>
+<h1>一条请求，走完 PP=3 的 Prefill</h1><p>在同一张流水线图中，操控请求 <strong>R</strong> 从接入到释放。观察它此刻到达哪个模块、流动的是什么数据，以及各级仍持有哪些资源。</p>
+<div class="meta-tags"><span>PP = 3</span><span>1 条请求 · 12 个机制阶段</span><span>成功路径 · 可切换 chunk 示例</span><a href="#baseline">源码 <code>279339f113</code> · 查看范围 ↓</a></div></header>
+<section class="pipeline-player" id="pipeline-player" aria-labelledby="pipeline-heading">
+<div class="player-heading"><div><p class="eyebrow">请求 R · 完整流水线</p><h2 id="pipeline-heading">跟着数据，走过三级 Prefill</h2></div><span class="muted">同一源码基线 · 279339f113</span></div>
+<div class="scenario-choice"><label for="player-scenario">请求示例</label><select id="player-scenario"><option value="chunked">分三块 · 12 token / 每块 4 token</option><option value="single">单块 · 12 token 一次完成</option></select><span id="scenario-note">同一条 R，完整 token 序列保持不变</span></div><div class="player-toolbar" hidden><button id="player-reset" type="button" aria-label="回到接入时刻">↺ 重置</button><button id="player-prev" type="button">← 上一小步</button><button id="player-play" type="button" aria-pressed="false">▶ 播放</button><button id="player-next" type="button">下一小步 →</button><label>速度 <select id="player-speed"><option value="1">1×</option><option value="0.5">0.5×</option><option value="2">2×</option></select></label><label>视图 <select id="player-zoom"><option value="fit">自动布局</option><option value="100">放大阅读</option><option value="125">更大</option></select></label></div>
+<div class="player-position"><span id="player-counter">准备接入</span><label for="player-seek">请求进度</label><input id="player-seek" type="range" min="0" max="0" value="0" disabled><span id="player-mode">手动推进</span></div>
+<div class="player-current-label"><span>当前动作</span><strong id="player-current-title">接入请求 R</strong></div><p class="pipeline-scroll-hint">窄屏可左右滑动查看完整结构；点击组件展开内部的数据变化。</p><div class="pipeline-canvas" tabindex="0" aria-label="流水线图，窄屏可左右滑动"><svg id="pipeline-svg" viewBox="0 0 1680 1040" role="group" aria-label="三级 Prefill 平面结构图，点击任一组件打开内部操作演示">
+<title>请求 R 的平面流水线</title><desc>请求与握手位于上方。中间的三级计算站经激活输送带连接；下方各自保存并发送 KV，检查闸协调释放。线路在设备外的独立通道中行进。点击设备查看内部的数据变换。</desc>
+
+<text class="factory-name" x="250" y="150">PREFILL</text><text class="factory-name" x="1400" y="150">DECODE</text>
+<text class="track-label" x="700" y="66">请求配对 / 接收准备</text>
+<text class="track-label output-track-label" x="30" y="635">结果回流</text><text class="track-label kv-track-label" x="30" y="950">各级 KV 独立交接</text>
+<path class="control-rail" d="M367.5 180 V90 H1355 V218 H1400 M737.5 180 V100 H1355 M1107.5 180 V110 H1355"/>
+<path class="return-rail" d="M1250 512 H1320 V643 H440 V695 M440 695 V658 H810 V695 M810 658 H1180 V695"/>
+<path class="kv-rail" d="M545 770 H567 V930 H1355 V770 H1400 M915 770 H937 V948 H1355 M1285 770 H1307 V966 H1355"/>
+<path class="release-rail" d="M975 768 H959 V1015 H200 V768 H235"/>
+<path class="control-rail" d="M92.5 430 V270 H200 V218 H250"/>
+
+<g class="pipeline-node" data-node="frontend" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M20 430 H165 V570 H20 Z"/>
+<text class="node-title" x="36" y="478" >请求接入</text>
+<text class="node-sub" x="36" y="510" >Tokenizer</text>
+<text class="machine-caption" x="36" y="544" >文本 → IDs</text>
+<g class="work-ticket" transform="translate(151 430)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<path class="local-feed" d="M470 256 V295 H367.5 V305 M367.5 387 V430 M440 585 V695"/>
+<path class="control-rail" d="M485 218 H620"/><path class="conveyor-base" d="M510 512 H620"/>
+<text class="belt-label" x="565" y="486" >激活 →</text>
+<g class="pipeline-node" data-node="p0-bootstrap" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M250 180 H485 V256 H250 Z"/>
+<text class="node-title" x="266" y="214" >入场登记 / 握手</text>
+<text class="node-sub" x="266" y="240" >本地 Req · sender · 共识</text>
+<g class="work-ticket" transform="translate(472 180)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<text class="pp-queue" x="262" y="285" data-rank-queue="0">尚未接入</text>
+<g class="pipeline-node" data-node="p0-schedule" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M270 305 H465 V387 H270 Z"/>
+<text class="node-title" x="289" y="331" >切块 / 选批 / 分配</text>
+<text class="machine-caption" x="310" y="366" >EXTEND batch</text>
+<g class="work-ticket" transform="translate(453 305)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<g class="pipeline-node" data-node="p0-compute" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M250 430 H510 V585 H250 Z"/>
+<text class="node-title" x="268" y="460" >PP0 · 首级前向</text>
+<text class="node-sub" x="268" y="487" >Embedding + L0–L9</text>
+<rect class="machine-window" x="268" y="504" width="224" height="40" rx="6"/>
+<path class="compute-cell" d="M282 514 V535 M289 514 V535"/>
+<path class="compute-cell" d="M316 514 V535 M323 514 V535"/>
+<path class="compute-cell" d="M350 514 V535 M357 514 V535"/>
+<path class="compute-cell" d="M384 514 V535 M391 514 V535"/>
+<path class="compute-cell" d="M418 514 V535 M425 514 V535"/>
+<path class="compute-cell" d="M452 514 V535 M459 514 V535"/>
+<text class="machine-caption" x="268" y="569" >本块新 token → 本级各层</text>
+<g class="work-ticket" transform="translate(497 430)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+
+<text class="machine-caption" x="462" y="622" >写 KV ↓</text>
+<g class="pipeline-node" data-node="p0-transfer" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell silo-shell" d="M335 695 H545 V845 H335 Z"/>
+<text class="node-title" x="353" y="752" >KV 仓 · PP0</text>
+<text class="node-sub" x="353" y="780" >L0–L9 · 结果 / 发送</text>
+<rect class="kv-block" data-kv-chunk="0-0" x="353" y="801" width="49" height="22" rx="4"/>
+<rect class="kv-block" data-kv-chunk="0-1" x="412" y="801" width="49" height="22" rx="4"/>
+<rect class="kv-block" data-kv-chunk="0-2" x="471" y="801" width="49" height="22" rx="4"/>
+<g class="work-ticket" transform="translate(532 695)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<text class="pp-kv" x="335" y="880" data-rank-kv="0">KV · 尚未分配</text>
+<text class="pp-sender" x="335" y="907" data-rank-sender="0">sender · 未创建</text>
+<g class="pipeline-node" data-node="p0-release" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M255 730 H291 L311 750 V786 L291 806 H255 L235 786 V750 Z"/>
+<text class="node-title" x="273" y="760" text-anchor="middle">终态</text>
+<text class="machine-caption" x="273" y="787" text-anchor="middle">释放</text>
+<g class="work-ticket" transform="translate(303 730)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<path class="release-rail" d="M335 770 H311"/>
+<path class="local-feed" d="M840 256 V295 H737.5 V305 M737.5 387 V430 M810 585 V695"/>
+<path class="control-rail" d="M855 218 H990"/><path class="conveyor-base" d="M880 512 H990"/>
+<text class="belt-label" x="935" y="486" >激活 →</text>
+<g class="pipeline-node" data-node="p1-bootstrap" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M620 180 H855 V256 H620 Z"/>
+<text class="node-title" x="636" y="214" >入场登记 / 握手</text>
+<text class="node-sub" x="636" y="240" >本地 Req · sender · 共识</text>
+<g class="work-ticket" transform="translate(842 180)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<text class="pp-queue" x="632" y="285" data-rank-queue="1">尚未接入</text>
+<g class="pipeline-node" data-node="p1-schedule" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M640 305 H835 V387 H640 Z"/>
+<text class="node-title" x="659" y="331" >切块 / 选批 / 分配</text>
+<text class="machine-caption" x="680" y="366" >EXTEND batch</text>
+<g class="work-ticket" transform="translate(823 305)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<g class="pipeline-node" data-node="p1-compute" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M620 430 H880 V585 H620 Z"/>
+<text class="node-title" x="638" y="460" >PP1 · 中间前向</text>
+<text class="node-sub" x="638" y="487" >L10–L19</text>
+<rect class="machine-window" x="638" y="504" width="224" height="40" rx="6"/>
+<path class="compute-cell" d="M652 514 V535 M659 514 V535"/>
+<path class="compute-cell" d="M686 514 V535 M693 514 V535"/>
+<path class="compute-cell" d="M720 514 V535 M727 514 V535"/>
+<path class="compute-cell" d="M754 514 V535 M761 514 V535"/>
+<path class="compute-cell" d="M788 514 V535 M795 514 V535"/>
+<path class="compute-cell" d="M822 514 V535 M829 514 V535"/>
+<text class="machine-caption" x="638" y="569" >本块新 token → 本级各层</text>
+<g class="work-ticket" transform="translate(867 430)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+
+<text class="machine-caption" x="832" y="622" >写 KV ↓</text>
+<g class="pipeline-node" data-node="p1-transfer" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell silo-shell" d="M705 695 H915 V845 H705 Z"/>
+<text class="node-title" x="723" y="752" >KV 仓 · PP1</text>
+<text class="node-sub" x="723" y="780" >L10–L19 · 结果 / 发送</text>
+<rect class="kv-block" data-kv-chunk="1-0" x="723" y="801" width="49" height="22" rx="4"/>
+<rect class="kv-block" data-kv-chunk="1-1" x="782" y="801" width="49" height="22" rx="4"/>
+<rect class="kv-block" data-kv-chunk="1-2" x="841" y="801" width="49" height="22" rx="4"/>
+<g class="work-ticket" transform="translate(902 695)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<text class="pp-kv" x="705" y="880" data-rank-kv="1">KV · 尚未分配</text>
+<text class="pp-sender" x="705" y="907" data-rank-sender="1">sender · 未创建</text>
+<g class="pipeline-node" data-node="p1-release" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M625 730 H661 L681 750 V786 L661 806 H625 L605 786 V750 Z"/>
+<text class="node-title" x="643" y="760" text-anchor="middle">终态</text>
+<text class="machine-caption" x="643" y="787" text-anchor="middle">释放</text>
+<g class="work-ticket" transform="translate(673 730)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<path class="release-rail" d="M705 770 H681"/>
+<path class="local-feed" d="M1210 256 V295 H1107.5 V305 M1107.5 387 V430 M1180 585 V695"/>
+<g class="pipeline-node" data-node="p2-bootstrap" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M990 180 H1225 V256 H990 Z"/>
+<text class="node-title" x="1006" y="214" >入场登记 / 握手</text>
+<text class="node-sub" x="1006" y="240" >本地 Req · sender · 共识</text>
+<g class="work-ticket" transform="translate(1212 180)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<text class="pp-queue" x="1002" y="285" data-rank-queue="2">尚未接入</text>
+<g class="pipeline-node" data-node="p2-schedule" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M1010 305 H1205 V387 H1010 Z"/>
+<text class="node-title" x="1029" y="331" >切块 / 选批 / 分配</text>
+<text class="machine-caption" x="1050" y="366" >EXTEND batch</text>
+<g class="work-ticket" transform="translate(1193 305)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<g class="pipeline-node" data-node="p2-compute" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M990 430 H1250 V585 H990 Z"/>
+<text class="node-title" x="1008" y="460" >PP2 · 末级前向</text>
+<text class="node-sub" x="1008" y="487" >L20–L29 + 输出头</text>
+<rect class="machine-window" x="1008" y="504" width="224" height="40" rx="6"/>
+<path class="compute-cell" d="M1022 514 V535 M1029 514 V535"/>
+<path class="compute-cell" d="M1056 514 V535 M1063 514 V535"/>
+<path class="compute-cell" d="M1090 514 V535 M1097 514 V535"/>
+<path class="compute-cell" d="M1124 514 V535 M1131 514 V535"/>
+<path class="compute-cell" d="M1158 514 V535 M1165 514 V535"/>
+<path class="compute-cell" d="M1192 514 V535 M1199 514 V535"/>
+<text class="machine-caption" x="1008" y="569" >本块新 token → 本级各层</text>
+<g class="work-ticket" transform="translate(1237 430)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+
+<text class="machine-caption" x="1202" y="622" >写 KV ↓</text>
+<g class="pipeline-node" data-node="p2-transfer" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell silo-shell" d="M1075 695 H1285 V845 H1075 Z"/>
+<text class="node-title" x="1093" y="752" >KV 仓 · PP2</text>
+<text class="node-sub" x="1093" y="780" >L20–L29 · 结果 / 发送</text>
+<rect class="kv-block" data-kv-chunk="2-0" x="1093" y="801" width="49" height="22" rx="4"/>
+<rect class="kv-block" data-kv-chunk="2-1" x="1152" y="801" width="49" height="22" rx="4"/>
+<rect class="kv-block" data-kv-chunk="2-2" x="1211" y="801" width="49" height="22" rx="4"/>
+<g class="work-ticket" transform="translate(1272 695)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<text class="pp-kv" x="1075" y="880" data-rank-kv="2">KV · 尚未分配</text>
+<text class="pp-sender" x="1075" y="907" data-rank-sender="2">sender · 未创建</text>
+<g class="pipeline-node" data-node="p2-release" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M995 730 H1031 L1051 750 V786 L1031 806 H995 L975 786 V750 Z"/>
+<text class="node-title" x="1013" y="760" text-anchor="middle">终态</text>
+<text class="machine-caption" x="1013" y="787" text-anchor="middle">释放</text>
+<g class="work-ticket" transform="translate(1043 730)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<path class="release-rail" d="M1075 770 H1051"/>
+<g class="pipeline-node" data-node="decode-bootstrap" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M1400 180 H1645 V256 H1400 Z"/>
+<text class="node-title" x="1418" y="214" >接收准备</text>
+<text class="node-sub" x="1418" y="240" >目的内存 / 索引 / 配对</text>
+<g class="work-ticket" transform="translate(1632 180)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<path class="decode-boundary" d="M1375 300 V600"/>
+<text class="factory-caption" x="1400" y="365" >P / D 交接边界</text>
+<g class="pipeline-node" data-node="decode-kv" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M1400 695 H1645 V845 H1400 Z"/>
+<text class="node-title" x="1418" y="766" >Decode 接收仓</text>
+<text class="node-sub" x="1418" y="795" >各层 prompt KV + 首 token</text>
+<rect class="received-block" data-received="0" x="1418" y="810" width="62" height="26" rx="4"/>
+<text class="machine-caption" x="1449" y="830" text-anchor="middle">PP0</text>
+<rect class="received-block" data-received="1" x="1489" y="810" width="62" height="26" rx="4"/>
+<text class="machine-caption" x="1520" y="830" text-anchor="middle">PP1</text>
+<rect class="received-block" data-received="2" x="1560" y="810" width="62" height="26" rx="4"/>
+<text class="machine-caption" x="1591" y="830" text-anchor="middle">PP2</text>
+<g class="work-ticket" transform="translate(1632 710)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<path class="local-feed" d="M1522.5 845 V930"/>
+<g class="pipeline-node" data-node="decode-run" role="button" tabindex="0"><title>打开内部操作演示</title>
+<path class="node-shell" d="M1400 930 H1645 V998 H1400 Z"/>
+<text class="node-title" x="1418" y="958" >继续生成</text>
+<text class="node-sub" x="1418" y="983" >t₀ 作为输入 → 下一 token</text>
+<g class="work-ticket" transform="translate(1632 930)"><rect x="-12" y="-13" width="24" height="24" rx="5"/><text y="5" text-anchor="middle">R</text></g></g>
+<g id="pipeline-routes" aria-hidden="true"></g></svg></div>
+<div class="player-legend"><span class="control">● 请求 / 共识</span><span class="proxy">● 激活</span><span class="output">● 结果 t₀</span><span class="kv">● KV 传输</span><span>设备亮起：正在操作</span><span>R 工单：当前操作位置</span><span>KV 仓：虚线待写入 · 金色保留引用 · 灰色引用已释放</span></div>
+<section class="operation-lab" id="operation-lab" aria-labelledby="lab-title">
+<div class="lab-heading"><div><span class="eyebrow">组件内部 · 数据怎样变化</span><h3 id="lab-title">请求接入</h3></div><button id="lab-follow" type="button">跟随当前动作</button></div>
+<p id="lab-context"></p><div class="lab-stages" id="lab-stages" aria-label="内部操作分镜"></div>
+<div class="lab-transport"><button id="lab-prev" type="button">← 上一帧</button><button id="lab-play" type="button">▶ 演示本组件</button><button id="lab-next" type="button">下一帧 →</button><span id="lab-frame-status" role="status" aria-live="polite"></span></div>
+<div class="lab-visual" id="lab-visual"></div><p id="lab-explanation"></p><a id="lab-source" target="_blank" rel="noreferrer">查看对应源码 ↗</a>
+<p class="lab-note">内部演示用于拆解当前动作，不推进上方请求时间线。token ID 为教学预设；切块预算 4、页大小 2，只演示控制逻辑，不是部署建议。</p></section>
+<div class="player-event" aria-live="polite" aria-atomic="true"><div><p class="eyebrow" id="event-location">HTTP / Tokenizer</p><h3 id="event-title">接入请求 R</h3><p id="event-description">前端准备 token IDs 与 PD 配对信息。</p></div><div class="event-gate"><span>下一步需要</span><p id="event-gate">请求送达 PP0 的调度入口。</p><a id="event-source" href="#step-intake">阅读此阶段源码说明 ↓</a></div></div>
+<details class="module-inspector"><summary>查看模块职责与当前状态</summary><p id="module-description">点击图中的模块，查看它的职责和当前状态。</p><div id="module-actions"></div></details>
+<details class="player-sequence"><summary>展开完整动作序列，跳转到任一小步</summary><ol id="event-list"></ol></details>
+<p class="player-boundary">组件图按职责划分：计算站处理模型层，KV 仓表示本级缓存与发送器，检查闸表示终态与释放；不代表物理部署。按源码依赖展开一种可阅读的事件顺序，非实测时间线。队列与 KV 标签表示本小步结束后的状态。各级可以交错推进；KV 发送无需等待三级都处理完结果。动画快慢只控制阅读节奏。30 层为分层示意。</p>
+<noscript><p>启用 JavaScript 可播放与逐步高亮；下方完整的 12 阶段说明仍可直接阅读。</p></noscript></section>
+<section class="chart-panel life-walkthrough" id="walkthrough" aria-labelledby="walk-title"><div class="panel-heading"><div><p class="eyebrow">沿请求逐步走读</p><h2 id="walk-title">12 个阶段，对照源码阅读</h2></div><span class="panel-caption">与上方当前动作同步 · 可点击章节跳转</span></div>
+<p class="life-model-note">以下是 12 个机制阶段，上图将其展开为更细的动作序列；同一阶段可在多个级重复出现。它们不是 12 次 loop 或全局同步时间线。各级可交错推进；尤其步骤 8–9 是各级各自衔接，<strong>没有“三级结果处理完再一起发送 KV”的屏障</strong>。</p>
+<div class="life-layout"><nav class="life-nav" aria-label="请求生命周期步骤"><p class="life-phase">接入与准入</p><a href="#step-intake" data-step="0"><span>01</span>接入请求</a><a href="#step-bootstrap" data-step="1"><span>02</span>创建本地请求</a><a href="#step-admission" data-step="2"><span>03</span>共同准入</a><a href="#step-batch" data-step="3"><span>04</span>组批与分配</a><p class="life-phase">三级前向</p><a href="#step-pp0" data-step="4"><span>05</span>PP0 前向</a><a href="#step-pp1" data-step="5"><span>06</span>PP1 前向</a><a href="#step-pp2" data-step="6"><span>07</span>PP2 与首 token</a><p class="life-phase">结果与交接</p><a href="#step-output" data-step="7"><span>08</span>结果回流</a><a href="#step-transfer" data-step="8"><span>09</span>提交 KV 交接</a><p class="life-phase">完成与释放</p><a href="#step-terminal" data-step="9"><span>10</span>汇合传输终态</a><a href="#step-release" data-step="10"><span>11</span>回流释放名单</a><a href="#step-finish" data-step="11"><span>12</span>清理与应答</a></nav><div class="life-detail"><article class="life-step" id="step-intake" aria-labelledby="title-intake">
+<p class="eyebrow">接入与准入 / 01</p><h3 id="title-intake" tabindex="-1">接入请求，保留 PD 配对信息</h3><p class="life-lead">从 Prefill 服务入口开始：把输入变成 token IDs，并让调度器知道这条请求要和哪一次 Decode 接收配对。</p>
+<div class="life-ranks"><div class="life-rank current"><span>PP0</span><strong>准备从 IPC 接收 R</strong></div><div class="life-rank"><span>PP1</span><strong>等待上一级转发</strong></div><div class="life-rank"><span>PP2</span><strong>等待上一级转发</strong></div></div><p class="life-flow control">请求对象：HTTP → TokenizerManager → PP0</p>
+<div class="life-explanation"><p>以普通 Python HTTP /generate 路径为例，TokenizerManager 处理输入，生成 TokenizedGenerateReqInput，再发送给 scheduler。请求中保留 rid、input_ids、采样参数，以及 bootstrap_host / port / room。</p><p>这里把请求记作 R。rid 用于调度与 PP 名单；bootstrap_room 用于传输后端关联 P/D 两侧的这次交接。外部路由器如何选择 P/D 实例不在本页展开，假设已提供合法配对信息。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>HTTP 输入 → TokenizedGenerateReqInput</dd></div><div><dt>推进条件</dt><dd>请求已经送入 Prefill 的调度入口；此时尚未分配本次前向的 KV 页。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 3 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/entrypoints/http_server.py#L911">generate_request ↗</a><small>entrypoints/http_server.py:911</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/tokenizer_manager.py#L1414">TokenizedGenerateReqInput 的构造 ↗</a><small>managers/tokenizer_manager.py:1414</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/tokenizer_manager.py#L1592">_send_one_request ↗</a><small>managers/tokenizer_manager.py:1592</small></li></ul></details></article><article class="life-step" id="step-bootstrap" aria-labelledby="title-bootstrap">
+<p class="eyebrow">接入与准入 / 02</p><h3 id="title-bootstrap" tabindex="-1">三级各自建 Req，进入 bootstrap 队列</h3><p class="life-lead">同一条 R 沿流水线传播，各级建立自己的请求对象和 KV sender。三个流水级共享请求标识，各自管理本地资源。</p>
+<div class="life-ranks"><div class="life-rank current"><span>PP0</span><strong>Req R + sender₀</strong></div><div class="life-rank current"><span>PP1</span><strong>Req R + sender₁</strong></div><div class="life-rank current"><span>PP2</span><strong>Req R + sender₂</strong></div></div><p class="life-flow control">请求复制：PP0 → PP1 → PP2；三个本地 bootstrap_queue</p>
+<div class="life-explanation"><p>PP0 从前端收请求；PP1、PP2 从上一级接收请求对象。每级 ingest_requests → handle_generate_request 构造本地 Req；PP loop 在本地迭代后部转发 recv_reqs。</p><p>Prefill 模式的 _add_request_to_queue 把 R 加入 disagg_prefill_bootstrap_queue。create_sender 绑定 bootstrap_room 和 pp_rank；pending_bootstrap=True。本地 max_new_tokens 被设为 1，用于 Prefill 侧预算估算，后续长文本生成交给 Decode。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>每级：新建 Req → bootstrap_queue</dd></div><div><dt>推进条件</dt><dd>等待 Decode 侧目的 KV 索引等握手信息就绪；创建 sender 本身不代表可以计算或发送。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 5 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_components/request_receiver.py#L121">_pull_raw_reqs ↗</a><small>managers/scheduler_components/request_receiver.py:121</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L2064">ingest_requests ↗</a><small>managers/scheduler.py:2064</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L2740">handle_generate_request ↗</a><small>managers/scheduler.py:2740</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L3233">_add_request_to_queue ↗</a><small>managers/scheduler.py:3233</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L358">create_sender / add / _process_req ↗</a><small>disaggregation/prefill.py:358</small></li></ul></details></article><article class="life-step" id="step-admission" aria-labelledby="title-admission">
+<p class="eyebrow">接入与准入 / 03</p><h3 id="title-admission" tabindex="-1">bootstrap 共识回流，才能进入待调度队列</h3><p class="life-lead">一个级握手完成还不够：三个级必须对“R 可以继续”达成一致，再各自把 R 放进 waiting_queue。</p>
+<div class="life-ranks"><div class="life-rank current"><span>PP0</span><strong>提交候选；接收结论</strong></div><div class="life-rank current"><span>PP1</span><strong>合并候选；转发结论</strong></div><div class="life-rank current"><span>PP2</span><strong>合并候选；发起回流</strong></div></div><p class="life-flow control">候选 PP0 → PP1 → PP2 ｜结论 PP2 → PP0 → PP1 → PP2</p>
+<div class="life-explanation"><p>每级轮询 sender。成功候选 WaitingForInput 沿 PP0 → PP1 → PP2 求交集；Failed 名单求并集，主动中止也被并入 bad 名单。末级把结论送回 PP0，再沿流水线转发。</p><p>process_bootstrapped_queue 使用返回的 good/bad 名单调用 pop_bootstrapped。正常路径还要分配 metadata 槽，读取 Decode 已有前缀长度，初始化 sender 的页数与发送起点，再将 R 加入 waiting_queue。该回流发生在本次选批之后，R 只能由后续选批使用。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>bootstrap_queue → waiting_queue；pending_bootstrap=False</dd></div><div><dt>推进条件</dt><dd>R 在 good 共识中，且本地 finalize_bootstrap 成功；metadata 不足时仍需等待。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 5 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L573">process_bootstrapped_queue ↗</a><small>managers/scheduler_pp_mixin.py:573</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L593">_pp_pd_get_bootstrapped_ids ↗</a><small>managers/scheduler_pp_mixin.py:593</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L660">_pp_pd_send_consensus_bootstrapped_ids ↗</a><small>managers/scheduler_pp_mixin.py:660</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L395">finalize_bootstrap ↗</a><small>disaggregation/prefill.py:395</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L304">回流在选批之后处理 ↗</a><small>managers/scheduler_pp_mixin.py:304</small></li></ul></details></article><article class="life-step" id="step-batch" aria-labelledby="title-batch">
+<p class="eyebrow">接入与准入 / 04</p><h3 id="title-batch" tabindex="-1">选入 Prefill batch，准备输入和 KV 写入位置</h3><p class="life-lead">准入之后，R 仍需等 token 预算和可用显存。被选中时，各级准备执行同一请求所需的本地 batch。</p>
+<div class="life-ranks"><div class="life-rank current"><span>PP0</span><strong>B + 本地 KV 位置</strong></div><div class="life-rank current"><span>PP1</span><strong>对应的本地 B 与位置</strong></div><div class="life-rank current"><span>PP2</span><strong>对应的本地 B 与位置</strong></div></div><p class="life-flow local">每级本地：waiting_queue → PrefillAdder → ScheduleBatch → mbs[slot]</p>
+<div class="life-explanation"><p>get_new_batch_prefill 检查 waiting_queue。init_next_round_input 匹配前缀并确定待算范围，PrefillAdder 根据 token、请求槽位和 chunk 预算选入 R。本例设 P/D 都无前缀命中，prompt 能在一个 chunk 内完成。</p><p>R 被移出 waiting_queue，进入 ScheduleBatch；prepare_for_extend 设置 EXTEND 模式，整理输入、长度信息，并通过 alloc_for_extend 分配请求槽和 KV 位置（out_cache_loc）。PP loop 将本地 batch 放入 mbs[mb_id]。图中将这份单请求 batch 记作 B。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>waiting_queue → B（EXTEND）；获得本地请求槽与 KV 位置</dd></div><div><dt>推进条件</dt><dd>资源预算允许，当前本地 batch 已准备；PP1/PP2 还要等上游激活。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 4 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L3797">_get_new_batch_prefill_raw ↗</a><small>managers/scheduler.py:3797</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L3959">init_next_round_input / add_one_req ↗</a><small>managers/scheduler.py:3959</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L4037">ScheduleBatch.init_new / prepare_for_extend ↗</a><small>managers/scheduler.py:4037</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L2678">prepare_for_extend ↗</a><small>managers/schedule_batch.py:2678</small></li></ul></details></article><article class="life-step" id="step-pp0" aria-labelledby="title-pp0">
+<p class="eyebrow">三级前向 / 05</p><h3 id="title-pp0" tabindex="-1">PP0：嵌入输入，计算第一段层</h3><p class="life-lead">第一段流水级从 token IDs 开始，把 prompt 变成中间激活，同时写下自己负责的层的 KV。</p>
+<div class="life-ranks"><div class="life-rank current"><span>PP0</span><strong>embedding + L0–L9</strong></div><div class="life-rank"><span>PP1</span><strong>等待来自 PP0 的激活</strong></div><div class="life-rank"><span>PP2</span><strong>等待来自 PP1 的激活</strong></div></div><p class="life-flow proxy">激活：PP0 ── hidden_states / residual ──→ PP1</p>
+<div class="life-explanation"><p>以支持 PP 的 LlamaModel 为例，首级执行 embedding，再运行本级 [start_layer, end_layer) 内的层。本例用 30 层示意，PP0 负责 L0–L9；层数只是讲解用的配置假设。attention 后端将本级 KV 写入前面分配的位置。</p><p>_pp_launch_batch 在 forward stream 上等待 schedule stream，然后提交 run_batch 并记录 launch_event。非末级返回 PPProxyTensors（例如 hidden_states、residual）；发送前让调度流等待 launch_event，再提交 proxy 发送。CPU 提交完成不等于 GPU 已执行完成。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>B：本级前向已提交；L0–L9 的 KV 随计算产生</dd></div><div><dt>推进条件</dt><dd>发送流满足本次前向事件依赖后，激活才可交给 PP1。KV 仍由 PP0 持有。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 4 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L426">LlamaModel.forward ↗</a><small>models/llama.py:426</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/layers/attention/flashinfer_backend.py#L1338">本级 KV 写入示例 ↗</a><small>layers/attention/flashinfer_backend.py:1338</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1221">_pp_launch_batch ↗</a><small>managers/scheduler_pp_mixin.py:1221</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L337">等待 launch_event 后发送 proxy ↗</a><small>managers/scheduler_pp_mixin.py:337</small></li></ul></details></article><article class="life-step" id="step-pp1" aria-labelledby="title-pp1">
+<p class="eyebrow">三级前向 / 06</p><h3 id="title-pp1" tabindex="-1">PP1：接住激活，计算中间段层</h3><p class="life-lead">中间级从上游隐藏状态继续计算；它不会重新执行 embedding，也不会把上一级的 KV 搬来再算。</p>
+<div class="life-ranks"><div class="life-rank"><span>PP0</span><strong>保留 L0–L9 的 KV</strong></div><div class="life-rank current"><span>PP1</span><strong>计算 L10–L19</strong></div><div class="life-rank"><span>PP2</span><strong>等待来自 PP1 的激活</strong></div></div><p class="life-flow proxy">激活：PP0 → PP1 ── hidden_states / residual ──→ PP2</p>
+<div class="life-explanation"><p>_pp_recv_proxy_tensors 接收上一级的 proxy；LlamaModel.forward 从中取出 hidden_states 与 residual。PP1 计算 L10–L19，并将这些层的 KV 写在自己的 KV pool。</p><p>本级前向同样通过 _pp_launch_batch 提交。结果仍是中间激活，发送给 PP2；PP0 的 KV 留在 PP0，PP1 的 KV 留在 PP1。PP0 此时可推进其他 batch 的工作，具体交错取决于 loop 和通信依赖。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>B：中间层计算；各级 KV 按层分别持有</dd></div><div><dt>推进条件</dt><dd>PP1 必须先收到 B 对应的上游激活，且本地输入与资源已准备。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 3 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L858">_pp_recv_proxy_tensors ↗</a><small>managers/scheduler_pp_mixin.py:858</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L432">非首级读取 proxy 与逐层前向 ↗</a><small>models/llama.py:432</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1221">_pp_launch_batch ↗</a><small>managers/scheduler_pp_mixin.py:1221</small></li></ul></details></article><article class="life-step" id="step-pp2" aria-labelledby="title-pp2">
+<p class="eyebrow">三级前向 / 07</p><h3 id="title-pp2" tabindex="-1">PP2：计算最后一段层，采样首 token</h3><p class="life-lead">末级完成 prompt 的最后一段计算，得到用于采样的 logits，并产生第一个输出 token t₀。</p>
+<div class="life-ranks"><div class="life-rank"><span>PP0</span><strong>保留本级 prompt KV</strong></div><div class="life-rank"><span>PP1</span><strong>保留本级 prompt KV</strong></div><div class="life-rank current"><span>PP2</span><strong>L20–L29 → logits → t₀</strong></div></div><p class="life-flow output">末级输出：PP2 → last_rank_comm_queue → output 通道</p>
+<div class="life-explanation"><p>PP2 接收 PP1 激活，计算 L20–L29，完成末级归一化与输出头。普通生成路径由 TpModelWorker 在末级调用 model_runner.sample 得到 next_token_ids；PP0/PP1 走中间激活返回路径。</p><p>_pp_launch_batch 将末级的 event 和输出字典放进 last_rank_comm_queue，等待 PP output 通道发送。此时 prompt 的 KV 已分布在三个级上；t₀ 是采样结果，本次 prompt 前向还没有计算 t₀ 自身的 KV。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>末级输出：next_token_ids=t₀；排入 last_rank_comm_queue</dd></div><div><dt>推进条件</dt><dd>末级前向和采样满足事件依赖后，结果可以回流；请求仍未完成 KV 交接。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 4 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L451">末级 norm ↗</a><small>models/llama.py:451</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L583">末级 logits_processor ↗</a><small>models/llama.py:583</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/tp_worker.py#L627">末级前向与 sample ↗</a><small>managers/tp_worker.py:627</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1247">event 与 last_rank_comm_queue ↗</a><small>managers/scheduler_pp_mixin.py:1247</small></li></ul></details></article><article class="life-step" id="step-output" aria-labelledby="title-output">
+<p class="eyebrow">结果与交接 / 08</p><h3 id="title-output" tabindex="-1">结果绕回三级，匹配原来的 batch</h3><p class="life-lead">首 token 要回到各级的本地请求状态里。结果走环形回流，各级据此处理先前那份 B。</p>
+<div class="life-ranks"><div class="life-rank current"><span>PP0</span><strong>接收 t₀，匹配旧 B</strong></div><div class="life-rank current"><span>PP1</span><strong>接收转发的 t₀</strong></div><div class="life-rank current"><span>PP2</span><strong>接收绕回的 t₀</strong></div></div><p class="life-flow output">结果：PP2 → PP0 → PP1 → PP2；不是按 2 → 1 → 0 倒传</p>
+<div class="life-explanation"><p>CUDA 路径中，PP2 发送末级输出给 PP0；非末级转发上一轮保存的 pp_outputs，因此结果继续 PP0 → PP1 → PP2。各级接收输出，准备 GenerationBatchResult，安排必要的 D2H，并在 CPU 处理前等待 d2h_event。</p><p>PP=3、depth=0 时环长为 3。当前前向用 mbs[mb_id]，结果处理用 mbs[(mb_id+1)%3]：两者属于不同槽位。R 不会在每次本地循环都从接入走到释放。只有单条 R 时，也需要后续空计算迭代把结果和控制消息排空。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>回流结果 + 旧 batch B → 本地结果处理</dd></div><div><dt>推进条件</dt><dd>目标槽位存在、对应 output 已接收，且 D2H 事件已完成。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 5 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L223">mb_id / next_mb_id 与处理顺序 ↗</a><small>managers/scheduler_pp_mixin.py:223</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L553">init_pp_loop_state ↗</a><small>managers/scheduler_pp_mixin.py:553</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L983">_pp_send_output_to_next_stage ↗</a><small>managers/scheduler_pp_mixin.py:983</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1072">接收 output、copy stream 与 d2h_event ↗</a><small>managers/scheduler_pp_mixin.py:1072</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L315">等待 D2H 后处理旧 batch ↗</a><small>managers/scheduler_pp_mixin.py:315</small></li></ul></details></article><article class="life-step" id="step-transfer" aria-labelledby="title-transfer">
+<p class="eyebrow">结果与交接 / 09</p><h3 id="title-transfer" tabindex="-1">进入 inflight，各级向 Decode 提交本级 KV</h3><p class="life-lead">每级处理完自己的最终 Prefill 结果，就开始交接自己持有的 KV。KV 数据直接去 Decode 的目标内存。</p>
+<div class="life-ranks"><div class="life-rank current"><span>PP0</span><strong>本级 KV → D</strong></div><div class="life-rank current"><span>PP1</span><strong>本级 KV → D</strong></div><div class="life-rank current"><span>PP2</span><strong>本级 KV → D</strong></div></div><p class="life-flow kv">KV：PP0 ↘ D ｜ PP1 → D ｜ PP2 ↗ D；按接收端层映射写入</p>
+<div class="life-explanation"><p>process_batch_result_disagg_prefill 将 t₀ 追加到本地 req.output_ids，维护未完成请求的缓存引用，再把 R 加入 disagg_prefill_inflight_queue，随后调用 send_kv_chunk(last_chunk=True)。这是每级自己的先后关系，不要求等三级都处理完结果才一起发送。</p><p>最终块先将首 token 等信息写入 metadata buffer，再把请求 token 索引转成传输页索引，调用 sender.send。以 Mooncake 为例，send 将任务加入传输队列，后台搬运本级层的 KV。send 返回后继续轮询；PP2 不需要先汇总全模型 KV。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>每级：B 最终结果 → inflight_queue → sender.send</dd></div><div><dt>推进条件</dt><dd>本级最终结果已处理且 bootstrap 完成；发送中的 KV 与 metadata 必须继续保留。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 5 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L840">追加首 token、进入 inflight、send_kv_chunk ↗</a><small>disaggregation/prefill.py:840</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L1311">_send_kv_chunk ↗</a><small>disaggregation/prefill.py:1311</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L1484">页索引转换与 sender.send ↗</a><small>disaggregation/prefill.py:1484</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/utils.py#L499">MetadataBuffers.set_buf ↗</a><small>disaggregation/utils.py:499</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/mooncake/conn.py#L2528">MooncakeKVSender.send ↗</a><small>disaggregation/mooncake/conn.py:2528</small></li></ul></details></article><article class="life-step" id="step-terminal" aria-labelledby="title-terminal">
+<p class="eyebrow">完成与释放 / 10</p><h3 id="title-terminal" tabindex="-1">轮询传输终态，沿 PP 汇合名单</h3><p class="life-lead">传输任务提交后，调度器继续工作。只有各级都报告传输已到终态，R 才能进入释放候选名单。</p>
+<div class="life-ranks"><div class="life-rank current"><span>PP0</span><strong>轮询 sender₀</strong></div><div class="life-rank current"><span>PP1</span><strong>与 sender₁ 终态求交</strong></div><div class="life-rank current"><span>PP2</span><strong>与 sender₂ 终态求交</strong></div></div><p class="life-flow control">终态名单：T₀ → T₀ ∩ T₁ → T₀ ∩ T₁ ∩ T₂</p>
+<div class="life-explanation"><p>每轮 _pp_pd_get_prefill_transferred_ids 轮询 inflight 请求的 sender。先在级内做 attention CP/TP 状态归约，再沿 PP0 → PP1 → PP2 对终态请求 ID 求交集。本例 TP=CP=1，所以重点是三级 PP 的共识。</p><p>源码终态集合包括 Success 和 Failed。主线假设都 Success；若 PP0、PP2 已终态而 PP1 仍在传输，R 不会出现在最终交集中。等待期间仍需保留源 KV，不能因为本级 forward 或 send 已返回就释放。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>inflight_queue 中保留 R；终态 ID 逐级求交</dd></div><div><dt>推进条件</dt><dd>R 同时存在于三个级的终态候选集合，才能成为释放候选。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 3 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L635">_pp_pd_get_prefill_transferred_ids ↗</a><small>managers/scheduler_pp_mixin.py:635</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1261">get_rids ↗</a><small>managers/scheduler_pp_mixin.py:1261</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/mooncake/conn.py#L2562">MooncakeKVSender.poll ↗</a><small>disaggregation/mooncake/conn.py:2562</small></li></ul></details></article><article class="life-step" id="step-release" aria-labelledby="title-release">
+<p class="eyebrow">完成与释放 / 11</p><h3 id="title-release" tabindex="-1">release 名单回流，各级再次检查本地状态</h3><p class="life-lead">全局释放结论也要送回各级。收到名单是清理门槛，各级仍需确认自己的 sender 已处于终态。</p>
+<div class="life-ranks"><div class="life-rank current"><span>PP0</span><strong>接收 release 名单</strong></div><div class="life-rank current"><span>PP1</span><strong>转发并检查本地终态</strong></div><div class="life-rank current"><span>PP2</span><strong>接收绕回的名单</strong></div></div><p class="life-flow control">释放许可：PP2 → PP0 → PP1 → PP2；本地 poll 再把关</p>
+<div class="life-explanation"><p>末级把终态交集作为 release_rids 送回 PP0，再经 PP1 传回 PP2。PP loop 用返回的 next_release_rids 调用 process_disagg_prefill_inflight_queue。bootstrap、output 与 release 都在循环中推进，但各有消息和状态。</p><p>本地处理函数再次轮询 sender。R 不在名单内就留在 undone_reqs；即使在名单内，本地尚非 Success/Failed，也继续等待。本地成功才进入正常清理；失败走 handle_inflight_transfer_failure，不会被解释成成功交接。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>release_rids 中的 R + 本地终态 → 可收尾</dd></div><div><dt>推进条件</dt><dd>共识名单包含 R，同时本地 poll 已确认终态。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 3 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L683">_pp_pd_send_consensus_release_ids ↗</a><small>managers/scheduler_pp_mixin.py:683</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L325">process_disagg_prefill_inflight_queue 调用 ↗</a><small>managers/scheduler_pp_mixin.py:325</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L971">名单过滤与本地终态复查 ↗</a><small>disaggregation/prefill.py:971</small></li></ul></details></article><article class="life-step" id="step-finish" aria-labelledby="title-finish">
+<p class="eyebrow">完成与释放 / 12</p><h3 id="title-finish" tabindex="-1">释放请求占用，结束 Prefill 侧生命周期</h3><p class="life-lead">成功交接后，各级解除 R 的本地资源占用，Prefill 服务返回自己的完成结果，Decode 继续后续生成。</p>
+<div class="life-ranks"><div class="life-rank current"><span>PP0</span><strong>解除 R 的资源占用</strong></div><div class="life-rank current"><span>PP1</span><strong>解除 R 的资源占用</strong></div><div class="life-rank current"><span>PP2</span><strong>解除 R 的资源占用</strong></div></div><p class="life-flow local">P 侧完成输出 → 前端；D 侧持有 prompt KV + t₀，继续生成</p>
+<div class="life-explanation"><p>成功分支设置 Prefill 侧 FINISH_LENGTH(length=0)，调用 release_kv_cache 和 tree_cache.finish(SUCCESS)，清理 sender，并将 R 加入 done_reqs。随后 stream_output 发送完成输出，归还 metadata 槽，更新 inflight 队列。PP 的对外输出由有效 IPC sender 发出，不会产生三份用户响应。</p><p>释放请求意味着归还请求槽、解除缓存锁或引用；可复用的 prompt KV 可能继续由前缀缓存管理。batch 的旧引用由后续过滤与槽位复用清理。Decode 使用收到的 prompt KV 与 t₀ 继续生成；本页终点仅是 Prefill 侧收尾，不是整段回答生成结束。</p></div>
+<dl class="life-checkpoints"><div><dt>请求状态</dt><dd>inflight_queue → done_reqs → 移出；metadata 槽归还</dd></div><div><dt>推进条件</dt><dd>三个级分别完成本地清理，R 的 Prefill 生命周期结束；无需等待 Decode 生成全文。</dd></div></dl>
+<details class="life-sources"><summary>对应源码 · 5 个锚点</summary><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L1025">成功释放与 sender.clear ↗</a><small>disaggregation/prefill.py:1025</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L1066">stream_output、metadata 归还与队列更新 ↗</a><small>disaggregation/prefill.py:1066</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/common.py#L254">release_kv_cache ↗</a><small>mem_cache/common.py:254</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L1242">旧 batch 过滤 ↗</a><small>disaggregation/prefill.py:1242</small></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_components/ipc_channels.py#L36">有效 IPC 输出通道 ↗</a><small>managers/scheduler_components/ipc_channels.py:36</small></li></ul></details></article>
+<div class="life-controls" hidden><button type="button" id="life-prev">← 上一步</button><span id="life-progress" role="status" aria-live="polite"></span><button type="button" id="life-next">下一步 →</button></div></div></div></section>
+<section class="prose life-reading" id="boundaries"><h2>把三个“完成”分开看</h2>
+<div class="table-scroll"><table><thead><tr><th>里程碑</th><th>已经完成什么</th><th>还要等什么</th></tr></thead><tbody>
+<tr><td>末级前向完成</td><td>prompt 计算结束，得到首 token</td><td>结果回流、本地结果处理、KV 传输</td></tr>
+<tr><td>本级传输成功</td><td>本级 sender 到达 Success</td><td>跨 PP 终态共识与 release 名单</td></tr>
+<tr><td>Prefill 侧收尾完成</td><td>请求退出各级 inflight，完成本地清理与应答</td><td>Decode 继续生成；本页不跟踪回答结束</td></tr></tbody></table></div>
+<h2 id="queues">用状态串起这 12 步</h2><p class="life-queue">bootstrap_queue → waiting_queue → EXTEND batch → inflight_queue → done / 移出</p>
+<p>这是<strong>每个 PP rank 的本地请求轨迹</strong>。一个 Req 可以跨多个 loop 存活；batch 是某次计算的集合；slot 是循环复用的存储位置。三个 rank 上同 rid 的 Req 并不是同一个 Python 对象，也不能把 slot 释放等同于请求 KV 释放。</p>
+<h2 id="variants">主线之外，哪些地方会多走几步？</h2>
+<details><summary>长 prompt：Chunked Prefill 会重复哪一段？</summary><p>重复“准备下一块输入 → 三级前向 → 对应结果处理”，逐步填充同一请求的 KV。中间块维护 chunked_req / inflight_middle_chunks，并可发送已完成的 KV 范围；非最终块会将尾部不足一页的内容延后。最终块才走主线中的首 token、最终 metadata 和 inflight 收尾。不能把每个 chunk 都画成新请求，也不能假设所有 KV 都等最终块才开始传。</p><p><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L1210">process_prefill_chunk ↗</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L898">中间块结果处理 ↗</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L1329">非最终块的页边界 ↗</a></p></details>
+<details><summary>前缀命中：减少的是计算还是传输？</summary><p>P 侧 prefix cache 命中缩短待算范围；D 侧已有前缀通过 bootstrap 返回，决定 start_send_idx。两者是不同位置的缓存状态。若启用 HiCache，选批前还会推进缓存事件，命中主存的 KV 需要按实现回载。本页冷缓存示例不插入 L2/L3 时间条，也不假定存在整批 H2D barrier。</p><p><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L3959">选批与前缀匹配 ↗</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L395">Decode 前缀与发送起点 ↗</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L251">选批前推进 HiCache 事件 ↗</a></p></details>
+<details><summary>失败、取消或一直排队：从哪里定位？</summary><p>bootstrap_queue 卡住：查握手、目的索引、good/bad 共识和 metadata 容量。waiting_queue 卡住：查 PrefillAdder 预算与请求/KV 槽位。已前向却未交接：查 output 槽位、D2H 事件和本地结果处理。inflight 不下降：查 sender.poll、终态交集、release 回流与本地复查。</p><p>bootstrap 的 bad 名单包含失败及已中止请求；传输阶段的终态交集也包含 Failed，失败进入专门清理路径。这里的共识表示允许一致收尾，不能把它当成“三个级均传输成功”。乐观 Prefill 还可能在握手完成前计算、重试或重新排队，本页关闭这一路径。</p><p><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L625">中止加入 bad 共识 ↗</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L1082">handle_inflight_transfer_failure ↗</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L1515">optimistic_release_and_requeue ↗</a></p></details>
+<h2 id="baseline">源码基线与阅读范围</h2><div class="table-scroll"><table><tbody>
+<tr><th>源码目录</th><td><code>D:/Codefiles/sglang</code></td></tr><tr><th>分支 / commit</th><td>main / <code>279339f113b79af84f27fd3ac92d0a13bd3f4cbd</code></td></tr><tr><th>读取时间 / 工作区</th><td>2026-09-17；读取前干净；源码只读，未做 patch 或设备实验</td></tr>
+<tr><th>场景约定</th><td>CUDA，PD Prefill，PP=3，TP=CP=DP=1，pp_async_batch_depth=0；普通 Llama 类 FULL attention 生成请求；以 Mooncake 说明传输提交</td></tr>
+<tr><th>主线假设</th><td>一条 R、各次计算均为单请求 batch B；可选单块或三块（12 token / 块预算 4 / 页大小 2）；P/D 均无前缀命中；不启用 HiCache、L3、staging、投机解码、乐观 Prefill、约束采样；资源足够且请求成功</td></tr>
+<tr><th>验证边界</th><td>静态源码走读与页面验证；步骤是因果阅读顺序，非实际 trace、性能仿真或同时发生的全局快照</td></tr></tbody></table></div>
+<p>本页固定当前读取的提交 <code>279339f113</code>。loop 入门 / 依赖图已统一到同一提交，但使用 HiCache host-hit 场景；可借它们理解调度交错，不能直接照搬其 L# 编号、耗时或缓存步骤。</p>
+<p><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/PD%20Prefill%20PP%3D3%20请求生命周期源码学习文档.md">阅读对应 Markdown 文档 ↗</a></p></section>
+<nav class="lesson-pager" aria-label="相关学习"><a href="../pd-prefill-pp-loop/quick.html"><small>观察循环交错</small><strong>快速入门 · loop 与 batch</strong><span>切换到调度器视角</span></a><a class="next" href="../pd-prefill-pp-loop/notes.html"><small>继续阅读</small><strong>PP loop 源码说明 →</strong><span>同一源码基线，不同示例配置</span></a></nav></main>
+<footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><span>源码因果走读 · 非运行 trace</span><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>
