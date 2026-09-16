@@ -2,6 +2,7 @@
 """Derive beginner views from the detailed page's fixed illustrative model."""
 import hashlib
 import json
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -32,6 +33,14 @@ class EmbeddedModel(HTMLParser):
             self.chunks.append(text)
 
 
+def owner_batches(owner):
+    """Use explicit model ownership, including the shared M1–M5 request set."""
+    batches = {int(n) for n in re.findall(r"M(\d+)", owner)}
+    for first, last in re.findall(r"M(\d+)[–-]M(\d+)", owner):
+        batches.update(range(int(first), int(last) + 1))
+    return sorted(b for b in batches if 1 <= b <= 5)
+
+
 def main():
     outer = EmbeddedModel()
     outer.feed((PAGE / "index.html").read_text())
@@ -46,20 +55,30 @@ def main():
     for original in data["loops"]:
         r, n = original["r"], original["n"]
         events = sorted((e for e in data["events"] if e["r"] == r and e["n"] == n and e["kind"] in ("cpu", "wait")), key=lambda e: (e["start"], e["end"]))
+        released = [b for item in data["releases"] if item["r"] == r and item["n"] == n for b in item["batches"]]
         groups = []
         for i in range(5):
             subset = [e for e in events if phase_group[e["phase"]] == i]
+            links = {}
+            for event in subset:
+                owners = released if event["id"] == f"{r}:{n}:release" else owner_batches(event["owner"])
+                for batch in owners:
+                    link = links.setdefault(batch, {"shared": True, "actions": []})
+                    link["shared"] = link["shared"] and len(owners) > 1
+                    action = event["label"].removeprefix("等：")
+                    if action not in link["actions"]:
+                        link["actions"].append(action)
             groups.append(None if not subset else {
                 "start": subset[0]["start"], "end": subset[-1]["end"],
                 "refs": sorted({e["ref"] for e in subset}),
                 "wait": round(sum(e["end"] - e["start"] for e in subset if e["kind"] == "wait"), 3),
+                "links": links,
             })
         present = [g for g in groups if g]
         assert abs(present[0]["start"] - original["start"]) < .002
         assert abs(present[-1]["end"] - original["end"]) < .002
         assert all(abs(a["end"] - b["start"]) < .002 for a, b in zip(present, present[1:]))
         assert abs(sum(e["end"]-e["start"] for e in events) - (original["end"]-original["start"])) < .01
-        released = [b for item in data["releases"] if item["r"] == r and item["n"] == n for b in item["batches"]]
         loops.append({**original, "groups": groups, "released": released})
 
     batches = []

@@ -2,13 +2,17 @@
 
 ## 0. 场景：PD 分离下，Prefill 侧的 PP 调度
 
-**第一次阅读建议从[快速入门版](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html)开始。** 它提供“看一轮 loop”和“跟踪一份 batch”两种视角；详细版继续保留逐项操作与前置依赖。
+**第一次阅读建议从[快速入门版](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html)开始。** 它以 loop 为主图，选择 M1–M5 后在同一张图中高亮相关操作，并贴附该 batch 的进度带；详细版继续保留逐项操作与前置依赖。
 
 入门版把源码中的连续步骤合成五组：A 检查状态；B+C 缓存与选批；D+E 输入 / 提交前向；F+G+H 结果与共识；I 转发保存。每个外框仍代表一次本地槽位迭代，段宽保留原模型时间。bootstrap 轮询与共识回流仍分处前后，避免为“合并概念”而修改执行顺序。
 
-生命周期视角沿用 micro-batch 的 M1–M5 编号，按各级的六个连续状态区间显示：准入与排队、准备缓存 / 输入、本级 GPU 前向、等结果 / 处理、KV 传输、等共识 / 释放。除 GPU 前向段外，这些区间可能包含排队或资源等待，不意味着连续占用 CPU / GPU。共同准入状态来自同一请求集合，不能当成五份独立资源消耗相加。清理终点取本地 release 操作结束，release 名单记录的时间则是进入清理的时刻。
+每级下沿的生命周期进度带与 loop 共用时间轴，沿用 micro-batch 的 M1–M5 编号，按各级的六个连续状态区间显示：准入与排队、准备缓存 / 输入、本级 GPU 前向、等结果 / 处理、KV 传输、等共识 / 释放。除 GPU 前向段外，这些区间可能包含排队或资源等待，不意味着连续占用 CPU / GPU。共同准入状态来自同一请求集合，不能当成五份独立资源消耗相加。清理终点取本地 release 操作结束，release 名单记录的时间则是进入清理的时刻。
 
-两种视角使用同一份详细版模型。仓库内 `scripts/build_pp_quick_data.py` 从详细页面提取模型并生成 `quick-data.js`，检查 48 次本地 loop 的连续覆盖、全部五份 batch 的三阶段生命周期、激活先后及 release 所属；重建命令为 `python3 scripts/build_pp_quick_data.py`。这是图的逻辑一致性检查，没有新增 GPU 运行验证。
+可以按住图中任意位置左右拖动平移，用按钮或 Ctrl / ⌘ + 滚轮缩放；全程已显示时需先放大。点击 loop 查看该轮大步骤，点击进度带查看该生命周期区间，再点对应 L# 定位；batch 高亮始终保留。
+
+实线高亮表示大步骤中包含所选 batch 的操作，虚线表示多请求共享操作，均不表示整段耗时独属于它。归属来自原模型的明确对象及实际 release 名单；未列出请求成员的通用 bootstrap / 终态轮询不额外猜测归属。
+
+loop、进度带与高亮归属使用同一份详细版模型。仓库内 `scripts/build_pp_quick_data.py` 从详细页面提取模型并生成 `quick-data.js`，检查 48 次本地 loop 的连续覆盖、全部五份 batch 在三个流水级上的生命周期、激活先后及 release 所属；重建命令为 `python3 scripts/build_pp_quick_data.py`。这是图的逻辑一致性检查，没有新增 GPU 运行验证。
 
 这张图展示 **SGLang 在 Prefill / Decode 分离部署时，Prefill 侧使用流水线并行（PP）的调度逻辑**。Prefill 处理输入 prompt、执行前向并产生 KV cache；Decode 接收所需 KV 后继续逐 token 生成。图中还包含 Prefill 为此推进的 bootstrap 状态、结果处理、KV 发送及请求释放。
 
