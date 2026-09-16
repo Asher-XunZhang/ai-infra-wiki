@@ -15,7 +15,7 @@
     if(a.kind==='release')return `M${a.x} ${ay} H${a.x-6} V464 H${b.x-6} V${by} H${b.x}`;
     if(wire.path==='output-return')return `M${a.x+a.w} ${ay} H1008 V279 H${bx} V${b.y}`;
     if(wire.kind==='output')return `M${ax} ${a.y} V292 H${bx} V${b.y}`;
-    if(wire.path==='kv')return `M${a.x+a.w} ${ay} H${a.x+a.w+6} V${407+a.rank*16} H1024 V${by} H${b.x}`;
+    if(wire.path==='kv')return `M${a.x+a.w} ${ay} H${a.x+a.w+6} V${407+a.rank*16} H${1000+a.rank*16} V${325+a.rank*15} H${b.x-2}`;
     return `M${a.x+a.w} ${ay} H${b.x} V${by}`;
   }
   function draw(f){

@@ -31,7 +31,13 @@
 <section class="operation-lab" id="operation-lab" aria-labelledby="operation-title"><div class="lab-heading"><h3 id="operation-title"></h3><a id="operation-source" target="_blank" rel="noreferrer">对应源码 ↗</a></div><p id="operation-description"></p><div id="operation-visual" class="operation-visual"></div></section>
 <p class="module-description">完整 PP 结构 · 当前操作在图中同步高亮；点击组件查看职责。窄屏可横向滚动。</p><div class="pipeline-canvas" tabindex="0"><svg id="pipeline-svg" viewBox="0 0 1280 480" role="group" aria-label="Prefill PP=3 平面流水线"><title>PP=3 请求处理结构</title><desc>上方握手，中间切块组批与三级前向，下方结果、KV 交接和释放；高亮与主播放器一致。</desc>
 <path class="base-wire" d="M77 166 V102 H155 V66 H180 M290 87 V119 M570 87 V119 M850 87 V119 M290 161 V192 M570 161 V192 M850 161 V192 M400 223 H460 M680 223 H740"/>
-<path class="base-wire output-wire" d="M960 223 H1000 V279 H247.5 V312 M247.5 312 V292 H527.5 V312 M527.5 292 H807.5 V312"/><path class="base-wire kv-wire" d="M315 340 H319 V407 H1024 V340 H1050 M595 340 H599 V423 H1024 V340 H1050 M875 340 H879 V439 H1024 V340 H1050"/>
+<defs><marker id="kv-target-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="var(--flow-kv)"/></marker><marker id="decode-ready-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="var(--muted)"/></marker></defs>
+<path class="base-wire output-wire" d="M960 223 H1000 V279 H247.5 V312 M247.5 312 V292 H527.5 V312 M527.5 292 H807.5 V312"/>
+<path class="base-wire kv-wire" data-kv-rank="0" d="M315 340 H321 V407 H1000 V325 H1048" marker-end="url(#kv-target-arrow)"><title>PP0 的 KV → Decode 接收 KV</title></path>
+<path class="base-wire kv-wire" data-kv-rank="1" d="M595 340 H601 V423 H1016 V340 H1048" marker-end="url(#kv-target-arrow)"><title>PP1 的 KV → Decode 接收 KV</title></path>
+<path class="base-wire kv-wire" data-kv-rank="2" d="M875 340 H881 V439 H1032 V355 H1048" marker-end="url(#kv-target-arrow)"><title>PP2 的 KV → Decode 接收 KV</title></path>
+<path class="base-wire decode-ready-wire" d="M1155 368 V401" marker-end="url(#decode-ready-arrow)"/>
+<text class="decode-ready-label" x="1166" y="389">接收就绪</text>
 <text class="pp-label" x="180" y="27">PP0</text>
 <text class="pp-label" x="460" y="27">PP1</text>
 <text class="pp-label" x="740" y="27">PP2</text>
@@ -84,7 +90,7 @@
 </g>
 <g class="pipeline-node" data-node="decode-run" tabindex="0" role="button" aria-label="Decode · 后续生成"><rect class="node-shell" x="1050" y="403" width="210" height="42" rx="5"/><text class="node-title" x="1155.0" y="430" text-anchor="middle">Decode · 后续生成</text>
 </g>
-<g id="pipeline-routes" aria-hidden="true"></g></svg></div>
+<g class="kv-input-ports" aria-hidden="true"><circle cx="1050" cy="325" r="3"/><circle cx="1050" cy="340" r="3"/><circle cx="1050" cy="355" r="3"/></g><g id="pipeline-routes" aria-hidden="true"></g></svg></div>
 <p id="module-description" class="module-description">上方数据变化与下方结构图使用同一个播放时钟。</p>
 <div class="player-legend"><span class="control">请求 / 共识</span><span class="proxy">激活</span><span class="output">结果</span><span class="kv">KV 传输</span><span>实线高亮 = 当前操作 · 浅色 = 已访问</span></div>
 <details class="request-state"><summary>查看每条请求在三个 PP 上的队列与资源状态</summary><div id="request-state"></div></details>
