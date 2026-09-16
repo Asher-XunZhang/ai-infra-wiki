@@ -579,7 +579,7 @@ flowchart LR
 | 能力 | 对主线的影响 | 建议 |
 | --- | --- | --- |
 | Chunked Prefill | 增加跨轮 `chunked_req` 状态 | 读专项文档 |
-| HiCache | Prefix Match 后可能先 load L2/L3 | 读 HiCache 文档 |
+| HiCache | L3 预取、重新匹配、Host 回载与逐层事件影响准入和执行 | 分别跟踪候选命中、实际索引和完成事件 |
 | Speculative Decoding | 一轮可能 draft/verify 多 token | 需要专门 batch/result 状态 |
 | PP | 同一 batch 跨 stage/microbatch | 读 PP 源码文档 |
 | DP Attention | 请求路由和 rank 同步改变 | 不从单 Scheduler 图外推 |
@@ -588,6 +588,25 @@ flowchart LR
 相关源码型资料：
 
 - [PD 分离下的 PP 源码学习文档](PD%20分离下的%20PP%20源码学习文档.md)
+
+### 10.1 HiCache 的调度交接点
+
+**固定源码补充（2026-09-16，官方 `72d5c5bb73`）：** `Scheduler._prefetch_kvcache` 可在等待阶段发起 L3 预取；候选请求通过 `check_prefetch_progress` 后重新匹配树，`PrefillAdder.add_one_req` 检查预算并调用 `init_load_back`。形成 batch 后，`ready_to_load_host_cache` 启动回载并绑定 consumer index，模型按层等待可读事件。
+
+```mermaid
+flowchart TD
+    W["等待与可选 L3 预取"] --> M["重匹配树"]
+    M --> A["预算与 Host 回载准备"]
+    A --> B["构造 batch，绑定 consumer"]
+    B --> E["逐层事件满足后读取"]
+```
+
+**图意解读：** 这条补充主线采用 HiCache 的 `cache` 模式；预取未结束时可以跳过该请求，回载准备也可能被拒绝。它解释缓存如何加入请求生命周期，不声称所有请求都进行四种搬运。
+
+- [HiCache 前缀命中源码学习文档](<HiCache 前缀命中源码学习文档.md>) — 从请求键、页对齐和树匹配走到回载后的实际设备前缀。
+- [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) — 逐步追踪 D2H、L3 上传/预取、H2D、事件和资源释放。
+
+上述专题记录实际源码目录、分支、commit 与只读验证边界，不覆盖本文旧文章未验证的性能结论。
 
 ## 11. 小白排障地图
 

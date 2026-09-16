@@ -448,7 +448,7 @@ L1 GPU KV
 <-> 可选 L3 Storage Backend
 ```
 
-由 Python/CUDA 侧的 HiRadixCache、Cache Controller、Host Pool 和 storage backend 组成一条分层路径。
+原文以 HiRadixCache、Cache Controller、Host Pool 和 storage backend 解释分层路径。2026-09-16 补充的官方源码 `72d5c5bb73` 普通默认路径采用 UnifiedRadixCache、TreeCore 和 HybridCacheController，不能直接把旧类名当作当前快照唯一实现。
 
 ### 13.2 Mooncake 作为 HiCache L3
 
@@ -458,6 +458,18 @@ Mooncake 可以是 HiCache 的一个外部存储/传输后端。此时：
 - Mooncake 提供 L3 object/transfer 能力；
 
 见 [Mooncake 与 SGLang HiCache 学习文档](Mooncake%20与%20SGLang%20HiCache%20学习文档.md)。
+
+### 13.3 固定源码中的 HiCache：匹配、搬运和释放分开
+
+2026-09-16 补充，采用官方快照 `72d5c5bb73`，完整读取目录与验证边界见下列专题；不改变本文原有第三方资料基线。
+
+| 关注的问题 | 源码主线 | 对应学习资料 |
+| --- | --- | --- |
+| 哪段前缀能复用 | Req → RadixKey → TreeCore validators → MatchResult | [HiCache 前缀命中源码学习文档](<HiCache 前缀命中源码学习文档.md>) |
+| Host 命中如何进入 GPU | PrefillAdder → init_load_back → load_queue → 逐层事件 | [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) 第 9～10 节 |
+| 副本何时可回收 | pending/ongoing → ACK → 引用解除 → 淘汰 | 同上第 5、7、13 节 |
+
+例如 `host_hit_length=512` 只是匹配时的恢复需求；若设备预算或分配使回载失败，调度器仍须按实际设备索引重新计算剩余输入。Host 和 L3 扩大复用来源，不直接替设备提供 forward 的活跃空间。
 
 ## 14. 排障地图
 

@@ -327,6 +327,8 @@ flowchart TD
 | block 与 chunk 为什么同时存在 | [vLLM Chunked Prefill 与 Block Size 学习文档](../vllm/vLLM%20Chunked%20Prefill%20与%20Block%20Size%20学习文档.md) |
 | SGLang 长 prompt 和显存参数 | [SGLang Chunked Prefill 与调度器显存预算学习文档](../sglang/SGLang%20Chunked%20Prefill%20与调度器显存预算学习文档.md) |
 | SGLang 的三层 KV 数据结构 | [SGLang KV Pool、请求视图与 HiCache 工程学习文档](../sglang/SGLang%20KV%20Pool、请求视图与%20HiCache%20工程学习文档.md) |
+| HiCache 怎样判定和兑现前缀命中 | [HiCache 前缀命中源码学习文档](<../sglang/HiCache 前缀命中源码学习文档.md>) |
+| HiCache 四种搬运与资源生命周期 | [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<../sglang/HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) |
 | HiCache 与 Mooncake 后端的职责边界 | [Mooncake 与 SGLang HiCache 学习文档](../sglang/Mooncake%20与%20SGLang%20HiCache%20学习文档.md) |
 | 多副本和路由怎么选 | [SGLang 数据并行、负载均衡与专家并行边界学习文档](../sglang/SGLang%20数据并行、负载均衡与专家并行边界学习文档.md) |
 | 长上下文 kernel 调度 | [PersistentKV 长上下文注意力调度学习文档](../vllm/PersistentKV%20长上下文注意力调度学习文档.md) |
@@ -336,6 +338,11 @@ flowchart TD
 第三方文章建立概念后，再读源码型文档：
 
 - [PD 分离下的 PP 源码学习文档](../sglang/PD%20分离下的%20PP%20源码学习文档.md)
+
+- [HiCache 前缀命中源码学习文档](<../sglang/HiCache 前缀命中源码学习文档.md>) — 从请求键、页对齐和树匹配走到回载后的实际设备前缀。
+- [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<../sglang/HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) — 逐步追踪 D2H、L3 上传/预取、H2D、事件和资源释放。
+
+新增 HiCache 专题固定在官方源码 `72d5c5bb73`，详见各篇阅读基线；这些源码补充与本篇原始第三方来源清单分开。
 
 ## 8. 本轮来源去重映射
 

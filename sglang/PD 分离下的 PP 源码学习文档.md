@@ -14,6 +14,8 @@
 | 读取时间 | 2026-07-15 |
 | 工作区状态 | 只读源码，未修改 SGLang。读取时存在未跟踪文件：`docs_new/`、`mainline_diffs.txt`、`reverted_diffs.txt`、`scripts/playground/pd_pp_mtp/`、`scripts/run_prefill_pp_mtp_forward_unit_tests.sh`、`upstream_diffs.txt`、`working_notes/` |
 
+**2026-09-16 独立补充基线：** 第 11.5 节及其图单独采用官方开源 `72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a`，实际读取目录 `/Users/mac/Documents/Documents/工作/sglang-source-study`，分支 `codex/main`，读取 worktree 干净，只读未实验。它不改变本文其余章节的历史 `muxi-main` 基线。
+
 **产物假设**
 
 产物以一份主 Markdown 学习文档为核心，图用 Mermaid 内嵌，或在需要更复杂视觉表达时额外生成 PNG/SVG。本版先使用 Mermaid，保持文档可直接阅读和 diff。
@@ -2262,6 +2264,43 @@ flowchart LR
 #### 小例子
 
 `pp_size=2`、prefill `attn_cp_size=2`、decode `attn_cp_size=1`、layer split 打开时，一个请求至少要等 PP0-CP0、PP0-CP1、PP1-CP0、PP1-CP1 四类 layer/state shard 的响应。少一路，decode 都不能说“KV 已经齐了”。换来的收益是每个 prefill CP rank 不再背完整层范围的 KV/state 压力，而是只背自己那一份。
+
+### 11.5 HiCache：前缀恢复与 PP 协调的独立补充
+
+**本节使用 2026-09-16 读取的官方快照 `72d5c5bb73`，不是上述历史内部分支的同名功能追溯。** 基线与实际源码目录见本文开头，详细锚点见以下两篇专题。
+
+#### 人话版
+
+每个 PP stage 执行自己那部分模型层，HiCache 可以为该 stage 恢复可复用的 KV。它影响“本轮前缀是否可用、什么时候能够读取”，但不会把 Host 回载事件变成 P/D sender 的传输完成状态，也不会替代 proxy tensor。
+
+#### 机制拆解与源码锚点
+
+| 步骤 | 官方固定源码入口 | 生命周期含义 |
+| --- | --- | --- |
+| 请求匹配 | `Req.init_next_round_input` → `UnifiedTreeCore.match_prefix` | 分开返回设备索引与可恢复 Host 边界 |
+| 候选准入 | `PrefillAdder.add_one_req` → `UnifiedRadixCache.init_load_back` | 先检查预算，回载后用实际索引重算输入 |
+| 发起 H2D | `UnifiedRadixCache.ready_to_load_host_cache` → `HiCacheController.start_loading` | batch 关联对应 consumer index |
+| 本层可读 | `LayerDoneCounter.wait_until` | 当前层读取等待对应复制事件 |
+| 有序收尾 | `UnifiedRadixCache._all_reduce/_pp_sync`、`loading_check` | 首 stage 传播消费决策，本地完成后解除传输保护 |
+
+```mermaid
+flowchart TD
+    M["本 stage 的前缀匹配"] --> A["预算通过，准备 Host→设备回载"]
+    A --> E["batch consumer 与逐层可读事件"]
+    E --> F["本 stage forward"]
+    F --> P["proxy tensor 进入下一 stage"]
+    F --> K["本 stage 产生的 KV 进入独立 PD transfer 路径"]
+    C["PP0 的 HiCache 消费数量"] -. "逐 stage 传播" .-> L["本地 ACK 完成等待与引用收尾"]
+```
+
+**图意解读：** 这张补充图单独表达固定官方快照中的职责关系。HiCache 负责恢复与引用保护，proxy 负责中间激活，PD transfer 负责跨 P/D 传输；三条线的完成条件分别核对。不能从一个 HiCache ACK 推导 Decode 已经收到完整 KV。
+
+#### 例子与排障提示
+
+假设 PP0 本轮决定消费 2 个 H2D ACK，PP1 收到同样数量，但 PP1 的第二个 finish event 尚未完成。PP1 仍要等待本地 event，再解除对应传输引用。传播“2”协调的是消费顺序和数量，不证明两站的复制耗时一样。
+
+- [HiCache 前缀命中源码学习文档](<HiCache 前缀命中源码学习文档.md>) — 从请求键、页对齐和树匹配走到回载后的实际设备前缀。
+- [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) — 逐步追踪 D2H、L3 上传/预取、H2D、事件和资源释放。
 
 ### 叠加行为总图
 

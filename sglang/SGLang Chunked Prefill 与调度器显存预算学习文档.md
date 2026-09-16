@@ -495,6 +495,23 @@ HiCache 详情见：
 - [SGLang KV Pool、请求视图与 HiCache 工程学习文档](SGLang%20KV%20Pool、请求视图与%20HiCache%20工程学习文档.md)
 - [Mooncake 与 SGLang HiCache 学习文档](Mooncake%20与%20SGLang%20HiCache%20学习文档.md)
 
+### 11.1 HiCache 命中怎样进入本轮预算
+
+**固定源码补充（2026-09-16）：** 以下采用官方快照 `72d5c5bb73`，与本文原始文章版本分开；详见 [HiCache 前缀命中源码学习文档](<HiCache 前缀命中源码学习文档.md>) 的基线与第 7 节。
+
+`PrefillAdder.add_one_req` 可以先用 Host 命中估算需要新算的输入，但它仍检查总 KV 预算，并在 `init_load_back` 返回后根据真实 `prefix_indices` 重算剩余输入。Host 数据恢复到 GPU 仍占设备槽位；输入预算节省与 KV 空间需求不能混成一个数字。
+
+| 阶段 | 需要分清的数值 |
+| --- | --- |
+| 匹配后 | 设备前缀长度、Host 候选命中长度 |
+| 回载准备后 | 实际新设备索引长度、剩余输入长度 |
+| chunk 选择 | 本轮剩余 chunk/输入预算，以及页对齐后的资源记账 |
+| forward 前 | 对应 batch 的 H2D consumer index 与逐层事件 |
+
+教学例子：请求 1,041 token，设备已有 512，Host 可恢复另外 512。若回载成功，剩余计算 17 token；page_size=16 时相应输入预算可能按 32 记账。若回载失败，则不能继续用“17”决定本轮计算量。
+
+完整 D2H、预取、回载和引用生命周期见 [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>)。这段补充没有进行性能或 OOM 实验。
+
 ## 12. 调参和排障地图
 
 ### 12.1 建议顺序

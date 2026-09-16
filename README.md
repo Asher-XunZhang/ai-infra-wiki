@@ -211,6 +211,8 @@ flowchart TB
 - [SGLang RadixAttention 与 HiCache KV Cache 技术主线](<./sglang/SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>) — 从 GPU Radix Cache 延伸到分层缓存。
 - [SGLang KV Pool、请求视图与 HiCache 工程](<./sglang/SGLang KV Pool、请求视图与 HiCache 工程学习文档.md>) — 区分物理池、逻辑请求视图与缓存控制面。
 - [SGLang Unified Radix Cache](<./sglang/SGLang Unified Radix Cache 学习文档.md>) — 统一前缀树、会话与分层缓存视角。
+- [HiCache 前缀命中源码学习文档](<./sglang/HiCache 前缀命中源码学习文档.md>) — 从请求键、页对齐和树匹配走到回载后的实际设备前缀。
+- [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<./sglang/HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) — 逐步追踪 D2H、L3 上传/预取、H2D、事件和资源释放。
 - [Mooncake 与 SGLang HiCache](<./sglang/Mooncake 与 SGLang HiCache 学习文档.md>) — 外部 KV 存储接入 SGLang 的控制与数据通路。
 - [SGLang Pipeline Parallel 模式](<./sglang/SGLang Pipeline Parallel 模式学习文档.md>) — PP 进程拓扑、microbatch 与请求反馈回路。
 - [SGLang PP 共识机制源码](<./sglang/SGLang PP 共识机制源码学习文档.md>) — 开源固定版本的五类队列共识、结果回传、槽位时序与资源释放边界。

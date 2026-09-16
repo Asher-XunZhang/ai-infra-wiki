@@ -736,7 +736,18 @@ flowchart LR
 
 人话例子：PP0 在自己时钟上认为预取该停止了，如果 PP1 因启动时间不同继续等待，后续缓存命中长度和调度进度可能不一致。这里同步的是“这次是否停止”的决策，而不是让所有机器的墙钟变成一样。
 
-这一节只给缓存协调的入口；没有覆盖 HiCache 全部树更新和存储后端。相关学习资料见 [RadixAttention 与 HiCache](<SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>)。
+### 11.3 同一基线下的完整缓存主线
+
+2026-09-16 补充的两篇 HiCache 专题使用同一官方 commit `72d5c5bb73`，以普通默认 UnifiedRadixCache 路径为主，并对照 HiRadixCache。上述首 stage 决策传播也在 Unified 的 `_all_reduce/_pp_sync` 中逐项核对；后台 prefetch completed-token 同步则单独分析，避免与前台 ready-count 或 PD RID 名单混淆。
+
+| 想继续追的问题 | 阅读入口 |
+| --- | --- |
+| 本地命中、Host 命中与 L3 结果怎样变成请求可用前缀 | [HiCache 前缀命中源码学习文档](<HiCache 前缀命中源码学习文档.md>) 第 4～8 节 |
+| ACK 如何更新 pending、锁和分裂后的节点片段 | [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) 第 5 节 |
+| ready count、completed tokens、timeout 与本地事件怎样协调 | 同上第 11 节 |
+| 取消和 detach 为什么需要先后顺序 | 同上第 13 节 |
+
+**边界提醒：** 前台 ACK 数量传播不能替代本地 event；后台预取完成量也不能替代 admission 的实际回载量。两篇专题均为静态源码分析，未验证 GPU/网络运行行为。原有 [RadixAttention 与 HiCache](<SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>)仍可作为概念导读。
 
 ## 12. `rank_consensus_checker`：检测分歧，不代替协议
 
