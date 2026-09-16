@@ -1058,6 +1058,7 @@ html,body{background:var(--background)!important;color:var(--foreground);font-fa
     #pp-loop-detail .footnote { margin:12px 0; }
     #pp-loop-detail details { margin-top:14px; }
     #pp-loop-detail .overview { touch-action:pan-y; cursor:grab; }
+    #pp-loop-detail .overview, #pp-loop-detail .overview * { -webkit-user-select:none; user-select:none; }
     #pp-loop-detail .overview.dragging { cursor:grabbing; }
   &lt;/style&gt;
   &lt;h2&gt;PP=3：一次 loop 内，谁在准备、计算、收尾？&lt;/h2&gt;
@@ -1246,10 +1247,44 @@ html,body{background:var(--background)!important;color:var(--foreground);font-fa
     root.querySelector(&#x27;[data-all]&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;setView(0,total));
     root.querySelector(&#x27;[data-pan]&#x27;).addEventListener(&#x27;input&#x27;,e=&gt;setView(Number(e.target.value),viewSpan));
     const timeline=root.querySelector(&#x27;.overview&#x27;);
-    timeline.addEventListener(&#x27;pointerdown&#x27;,e=&gt;{if(e.button!==0)return;suppressClick=false;drag={x:e.clientX,y:e.clientY,start:viewStart,span:viewSpan,id:e.pointerId,moved:false};});
-    timeline.addEventListener(&#x27;pointermove&#x27;,e=&gt;{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(!drag.moved&amp;&amp;Math.abs(dx)&lt;6)return;if(!drag.moved&amp;&amp;Math.abs(dy)&gt;Math.abs(dx)){drag=null;return;}drag.moved=true;timeline.setPointerCapture(e.pointerId);timeline.classList.add(&#x27;dragging&#x27;);const w=timeline.getBoundingClientRect().width;setView(drag.start-dx/(w-(w&lt;440?76:84)-20)*drag.span,drag.span);});
-    const endDrag=()=&gt;{if(drag?.moved)suppressClick=true;drag=null;timeline.classList.remove(&#x27;dragging&#x27;);};
-    timeline.addEventListener(&#x27;pointerup&#x27;,endDrag);timeline.addEventListener(&#x27;pointercancel&#x27;,endDrag);
+    const endDrag=e=&gt;{
+      if(!drag||(e?.pointerId!==undefined&amp;&amp;e.pointerId!==drag.id))return;
+      const {id,moved}=drag;
+      drag=null;
+      if(moved)suppressClick=true;
+      timeline.classList.remove(&#x27;dragging&#x27;);
+      if(timeline.hasPointerCapture(id))timeline.releasePointerCapture(id);
+    };
+    timeline.addEventListener(&#x27;pointerdown&#x27;,e=&gt;{
+      if(e.button!==0||!e.isPrimary)return;
+      endDrag();
+      // Keep text selection/native dragging from taking over the pan gesture.
+      e.preventDefault();
+      suppressClick=false;
+      drag={x:e.clientX,y:e.clientY,start:viewStart,span:viewSpan,id:e.pointerId,moved:false};
+    });
+    window.addEventListener(&#x27;pointermove&#x27;,e=&gt;{
+      if(!drag||e.pointerId!==drag.id)return;
+      if(e.pointerType===&#x27;mouse&#x27;&amp;&amp;!(e.buttons&amp;1)){endDrag(e);return;}
+      const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+      if(!drag.moved&amp;&amp;e.pointerType===&#x27;touch&#x27;&amp;&amp;Math.abs(dy)&gt;Math.max(6,Math.abs(dx))){endDrag(e);return;}
+      if(!drag.moved&amp;&amp;Math.abs(dx)&lt;6)return;
+      e.preventDefault();
+      if(!drag.moved){
+        drag.moved=true;
+        suppressClick=true;
+        // Capture only after a pan starts so ordinary node clicks keep their target.
+        timeline.setPointerCapture(e.pointerId);
+        timeline.classList.add(&#x27;dragging&#x27;);
+      }
+      const w=timeline.getBoundingClientRect().width;
+      setView(drag.start-dx/(w-(w&lt;440?76:84)-20)*drag.span,drag.span);
+    },{passive:false});
+    window.addEventListener(&#x27;pointerup&#x27;,endDrag);
+    window.addEventListener(&#x27;pointercancel&#x27;,endDrag);
+    window.addEventListener(&#x27;blur&#x27;,()=&gt;endDrag());
+    timeline.addEventListener(&#x27;lostpointercapture&#x27;,endDrag);
+    timeline.addEventListener(&#x27;dragstart&#x27;,e=&gt;e.preventDefault());
     timeline.addEventListener(&#x27;click&#x27;,e=&gt;{if(suppressClick){e.stopImmediatePropagation();e.preventDefault();suppressClick=false;}},true);
     timeline.addEventListener(&#x27;wheel&#x27;,e=&gt;{if(!e.ctrlKey&amp;&amp;!e.metaKey)return;e.preventDefault();const rect=timeline.getBoundingClientRect(),left=rect.width&lt;440?76:84,ratio=clamp((e.clientX-rect.left-left)/(rect.width-left-20),0,1);zoomBy(Math.exp(-e.deltaY*.005),viewStart+ratio*viewSpan);},{passive:false});
     new ResizeObserver(draw).observe(root);
@@ -1260,7 +1295,7 @@ html,body{background:var(--background)!important;color:var(--foreground);font-fa
         const selected=chosen&amp;&amp;(chosen.target||chosen.id);
         data=event.data.model;graph=data.graph;total=comparisonEnd||Math.ceil(data.end/10)*10;
         loop=Math.min(loop,Math.max(...data.loops.filter(l=&gt;l.r===rank).map(l=&gt;l.n)));
-        chosen=null;drag=null;viewStart=0;viewSpan=total;refillLoops();
+        endDrag();chosen=null;viewStart=0;viewSpan=total;refillLoops();
         root.dataset.scenario=event.data.id;
         if(selected&amp;&amp;graph[selected]&amp;&amp;graph[selected].n&lt;=loop)showOp({id:selected,...graph[selected]});else select(rank,loop);
         comparisonEnd?setView(0,total):focusDependencies();
