@@ -18,6 +18,57 @@
 <p>可以按住图中任意位置左右拖动平移，用按钮或 Ctrl / ⌘ + 滚轮缩放；全程已显示时需先放大。点击 loop 查看该轮大步骤，点击进度带查看该生命周期区间，再点对应 L# 定位；batch 高亮始终保留。</p>
 <p>实线高亮表示大步骤中包含所选 batch 的操作，虚线表示多请求共享操作，均不表示整段耗时独属于它。归属来自原模型的明确对象及实际 release 名单；未列出请求成员的通用 bootstrap / 终态轮询不额外猜测归属。</p>
 <p>loop、进度带与高亮归属使用同一份详细版模型。仓库内 <code>scripts/build_pp_quick_data.py</code> 从详细页面提取模型并生成 <code>quick-data.js</code>，检查 48 次本地 loop 的连续覆盖、全部五份 batch 在三个流水级上的生命周期、激活先后及 release 所属；重建命令为 <code>python3 scripts/build_pp_quick_data.py</code>。这是图的逻辑一致性检查，没有新增 GPU 运行验证。</p>
+<h3>切换耗时场景进行对照</h3>
+<p>快速入门和依赖分析都提供“耗时场景”选择器，共用同一份依赖模型。原示例已经包含不同 PP 级、不同 batch 的 GPU 前向时间差异，以及 M2/M4 不同的 L2 回载时间；新选择器用于对照其他时间条件。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可横向滚动的数据表"><table>
+<thead>
+<tr>
+<th>场景</th>
+<th>相对原示例只修改哪些服务时间</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>原示例</td>
+<td>保留原有不均匀时间</td>
+</tr>
+<tr>
+<td>GPU 计算均衡</td>
+<td>15 段 GPU 前向均设为 5 u</td>
+</tr>
+<tr>
+<td>PP1 计算偏慢</td>
+<td>PP1 的五段前向乘 2.5</td>
+</tr>
+<tr>
+<td>M3 计算偏长</td>
+<td>M3 在三个 PP 级的前向乘 2.5</td>
+</tr>
+<tr>
+<td>整体计算较短 / 较长</td>
+<td>全部前向分别乘 0.4 / 2.5</td>
+</tr>
+<tr>
+<td>L2 回载偏慢</td>
+<td>M2/M4 各级 H2D 时间乘 3</td>
+</tr>
+<tr>
+<td>激活 / output 传输偏慢</td>
+<td>激活与 output 消息在途时间乘 8</td>
+</tr>
+<tr>
+<td>PD KV 传输偏慢</td>
+<td>各级 KV 在途时间乘 4</td>
+</tr>
+<tr>
+<td>CPU 调度偏慢</td>
+<td>CPU 操作的服务时间乘 2.5；依赖等待重新求解</td>
+</tr>
+</tbody></table></div>
+<p>每个场景重新求解依赖图，重新推导 L2 ACK 发布轮次、本地 event 等待、transfer 终态集合和 release 名单，并由同一模型派生快速入门的 loop 与生命周期。不是对最终图块做比例拉伸。末尾继续展开到所有 batch 完成本地清理，因此不同场景展示的 loop 数可以不同。</p>
+<p>选择 M1–M5 仍可跟踪生命周期；两页跳转保留场景。“统一全程时间轴”使用相同 0–170 u 窗口对比，避免自动聚焦让不同时长看起来相同。参数表列出本场景每级每批的实际示意 GPU 时间；指标比较最后一段 GPU 完成、全部本地清理完成及展示轮数。指标均不是 Decode 生成完成时间。</p>
+<p>例如慢 KV 场景中，GPU 全部完成仍为 75.05 u，而全部本地清理由 101.72 u 延至 162 u，每级展示 38 轮。<strong>这是固定选批且没有新增容量压力反馈的示意模型结果</strong>，不代表真实服务中的慢 KV 一定不影响 GPU。</p>
+<p>所有场景固定 PP=3、depth=0、L1–L3 准入、L4–L8 每轮选择一份 batch，未模拟真实请求流、动态选批、后端竞争、逐层 CUDA 行为或失败恢复，不能计算吞吐、加速比或穷举真实工况。本文后续走读中的固定时间数字仍对应原示例。</p>
+<p>场景生成器为 <code>scripts/pp_timing_model.py</code>；用 <code>python3 -B scripts/build_pp_scenarios.py</code> 重建两种视图的数据与场景目录。生成时校验原示例完全一致、所有前置先完成、五份 batch 的跨级前向与 KV / release 顺序，以及生命周期完整覆盖。GitHub Pages 发布流程会重新运行这些校验。</p>
 <p>这张图展示 <strong>SGLang 在 Prefill / Decode 分离部署时，Prefill 侧使用流水线并行（PP）的调度逻辑</strong>。Prefill 处理输入 prompt、执行前向并产生 KV cache；Decode 接收所需 KV 后继续逐 token 生成。图中还包含 Prefill 为此推进的 bootstrap 状态、结果处理、KV 发送及请求释放。</p>
 <p><strong>PP0、PP1、PP2 全部属于 Prefill 侧</strong>，分别执行该流水级的模型层；同一份 micro-batch 的激活依次经过这三个流水级。Decode 是图外的 KV 接收方，没有作为第四条流水级画入，也未展开其调度循环、GPU 计算或设备拓扑。PP rank 不必等于一颗 GPU，级内 TP / CP 等并行维度未展开。</p>
 <p>本例用五份 micro-batch 和三个环形槽位，说明“一次本地 loop 正在准备谁、提交谁、处理谁的旧结果”。M# 表示实际 batch，s# 表示可复用状态槽位，L# 表示一次本地槽位迭代；三者不能混用。CPU、GPU 与 I/O 行共用时间轴，呈现调度线程、异步前向和通信 / 拷贝之间的依赖。</p>

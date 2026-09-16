@@ -1,10 +1,10 @@
 (() => {
   'use strict';
-  const data = window.PP_QUICK_DATA;
+  let data = window.PP_QUICK_DATA;
   const $ = s => document.querySelector(s);
   const names = ['检查状态', '缓存与选批', '输入 / 提交前向', '结果与共识', '转发保存'];
   const lifeNames = ['准入与排队', '准备缓存 / 输入', '本级 GPU 前向', '等结果 / 处理', 'KV 传输', '等共识 / 释放'];
-  const total = Math.ceil(data.end / 10) * 10;
+  let total = Math.ceil(data.end / 10) * 10, comparisonEnd = 0;
   let rank = 0, loop = 5, batch = 0, lifePhase = -1;
   let start = 0, span = total;
   let drag = null, suppressClick = false;
@@ -230,7 +230,8 @@
     e.preventDefault();const rect=svg.getBoundingClientRect(),fraction=clamp((e.clientX-rect.left-58)/(rect.width-70),0,1),next=clamp(span*Math.exp(e.deltaY*.005),2,total);
     setView(start+fraction*(span-next),next);
   },{passive:false});
-  data.loops.filter(l=>l.r===0).forEach(l=>{const o=html($('#loop'),'option','L'+(l.n+1)+' · 提交 '+batchName(l.current)+' / 收 '+batchName(l.old));o.value=l.n;});
+  function refillLoops(){$('#loop').replaceChildren();data.loops.filter(l=>l.r===0).forEach(l=>{const o=html($('#loop'),'option','L'+(l.n+1)+' · 提交 '+batchName(l.current)+' / 收 '+batchName(l.old));o.value=l.n;});}
+  refillLoops();
   lifeNames.forEach((name,i)=>{const o=html($('#life-phase'),'option',String.fromCharCode(97+i)+' · '+name);o.value=i;});
   $('#rank').addEventListener('change',e=>goLoop(Number(e.target.value),loop));
   $('#loop').addEventListener('change',e=>goLoop(rank,Number(e.target.value)));
@@ -245,5 +246,17 @@
   const params=new URLSearchParams(location.search);
   if(params.has('batch')||params.get('view')==='batch')batch=clamp(Math.round(Number(params.get('batch')))||1,1,5);
   new ResizeObserver(draw).observe(svg);
+  window.addEventListener('pp-timing-change',event=>{
+    data=event.detail.packet.quick;total=comparisonEnd||Math.ceil(data.end/10)*10;
+    loop=Math.min(loop,Math.max(...data.loops.filter(l=>l.r===rank).map(l=>l.n)));
+    drag=null;start=0;span=total;refillLoops();render();
+    svg.dataset.scenario=event.detail.id;
+    comparisonEnd?setView(0,total):batch?fitBatch():focus();
+  });
+  window.addEventListener('pp-timing-scale',event=>{
+    comparisonEnd=event.detail.end;total=comparisonEnd||Math.ceil(data.end/10)*10;
+    comparisonEnd?setView(0,total):batch?fitBatch():focus();
+  });
+  svg.dataset.scenario='baseline';
   render();batch?fitBatch():focus();
 })();

@@ -6,6 +6,9 @@ on:
     paths:
       - 'pages/**'
       - 'scripts/build_pages.py'
+      - 'scripts/build_pp_scenarios.py'
+      - 'scripts/build_pp_quick_data.py'
+      - 'scripts/pp_timing_model.py'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -29,6 +32,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Validate and rebuild timing scenarios
+        run: python3 -B scripts/build_pp_scenarios.py
       - name: Build pages with content-versioned assets
         run: python3 scripts/build_pages.py
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
