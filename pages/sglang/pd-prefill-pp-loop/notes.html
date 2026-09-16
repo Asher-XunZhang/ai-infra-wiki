@@ -4,12 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PD Prefill PP loop · 源码说明</title>
+  <meta name="description" content="逐项对照 SGLang Prefill PP loop 的源码：槽位、L2 ACK、bootstrap、结果回流与 KV 释放。">
   <link rel="stylesheet" href="../../site.css">
-</head>
-<body>
-  <nav><a href="../../">学习首页</a><a href="./">打开交互图</a></nav>
-  <main><h1>PD Prefill：PP=3、5 个 micro-batch 的 loop 细分</h1>
-<h2>0. 场景：PD 分离下，Prefill 侧的 PP 调度</h2>
+  <script src="../../site.js" defer></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23216c51%22%2F%3E%3Ctext%20x%3D%228%22%20y%3D%2224%22%20fill%3D%22white%22%20font-family%3D%22Georgia%2Cserif%22%20font-weight%3D%22bold%22%20font-size%3D%2227%22%3Ea%3C%2Ftext%3E%3C%2Fsvg%3E"></head>
+<body data-page="notes"><a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header>
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航"><details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary><div class="sidebar-content"><a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a><p class="nav-label">SGLANG · 专题 01</p><h2 class="sidebar-title">PD Prefill 与 PP 调度</h2><nav aria-label="专题阅读顺序"><a class="course-link" href="../../sglang/pd-prefill-pp-loop/quick.html"><span class="course-number">01</span><span><strong>快速入门</strong><small>先看 loop 与 batch 的关系</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/index.html"><span class="course-number">02</span><span><strong>依赖分析</strong><small>追踪每一步的前置条件</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/notes.html" aria-current="page"><span class="course-number">03</span><span><strong>源码阅读</strong><small>把图中的行为对应到代码</small></span></a></nav><div class="sidebar-note"><span class="status-dot"></span> 基于固定源码的学习材料<p>先理解整体，再追踪依赖，最后回到源码。</p></div><a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 <span aria-hidden="true">↗</span></a></div></details></aside><div class="site-content"><header class="lesson-header" id="main-content" tabindex="-1"><div class="lesson-kicker"><span class="eyebrow">SGLANG / PD PREFILL</span><span class="lesson-count">03 / 03 · 源码阅读</span></div><h1>把 PP loop 的每一步，<br class="desktop-break">对应到源码。</h1><p class="lead">从调用顺序、槽位关系到共识与释放，逐项核对图中的行为。阅读时可以随时返回交互图，验证自己的理解。</p><div class="meta-tags"><span>PP = 3</span><span>5 个 micro-batch</span><span>Prefill 侧</span><a href="https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a">源码 <code>72d5c5bb73</code> ↗</a></div></header><main class="reading-layout"><aside class="article-toc"><details open><summary>本页目录</summary><nav aria-label="本页章节"><a href="#section-0">0. 场景：PD 分离下，Prefill 侧的 PP 调度</a><a href="#section-1">1. 源码基线与图的边界</a><a href="#section-2">2. 一个条块究竟是什么</a><a href="#section-3">3. 一次 loop 的源码顺序</a><a href="#section-4">4. 为什么不是固定的 i+1 / i / i-1</a><a href="#section-5">5. 两类“共识”要分开看</a><a href="#section-6">6. 默认展开 PP0 L6 的读法</a><a href="#section-7">7. 验证与交互入口</a><a href="#section-8">8. 怎样查看每一步的前置关系</a></nav></details></aside><article class="prose">
+<h2 id="section-0">0. 场景：PD 分离下，Prefill 侧的 PP 调度</h2>
 <p><strong>第一次阅读建议从<a href="https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html">快速入门版</a>开始。</strong> 它以 loop 为主图，选择 M1–M5 后在同一张图中高亮相关操作，并贴附该 batch 的进度带；详细版继续保留逐项操作与前置依赖。</p>
 <p>入门版把源码中的连续步骤合成五组：A 检查状态；B+C 缓存与选批；D+E 输入 / 提交前向；F+G+H 结果与共识；I 转发保存。每个外框仍代表一次本地槽位迭代，段宽保留原模型时间。bootstrap 轮询与共识回流仍分处前后，避免为“合并概念”而修改执行顺序。</p>
 <p>每级下沿的生命周期进度带与 loop 共用时间轴，沿用 micro-batch 的 M1–M5 编号，按各级的六个连续状态区间显示：准入与排队、准备缓存 / 输入、本级 GPU 前向、等结果 / 处理、KV 传输、等共识 / 释放。除 GPU 前向段外，这些区间可能包含排队或资源等待，不意味着连续占用 CPU / GPU。共同准入状态来自同一请求集合，不能当成五份独立资源消耗相加。清理终点取本地 release 操作结束，release 名单记录的时间则是进入清理的时刻。</p>
@@ -21,7 +23,7 @@
 <p>本例用五份 micro-batch 和三个环形槽位，说明“一次本地 loop 正在准备谁、提交谁、处理谁的旧结果”。M# 表示实际 batch，s# 表示可复用状态槽位，L# 表示一次本地槽位迭代；三者不能混用。CPU、GPU 与 I/O 行共用时间轴，呈现调度线程、异步前向和通信 / 拷贝之间的依赖。</p>
 <p>建议先在<a href="https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/">交互图页面</a>阅读场景介绍，再看默认 PP0 L6：这一轮提交 M3 前向，同时接收并处理旧 M1 的结果。页面下方的读图指南解释 A–I 阶段、PD bootstrap 与 L2 ACK 的区别、环形槽位关系、操作方法及模型假设；本说明继续提供逐项源码锚点。</p>
 <p>图中 u 是人为设定的示意时间单位。它用于解释源码调用顺序与依赖，不是设备 trace；“槽位占满必然产生空泡”以及具体吞吐、延迟、加速比都不是本图的结论。</p>
-<h2>1. 源码基线与图的边界</h2>
+<h2 id="section-1">1. 源码基线与图的边界</h2>
 <ul>
 <li>源码仓库：SGLang 官方开源仓，固定提交如下。</li>
 <li>源码读取时间：2026-09-16；源码工作树干净；只读源码分析。</li>
@@ -32,14 +34,14 @@
 <li>缓存按 write_back 且本例没有淘汰写回处理，所以 write ACK count 可以是 0；代码仍调用其计数同步路径。</li>
 </ul>
 <p>图中 u 是假设时间单位。所有耗时均为演示值，不是 ms、profiler trace 或吞吐实测。图按源码调用顺序及关键消息依赖建立简化模型，省略 CUDA/NCCL 的实际流调度、通信资源竞争、CPU 调度抖动与逐层计算。尤其 <code>Work.wait()</code> 对 host/stream 的具体影响取决于后端；图将其作为依赖等待门控，不声称其宽度就是真实 CPU 阻塞时间。</p>
-<h2>2. 一个条块究竟是什么</h2>
+<h2 id="section-2">2. 一个条块究竟是什么</h2>
 <p>CPU 行的每个外框 L# 表示 <code>event_loop_pp_disagg_prefill()</code> 中一次 <strong><code>for mb_id</code> 槽位迭代</strong>，从恢复槽位状态、接收请求，到保存本轮状态。它不是外层 <code>while True</code> 完整遍历三个槽位的一圈，也不是某个 micro-batch 从进入到释放的整个生命周期。</p>
 <p>PP0/PP1/PP2 各自有本地循环。相同 L# 在不同 rank 上不要求同时开始或结束。横轴统一，因而条块位置、长度和等待都可跨 rank 对照。</p>
 <p>GPU 行仍以 M# 表示本级前向计算，因为 GPU 是异步资源，某份前向可以跨越 CPU loop 边界。外框内部的 CPU 细条按 A–I 区分，点击外框或选择 loop 可展开细项。</p>
 <p>入口与循环：<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler.py#L5662">scheduler.py:5662</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L220">scheduler_pp_mixin.py:220</a>。</p>
-<h2>3. 一次 loop 的源码顺序</h2>
+<h2 id="section-3">3. 一次 loop 的源码顺序</h2>
 <p>下列阶段是便于读图的分组；函数在源码里没有 A–I 这些名称。</p>
-<table>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可横向滚动的数据表"><table>
 <thead>
 <tr>
 <th>阶段</th>
@@ -92,16 +94,16 @@
 <td>非末级转发请求、bootstrap 状态、transfer 终态；有当前 batch 时，schedule stream <code>wait_event(launch_event)</code> 后异步发 hidden states；保存 output、release/bootstrap 状态，复位 batch_is_full</td>
 <td>当前激活和队列快照；保存供下一轮转发的结果</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>关键定位：<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L234">主循环:234</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L1009">output helper:1009</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L1078">launch:1078</a>。</p>
 <p>若 <code>pp_async_batch_depth&gt;0</code>，F 的 helper 被移动到 E 前面，但 H 的最终结果处理仍在 E 后面；环长度也随之改变。本图不能直接套用到 depth&gt;0。</p>
-<h2>4. 为什么不是固定的 i+1 / i / i-1</h2>
+<h2 id="section-4">4. 为什么不是固定的 i+1 / i / i-1</h2>
 <p>源码计算：</p>
 <pre><code class="language-python">pp_loop_size = pp_size + pp_async_batch_depth
 next_mb_id = (mb_id + 1) % pp_loop_size
 </code></pre>
 <p>本例环长 3。在连续每轮提交一份新 batch 时，当前槽位 i 的下一槽 j 保存的是<strong>两次本地迭代之前</strong>提交的 batch。因此计算 M3 的迭代处理 M1，计算 M4 的迭代处理 M2。槽位下标的“+1”是环形索引，不能解释成“未来一份 batch”。空槽、预算、chunk、额外异步深度都会改变简单的 batch 编号关系。</p>
-<table>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可横向滚动的数据表"><table>
 <thead>
 <tr>
 <th>本地 loop</th>
@@ -164,9 +166,9 @@ next_mb_id = (mb_id + 1) % pp_loop_size
 <td>无</td>
 <td>继续推进终态与 release</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>三轮 bootstrap 暖场和上述 batch 分配是本图的明确初始条件，不是所有启动场景都必须恰好如此。服务若已有准入请求，可省去这段暖场。五份 batch 全部计算结束后也不能立即停止循环：KV 传输和 release 共识还要继续推进。</p>
-<h2>5. 两类“共识”要分开看</h2>
+<h2 id="section-5">5. 两类“共识”要分开看</h2>
 <h3>PD bootstrap / transfer / release</h3>
 <ul>
 <li><code>_pp_pd_get_bootstrapped_ids()</code>：每级检查本地发送端 bootstrap；good 取交集，bad 取并集，再向后传播。末级得到聚合状态，回流后各级才把相应请求从 bootstrap 队列移入 waiting queue。</li>
@@ -186,7 +188,7 @@ next_mb_id = (mb_id + 1) % pp_loop_size
 <li>当前选中 batch 的 host hit 由 <code>init_load_back()</code> 和 <code>start_loading()</code> 提交；GPU 使用 KV 时另有逐层 event 等待，可与层计算重叠。图只用“首个需要 KV 的层”的门控作简化，不能用图里的整段等待估算真实逐层 overlap 收益。</li>
 </ol>
 <p>源码：<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler.py#L3709">空队列前检查:3709</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/hiradix_cache.py#L239">HiRadix _all_reduce/_pp_sync:239</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/hiradix_cache.py#L1098">loading_check:1098</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/cache_controller.py#L914">start_loading:914</a>、<a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/cache_controller.py#L53">layer wait:53</a>。</p>
-<h2>6. 默认展开 PP0 L6 的读法</h2>
+<h2 id="section-6">6. 默认展开 PP0 L6 的读法</h2>
 <p>此 loop 占示意时间 <strong>13.75–29.80 u</strong>，槽位 s2，当前 batch M3，旧结果 M1。</p>
 <ul>
 <li>A/B：接收状态、推进缓存 ACK；其中历史 L2 count 发送在本例产生等待。</li>
@@ -199,10 +201,10 @@ next_mb_id = (mb_id + 1) % pp_loop_size
 </ul>
 <p>所以 PP0 从 M3 结束到 M4 开始的 <strong>11.40 u 空泡是多段原因叠加</strong>：旧 output 等待的尾段、其他收尾/下一轮准备、以及 M4 的 L2 layer gate。总览给空泡标注的是主要相交等待，不能把整段都归因于单一通信操作。</p>
 <p><strong>槽位占满不必然产生空泡。</strong> 环上旧结果和相关通信若及时完成，CPU 准备若被已有 GPU 工作覆盖，下一份可以及时接续；本图选择不均衡耗时来展示依赖来不及完成时出现的空泡。没有用该示意推导性能数字。</p>
-<h2>7. 验证与交互入口</h2>
+<h2 id="section-7">7. 验证与交互入口</h2>
 <p><a href="https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/">打开交互图</a>。</p>
 <p>依赖模型验证了前驱约束、每级五份前向（共 15 段）、本级 KV 提交晚于前向完成，以及五份请求的各级 release。浏览器检查了 rank/loop 选择、源码链接和不同屏幕宽度下的显示。这些属于静态分析与图的逻辑检查，未运行 SGLang GPU 推理。</p>
-<h2>8. 怎样查看每一步的前置关系</h2>
+<h2 id="section-8">8. 怎样查看每一步的前置关系</h2>
 <p>总览和原先的 loop 放大图已合并为一张可缩放、平移的时间轴。三个 PP rank 共用同一时间窗口，CPU 的所有阶段仍在各自的一条横向泳道。选择「步骤与前置条件」或点击一个步骤，会显示它的入边，并在下方列出前置节点；点击前置节点可以继续追溯。</p>
 <ul>
 <li><p>用「＋ / −」或 Ctrl / ⌘ + 滚轮缩放，横向拖动或移动「时间窗口」滑块平移。</p>
@@ -232,7 +234,7 @@ next_mb_id = (mb_id + 1) % pp_loop_size
 </ul>
 <p>例如默认 PP0 L6 的旧 M1 output 接收：本级在提交 M3 之后进入该操作，同时依赖 PP2 L4 的 M1 output 到达。继续点击 PP2 的 output，可看到它依赖本级发送提交以及 M1 GPU 完成。两个 rank 的相同 L# 无须同时发生。</p>
 <p>其他可直接检查的例子：</p>
-<table>
+<div class="table-scroll" tabindex="0" role="region" aria-label="可横向滚动的数据表"><table>
 <thead>
 <tr>
 <th>选中步骤</th>
@@ -260,8 +262,6 @@ next_mb_id = (mb_id + 1) % pp_loop_size
 <td>release 名单、本地 M1 传输终态及当前线程顺序</td>
 <td>名单接收继续追溯 PP2 的终态共识回流</td>
 </tr>
-</tbody></table>
+</tbody></table></div>
 <p>这是一张固定成功路径、固定 batch 分配下的源码依赖示意，不是完整运行时 trace。图中共导出 1669 个已解析模型节点；这包括用于闭合边界的后续节点，不表示实际运行必然执行该数量的操作。</p>
-</main>
-</body>
-</html>
+</article></main><nav class="lesson-pager" aria-label="继续学习"><a href="index.html" class="previous"><small>上一节 · 02</small><strong>依赖分析 ←</strong><span>追踪每一步的前置条件</span></a><a class="next" href="quick.html?batch=1"><small>回到图中验证理解</small><strong>跟踪 M1 的一生 →</strong><span>结合源码，再看它跨过哪些 loop</span></a></nav><footer class="site-footer"><span>AI Infra Wiki <span class="footer-dot">/</span> 从机制到源码</span><span>图示时间为示意值 · 非性能测量</span><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

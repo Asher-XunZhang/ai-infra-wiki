@@ -4,32 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'self' 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>SGLang PD Prefill：PP=3 的 loop 细分</title>
 <meta name="description" content="SGLang PD 分离下 Prefill 侧的 PP 调度交互图。以 PP=3、5 个 micro-batch 解释 CPU loop、GPU 前向、L2 ACK、bootstrap、结果回流及 KV 传输的依赖关系。">
-<style>
-:root{color-scheme:light dark;background:light-dark(rgb(255 255 255),rgb(24 24 24));color:light-dark(#202124,#ececec);font-family:system-ui,sans-serif}
-html,body{margin:0}body{box-sizing:border-box;padding:24px;background:inherit;line-height:1.75}
-.page-copy{max-width:1000px;margin:0 auto}.page-copy h1,.page-copy h2,.page-copy h3{line-height:1.35}.page-copy h2{margin-top:2em}
-.page-copy a{color:light-dark(#1655a8,#8cbfff);overflow-wrap:anywhere}.page-copy code{overflow-wrap:anywhere}
-.page-copy nav{display:flex;flex-wrap:wrap;gap:8px 20px}.page-copy section{scroll-margin-top:20px}
-.page-copy table{border-collapse:collapse;width:100%}.page-copy th,.page-copy td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid light-dark(#ddd,#444);overflow-wrap:anywhere}.page-copy th:first-child,.page-copy td:first-child{width:22%}
-.timeline{max-width:1200px;margin:32px auto;scroll-margin-top:16px}iframe{display:block;width:100%;height:1500px;margin:0 auto;border:0}
-@media(max-width:600px){body{padding:16px}.page-copy h1{font-size:1.65rem}.page-copy th,.page-copy td{padding:8px 6px}}
-</style>
-</head>
-<body>
-<header class="page-copy">
-  <nav aria-label="页面导航"><a href="../../">学习首页</a><a href="quick.html">快速入门版：看大步骤 / batch 生命周期</a><a href="#timeline">详细交互图</a><a href="#reading-guide">读图指南</a><a href="notes.html">逐项源码说明</a></nav>
-  <h1>PD 分离下，Prefill 侧的 PP 调度是怎样推进的？</h1>
-  <p>第一次接触 PP loop？先看<a href="quick.html">快速入门版</a>：用五个大步骤看一轮在做什么，或跟踪一份 batch 的完整生命周期；再回到本页追踪逐项操作和源码依赖。</p>
-  <p><strong>这张图展示 SGLang 在 Prefill / Decode 分离部署时，Prefill 侧使用流水线并行（PP）的调度逻辑。</strong>Prefill 负责处理输入 prompt、执行前向计算并产生 KV cache；Decode 接收所需 KV 后继续逐 token 生成。图里还展示 Prefill 为此推进的握手状态、结果处理、KV 发送与请求释放。</p>
-  <p><strong>PP0、PP1、PP2 全部属于 Prefill 侧</strong>，代表模型被切分后的三个流水级。同一份 micro-batch 的激活依次经过 PP0 → PP1 → PP2。Decode 是图外的 KV 接收方，本图没有展开它的调度循环、GPU 计算或设备拓扑。每个 PP rank 也不必等于一颗 GPU：级内 TP / CP 等并行维度未展开。</p>
-  <p>本例固定 <strong>PP=3、五份 micro-batch（M1–M5）、<code>pp_async_batch_depth=0</code></strong>，并启用 HiRadix 的 host-memory L2 缓存。它要说明的是：CPU 在一轮 loop 中准备、提交和收尾的对象为什么可能不同，以及这些依赖怎样与 GPU 前向交错。</p>
-  <p><strong>横轴 u 是人为设定的示意时间单位。</strong>条块长度、等待与空泡用于解释源码顺序和依赖，不是毫秒、设备 trace 或性能测量。源码固定于 <a href="https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a">SGLang 开源提交 <code>72d5c5bb73</code></a>，不随远程 main 自动变化。</p>
-</header>
+<link rel="stylesheet" href="../../site.css">
+<script src="../../site.js" defer></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23216c51%22%2F%3E%3Ctext%20x%3D%228%22%20y%3D%2224%22%20fill%3D%22white%22%20font-family%3D%22Georgia%2Cserif%22%20font-weight%3D%22bold%22%20font-size%3D%2227%22%3Ea%3C%2Ftext%3E%3C%2Fsvg%3E"></head>
+<body data-page="detail"><a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header>
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航"><details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary><div class="sidebar-content"><a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a><p class="nav-label">SGLANG · 专题 01</p><h2 class="sidebar-title">PD Prefill 与 PP 调度</h2><nav aria-label="专题阅读顺序"><a class="course-link" href="../../sglang/pd-prefill-pp-loop/quick.html"><span class="course-number">01</span><span><strong>快速入门</strong><small>先看 loop 与 batch 的关系</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/index.html" aria-current="page"><span class="course-number">02</span><span><strong>依赖分析</strong><small>追踪每一步的前置条件</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/notes.html"><span class="course-number">03</span><span><strong>源码阅读</strong><small>把图中的行为对应到代码</small></span></a></nav><div class="sidebar-note"><span class="status-dot"></span> 基于固定源码的学习材料<p>先理解整体，再追踪依赖，最后回到源码。</p></div><a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 <span aria-hidden="true">↗</span></a></div></details></aside><div class="site-content">
+<header class="lesson-header" id="main-content" tabindex="-1"><div class="lesson-kicker"><span class="eyebrow">SGLANG / PD PREFILL</span><span class="lesson-count">02 / 03 · 依赖分析</span></div><h1>沿着依赖关系，<br class="desktop-break">读懂流水线怎样推进。</h1><p class="lead">把一轮 loop 展开到 CPU、GPU 与 I/O，查看每一步等待谁，以及依赖如何跨越流水级。</p><div class="meta-tags"><span>PP = 3</span><span>5 个 micro-batch</span><span>Prefill 侧</span><a href="https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a">源码 <code>72d5c5bb73</code> ↗</a></div><details class="context-disclosure"><summary>场景、阅读方法与适用边界</summary><p>第一次接触 PP loop？先看<a href="quick.html">快速入门版</a>：用五个大步骤看一轮在做什么，或跟踪一份 batch 的完整生命周期；再回到本页追踪逐项操作和源码依赖。</p><p><strong>这张图展示 SGLang 在 Prefill / Decode 分离部署时，Prefill 侧使用流水线并行（PP）的调度逻辑。</strong>Prefill 负责处理输入 prompt、执行前向计算并产生 KV cache；Decode 接收所需 KV 后继续逐 token 生成。图里还展示 Prefill 为此推进的握手状态、结果处理、KV 发送与请求释放。</p><p><strong>PP0、PP1、PP2 全部属于 Prefill 侧</strong>，代表模型被切分后的三个流水级。同一份 micro-batch 的激活依次经过 PP0 → PP1 → PP2。Decode 是图外的 KV 接收方，本图没有展开它的调度循环、GPU 计算或设备拓扑。每个 PP rank 也不必等于一颗 GPU：级内 TP / CP 等并行维度未展开。</p><p>本例固定 <strong>PP=3、五份 micro-batch（M1–M5）、<code>pp_async_batch_depth=0</code></strong>，并启用 HiRadix 的 host-memory L2 缓存。它要说明的是：CPU 在一轮 loop 中准备、提交和收尾的对象为什么可能不同，以及这些依赖怎样与 GPU 前向交错。</p><p><strong>横轴 u 是人为设定的示意时间单位。</strong>条块长度、等待与空泡用于解释源码顺序和依赖，不是毫秒、设备 trace 或性能测量。源码固定于 <a href="https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a">SGLang 开源提交 <code>72d5c5bb73</code></a>，不随远程 main 自动变化。</p></details></header>
 <main>
-<section id="timeline" class="timeline" aria-label="Prefill 侧 PP 调度交互图">
+<section id="timeline" class="timeline chart-panel" aria-label="Prefill 侧 PP 调度交互图">
 <iframe sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" title="SGLang PD Prefill：PP=3 的 loop 细分" srcdoc="&lt;!doctype html&gt;
 &lt;html lang=&quot;zh-CN&quot; data-visualize-standalone&gt;
 &lt;head&gt;
@@ -1054,7 +1040,11 @@ svg.lucide {
 }
 
 html&gt;body{padding:0}&lt;/style&gt;
-&lt;/head&gt;
+&lt;style id=&quot;learning-site-theme&quot;&gt;
+:root{color-scheme:light dark;--background:light-dark(#fff,#1a211e);--foreground:light-dark(#263a34,#e5eee9);--muted:light-dark(#edf1ee,#27332e);--muted-foreground:light-dark(#64766d,#a6bbb0);--border:light-dark(#dce5df,#3a4c43);--primary:light-dark(#17664e,#8cd2b2);--primary-foreground:light-dark(#fff,#10291e);--card:var(--background);--viz-series-1:light-dark(#247d67,#79c6ad);--viz-series-2:light-dark(#ad733f,#e2b07a);--viz-series-3:light-dark(#956582,#cd9bbe);--viz-series-4:light-dark(#497aa5,#8eb4d6);--viz-series-6:light-dark(#738555,#afc888)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+html,body{background:var(--background)!important;color:var(--foreground);font-family:Inter,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,&quot;PingFang SC&quot;,&quot;Microsoft YaHei&quot;,sans-serif;line-height:1.7}body{padding:0!important;margin:0!important}#pp-loop-detail{padding:4px;min-width:0}#pp-loop-detail h2{font-size:21px;font-weight:650;line-height:1.5;margin:0 0 8px}#pp-loop-detail .text-small{font-size:13px;line-height:1.75}#pp-loop-detail .form-label{font-size:13px;color:var(--muted-foreground);font-weight:550}#pp-loop-detail .form-select{border:1px solid var(--border);border-radius:8px;background:var(--background);color:var(--foreground);font-size:13px;padding:8px 10px;max-width:100%;min-height:38px}#pp-loop-detail .viz-controls{display:flex;flex-wrap:wrap;gap:12px 20px;padding:14px;background:var(--muted);border:1px solid var(--border);border-radius:10px}#pp-loop-detail .viz-controls label{flex:1;min-width:160px}#pp-loop-detail .btn{border:1px solid var(--border);border-radius:7px;min-height:34px;font-size:13px;background:var(--background);color:var(--foreground)}#pp-loop-detail .btn:hover{background:var(--muted)}#pp-loop-detail .btn:focus-visible,#pp-loop-detail select:focus-visible{outline:2px solid var(--primary);outline-offset:3px}#pp-loop-detail .gantt-svg{margin:18px 0;outline:1px solid var(--border);border-radius:8px}#pp-loop-detail .gantt-legend{padding-bottom:16px;border-bottom:1px solid var(--border)}#pp-loop-detail [data-loop-summary]{padding:12px 14px;background:var(--muted);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;margin:16px 0}#pp-loop-detail .selected-op{padding:12px 14px;border:1px solid var(--border);border-radius:8px}#pp-loop-detail table{font-size:13px;line-height:1.7}#pp-loop-detail th{background:var(--muted);font-weight:600}#pp-loop-detail td,#pp-loop-detail th{padding:10px!important;vertical-align:top}#pp-loop-detail .table-responsive{margin:16px 0;border:1px solid var(--border);border-radius:8px}#pp-loop-detail summary{cursor:pointer;font-weight:600;padding:12px 0}#pp-loop-detail .footnote{color:var(--muted-foreground)}@media(max-width:600px){#pp-loop-detail h2{font-size:18px}#pp-loop-detail .viz-controls label{min-width:0;flex-basis:100%}#pp-loop-detail .viz-row{flex-wrap:wrap}}
+&lt;/style&gt;&lt;/head&gt;
 &lt;body&gt;
 &lt;div id=&quot;pp-loop-detail&quot;&gt;
   &lt;style&gt;
@@ -1617,27 +1607,27 @@ html&gt;body{padding:0}&lt;/style&gt;
 
 &lt;script&gt;
 (() =&gt; {
-  const root = document.getElementById('pp-loop-detail');
+  const root = document.getElementById(&#x27;pp-loop-detail&#x27;);
   let pending = false;
   const report = () =&gt; {
     if (pending) return;
     pending = true;
     requestAnimationFrame(() =&gt; {
       pending = false;
-      parent.postMessage({type: 'pp-chart-height', height: Math.ceil(root.getBoundingClientRect().height) + 4}, '*');
+      parent.postMessage({type: &#x27;pp-chart-height&#x27;, height: Math.ceil(root.getBoundingClientRect().height) + 4}, &#x27;*&#x27;);
     });
   };
   new ResizeObserver(report).observe(root);
-  window.addEventListener('load', report);
+  window.addEventListener(&#x27;load&#x27;, report);
   report();
 })();
 &lt;/script&gt;
-&lt;/body&gt;
+&lt;script&gt;window.addEventListener(&#x27;message&#x27;,function(event){if(event.source!==parent||event.data?.type!==&#x27;learning-theme&#x27;)return;const theme=event.data.theme;if([&#x27;light&#x27;,&#x27;dark&#x27;,&#x27;system&#x27;].includes(theme))document.documentElement.dataset.theme=theme;});parent.postMessage({type:&#x27;learning-theme-ready&#x27;},&#x27;*&#x27;);&lt;/script&gt;&lt;/body&gt;
 &lt;/html&gt;
 "></iframe>
 </section>
-<article id="reading-guide" class="page-copy" aria-labelledby="guide-title">
-  <h2 id="guide-title">读图指南：先分清对象，再看时序</h2>
+<article id="reading-guide" class="prose detail-guide" aria-labelledby="guide-title">
+  <div class="section-heading"><div><p class="eyebrow">读图指南</p><h2 id="guide-title">先分清对象，再看时序</h2></div></div><nav class="guide-nav" aria-label="读图指南章节"><a href="#objects">图中对象</a><a href="#loop-order">执行顺序</a><a href="#consensus">共识与传输</a><a href="#walkthrough">走读 L6</a><a href="#controls">操作方法</a><a href="#scope">适用边界</a></nav>
   <section id="objects">
     <h3>1. L#、M#、s# 分别是什么？</h3>
     <table>
@@ -1709,7 +1699,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   </section>
   <p><a href="#timeline">返回交互图</a> · <a href="../../">返回学习首页</a></p>
 </article>
-</main>
+<nav class="lesson-pager" aria-label="继续学习"><a href="quick.html" class="previous"><small>上一节 · 01</small><strong>快速入门 ←</strong><span>先看 loop 与 batch 的关系</span></a><a href="notes.html" class="next"><small>下一节 · 03</small><strong>源码阅读 →</strong><span>把图中的行为对应到代码</span></a></nav></main>
 <script>
 (() => {
   const frame = document.querySelector('#timeline iframe');
@@ -1720,5 +1710,5 @@ html&gt;body{padding:0}&lt;/style&gt;
   });
 })();
 </script>
-</body>
+<footer class="site-footer"><span>AI Infra Wiki <span class="footer-dot">/</span> 从机制到源码</span><span>图示时间为示意值 · 非性能测量</span><a href="#main-content">回到顶部 ↑</a></footer></div></div></body>
 </html>

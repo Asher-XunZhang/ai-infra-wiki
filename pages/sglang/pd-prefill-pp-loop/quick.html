@@ -5,19 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>快速入门 · PD Prefill 的 PP loop</title>
   <meta name="description" content="在同一张 Prefill PP loop 时间轴上选择 M1–M5，高亮相关操作和生命周期；支持鼠标拖动平移。">
+  <link rel="stylesheet" href="../../site.css">
   <link rel="stylesheet" href="quick.css">
+  <script src="../../site.js" defer></script>
   <script src="quick-data.js" defer></script>
   <script src="quick.js" defer></script>
-</head>
-<body>
-<header>
-  <nav aria-label="版本导航"><a href="../../">学习首页</a><a href="quick.html" aria-current="page">快速入门版</a><a href="index.html">详细交互版</a><a href="notes.html">源码说明</a></nav>
-  <p class="eyebrow">PD 分离 · Prefill 侧 · PP=3</p>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23216c51%22%2F%3E%3Ctext%20x%3D%228%22%20y%3D%2224%22%20fill%3D%22white%22%20font-family%3D%22Georgia%2Cserif%22%20font-weight%3D%22bold%22%20font-size%3D%2227%22%3Ea%3C%2Ftext%3E%3C%2Fsvg%3E"></head>
+<body data-page="quick"><a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header>
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航"><details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary><div class="sidebar-content"><a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a><p class="nav-label">SGLANG · 专题 01</p><h2 class="sidebar-title">PD Prefill 与 PP 调度</h2><nav aria-label="专题阅读顺序"><a class="course-link" href="../../sglang/pd-prefill-pp-loop/quick.html" aria-current="page"><span class="course-number">01</span><span><strong>快速入门</strong><small>先看 loop 与 batch 的关系</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/index.html"><span class="course-number">02</span><span><strong>依赖分析</strong><small>追踪每一步的前置条件</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/notes.html"><span class="course-number">03</span><span><strong>源码阅读</strong><small>把图中的行为对应到代码</small></span></a></nav><div class="sidebar-note"><span class="status-dot"></span> 基于固定源码的学习材料<p>先理解整体，再追踪依赖，最后回到源码。</p></div><a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 <span aria-hidden="true">↗</span></a></div></details></aside><div class="site-content">
+<header class="lesson-header" id="main-content" tabindex="-1"><div class="lesson-kicker"><span class="eyebrow">SGLANG / PD PREFILL</span><span class="lesson-count">01 / 03 · 快速入门</span></div>
+
   <h1>在每一轮 loop 中，跟踪一份 batch</h1>
   <p>PP0、PP1、PP2 都是 <strong>Prefill 内部的流水级</strong>。每个大方块是一轮 loop；选择 M1–M5，可在同一张图上高亮相关操作，并沿下方进度带看它跨过哪些 loop、何时计算、传 KV 和释放。Decode 是图外接收方。</p>
-  <p class="muted">M1–M5 表示五份 <strong>micro-batch</strong>，与详细版编号一致；“大颗粒”指操作分组。本例每份 batch 只含一个请求，三份状态槽位 s0–s2 循环复用，<code>pp_async_batch_depth=0</code>。时间 u 为示意值。</p>
-</header>
+  <details class="quick-context"><summary>示例约定：micro-batch、槽位与时间单位</summary><p class="muted">M1–M5 表示五份 <strong>micro-batch</strong>，与详细版编号一致；“大颗粒”指操作分组。本例每份 batch 只含一个请求，三份状态槽位 s0–s2 循环复用，<code>pp_async_batch_depth=0</code>。时间 u 为示意值。</p></details>
+<div class="meta-tags"><span>PP = 3</span><span>5 个 micro-batch</span><span>Prefill 侧</span><a href="https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a">源码 <code>72d5c5bb73</code> ↗</a></div></header>
 <main>
+<section class="chart-panel" id="quick-timeline" aria-label="loop 与 batch 交互图"><div class="panel-heading"><div><span class="eyebrow">交互练习</span><h2>一轮 loop，多个工作对象</h2></div><span class="panel-caption">先选一轮，再高亮一份 batch</span></div><div class="control-deck">
   <div id="loop-controls" class="controls">
     <label>流水级 <select id="rank"><option value="0">PP0 · 首级</option><option value="1">PP1 · 中间级</option><option value="2">PP2 · 末级</option></select></label>
     <label>本地 loop <select id="loop"></select></label>
@@ -26,6 +30,7 @@
     <label>高亮 batch <select id="batch"><option value="0">不高亮</option><option value="1">M1</option><option value="2">M2 · host hit</option><option value="3">M3</option><option value="4">M4 · host hit</option><option value="5">M5</option></select></label>
     <label id="phase-control" hidden>关注进度 <select id="life-phase"><option value="-1">完整生命周期</option></select></label>
   </div>
+</div>
   <div class="selection" aria-live="polite"><h2 id="selection-title"></h2><p id="selection-text"></p><div id="cross-links" class="inline-actions"></div></div>
   <p id="chart-hint" class="chart-hint"></p>
   <div class="chart-tools">
@@ -39,9 +44,10 @@
     <p><span class="key-line"></span> 包含该 batch 的操作　<span class="key-line shared"></span> 多请求共享操作。高亮整个大步骤表示“其中包含”，不代表整段都归该 batch。未高亮的通用队列操作仍保留。</p>
     <p>每级下沿的 M# 进度带与 loop 共用时间轴：a 准入/排队 → b 准备 → c GPU 前向 → d 等结果/处理 → e KV 在途 → f 等共识/释放。点击进度段查看对应 loop。</p>
   </div>
+</section>
   <section id="batch-detail-section" hidden aria-labelledby="batch-detail-title"><h2 id="batch-detail-title"></h2><p id="batch-detail-intro"></p><div id="batch-detail" class="rank-details"></div></section>
   <section aria-labelledby="detail-title"><h2 id="detail-title"></h2><p id="detail-intro"></p><div id="detail"></div></section>
-  <section class="reading">
+  <section class="reading" id="quick-reading">
     <h2>记住这四件事，就能读这张图</h2>
     <ol>
       <li><strong>loop 是调度线程的一轮工作。</strong>一个 L# 外框对应一次本地 <code>for mb_id</code> 迭代，里面可能准备 M3、处理旧 M1，并清理更早的请求。相同 L# 在不同 PP rank 上不同时发生。</li>
@@ -59,6 +65,6 @@
       <p>本例 M2 / M4 有 host hit；未展开中间 chunk、L3、失败恢复、Decode 内部与级内 TP / CP。图不是 profiler trace，不能用条块长度推算吞吐或加速比；槽位占满也不必然产生空泡。<a href="notes.html">查看完整假设与源码锚点</a>。</p>
     </details>
   </section>
-</main>
-</body>
+<nav class="lesson-pager" aria-label="继续学习"><a href="../../" class="previous"><small>学习路径</small><strong>返回学习首页 ←</strong><span>查看本专题的阅读顺序</span></a><a href="index.html" class="next"><small>下一节 · 02</small><strong>依赖分析 →</strong><span>追踪每一步的前置条件</span></a></nav></main>
+<footer class="site-footer"><span>AI Infra Wiki <span class="footer-dot">/</span> 从机制到源码</span><span>图示时间为示意值 · 非性能测量</span><a href="#main-content">回到顶部 ↑</a></footer></div></div></body>
 </html>
