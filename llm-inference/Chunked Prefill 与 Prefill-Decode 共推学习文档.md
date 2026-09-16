@@ -10,6 +10,8 @@
 
 本文是第三方资料整理型学习资料，并用本地 SGLang、vLLM 源码做了关键路径抽查；没有运行 benchmark，也不把原文示意时间线当作性能承诺。
 
+> 历史基线说明：表中上游链接用于定位开源项目；本文的 `muxi-main` 是历史阅读分支，不表示该分支或提交属于官方 `main`。历史结论需按所列版本核对；当前开源实现请使用固定的官方源码链接。
+
 ## 0. 阅读基线与范围
 
 ### 0.1 原文基线
@@ -31,7 +33,7 @@
 
 | 项目 | SGLang | vLLM |
 | --- | --- | --- |
-| 源码目录 | `/Users/mac/Documents/Documents/工作/sglang` | `/Users/mac/Documents/Documents/工作/vllm` |
+| 项目上游 | [sgl-project/sglang](https://github.com/sgl-project/sglang) | [vllm-project/vllm](https://github.com/vllm-project/vllm) |
 | 分支 | `muxi-main` | `main` |
 | commit | `453b33c46be575da6973b31c2d89d9455679110d` | `f727951d3f0dbeb9acdb8a2f7ebfecaeb67090b3` |
 | 工作区状态 | 有本地改动与未跟踪文件；本文只读 | 干净；本文只读 |

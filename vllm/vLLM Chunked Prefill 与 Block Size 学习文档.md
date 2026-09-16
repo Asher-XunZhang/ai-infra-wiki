@@ -30,7 +30,7 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 源码目录 | `/Users/mac/Documents/Documents/工作/vllm` |
+| 项目上游 | [vllm-project/vllm](https://github.com/vllm-project/vllm) |
 | 分支 | `main` |
 | commit | `f727951d3f0dbeb9acdb8a2f7ebfecaeb67090b3` |
 | 工作区状态 | 干净；本文只读 |

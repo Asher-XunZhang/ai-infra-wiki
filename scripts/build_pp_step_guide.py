@@ -62,7 +62,7 @@ def markdown(model):
         '每个示例说明“在做什么、为什么需要、完成后推进什么”。交互页面会按所选场景和步骤实时替换对象与等待条件；本文的数字和对象只对应原示例。', '',
         '## 1. 阅读基线', '',
         '| 项目 | 内容 |', '| --- | --- |',
-        '| 源码目录 | `D:/Codefiles/sglang` |', '| 分支 | `main` |',
+        '| 源码仓库 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |', '| 分支 | `main` |',
         f'| 固定提交 | `{SOURCE_COMMIT}` |', '| 读取时间 | 2026-09-17 |',
         '| 工作区状态 | 读取时干净，无本地改动或未跟踪文件 |',
         '| 操作边界 | 只读源码；验证教学模型与页面，未运行 SGLang 或 GPU 实验 |', '',
@@ -106,7 +106,7 @@ def markdown(model):
                   '`build_pp_scenarios.py` 重建场景时也会同步。', '',
                   '`test_pp_step_guide.py` 检查全部操作、等待、空轮、ACK、release、'
                   '发送者分支和自定义时间场景，防止说明沿用错误的 batch 或固定轮次。'
-                  '`check_pp_source.py --source-root D:/Codefiles/sglang` 检查固定基线与逐行源码锚点。', ''])
+                  '`check_pp_source.py --source-root "$SGLANG_SOURCE_ROOT"` 检查固定基线与逐行源码锚点；`SGLANG_SOURCE_ROOT` 由读者设置为官方仓库的检出目录。', ''])
     return '\n'.join(lines)
 
 

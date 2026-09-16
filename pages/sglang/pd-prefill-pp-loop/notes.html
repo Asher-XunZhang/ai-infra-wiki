@@ -87,7 +87,7 @@
 <p>建议先在<a href="https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/">交互图页面</a>阅读场景介绍，再看默认 PP0 L6：这一轮提交 M3 前向，同时接收并处理旧 M1 的结果。页面下方的读图指南解释 A–I 阶段、PD bootstrap 与 L2 ACK 的区别、环形槽位关系、操作方法及模型假设；本说明继续提供逐项源码锚点。</p>
 <p>图中 u 是人为设定的示意时间单位。它用于解释源码调用顺序与依赖，不是设备 trace；“槽位占满必然产生空泡”以及具体吞吐、延迟、加速比都不是本图的结论。</p>
 <h2 id="section-1">1. 源码基线与图的边界</h2>
-<p> 本图、快速入门和本说明已对齐本地 <code>D:/Codefiles/sglang</code> 的 <code>main</code> / <code>279339f113b79af84f27fd3ac92d0a13bd3f4cbd</code>。读取时源码工作区干净；仅做静态源码对照、教学模型和页面验证，未启动 SGLang 或进行 GPU 推理。旧图的 <code>72d5c5bb73</code> 不再作为这些页面的基线；本地当前提交也不代表远端最新版本。</p>
+<p> 本图、快速入门和本说明已对齐<a href="https://github.com/sgl-project/sglang">sgl-project/sglang</a> 的 <code>main</code> / <code>279339f113b79af84f27fd3ac92d0a13bd3f4cbd</code>。读取时源码工作区干净；仅做静态源码对照、教学模型和页面验证，未启动 SGLang 或进行 GPU 推理。旧图的 <code>72d5c5bb73</code> 不再作为这些页面的基线；固定提交不代表上游最新版本。</p>
 <p><strong>缓存实现选择：</strong> 本例采用普通 FULL attention、未指定自定义缓存 backend 的默认 <code>UnifiedRadixCache</code>，启用 HiCache 的 <code>cache</code> 模式，关闭 external linker。不是旧 <code>HiRadixCache</code>，也不涵盖 <code>buffer_only</code>、SWA 或 Mamba 的特殊恢复路径。当前基线的默认工厂见 <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/registry.py#L80">registry.py</a>；ACK 合并同步见 <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/unified_radix_cache.py#L3290">check_hicache_events</a>。</p>
 
 <ul>

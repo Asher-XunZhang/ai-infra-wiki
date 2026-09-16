@@ -2066,7 +2066,7 @@ html,body{background:var(--background)!important;color:var(--foreground);font-fa
     <p>采用 CUDA 路径、UnifiedRadixCache + HiCache L2、完整 Prefill 与正常成功路径；假设 M2 / M4 有 host hit。缓存按 write_back 且本例无淘汰写回，write ACK count 可以为 0，但同步路径仍会被调用。容量充足且固定选批；未展开中间 chunk、L3 storage、buffer_only、staging、DP MLP sync、speculative / prebuilt / skip-output、sampling mask 输出、KV checksum、失败恢复或 optimistic pending-bootstrap，也不覆盖 NPU/HCCL 的 PP=2 专门路径。</p>
     <p><strong>槽位占满并不必然产生空泡。</strong>本例选择了不均衡耗时来展示依赖来不及完成时的空档；旧 output、收尾操作、下一轮准备和 模型的整份 H2D 门控 都可能参与形成空泡，不能把整段空档归因于某一条通信。</p>
     <p>图使用简化依赖模型，未运行 SGLang GPU 推理，也未复现 CUDA / NCCL 的真实流调度和资源竞争。<code>Work.wait()</code> 对 host / stream 的影响依赖后端；图将 GPU 的逐层 KV 等待粗化为等待全部 H2D 完成，源码没有这个整批 barrier；模型保留调度流到 H2D、末级调度流到 D2H 的必要 event 约束。因此，本图可用于理解调用顺序和依赖，不可直接推算延迟、吞吐、加速比或逐层 overlap 收益。</p>
-    <p>源码基线：<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd"><code>279339f113b79af84f27fd3ac92d0a13bd3f4cbd</code></a>；本地 <code>D:/Codefiles/sglang</code> 的 <code>main</code>；源码读取 2026-09-17，工作区干净。完整模型边界、函数锚点和验证范围见<a href="notes.html">逐项源码说明</a>。</p>
+    <p>源码基线：<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd"><code>279339f113b79af84f27fd3ac92d0a13bd3f4cbd</code></a>；<a href="https://github.com/sgl-project/sglang">sgl-project/sglang</a> 的 <code>main</code>；源码读取 2026-09-17，工作区干净。完整模型边界、函数锚点和验证范围见<a href="notes.html">逐项源码说明</a>。</p>
   </section>
   <p><a href="#timeline">返回交互图</a> · <a href="../../">返回学习首页</a></p>
 </article>

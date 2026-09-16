@@ -10,8 +10,8 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 原源码仓库 | `/Users/mac/Documents/Documents/工作/sglang` |
-| 实际读取目录 | `/Users/mac/Documents/Documents/工作/sglang-source-study`，独立 Git worktree |
+| 项目上游 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
+| 固定源码入口 | [固定源码快照](https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a) |
 | 分支 | 实际读取时为 `codex/main`；内容采用仓内已有的官方开源 `main` 固定快照 |
 | commit | `72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a` |
 | 读取时间 | 2026-09-16 |

@@ -6,9 +6,9 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 源码目录 | `D:/Codefiles/sglang` |
+| 源码仓库 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
 | 分支 | `main` |
-| commit | `279339f113b79af84f27fd3ac92d0a13bd3f4cbd` |
+| commit | [`279339f113b79af84f27fd3ac92d0a13bd3f4cbd`](https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd) |
 | 读取时间 | 2026-09-17 |
 | 工作区状态 | SGLang 与 Wiki 开始时均干净；只在 Wiki 新增学习资料与页面 |
 | 操作边界 | 只读源码分析；页面构建与交互验证；未启动 SGLang，未做 GPU/NCCL/Mooncake 运行实验 |

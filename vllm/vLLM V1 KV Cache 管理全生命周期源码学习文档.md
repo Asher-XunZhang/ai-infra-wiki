@@ -12,7 +12,7 @@ KV Connector 如何把 KV 扩展到远端、CPU 或其他实例，见配套文�
 
 | 项目 | 内容 |
 | --- | --- |
-| 源码目录 | `/Users/mac/Documents/Documents/工作/vllm` |
+| 项目上游 | [vllm-project/vllm](https://github.com/vllm-project/vllm) |
 | 分支 | `main` |
 | commit | `f727951d3f0dbeb9acdb8a2f7ebfecaeb67090b3` |
 | commit 主题 | `[Bugfix] Re-land MiniMax M3 default video processor (#50305)` |

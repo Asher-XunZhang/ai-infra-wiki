@@ -10,13 +10,15 @@
 
 **建议阅读顺序：** 第 1–4 节建立计算直觉，第 5–7 节连接 KV 与 SGLang 实现，第 8–10 节理解性能和优化边界。源码与网页索引集中在第 12–13 节，第一次阅读可以先跳过。
 
+> 历史基线说明：表中上游链接用于定位开源项目；本文的 `muxi-main` 是历史阅读分支，不表示该分支或提交属于官方 `main`。历史结论需按所列版本核对；当前开源实现请使用固定的官方源码链接。
+
 ## 0. 阅读基线与范围
 
 ### 0.1 固定源码基线
 
 | 项目 | 内容 |
 | --- | --- |
-| 源码目录 | `/Users/mac/Documents/Documents/工作/sglang` |
+| 项目上游 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
 | 分支 | `muxi-main` |
 | commit | `e8d7e7fe004419902c04641e2ae2f4a973339c60` |
 | 读取时间 | 2026-09-09 |
@@ -605,7 +607,7 @@ SGLang 调优文档分别讨论 Prefill 临时内存与 Decode 并发相关的 O
 
 ## 12. 源码锚点与建议阅读路线
 
-下表路径均相对于 **`/Users/mac/Documents/Documents/工作/sglang`**。行号固定于本文 commit，后续更新时优先用函数名搜索，不要依赖旧行号判断实现。
+下表路径均相对于 **SGLang 仓库根目录**。行号固定于本文 commit，后续更新时优先用函数名搜索，不要依赖旧行号判断实现。
 
 | 编号 | 要验证的行为 | 文件、行号与符号 |
 | --- | --- | --- |
@@ -632,7 +634,7 @@ SGLang 调优文档分别讨论 Prefill 临时内存与 Decode 并发相关的 O
 只读定位命令示例：
 
 ```bash
-cd /Users/mac/Documents/Documents/工作/sglang
+# 在本文固定版本对应的 SGLang 仓库根目录执行
 rg -n 'class ForwardMode|def prepare_for_extend|def prepare_for_decode' python/sglang/srt
 rg -n 'def _get_pruned_states|def process_batch_result_disagg_prefill|def _commit_transfer_to_req' python/sglang/srt
 ```

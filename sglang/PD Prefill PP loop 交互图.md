@@ -74,11 +74,11 @@ loop、进度带与高亮归属使用同一份详细版模型。仓库内 `scrip
 
 ## 1. 源码基线与图的边界
 
-**2026-09-17 基线升级：** 本图、快速入门和本说明已对齐本地 `D:/Codefiles/sglang` 的 `main` / `279339f113b79af84f27fd3ac92d0a13bd3f4cbd`。读取时源码工作区干净；仅做静态源码对照、教学模型和页面验证，未启动 SGLang 或进行 GPU 推理。旧图的 `72d5c5bb73` 不再作为这些页面的基线；本地当前提交也不代表远端最新版本。
+**2026-09-17 基线升级：** 本图、快速入门和本说明已对齐[sgl-project/sglang](https://github.com/sgl-project/sglang) 的 `main` / `279339f113b79af84f27fd3ac92d0a13bd3f4cbd`。读取时源码工作区干净；仅做静态源码对照、教学模型和页面验证，未启动 SGLang 或进行 GPU 推理。旧图的 `72d5c5bb73` 不再作为这些页面的基线；固定提交不代表上游最新版本。
 
 **缓存实现选择：** 本例采用普通 FULL attention、未指定自定义缓存 backend 的默认 `UnifiedRadixCache`，启用 HiCache 的 `cache` 模式，关闭 external linker。不是旧 `HiRadixCache`，也不涵盖 `buffer_only`、SWA 或 Mamba 的特殊恢复路径。当前基线的默认工厂见 [registry.py](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/registry.py#L80)；ACK 合并同步见 [check_hicache_events](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/unified_radix_cache.py#L3290)。
 
-- 源码目录：`D:/Codefiles/sglang`。
+- 源码仓库：[sgl-project/sglang](https://github.com/sgl-project/sglang)。
 - 源码读取时间：2026-09-17；源码工作树干净；只读源码分析。
 - 分支：`main`；固定提交 `279339f113b79af84f27fd3ac92d0a13bd3f4cbd`。后续本地 HEAD 变化仍需重新复核，不会自动视为适用。
 - 模式：PD Prefill、PP=3、`pp_async_batch_depth=0`、CUDA 路径、UnifiedRadixCache + HiCache L2 开启。

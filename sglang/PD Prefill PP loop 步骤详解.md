@@ -6,7 +6,7 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 源码目录 | `D:/Codefiles/sglang` |
+| 源码仓库 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
 | 分支 | `main` |
 | 固定提交 | `279339f113b79af84f27fd3ac92d0a13bd3f4cbd` |
 | 读取时间 | 2026-09-17 |
@@ -869,4 +869,4 @@ PP0/PP1/PP2 都在 Prefill 侧。M# 是 batch；L# 是本级槽位迭代。同�
 
 文字维护在 `pages/sglang/pd-prefill-pp-loop/step-guide.js`。运行 `python -B scripts/build_pp_step_guide.py` 同步 iframe 和本文；`build_pp_scenarios.py` 重建场景时也会同步。
 
-`test_pp_step_guide.py` 检查全部操作、等待、空轮、ACK、release、发送者分支和自定义时间场景，防止说明沿用错误的 batch 或固定轮次。`check_pp_source.py --source-root D:/Codefiles/sglang` 检查固定基线与逐行源码锚点。
+`test_pp_step_guide.py` 检查全部操作、等待、空轮、ACK、release、发送者分支和自定义时间场景，防止说明沿用错误的 batch 或固定轮次。`check_pp_source.py --source-root "$SGLANG_SOURCE_ROOT"` 检查固定基线与逐行源码锚点；`SGLANG_SOURCE_ROOT` 由读者设置为官方仓库的检出目录。

@@ -8,7 +8,7 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 源码目录 | `D:/Codefiles/sglang` |
+| 项目上游 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
 | 分支 / commit | `main` / `279339f113b79af84f27fd3ac92d0a13bd3f4cbd` |
 | 读取时间 | 2026-09-17 |
 | 源码工作区 | 读取时干净；只读，未修改 SGLang |
@@ -44,7 +44,7 @@
 ### 验证与数据变化
 
 - 完整源码 commit 集中在 `scripts/pp_source_baseline.py`；详细图源码 URL 使用所加载模型的 commit，快速入门继承同一数据版本。
-- `python -B scripts/check_pp_source.py --source-root D:/Codefiles/sglang` 检查本地 HEAD、源码工作区、42 个精确模型锚点、页面源码链接范围，以及缓存入口、准入、ACK 和成功清理的 AST 调用顺序。它不导入 SGLang，也不证明完整运行时行为。
+- `python -B scripts/check_pp_source.py --source-root "$SGLANG_SOURCE_ROOT"` 检查本地 HEAD、源码工作区、42 个精确模型锚点、页面源码链接范围，以及缓存入口、准入、ACK 和成功清理的 AST 调用顺序。它不导入 SGLang，也不证明完整运行时行为。
 - 五项模型回归覆盖十个场景的必要依赖、删除 H2D/D2H/准入边的反例，以及拒绝旧版本数据派生当前入门图。
 - 原示例仍有 48 次可见本地 loop 和 15 段 GPU 前向；拆出准入提交后，已解析模型节点从 1604 变为 1619。
 - 原 0.48 u 选批占位拆为 0.36 u 预检查和 0.12 u 提交，中间保留回载准备；十个场景主要前向、KV 与最终释放时间保持一致。这是教学占位分配，不是版本间性能没有变化的证据。
@@ -63,11 +63,11 @@
 | 项目 | 内容 |
 | --- | --- |
 | 读取日期 | 2026-09-17 |
-| 源码目录 | `D:/Codefiles/sglang` |
+| 项目上游 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
 | 当前分支与 HEAD | `main` / `279339f113b79af84f27fd3ac92d0a13bd3f4cbd` |
 | 页面固定基线 | `72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a`；通过 `git show` 读取，未切换源码分支 |
 | 源码工作区 | 复核前干净；本次未修改源码 |
-| Wiki 工作区 | `D:/Codefiles/ai-infra-wiki`；开始时干净；本次修改页面、教学模型、生成数据、检查和对应说明 |
+| Wiki 工作区 | [Asher-XunZhang/ai-infra-wiki](https://github.com/Asher-XunZhang/ai-infra-wiki)；开始时干净；本次修改页面、教学模型、生成数据、检查和对应说明 |
 | 页面范围 | `pages/index.html`、专题的 `quick.html`、`index.html`、`notes.html`，以及十个耗时场景与入门数据 |
 | 场景 | CUDA，PD Prefill，PP=3，depth=0，五份单请求 batch；普通 FULL attention，默认 UnifiedRadixCache + HiCache cache 模式，关闭 external linker、L3、staging、投机、中间 chunk 等未展开分支 |
 | 验证范围 | 静态源码、模型必要依赖、生成结果、浏览器交互；未导入/启动 SGLang，未做 GPU、NCCL、传输或性能实验 |
@@ -140,3 +140,5 @@
 - 复核阶段仅修改本地 Wiki，未修改 SGLang 源码。用户随后于 2026-09-17 授权合入；发布通过资料仓的 GitHub Pages 工作流完成。
 
 教学模型保留固定请求到达、固定选批、通信配对门控、串行传输假设和整份 H2D 粗化。复核后的结论是“已检查的控制流、对象关系和必要 event 依赖与固定源码一致”，不是“每个时间条块就是实际 GPU trace”。
+
+`SGLANG_SOURCE_ROOT` 由读者设置为官方 SGLang 仓库的检出目录；检出版本必须与本文固定提交一致。仓内源码路径均相对于该仓库根目录。

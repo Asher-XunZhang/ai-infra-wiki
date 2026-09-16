@@ -14,8 +14,8 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 本地原仓库 | `/Users/mac/Documents/Documents/工作/sglang` |
-| 实际源码读取目录 | `/Users/mac/Documents/Documents/工作/sglang-source-study`，与原仓库共享对象库的独立 Git worktree |
+| 项目上游 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
+| 固定源码入口 | [固定源码快照](https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a) |
 | 官方开源 remote | `upstream` → `git@github.com:sgl-project/sglang.git` |
 | 开源基线 | 本地已有 `upstream/main` 快照；不采用个人 fork 的 `origin/main` 或内部 `internalupstream/main` |
 | 阅读工作区分支 | `codex/sglang-source-study-20260909` |
@@ -30,7 +30,7 @@
 
 本文放在 `sglang/`，与 [PD 分离下的 PP 源码学习文档](<PD 分离下的 PP 源码学习文档.md>)、[Pipeline Parallel 模式学习文档](<SGLang Pipeline Parallel 模式学习文档.md>)相邻。前者基于历史 `muxi-main`，后者主要整理第三方文章；本文独立核对开源固定版本，不把三个版本的实现混在一起。现有 [开源源码分阶段学习目录](source-study/README.md)提供更完整的系统背景。
 
-正文源码路径均相对于上述**实际读取目录**。文末源码索引提供文件、符号、行号和固定 commit 链接。
+正文源码路径均相对于 **SGLang 仓库根目录**。文末源码索引提供文件、符号、行号和固定 commit 链接。
 
 ### 0.2 本文讲到哪里
 

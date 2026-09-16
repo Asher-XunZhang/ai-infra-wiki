@@ -43,7 +43,7 @@ S07 存在多个互相影响的错误，S08 的错误落在本次主线核心，
 | 版本选择 | 使用 S04 明确引用的 commit `6e312af8c25ccedd1dcd2583358be038ab4875b0`；不跟随浮动 `main` |
 | 读取时间 | 2026-09-09 |
 | 读取方式 | 按固定 commit 下载官方源文件和文档到临时目录，仅静态阅读 |
-| 实际读取目录 | `/var/folders/lt/qyls21qd7msgzbxxlx9xjhmr0000gn/T/sglang-scheduling-tppou90r/primary`；临时副本可被清理，长期回查使用下列固定链接 |
+| 固定源码入口 | [固定源码快照](https://github.com/sgl-project/sglang/tree/6e312af8c25ccedd1dcd2583358be038ab4875b0) |
 | 分支与工作区状态 | 未检出分支；临时目录不是 Git 工作区。未修改本地 SGLang 源码仓库；Wiki 原有未提交内容保留 |
 | 抽查范围 | Scheduler 主循环、选批、排序/预算、结果处理、请求广播、worker 边界、显存默认值、AITER 特定分支 |
 | 不展开内容 | PD 传输协议安全审计、PP 多 stage 调度、Speculative Decoding 全部状态、模型内核实现、生产调参 |

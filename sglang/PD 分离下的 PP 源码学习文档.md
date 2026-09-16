@@ -2,19 +2,21 @@
 
 本文面向第一次读 SGLang PP 源码的同学，只研究 **PD 分离场景下的 PP 行为**。非 PD 分离时 `scheduler.py` 会走 `event_loop_pp()`，本篇只作为对照提一句，不展开。
 
+> 历史基线说明：表中上游链接用于定位开源项目；本文的 `muxi-main` 是历史阅读分支，不表示该分支或提交属于官方 `main`。历史结论需按所列版本核对；当前开源实现请使用固定的官方源码链接。
+
 ## 0. 阅读基线与范围
 
 **源码基线**
 
 | 项目 | 内容 |
 | --- | --- |
-| 源码目录 | `/Users/mac/Documents/Documents/工作/sglang` |
+| 项目上游 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
 | 分支 | `muxi-main` |
 | commit | `b9087a034bf2a7cb8bfc71fc29763ba2c57f4e56` |
 | 读取时间 | 2026-07-15 |
 | 工作区状态 | 只读源码，未修改 SGLang。读取时存在未跟踪文件：`docs_new/`、`mainline_diffs.txt`、`reverted_diffs.txt`、`scripts/playground/pd_pp_mtp/`、`scripts/run_prefill_pp_mtp_forward_unit_tests.sh`、`upstream_diffs.txt`、`working_notes/` |
 
-**2026-09-17 独立补充基线：** 第 11.5 节及其交互图已升级到本地 `D:/Codefiles/sglang` 的 `main` / `279339f113b79af84f27fd3ac92d0a13bd3f4cbd`，读取时源码工作区干净，只读未实验。本文其余章节仍为历史 `muxi-main` 分析，不能当成当前开源版本的逐项说明；当前 PP 主线请读 [PP loop 源码说明](PD%20Prefill%20PP%20loop%20交互图.md)。
+**2026-09-17 独立补充基线：** 第 11.5 节及其交互图已升级到[sgl-project/sglang](https://github.com/sgl-project/sglang) 的 `main` / `279339f113b79af84f27fd3ac92d0a13bd3f4cbd`，读取时源码工作区干净，只读未实验。本文其余章节仍为历史 `muxi-main` 分析，不能当成当前开源版本的逐项说明；当前 PP 主线请读 [PP loop 源码说明](PD%20Prefill%20PP%20loop%20交互图.md)。
 
 **产物假设**
 
