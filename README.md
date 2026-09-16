@@ -10,7 +10,8 @@
 
 <br /><br />
 
-<a href="#start"><kbd>🚀 开始探索</kbd></a>&nbsp;&nbsp;
+<a href="https://asher-xunzhang.github.io/ai-infra-wiki/"><kbd>▶ 打开交互学习网站</kbd></a>&nbsp;&nbsp;
+<a href="#start"><kbd>📖 阅读指南</kbd></a>&nbsp;&nbsp;
 <a href="#routes"><kbd>🧭 选择路线</kbd></a>&nbsp;&nbsp;
 <a href="#catalog"><kbd>🗂️ 全部文档</kbd></a>&nbsp;&nbsp;
 <a href="#contribute"><kbd>🛠️ 一起建设</kbd></a>
@@ -19,27 +20,39 @@
 
 ---
 
+<a id="interactive"></a>
+
+## 交互式可视化学习网站
+
+### [▶ 打开 AI Infra Wiki 学习网站](https://asher-xunzhang.github.io/ai-infra-wiki/)
+
+直接在浏览器中学习，无需安装推理引擎。通过播放、暂停、单步推进和修改参数，观察请求、batch、激活与 KV 如何在系统中流动，再从当前步骤跳到对应源码。
+
+| 学习专题 | 可以观察什么 | 在线入口 |
+| --- | --- | --- |
+| **专题 01 · 请求视角** | 跟随请求走完 PD 分离下的 Prefill：握手准入、切 chunk、组 batch、三级前向、KV 交接与资源释放。比较正常、等待、取消和部分 PP 失败的分支。 | [请求生命周期](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-lifecycle/) |
+| **专题 02 · 调度视角** | 同一轮为何“算 M3、收 M1”？追踪多个 batch 在 PP=3 中的交错执行，查看 CPU、GPU、通信与缓存事件之间的依赖。 | [快速入门](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html) · [依赖分析](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/) · [源码说明](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/notes.html) |
+
+**建议先理解单条请求，再理解多批次调度：**
+
+1. [单请求正常路径](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-lifecycle/?chunkSize=0)：先不切块，认清各模块的职责，以及请求、激活和 KV 的区别。
+2. 在“请求生命周期”里选择“一条请求 · 分三块”，观察 12 token 如何按 4 token 处理；首批详细，后续整段播放，也可段内单步。再调整请求数量、输入长度、chunk-size 与 batch-size，或尝试等待和部分失败场景。
+3. 进入“快速入门”和“依赖分析”，理解多个 batch 为何交错执行，以及新前向、旧结果和资源释放为什么会出现在同一轮 loop 中。
+
+页面提供固定源码链接与适用范围。两个专题采用不同的缓存场景；动画节奏和时间线均为教学示意，不代表真实 GPU trace 或性能测量。
+
 > [!TIP]
-> 这里不是术语百科，也不是文章收藏夹。每篇笔记都尽量回答四个问题：**系统为什么这样设计、请求到底怎么走、数据究竟存在哪里、出问题该从哪里查。**
+> **用交互图建立直觉，用源码文档核对机制。** 网站是学习入口；下面的阅读路线和完整目录覆盖调度、并行、缓存、传输与性能分析。
 
 <a id="start"></a>
 
-## 这是一座什么样的 Wiki？
-
-### 交互学习
-
-- [一条请求的完整 Prefill 生命周期 · PD 分离 / PP=3](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-lifecycle/) — 12 个机制阶段，支持单块 / 三块请求与组件内部动画，逐步观察接入、前向、KV 交接与释放；[源码学习文档](<./sglang/PD Prefill PP=3 请求生命周期源码学习文档.md>)。
-
-- [快速入门：在 PP loop 中高亮 batch 生命周期](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html) — 把细操作合并为五个大步骤；同图高亮 batch 生命周期，支持鼠标拖动平移。
-
-- [PD Prefill · PP=3 loop 甘特图](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/) — 选择 rank 和 loop，查看五个 micro-batch 的计算、L2 ACK、PP 共识与 KV 释放；时间为示意值。
-- [源码说明](<./sglang/PD Prefill PP loop 交互图.md>) — 固定开源提交、逐项操作与适用边界。
+## 仓库内容与阅读方式
 
 AI 推理系统很容易被拆成一堆孤立名词：Continuous Batching、PagedAttention、Radix Cache、PD 分离、TP/PP/EP/CP……但真实系统从来不是按名词运行的。
 
-这个仓库选择另一条路线：
+文档围绕请求执行过程展开：
 
-- 从一条真实请求出发，追踪它从排队、Prefill、Decode 到完成释放的生命周期。
+- 从一条请求出发，追踪它从排队、Prefill、Decode 到完成释放的生命周期。
 - 同时观察控制流与数据流，拆清“谁做决策”和“谁搬数据”。
 - 回到源码锚点验证机制，不把猜测包装成事实。
 - 用人话、Mermaid、原始技术图和具体例子降低第一次阅读的门槛。
@@ -117,7 +130,7 @@ flowchart LR
 推荐按“入口 → 主循环 → 核心对象 → 数据通路”阅读：
 
 - SGLang 官方源码系统学习：先读[整体架构与心智模型](<./sglang/source-study/architecture/README.md>)，再进入[分阶段源码学习](<./sglang/source-study/README.md>) — 从全景、模块和运行逻辑逐层深入调度、缓存、执行、并行与分离部署。
-- SGLang：[调度机制总览与学习路线](<./sglang/SGLang 调度机制总览与学习路线.md>) → [调度器请求生命周期与重叠调度](<./sglang/SGLang 调度器请求生命周期与重叠调度学习文档.md>) → [Chunked Prefill 与调度器显存预算](<./sglang/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) → [PD 分离下的 PP](<./sglang/PD 分离下的 PP 源码学习文档.md>)
+- SGLang：[调度机制总览与学习路线](<./sglang/SGLang 调度机制总览与学习路线.md>) → [调度器请求生命周期与重叠调度](<./sglang/SGLang 调度器请求生命周期与重叠调度学习文档.md>) → [Chunked Prefill 与调度器显存预算](<./sglang/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) → [PD Prefill 请求生命周期](<./sglang/PD Prefill PP=3 请求生命周期源码学习文档.md>)
 - vLLM：[引擎工作流](<./vllm/vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>) → [KV Cache 全生命周期](<./vllm/vLLM V1 KV Cache 管理全生命周期源码学习文档.md>) → [KV Connector 架构](<./vllm/vLLM V1 KV Connector 架构与实现地图源码学习文档.md>)
 
 不要从单个函数硬啃。先确认它在整条请求链路上负责哪一步，再向对象状态与边界条件下钻。
@@ -177,7 +190,7 @@ flowchart TB
 | OOM / 可服务并发 | 每个 token 的 KV 占多少，碎片和冗余在哪里？ | [KV Cache 容量优化地图](<./llm-inference/KV Cache 容量优化技术地图学习文档.md>) |
 | 前缀缓存命中 | “相同前缀”如何编码，命中后复用了哪一层资源？ | [RadixAttention 前缀命中定义](<./sglang/SGLang RadixAttention 前缀缓存命中定义学习文档.md>) |
 | 多卡扩展 | 切模型、切专家、切序列分别改变了什么？ | [Context Parallel、PCP 与 DCP](<./llm-inference/Context Parallel、PCP 与 DCP 总体学习文档.md>) |
-| PD 分离 | 谁发起传输，KV 到齐前请求处于什么状态？ | [PD 分离下的 PP](<./sglang/PD 分离下的 PP 源码学习文档.md>) |
+| PD 分离 | 谁发起传输，KV 到齐前请求处于什么状态？ | [PD Prefill 请求生命周期](<./sglang/PD Prefill PP=3 请求生命周期源码学习文档.md>) |
 | Kernel / Trace | 一段耗时属于调度空洞、通信还是算子本身？ | [SGLang Torch Profiler 与 Trace](<./sglang/SGLang Torch Profiler 与 Trace 性能分析学习文档.md>) |
 
 <a id="catalog"></a>
@@ -224,8 +237,11 @@ flowchart TB
 - [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<./sglang/HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) — 逐步追踪 D2H、L3 上传/预取、H2D、事件和资源释放。
 - [Mooncake 与 SGLang HiCache](<./sglang/Mooncake 与 SGLang HiCache 学习文档.md>) — 外部 KV 存储接入 SGLang 的控制与数据通路。
 - [SGLang Pipeline Parallel 模式](<./sglang/SGLang Pipeline Parallel 模式学习文档.md>) — PP 进程拓扑、microbatch 与请求反馈回路。
+- [PD Prefill PP=3 请求生命周期源码学习](<./sglang/PD Prefill PP=3 请求生命周期源码学习文档.md>) — 对照请求视角动画，核对分块、共享预算、部分失败与每级资源清理。
+- [PD Prefill PP loop 交互图说明](<./sglang/PD Prefill PP loop 交互图.md>) — 调度视角图的源码基线、依赖关系与模型边界。
+- [PD Prefill PP loop 步骤详解](<./sglang/PD Prefill PP loop 步骤详解.md>) — 按操作解释输入、目的、推进条件与源码入口。
 - [SGLang PP 共识机制源码](<./sglang/SGLang PP 共识机制源码学习文档.md>) — 开源固定版本的五类队列共识、结果回传、槽位时序与资源释放边界。
-- [PD 分离下的 PP 源码](<./sglang/PD 分离下的 PP 源码学习文档.md>) — PD + PP 下控制流、proxy tensor 与 KV 传输的完整链路。
+- [PD 分离下的 PP 源码（历史分支）](<./sglang/PD 分离下的 PP 源码学习文档.md>) — 历史 `muxi-main` 的控制流、proxy tensor 与 KV 传输分析；以文中分节基线区分历史内容和官方源码补充。
 - [SGLang 数据并行、负载均衡与专家并行边界](<./sglang/SGLang 数据并行、负载均衡与专家并行边界学习文档.md>) — 拆清 DP、路由与 EP 的职责分界。
 - [SGLang Breakable CUDA Graph 与 Prefill 捕获](<./sglang/SGLang Breakable CUDA Graph 与 Prefill 捕获学习文档.md>) — 图捕获策略、动态形状与 Prefill 性能权衡。
 - [SGLang Torch Profiler 与 Trace 性能分析](<./sglang/SGLang Torch Profiler 与 Trace 性能分析学习文档.md>) — 从 trace 定位 CPU、GPU、通信与算子瓶颈。
@@ -262,7 +278,9 @@ ai-infra-wiki/
 ├── llm-inference/   # 跨引擎的方法论与技术地图
 ├── sglang/          # SGLang 源码、机制与性能案例
 ├── vllm/            # vLLM 源码、机制与生态接入
-├── images/          # 所有文档的本地图片，按长期主题归档
+├── pages/           # 交互式学习网站与可视化页面
+├── scripts/         # 页面构建、场景生成与验证工具
+├── images/          # 文档图片，按长期主题归档
 ├── AGENTS.md        # 文档方法论、图片规则与验证清单
 └── README.md        # 你现在看到的知识入口
 ```
@@ -271,7 +289,7 @@ ai-infra-wiki/
 
 | 类型 | 证据基线 | 阅读重点 |
 | --- | --- | --- |
-| 源码分析型 | 固定源码目录、分支、commit、读取时间与工作区状态 | 控制流、数据流、对象生命周期、状态机、硬约束 |
+| 源码分析型 | 公开源码仓库、固定 commit、仓内路径、读取时间与验证边界 | 控制流、数据流、对象生命周期、状态机、硬约束 |
 | 第三方资料整理型 | 保留原文、作者/机构、读取时间与验证边界 | 技术主线、关键原图、图意解读、结论适用条件 |
 
 <a id="contribute"></a>
@@ -283,7 +301,7 @@ ai-infra-wiki/
 最重要的几条约定：
 
 1. **先讲人话，再讲源码。** 不默认读者已经知道所有缩写和对象关系。
-2. **机制必须可追溯。** 源码事实给出文件/函数锚点，外部资料保留原始链接。
+2. **机制必须可追溯。** 源码事实使用公开仓库、固定 commit 和文件/函数锚点；外部资料保留原始链接，不写入个人电脑路径。
 3. **图不是装饰。** 每张关键图都要解释控制权、数据面和边界。
 4. **图片统一归档。** 所有图片都放在根目录 `images/<topic>/`，文档只使用相对路径。
 5. **区分事实与推断。** 没有跑过实验，就不把源码阅读写成运行结论。
@@ -293,7 +311,8 @@ ai-infra-wiki/
 
 - [ ] 文档放在最合适的技术主题目录，而不是临时任务目录。
 - [ ] 标题层级清晰，复杂章节包含人话版、机制拆解、图意解读或例子。
-- [ ] 来源、读取时间、整理范围与验证边界已经写明。
+- [ ] 来源、读取时间、整理范围与验证边界已经写明，源码入口可由公开仓库定位。
+- [ ] 学习入口直接说明主题与学习目标，不以开发顺序或发布时间作为内容标签。
 - [ ] 所有本地链接和图片路径都能从当前文档正确解析。
 - [ ] Mermaid 与正文一致，没有画入源码或资料中不存在的模块。
 - [ ] `git status --short` 里只有本次任务相关变更。
