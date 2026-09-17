@@ -1,6 +1,6 @@
 # 多轮路由与跨站 Prefill图片与来源记录
 
-对应文档：[学习文档](<../../llm-inference/多轮 Agent 的 PD 路由与跨数据中心 Prefill 学习文档.md>)。读取日期：2026-09-14。
+对应文档：[学习文档](<../../llm-inference/distributed-serving/多轮 Agent 的 PD 路由与跨数据中心 Prefill 学习文档.md>)。读取日期：2026-09-14。
 
 - 原文：[Agent 时代，PD 分离裂开三道缝：AMPD、PPD、PrfaaS 怎么补](https://mp.weixin.qq.com/s/iOudrmkN-4844Is9F3ZC6g)
 - 作者：HyperAI；发布时间：2026-08-31T08:49:47+08:00。

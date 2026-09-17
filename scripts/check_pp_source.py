@@ -41,7 +41,7 @@ def check_artifacts():
 
     # Both visible badges and source hyperlinks must identify the reviewed SHA.
     links = set()
-    for path in [*(ROOT / 'pages').rglob('*.html'), ROOT / 'sglang/PD Prefill PP loop 步骤详解.md']:
+    for path in [*(ROOT / 'pages').rglob('*.html'), ROOT / 'sglang/disaggregation/PD Prefill PP loop 步骤详解.md']:
         text = unescape(path.read_text(encoding='utf-8'))
         for commit, source, first, last in re.findall(
             r'https://github.com/sgl-project/sglang/blob/([0-9a-f]{40})/'

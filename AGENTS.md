@@ -4,10 +4,10 @@
 
 本仓库的学习资料默认分成两类，方法论也分开执行：
 
-1. **源码分析型学习资料**：从某个代码库的源码梳理系统机制，例如 `sglang/PD 分离下的 PP 源码学习文档.md`。
+1. **源码分析型学习资料**：从某个代码库的源码梳理系统机制，例如 `sglang/disaggregation/PD 分离下的 PP 源码学习文档.md`。
 2. **第三方资料整理型学习资料**：从文章、网页、PDF、博客、图文资料等外部资料整理学习笔记，例如 Mooncake 相关文章整理。
 
-无论哪一类，都要先读同目录已有文档风格，优先参考 `sglang/PD 分离下的 PP 源码学习文档.md` 的“小白可读、机制完整、图文结合”节奏。
+无论哪一类，都要先读同目录已有文档风格，优先参考 `sglang/disaggregation/PD 分离下的 PP 源码学习文档.md` 的“小白可读、机制完整、图文结合”节奏。
 
 ## 0. 文档落盘与目录组织
 
@@ -24,13 +24,35 @@
 - 移动或重命名文档、图片、目录后，必须搜索并同步更新仓库内所有相关引用，包括 Markdown 相对链接、图片路径、目录索引、README、示例路径和其他文字引用，不能留下失效路径。
 - 完成目录调整后，必须验证受影响的相对链接和图片路径仍能从引用文档的位置正确解析，并通过 `git status --short` 确认变更范围符合本次任务。
 
+### 长期分类与学习导航
+
+目录按稳定技术领域归档，学习顺序由 README 单独维护。普通专题目录不使用阶段编号；`sglang/source-study/` 是已有分阶段课程，保留其阶段编号和课程结构。
+
+- `llm-inference/` 承载跨引擎原理：`foundations/`、`scheduling/`、`kv-cache/`、`parallelism/`、`distributed-serving/`、`model-architecture/`、`performance-engineering/`；后续可按需建立 `advanced-generation/` 和 `hardware-and-kernels/`。
+- `sglang/`、`vllm/` 使用共同的领域语言：`runtime/`、`kv-cache/`、`parallelism/`、`disaggregation/`、`performance-engineering/`、`model-support/`、`advanced-generation/`、`serving-operations/`、`version-studies/`。只在有实际资料时建立对应目录，不预建空目录。
+- 通用原理放在 `llm-inference/`，引擎实现放在对应引擎专题。实例内的启动、请求、调度和执行主链归 `runtime/`；实例外的 API、网关、部署与运维归 `serving-operations/`。
+- 模型或计算的并行切分归 `parallelism/`；服务角色分离、Connector 与跨角色 KV 交接归 `disaggregation/`。模型适配和特殊执行语义归 `model-support/`，以模型为例研究瓶颈的案例归性能工程。
+- `version-studies/` 只收跨模块版本综述、组合与兼容性分析。标题带版本号不自动归入版本目录，特定版本的调优案例仍按主要学习问题归档。
+
+新增文章按以下顺序处理：
+
+1. 确定主要学习问题与唯一正文目录；跨主题内容通过相关 README 交叉引用，不复制正文。
+2. 在本领域 README 中补充文章链接、先修知识、阅读定位和学习重点。区分起步、主线、深入、选读、案例与参考，不把所有文章排成必修链。
+3. 如文章改变入门主线或形成新的学习方向，同步大专题 README；根 README 保持为总入口，不恢复逐篇平铺目录。
+4. 只有形成稳定子主题、积累多篇相关资料且独立导航能降低查找成本时，才增加子目录；先在 README 中分组，不为每篇文章、模型或论文建目录。
+5. 独立系统形成完整学习主线后，可以建立新的大专题；单篇接入资料仍归最相关的现有主题。目录不按日期、抓取平台或临时任务命名。
+
+每个大专题与实际建立的领域目录都应有 README，说明收录范围、先修入口、推荐路线、自测问题和下一步。源码课程与散篇专题可以互相连接，但不得把不同文章的固定版本或证据边界合并为同一实现说明。
+
+目录和引用调整后执行 `python3 -B scripts/check_learning_docs.py`，检查本地链接、锚点、图片位置和资料导航覆盖；涉及生成文档时，还需运行对应生成一致性检查。
+
 ## 1. 源码分析型学习资料
 
 ### 适用场景
 
 当资料来源是一个代码库、某个分支、某组源码文件或一次源码阅读任务时，使用本方法论。目标不是列函数清单，而是把源码里的控制流、数据流、状态机、对象生命周期和边界条件整理成第一次读代码的人也能看懂的学习文档。
 
-典型参考：`sglang/PD 分离下的 PP 源码学习文档.md`，它保留历史分支的只读分析；新资料以 [sgl-project/sglang](https://github.com/sgl-project/sglang) 等公开上游仓库的固定提交为基线。
+典型参考：`sglang/disaggregation/PD 分离下的 PP 源码学习文档.md`，它保留历史分支的只读分析；新资料以 [sgl-project/sglang](https://github.com/sgl-project/sglang) 等公开上游仓库的固定提交为基线。
 
 ### 必须先固定源码基线
 
@@ -298,7 +320,7 @@ rg -n 'og:title|name="author"|id="js_content"|var ct =|环境异常' \
 
 ### 本地图片规则
 
-- 图片应下载到仓库根目录的顶层 `images/<topic>/` 目录，并使用相对路径嵌入文档；例如 `vllm/foo.md` 应引用 `../images/<topic>/01-overview.png`。
+- 图片应下载到仓库根目录的顶层 `images/<topic>/` 目录，并使用相对路径嵌入文档；例如 `vllm/kv-cache/foo.md` 应引用 `../../images/<topic>/01-overview.png`。
 - 不允许在文档分类目录下维护第二套图片根目录，例如 `vllm/images/`、`sglang/images/` 或 `llm-inference/assets/`。发现这类目录时，应把图片迁移到 `<repo-root>/images/<topic>/`，更新全部引用，并删除空目录。
 - `<topic>` 使用中性、长期可读的主题名，例如 `mooncake-articles`，避免把来源平台写进目录名。
 - 图片文件名用有含义的英文短名，例如 `01-overview.png`、`02-control-flow.png`、`03-benchmark.png`。

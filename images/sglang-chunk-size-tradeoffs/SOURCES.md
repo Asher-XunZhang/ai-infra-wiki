@@ -20,4 +20,4 @@
 - [Sarathi-Serve，arXiv:2403.02310v3](https://arxiv.org/html/2403.02310v3)：Figure 7、Figure 14、§5.4。原文图 2、图 4 是论文图片的转载，不能视作两组独立实验。
 - [SGLang 固定版本调优文档](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/docs/docs/advanced_features/hyperparameter_tuning.mdx)：核对原文图 1 所述取舍。
 
-学习正文：[Chunked Prefill 与调度器显存预算](<../../sglang/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) 第 14～16 节。
+学习正文：[Chunked Prefill 与调度器显存预算](<../../sglang/runtime/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) 第 14～16 节。

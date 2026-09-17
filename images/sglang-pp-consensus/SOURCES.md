@@ -1,6 +1,6 @@
 # SGLang PP 共识文档图片来源
 
-读取日期：2026-09-14（Asia/Shanghai）。编号 01～05 是原作者公开帖中的技术原图，保留原始字节，没有 AI 重绘、裁剪或数据修改。编号 06～08 为整理者依据固定源码制作的原创教学动画及静态步骤图。各图的技术解释和证据边界见 [学习文档](../../sglang/SGLang%20PP%20共识机制源码学习文档.md)。
+读取日期：2026-09-14（Asia/Shanghai）。编号 01～05 是原作者公开帖中的技术原图，保留原始字节，没有 AI 重绘、裁剪或数据修改。编号 06～08 为整理者依据固定源码制作的原创教学动画及静态步骤图。各图的技术解释和证据边界见 [学习文档](../../sglang/disaggregation/SGLang%20PP%20%E5%85%B1%E8%AF%86%E6%9C%BA%E5%88%B6%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)。
 
 博客：Shangming Cai，2026-01-15，[Pipeline Parallelism in SGLang: Scaling to Million-Token Contexts and Beyond](https://www.lmsys.org/blog/2026-01-15-chunked-pipeline/)。
 
@@ -57,7 +57,7 @@ PR：stepinto，2026-09-11（北京时间），[[WIP][PP+PD] Fix #38206 Reduce b
 | [07-admission-gates.gif](07-admission-gates.gif) / [静态步骤](07-admission-gates-steps.png) | 单个 Prefill stage 从资格、资源检查到后续调度 | `prefill.py::PrefillBootstrapQueue.finalize_bootstrap` / `pop_bootstrapped`；正文 [S10]/[S16] |
 | [08-abort-deferred-release.gif](08-abort-deferred-release.gif) / [静态步骤](08-abort-deferred-release-steps.png) | 满足延迟释放条件，并在后端判安全后归还资源的一条路径 | `decode.py::DecodeTransferQueue.resolve_deferred_releases` / `_do_release`；正文 [S19]/[S23] |
 
-源码路径相对于 `python/sglang/srt/`，Scheduler 文件位于 `managers/`，Prefill/Decode 文件位于 `disaggregation/`。精确固定版本链接、条件分支和比喻边界均见[主文档](../../sglang/SGLang%20PP%20共识机制源码学习文档.md)。动画不构成硬件、传输退休或端到端一致性的实验验证。
+源码路径相对于 `python/sglang/srt/`，Scheduler 文件位于 `managers/`，Prefill/Decode 文件位于 `disaggregation/`。精确固定版本链接、条件分支和比喻边界均见[主文档](../../sglang/disaggregation/SGLang%20PP%20%E5%85%B1%E8%AF%86%E6%9C%BA%E5%88%B6%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)。动画不构成硬件、传输退休或端到端一致性的实验验证。
 
 **重新生成：** [render_animations.py](render_animations.py) 依赖 Pillow ≥ 10；在装有中文字体的环境执行 `python render_animations.py`。默认探测 macOS STHeiti 或 Linux Noto Sans CJK，也可用 `--font /path/to/CJK-font.ttc` 指定。输出写回脚本所在目录；字体或 Pillow 版本变化可能改变像素和文件哈希。
 

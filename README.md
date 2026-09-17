@@ -13,12 +13,14 @@
 <a href="https://asher-xunzhang.github.io/ai-infra-wiki/"><kbd>▶ 打开交互学习网站</kbd></a>&nbsp;&nbsp;
 <a href="#start"><kbd>📖 阅读指南</kbd></a>&nbsp;&nbsp;
 <a href="#routes"><kbd>🧭 选择路线</kbd></a>&nbsp;&nbsp;
-<a href="#catalog"><kbd>🗂️ 全部文档</kbd></a>&nbsp;&nbsp;
+<a href="#catalog"><kbd>🗂️ 专题目录</kbd></a>&nbsp;&nbsp;
 <a href="#contribute"><kbd>🛠️ 一起建设</kbd></a>
 
 </div>
 
 ---
+
+**第一次学习从这里开始：** [通用推理入门](llm-inference/README.md#入门主线) → 选择 [SGLang](sglang/README.md) 或 [vLLM](vllm/README.md)。下面的 PD / PP 交互专题适合在掌握请求、缓存和基本并行后阅读。
 
 <a id="interactive"></a>
 
@@ -77,84 +79,18 @@ flowchart LR
 
 ## 选择一条学习路线
 
-不用从第一篇顺序读到最后一篇。点开最接近你当前状态的入口，拿走一条可执行的阅读路径。
+| 你的起点 | 推荐入口 | 完成这一轮的目标 |
+| --- | --- | --- |
+| 刚接触推理系统 | [通用推理入门主线](llm-inference/README.md#入门主线)，随后选择一个引擎 | 能解释请求、Prefill / Decode、调度和 KV 的关系 |
+| 想理解引擎机制 | [SGLang 学习导航](sglang/README.md) 或 [vLLM 学习导航](vllm/README.md) | 能沿请求追踪决策、状态与资源生命周期 |
+| 准备系统读源码 | [SGLang 架构导读](sglang/source-study/architecture/README.md) → [分阶段课程](sglang/source-study/README.md) | 先建立整体地图，再把关键行为对应到固定版本源码 |
+| 有具体部署或性能问题 | 从各专题的“按目标选择路线”进入 | 找到相关机制、先修资料和验证边界 |
 
-<details open>
-<summary><strong>🌱 路线 A：我刚开始接触 LLM 推理系统</strong></summary>
-
-建议先建立“请求、显存、调度”三件套心智模型：
-
-1. [LLM 推理系统心智模型与 SGLang、vLLM 选型边界](<./llm-inference/LLM 推理系统心智模型与 SGLang、vLLM 选型边界学习文档.md>)
-2. [LLM Prefill 与 Decode 阶段源码学习](<./llm-inference/LLM Prefill 与 Decode 阶段源码学习文档.md>)
-3. [vLLM 从连续批处理到 PagedAttention 的引擎工作流](<./vllm/vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>)
-4. [Chunked Prefill 与 Prefill-Decode 共推](<./llm-inference/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>)
-5. [KV Cache 容量优化技术地图](<./llm-inference/KV Cache 容量优化技术地图学习文档.md>)
-
-读完你应该能解释：为什么推理不是“一次 forward”、KV Cache 为什么主导容量，以及调度器为何要同时平衡吞吐与时延。
-
-</details>
-
-<details>
-<summary><strong>🧠 路线 B：我想系统攻克 KV Cache</strong></summary>
-
-从“存什么”一路读到“怎么命中、怎么分层、怎么跨节点传”：
-
-1. [vLLM V1 KV Cache 管理全生命周期](<./vllm/vLLM V1 KV Cache 管理全生命周期源码学习文档.md>)
-2. [SGLang RadixAttention 与 HiCache KV Cache 技术主线](<./sglang/SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>)
-3. [SGLang KV Pool、请求视图与 HiCache 工程](<./sglang/SGLang KV Pool、请求视图与 HiCache 工程学习文档.md>)
-4. [vLLM V1 KV Connector 架构与实现地图](<./vllm/vLLM V1 KV Connector 架构与实现地图源码学习文档.md>)
-5. [KV Cache Salt 全链路键空间](<./llm-inference/KV Cache Salt 全链路键空间学习文档.md>)
-
-读完你应该能区分：逻辑前缀、物理 KV 块、Block ID、Connector 元数据，以及“能访问缓存”和“拥有缓存生命周期”的边界。
-
-</details>
-
-<details>
-<summary><strong>⚡ 路线 C：我在做并行、解耦与长上下文</strong></summary>
-
-先搭并行坐标系，再进入具体引擎实现：
-
-1. [Context Parallel、PCP 与 DCP 总体学习](<./llm-inference/Context Parallel、PCP 与 DCP 总体学习文档.md>)
-2. [SGLang Pipeline Parallel 模式](<./sglang/SGLang Pipeline Parallel 模式学习文档.md>)
-3. [vLLM Pipeline Parallel 流水线并行](<./vllm/vLLM Pipeline Parallel 流水线并行学习文档.md>)
-4. [vLLM Expert Parallel 与 EPLB](<./vllm/vLLM Expert Parallel 与 EPLB 学习文档.md>)
-5. [PersistentKV 长上下文注意力调度](<./vllm/PersistentKV 长上下文注意力调度学习文档.md>)
-
-读完你应该能画出 rank、stage、token 分片与 KV 分片之间的关系，并理解不同并行方式优化的瓶颈并不相同。
-
-</details>
-
-<details>
-<summary><strong>🔬 路线 D：我正在读 SGLang / vLLM 源码</strong></summary>
-
-推荐按“入口 → 主循环 → 核心对象 → 数据通路”阅读：
-
-- SGLang 官方源码系统学习：先读[整体架构与心智模型](<./sglang/source-study/architecture/README.md>)，再进入[分阶段源码学习](<./sglang/source-study/README.md>) — 从全景、模块和运行逻辑逐层深入调度、缓存、执行、并行与分离部署。
-- SGLang：[调度机制总览与学习路线](<./sglang/SGLang 调度机制总览与学习路线.md>) → [调度器请求生命周期与重叠调度](<./sglang/SGLang 调度器请求生命周期与重叠调度学习文档.md>) → [Chunked Prefill 与调度器显存预算](<./sglang/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) → [PD Prefill 请求生命周期](<./sglang/PD Prefill PP=3 请求生命周期源码学习文档.md>)
-- vLLM：[引擎工作流](<./vllm/vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>) → [KV Cache 全生命周期](<./vllm/vLLM V1 KV Cache 管理全生命周期源码学习文档.md>) → [KV Connector 架构](<./vllm/vLLM V1 KV Connector 架构与实现地图源码学习文档.md>)
-
-不要从单个函数硬啃。先确认它在整条请求链路上负责哪一步，再向对象状态与边界条件下钻。
-
-</details>
-
-<details>
-<summary><strong>🧩 路线 E：从全链路优化走到混合状态与新版本组合</strong></summary>
-
-这条路线串起八篇外部资料，先建立性能地图，再理解状态恢复和配置边界：
-
-1. [大模型推理全链路优化](<./llm-inference/大模型推理全链路优化学习文档.md>) — FlashTensor、Jenga、MixQ、FastDecode 与赤兔；文末提供八篇来源的逐项去向。
-2. [Kimi K3 混合注意力缓存与 Mooncake 状态传输](<./llm-inference/Kimi K3 混合注意力缓存与 Mooncake 状态传输学习文档.md>) — token 命中、合法检查点、可变状态和 EPD 数据流。
-3. [SGLang Kimi K3 推理协同优化](<./sglang/SGLang Kimi K3 推理协同优化学习文档.md>) — MXFP4、DSpark、ReplaySSM、PP 与 DCP，并纠正来源中的概念混用。
-4. [KV Cache 与 MoE 权重的分层内存](<./llm-inference/KV Cache 与 MoE 权重的分层内存学习文档.md>) — OasisKV、ReRAM 专家池和 SAC 的数据路径及实测/建模边界。
-5. [SGLang v0.5.19 功能组合与升级边界](<./sglang/SGLang v0.5.19 功能组合与升级边界学习文档.md>) — Beam Search、默认缓存、投机提交和多模态优化的组合条件。
-
-相关基础：[RadixAttention、HiCache、HiSparse 与 ShadowRadix 技术主线](<./sglang/SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>)，已补充长上下文性能数字的归因边界。
-
-</details>
+不用先读完所有通用文章，也不用把两个引擎全部学完。掌握请求、调度和缓存后，再按需要进入并行、分离部署、模型或性能方向。
 
 ## 知识星图
 
-调度专题可从[总览与学习路线](<./sglang/SGLang 调度机制总览与学习路线.md>)开始：先拆清路由、队列排序、admission 和 Overlap，再用请求生命周期与 64K→16K 的 chunk 对照理解性能取舍。来源清单记录了八条资料的采用、排除和核对依据。
+调度专题可从[总览与学习路线](<./sglang/runtime/SGLang 调度机制总览与学习路线.md>)开始：先拆清路由、队列排序、admission 和 Overlap，再用请求生命周期与 64K→16K 的 chunk 对照理解性能取舍。来源清单记录了八条资料的采用、排除和核对依据。
 
 同一个机制经常横跨多条主线。下面这张图适合用来判断“下一篇该往哪里跳”。
 
@@ -186,105 +122,45 @@ flowchart TB
 
 | 如果你关心…… | 先抓住这个问题 | 推荐入口 |
 | --- | --- | --- |
-| 吞吐 / TTFT / TPOT | 请求什么时候被选中，Prefill 会不会阻塞 Decode？ | [Chunked Prefill 与共推](<./llm-inference/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) |
-| OOM / 可服务并发 | 每个 token 的 KV 占多少，碎片和冗余在哪里？ | [KV Cache 容量优化地图](<./llm-inference/KV Cache 容量优化技术地图学习文档.md>) |
-| 前缀缓存命中 | “相同前缀”如何编码，命中后复用了哪一层资源？ | [RadixAttention 前缀命中定义](<./sglang/SGLang RadixAttention 前缀缓存命中定义学习文档.md>) |
-| 多卡扩展 | 切模型、切专家、切序列分别改变了什么？ | [Context Parallel、PCP 与 DCP](<./llm-inference/Context Parallel、PCP 与 DCP 总体学习文档.md>) |
-| PD 分离 | 谁发起传输，KV 到齐前请求处于什么状态？ | [PD Prefill 请求生命周期](<./sglang/PD Prefill PP=3 请求生命周期源码学习文档.md>) |
-| Kernel / Trace | 一段耗时属于调度空洞、通信还是算子本身？ | [SGLang Torch Profiler 与 Trace](<./sglang/SGLang Torch Profiler 与 Trace 性能分析学习文档.md>) |
+| 吞吐 / TTFT / TPOT | 请求什么时候被选中，Prefill 会不会阻塞 Decode？ | [Chunked Prefill 与共推](<./llm-inference/scheduling/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) |
+| OOM / 可服务并发 | 每个 token 的 KV 占多少，碎片和冗余在哪里？ | [KV Cache 容量优化地图](<./llm-inference/kv-cache/KV Cache 容量优化技术地图学习文档.md>) |
+| 前缀缓存命中 | “相同前缀”如何编码，命中后复用了哪一层资源？ | [RadixAttention 前缀命中定义](<./sglang/kv-cache/SGLang RadixAttention 前缀缓存命中定义学习文档.md>) |
+| 多卡扩展 | 切模型、切专家、切序列分别改变了什么？ | [Context Parallel、PCP 与 DCP](<./llm-inference/parallelism/Context Parallel、PCP 与 DCP 总体学习文档.md>) |
+| PD 分离 | 谁发起传输，KV 到齐前请求处于什么状态？ | [PD Prefill 请求生命周期](<./sglang/disaggregation/PD Prefill PP=3 请求生命周期源码学习文档.md>) |
+| Kernel / Trace | 一段耗时属于调度空洞、通信还是算子本身？ | [SGLang Torch Profiler 与 Trace](<./sglang/performance-engineering/SGLang Torch Profiler 与 Trace 性能分析学习文档.md>) |
 
 <a id="catalog"></a>
 
-## 全部文档
+## 按专题进入资料库
 
-<details open>
-<summary><strong>01 / LLM Inference · 跨引擎的系统方法论</strong></summary>
+资料按稳定技术领域存放，学习顺序在各级 README 中维护。先选一个专题，再沿“入门主线 → 机制深入 → 按目标选读”前进。
 
-> 先建立不绑定某个代码库的系统坐标系，再进入具体实现。
+| 专题入口 | 入门主线 | 进阶方向 |
+| --- | --- | --- |
+| [LLM 推理系统](llm-inference/README.md) | 推理基础 → 调度方法 → KV Cache | 并行、集群服务、模型状态、性能方法 |
+| [SGLang](sglang/README.md) | 架构 → 请求调度 → 缓存 → 执行分层 | 并行、分离部署、模型适配、性能与版本 |
+| [vLLM](vllm/README.md) | 引擎工作流 → 分块调度 → APC → KV 生命周期 | 并行、Connector 与 Attention 性能 |
+| [SGLang 系统源码课程](sglang/source-study/README.md) | 基础与架构导读 → 00–12 阶段 | 高级生成、服务治理、模型适配与综合实践 |
 
-- [LLM 推理系统心智模型与 SGLang、vLLM 选型边界](<./llm-inference/LLM 推理系统心智模型与 SGLang、vLLM 选型边界学习文档.md>) — 一次请求、核心资源与引擎边界的总入口。
-- [LLM Prefill 与 Decode 阶段源码学习](<./llm-inference/LLM Prefill 与 Decode 阶段源码学习文档.md>) — 从同一个 Transformer 的计算讲清 P/D、首 token、KV 时序与分离部署，结合 SGLang 源码和原始资料。
-- [推理引擎与集群推理层分工](<./llm-inference/推理引擎与集群推理层分工学习文档.md>) — 区分单实例执行能力与集群级控制面职责。
-- [大模型推理全链路优化](<./llm-inference/大模型推理全链路优化学习文档.md>) — 从算子融合、异构分页、混合精度到 CPU/GPU 调度与赤兔，并提供八篇来源的阅读地图。
-- [Kimi K3 混合注意力缓存与 Mooncake 状态传输](<./llm-inference/Kimi K3 混合注意力缓存与 Mooncake 状态传输学习文档.md>) — KDA 检查点、状态所有权、三家引擎缓存设计、Flat KV 与 EPD。
-- [KDA Cache 检查点、前缀复用与投机回滚](<./llm-inference/KDA Cache 检查点、前缀复用与投机回滚学习文档.md>) — 共同恢复边界、共享状态隔离、内部检查点与 ReplaySSM 的提交语义。
-- [KV Cache 与 MoE 权重的分层内存](<./llm-inference/KV Cache 与 MoE 权重的分层内存学习文档.md>) — 对比 OasisKV 预取、ReRAM 专家池与 SAC 按需访问，拆清数据位置和性能证据。
-- [Chunked Prefill 与 Prefill-Decode 共推](<./llm-inference/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) — 从静态批处理走向连续批处理与分块调度。
-- [KV Cache 容量优化技术地图](<./llm-inference/KV Cache 容量优化技术地图学习文档.md>) — GQA、MLA、滑窗、跨层共享与稀疏注意力的统一地图。
-- [KV Cache 与推理调度协同优化](<./llm-inference/KV Cache 与推理调度协同优化学习文档.md>) — 从十篇论文拆清请求派发、缓存保留、跨模型转换、按头裁剪与物理页回收，并核对性能证据边界。
-- [跨模型 KV Cache 转换与 Prefill 复用](<./llm-inference/跨模型 KV Cache 转换与 Prefill 复用学习文档.md>) — 源层选择、ridge mapper、RoPE 与质量和端到端成本边界。
-- [Attention–FFN 分离的收益边界与部署选型](<./llm-inference/Attention-FFN 分离的收益边界与部署选型学习文档.md>) — AFD-Ledger、通信 HFU 上界与 AInfer-PD 的目标和证据差异。
-- [多轮 Agent 的 PD 路由与跨数据中心 Prefill](<./llm-inference/多轮 Agent 的 PD 路由与跨数据中心 Prefill 学习文档.md>) — AMPD、PPD、PrfaaS 的状态局部性、动态调度与带宽预算。
-- [P/D 分离的 RDMA、IB 与 GPU 可见性](<./llm-inference/P-D 分离的 RDMA、IB 与 GPU 可见性学习文档.md>) — 从 512 KiB READ 样本到 MR/QP、报文关联、请求聚合与安全回收。
-- [KV Cache Salt 全链路键空间](<./llm-inference/KV Cache Salt 全链路键空间学习文档.md>) — 理解租户隔离、前缀身份与缓存键空间。
-- [Context Parallel、PCP 与 DCP 总体学习](<./llm-inference/Context Parallel、PCP 与 DCP 总体学习文档.md>) — 序列切分、通信与负载均衡的整体坐标系。
-- [PCP 长上下文 Prefill 并行](<./llm-inference/PCP 长上下文 Prefill 并行学习文档.md>) — 聚焦长上下文 Prefill 的 token 分片与注意力合并。
-
-</details>
-
-<details>
-<summary><strong>02 / SGLang · 调度、Radix Cache 与分布式执行</strong></summary>
-
-> 从 Scheduler 主循环出发，沿请求状态、KV 所有权与并行拓扑深入源码。
-
-- [SGLang 调度机制总览与学习路线](<./sglang/SGLang 调度机制总览与学习路线.md>) — 路由、排序、admission 与执行时序的分工；八条来源筛选和官方核对。
-- [SGLang 调度器请求生命周期与重叠调度](<./sglang/SGLang 调度器请求生命周期与重叠调度学习文档.md>) — waiting/EXTEND/running、FutureMap、结果快照与异步资源退役。
-- [SGLang Chunked Prefill 与调度器显存预算](<./sglang/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) — 共享 chunk 额度、64K→16K 的显存与吞吐取舍、PD 和数值路径边界。
-- [SGLang RadixAttention 前缀缓存命中定义](<./sglang/SGLang RadixAttention 前缀缓存命中定义学习文档.md>) — 逐步拆开 token 匹配、树节点与物理 KV 复用。
-- [SGLang RadixAttention 与 HiCache KV Cache 技术主线](<./sglang/SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>) — 从 GPU Radix Cache 延伸到分层缓存。
-- [SGLang KV Pool、请求视图与 HiCache 工程](<./sglang/SGLang KV Pool、请求视图与 HiCache 工程学习文档.md>) — 区分物理池、逻辑请求视图与缓存控制面。
-- [SGLang Unified Radix Cache](<./sglang/SGLang Unified Radix Cache 学习文档.md>) — 统一前缀树、会话与分层缓存视角。
-- [HiCache 前缀命中源码学习文档](<./sglang/HiCache 前缀命中源码学习文档.md>) — 从请求键、页对齐和树匹配走到回载后的实际设备前缀。
-- [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<./sglang/HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) — 逐步追踪 D2H、L3 上传/预取、H2D、事件和资源释放。
-- [Mooncake 与 SGLang HiCache](<./sglang/Mooncake 与 SGLang HiCache 学习文档.md>) — 外部 KV 存储接入 SGLang 的控制与数据通路。
-- [SGLang Pipeline Parallel 模式](<./sglang/SGLang Pipeline Parallel 模式学习文档.md>) — PP 进程拓扑、microbatch 与请求反馈回路。
-- [PD Prefill PP=3 请求生命周期源码学习](<./sglang/PD Prefill PP=3 请求生命周期源码学习文档.md>) — 对照请求视角动画，核对分块、共享预算、部分失败与每级资源清理。
-- [PD Prefill PP loop 交互图说明](<./sglang/PD Prefill PP loop 交互图.md>) — 调度视角图的源码基线、依赖关系与模型边界。
-- [PD Prefill PP loop 步骤详解](<./sglang/PD Prefill PP loop 步骤详解.md>) — 按操作解释输入、目的、推进条件与源码入口。
-- [SGLang PP 共识机制源码](<./sglang/SGLang PP 共识机制源码学习文档.md>) — 开源固定版本的五类队列共识、结果回传、槽位时序与资源释放边界。
-- [PD 分离下的 PP 源码（历史分支）](<./sglang/PD 分离下的 PP 源码学习文档.md>) — 历史 `muxi-main` 的控制流、proxy tensor 与 KV 传输分析；以文中分节基线区分历史内容和官方源码补充。
-- [SGLang 数据并行、负载均衡与专家并行边界](<./sglang/SGLang 数据并行、负载均衡与专家并行边界学习文档.md>) — 拆清 DP、路由与 EP 的职责分界。
-- [SGLang Breakable CUDA Graph 与 Prefill 捕获](<./sglang/SGLang Breakable CUDA Graph 与 Prefill 捕获学习文档.md>) — 图捕获策略、动态形状与 Prefill 性能权衡。
-- [SGLang Torch Profiler 与 Trace 性能分析](<./sglang/SGLang Torch Profiler 与 Trace 性能分析学习文档.md>) — 从 trace 定位 CPU、GPU、通信与算子瓶颈。
-- [SGLang GLM-5.2 NVFP4 推理优化案例](<./sglang/SGLang GLM-5.2 NVFP4 推理优化案例学习文档.md>) — 一个从 profiler 观察走向量化算子优化的案例。
-- [SGLang v0.5.16 24GB 显存调优案例](<./sglang/SGLang v0.5.16 24GB 显存调优案例学习文档.md>) — 有限显存下的容量、配置与失败边界。
-- [SGLang v0.5.18 推理系统协同演进](<./sglang/SGLang v0.5.18 推理系统协同演进学习文档.md>) — 从版本变化观察调度、缓存与执行层如何协同演进。
-- [SGLang Kimi K3 推理协同优化](<./sglang/SGLang Kimi K3 推理协同优化学习文档.md>) — 纠正 KDA、AttnRes 与 MXFP4 混用，理解 DSpark 状态提交和 PP/DCP 的分工。
-- [SGLang v0.5.19 功能组合与升级边界](<./sglang/SGLang v0.5.19 功能组合与升级边界学习文档.md>) — Beam Search、统一缓存、KDA fused-accept、多模态和服务配置的版本边界。
-
-</details>
-
-<details>
-<summary><strong>03 / vLLM · PagedAttention、KV Connector 与并行系统</strong></summary>
-
-> 沿 Engine、Scheduler、KV Cache Manager 与 Connector 建立 V1 执行地图。
-
-- [vLLM 从连续批处理到 PagedAttention 的引擎工作流](<./vllm/vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>) — 面向初学者的请求执行与显存分页总览。
-- [vLLM V1 KV Cache 管理全生命周期源码](<./vllm/vLLM V1 KV Cache 管理全生命周期源码学习文档.md>) — 分配、引用、复用、回收与 Scheduler 交互。
-- [vLLM APC 链式哈希](<./vllm/vLLM APC 链式哈希学习文档.md>) — Automatic Prefix Caching 的块身份与前缀连续性。
-- [vLLM V1 KV Connector 架构与实现地图源码](<./vllm/vLLM V1 KV Connector 架构与实现地图源码学习文档.md>) — KV 外部传输的控制面、数据面与角色边界。
-- [Mooncake 与 vLLM 接入地图](<./vllm/Mooncake 与 vLLM 接入地图学习文档.md>) — Mooncake 在 Connector 体系中的接入位置。
-- [vLLM Chunked Prefill 与 Block Size](<./vllm/vLLM Chunked Prefill 与 Block Size 学习文档.md>) — 分块调度如何与物理 KV block 交互。
-- [vLLM Pipeline Parallel 流水线并行](<./vllm/vLLM Pipeline Parallel 流水线并行学习文档.md>) — stage 切分、microbatch、异步重叠与生命周期。
-- [vLLM Expert Parallel 与 EPLB](<./vllm/vLLM Expert Parallel 与 EPLB 学习文档.md>) — MoE dispatch/combine 与动态负载均衡反馈环。
-- [vLLM DCP KV Cache 去重与 LSE 合并](<./vllm/vLLM DCP KV Cache 去重与 LSE 合并学习文档.md>) — Decode Context Parallel 的 KV 布局和注意力合并。
-- [PersistentKV 长上下文注意力调度](<./vllm/PersistentKV 长上下文注意力调度学习文档.md>) — 从 kernel launch、序列切分到持久化调度设计。
-
-</details>
+各专题入口覆盖全部已归档文章；每个领域目录提供先修链接、逐篇定位、自测问题和后续路线。案例、研究和历史参考按需阅读，不是所有读者都必须走完的阶段。
 
 ## 仓库结构
 
 ```text
 ai-infra-wiki/
-├── llm-inference/   # 跨引擎的方法论与技术地图
-├── sglang/          # SGLang 源码、机制与性能案例
-├── vllm/            # vLLM 源码、机制与生态接入
+├── llm-inference/   # 基础、调度、缓存、并行、集群、模型与性能
+├── sglang/          # 按技术领域归档；source-study/ 保留分阶段课程
+├── vllm/            # 运行时、缓存、并行、分离部署与性能
 ├── pages/           # 交互式学习网站与可视化页面
 ├── scripts/         # 页面构建、场景生成与验证工具
 ├── images/          # 文档图片，按长期主题归档
 ├── AGENTS.md        # 文档方法论、图片规则与验证清单
 └── README.md        # 你现在看到的知识入口
 ```
+
+每个大专题和已建立的领域目录都有 `README.md`。领域名保持稳定，学习顺序只在导航中调整。图片统一留在顶层 `images/`，交互页面继续由 `pages/` 提供。
+
+新增资料按“主要问题 → 技术归属 → 先修与定位 → 阅读路线”归档。形成稳定子主题后再拆分目录，扩展规则见 [AGENTS.md](AGENTS.md#长期分类与学习导航)。
 
 仓库里的内容主要分成两类：
 

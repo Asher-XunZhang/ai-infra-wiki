@@ -179,6 +179,6 @@
 <tr><th>主线假设</th><td>可配置 1–4 条请求、输入长度、批共享 chunk 预算、batch 请求容量与页大小；首批详细，后续合并播放；P/D 均无前缀命中；不启用 HiCache、L3、staging、投机解码、乐观 Prefill、约束采样；其他资源足够；支持正常、等待、取消和各级部分失败</td></tr>
 <tr><th>验证边界</th><td>静态源码走读与页面验证；步骤是因果阅读顺序，非实际 trace、性能仿真或同时发生的全局快照</td></tr></tbody></table></div>
 <p>本页固定当前读取的提交 <code>279339f113</code>。loop 入门 / 依赖图已统一到同一提交，但使用 HiCache host-hit 场景；可借它们理解调度交错，不能直接照搬其 L# 编号、耗时或缓存步骤。</p>
-<p><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/PD%20Prefill%20PP%3D3%20请求生命周期源码学习文档.md">阅读对应 Markdown 文档 ↗</a></p></section>
+<p><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/disaggregation/PD%20Prefill%20PP%3D3%20请求生命周期源码学习文档.md">阅读对应 Markdown 文档 ↗</a></p></section>
 <nav class="lesson-pager" aria-label="相关学习"><a href="../pd-prefill-pp-loop/quick.html"><small>观察循环交错</small><strong>快速入门 · loop 与 batch</strong><span>切换到调度器视角</span></a><a class="next" href="../pd-prefill-pp-loop/notes.html"><small>继续阅读</small><strong>PP loop 源码说明 →</strong><span>同一源码基线，不同示例配置</span></a></nav></main>
 <footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><span>源码因果走读 · 非运行 trace</span><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

@@ -1,6 +1,6 @@
 # AFD 部署收益图片与来源记录
 
-对应文档：[学习文档](<../../llm-inference/Attention-FFN 分离的收益边界与部署选型学习文档.md>)。读取日期：2026-09-14。
+对应文档：[学习文档](<../../llm-inference/distributed-serving/Attention-FFN 分离的收益边界与部署选型学习文档.md>)。读取日期：2026-09-14。
 
 - 原文：[再拆一层就亏：PD分离的第二刀，撞上了33%的天花板](https://mp.weixin.qq.com/s/cY0zoJptia-eu91z197ykw)
 - 作者：HyperAI；发布时间：2026-09-11T08:31:45+08:00。

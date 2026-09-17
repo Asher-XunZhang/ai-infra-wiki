@@ -22,7 +22,7 @@
 
 本次没有运行缓存、文件存储、CUDA、RDMA 或模型实验。图和数字是**整理者归纳与教学推演**；函数条件是**固定基线源码事实**。没有性能、精度或生产并发安全的运行结论。
 
-写作节奏参考既有[RadixAttention 与 HiCache 技术主线](<../../SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>)；本篇机制以固定源码为准。当前默认缓存选择链最终落到 UnifiedRadixCache 的说明见 [04-02](02-RadixAttention与前缀匹配.md)，不能仅凭旧文章把 HiRadixCache 当作全部默认路径。
+写作节奏参考既有[RadixAttention 与 HiCache 技术主线](<../../kv-cache/SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>)；本篇机制以固定源码为准。当前默认缓存选择链最终落到 UnifiedRadixCache 的说明见 [04-02](02-RadixAttention与前缀匹配.md)，不能仅凭旧文章把 HiRadixCache 当作全部默认路径。
 
 ## 1. 先看数据住在哪里
 

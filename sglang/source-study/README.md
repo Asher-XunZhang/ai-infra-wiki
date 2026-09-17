@@ -1,5 +1,7 @@
 # 从零学习 SGLang 源码：分阶段目录与学习进度
 
+[返回 SGLang 学习导航](../README.md) · [按技术领域选择专题](../README.md#按领域深入)
+
 本文是**源码分析型学习资料的目录与进度索引**，面向会一点 Python、尚未系统读过推理引擎源码的读者。目标是从“一条请求怎样得到回答”，逐步走到调度、缓存、模型执行、多卡通信、分离部署和性能分析。
 
 **当前状态：整套学习资料已完成静态内容复核与文档检查。** 用户已于 2026-09-09 指示按本目录持续阅读和生成资料；现已完成 **13 个阶段、75 / 75 篇正文、6 / 6 份附录**，并逐项核对全部阶段产物与跨篇一致性。运行实验仍为未执行，文档完成不代表 GPU、精度、网络或性能测试通过。逐篇范围和验收记录见[学习进度与版本记录](appendices/06-学习进度与版本变更记录.md)。
@@ -8,7 +10,7 @@
 
 ## 先建立宏观心智模型
 
-**建议先读新增的[架构与心智模型导读](architecture/README.md)。** 本次覆盖审计确认：原有 193 个 Mermaid 图已经包含不少局部与整体结构，但缺少先总后分的集中入口。现补充 **12 篇架构导读、38 张机制图和 12 份本地 SVG 预览**，并为全部 75 篇正文增加对应导读链接。
+**建议先读[架构与心智模型导读](architecture/README.md)。** 本次覆盖审计确认：原有 193 个 Mermaid 图已经包含不少局部与整体结构，但缺少先总后分的集中入口。现补充 **12 篇架构导读、38 张机制图和 12 份本地 SVG 预览**，并为全部 75 篇正文增加对应导读链接。
 
 - 初学者先走：整体架构 → 请求生命周期 → 调度 → 缓存 → 模型执行。
 - 准备部署再走：启动装配 → 多卡并行 → PD / Encoder 分离 → 服务治理与性能诊断。
@@ -59,7 +61,7 @@ git worktree add \
 
 ### 0.2 文档为什么放在这里
 
-已查看 Wiki 的 `sglang/`、`llm-inference/`、`vllm/` 目录，并参考[PD 分离下的 PP 源码学习文档](<../PD 分离下的 PP 源码学习文档.md>)的“人话解释 → 源码锚点 → 机制图 → 请求例子”节奏，以及[调度机制总览与学习路线](<../SGLang 调度机制总览与学习路线.md>)的问题分层方式。
+已查看 Wiki 的 `sglang/`、`llm-inference/`、`vllm/` 目录，并参考[PD 分离下的 PP 源码学习文档](<../disaggregation/PD 分离下的 PP 源码学习文档.md>)的“人话解释 → 源码锚点 → 机制图 → 请求例子”节奏，以及[调度机制总览与学习路线](<../runtime/SGLang 调度机制总览与学习路线.md>)的问题分层方式。
 
 本系列以官方固定版本源码为连续主线，适合放在 `sglang/source-study/`。现有 `sglang/` 专题作为延伸阅读保留；不把旧分支结论直接迁入本系列，也不移动已有文档。
 
@@ -389,14 +391,14 @@ ai-infra-wiki/
 
 | 已有资料 | 在新系列中的用途 | 使用边界 |
 | --- | --- | --- |
-| [LLM Prefill 与 Decode 阶段源码学习](<../../llm-inference/LLM Prefill 与 Decode 阶段源码学习文档.md>) | 00、02 的两阶段心智模型参考 | 回到本文 commit 重新核对路径 |
-| [调度机制总览与学习路线](<../SGLang 调度机制总览与学习路线.md>) | 03 的排序/准入/重叠职责参考 | 它是第三方整理并附固定版抽查，不等于本系列完整源码证明 |
-| [调度器请求生命周期与重叠调度](<../SGLang 调度器请求生命周期与重叠调度学习文档.md>) | 02、03 的教学节奏与对象拆分 | 重核当前 `NextBatchPlan` 和组件边界 |
-| [Chunked Prefill 与调度器显存预算](<../SGLang Chunked Prefill 与调度器显存预算学习文档.md>) | 03、04 的预算与分块问题 | 不复用未对应当前配置的默认值 |
-| [RadixAttention 与 HiCache 技术主线](<../SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>) | 04 的技术背景 | 区分来源信息、当前实现和实验结论 |
-| [Unified Radix Cache](<../SGLang Unified Radix Cache 学习文档.md>) | 04、09 的混合状态概念预习 | 回查当前组件实现及选择规则 |
-| [PD 分离下的 PP 源码学习](<../PD 分离下的 PP 源码学习文档.md>) | 写作风格与 06、07 的对照阅读 | 该文基于历史 `muxi-main`，不直接代入当前官方协议 |
-| [Torch Profiler 与 Trace](<../SGLang Torch Profiler 与 Trace 性能分析学习文档.md>) | 11 的观测入门参考 | 旧 trace、命令和结果保留自己的环境及版本 |
+| [LLM Prefill 与 Decode 阶段源码学习](<../../llm-inference/foundations/LLM Prefill 与 Decode 阶段源码学习文档.md>) | 00、02 的两阶段心智模型参考 | 回到本文 commit 重新核对路径 |
+| [调度机制总览与学习路线](<../runtime/SGLang 调度机制总览与学习路线.md>) | 03 的排序/准入/重叠职责参考 | 它是第三方整理并附固定版抽查，不等于本系列完整源码证明 |
+| [调度器请求生命周期与重叠调度](<../runtime/SGLang 调度器请求生命周期与重叠调度学习文档.md>) | 02、03 的教学节奏与对象拆分 | 重核当前 `NextBatchPlan` 和组件边界 |
+| [Chunked Prefill 与调度器显存预算](<../runtime/SGLang Chunked Prefill 与调度器显存预算学习文档.md>) | 03、04 的预算与分块问题 | 不复用未对应当前配置的默认值 |
+| [RadixAttention 与 HiCache 技术主线](<../kv-cache/SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>) | 04 的技术背景 | 区分来源信息、当前实现和实验结论 |
+| [Unified Radix Cache](<../kv-cache/SGLang Unified Radix Cache 学习文档.md>) | 04、09 的混合状态概念预习 | 回查当前组件实现及选择规则 |
+| [PD 分离下的 PP 源码学习](<../disaggregation/PD 分离下的 PP 源码学习文档.md>) | 写作风格与 06、07 的对照阅读 | 该文基于历史 `muxi-main`，不直接代入当前官方协议 |
+| [Torch Profiler 与 Trace](<../performance-engineering/SGLang Torch Profiler 与 Trace 性能分析学习文档.md>) | 11 的观测入门参考 | 旧 trace、命令和结果保留自己的环境及版本 |
 
 ## 6. 每篇正文的统一写作与验收要求
 

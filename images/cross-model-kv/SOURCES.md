@@ -1,6 +1,6 @@
 # 跨模型 KV 转换图片与来源记录
 
-对应文档：[学习文档](<../../llm-inference/跨模型 KV Cache 转换与 Prefill 复用学习文档.md>)。读取日期：2026-09-14。
+对应文档：[学习文档](<../../llm-inference/kv-cache/跨模型 KV Cache 转换与 Prefill 复用学习文档.md>)。读取日期：2026-09-14。
 
 - 原文：[NVIDIA 论文解读：KV Cache 跨模型转换](https://mp.weixin.qq.com/s/YTrcAvoBxp7eNCLODmOzWQ?scene=1&click_id=1)
 - 作者：Realtime AI Lab；发布时间：2026-09-09T22:02:00+08:00。

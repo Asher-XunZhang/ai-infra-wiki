@@ -1,6 +1,6 @@
 # KDA Cache 图片来源与阅读记录
 
-读取日期：2026-09-17。关联文档：[KDA Cache 检查点、前缀复用与投机回滚](<../../llm-inference/KDA Cache 检查点、前缀复用与投机回滚学习文档.md>)。
+读取日期：2026-09-17。关联文档：[KDA Cache 检查点、前缀复用与投机回滚](<../../llm-inference/model-architecture/KDA Cache 检查点、前缀复用与投机回滚学习文档.md>)。
 
 ## 原文与查重
 

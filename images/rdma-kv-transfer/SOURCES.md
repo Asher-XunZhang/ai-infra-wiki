@@ -1,6 +1,6 @@
 # RDMA KV 传输图片与来源记录
 
-对应文档：[学习文档](<../../llm-inference/P-D 分离的 RDMA、IB 与 GPU 可见性学习文档.md>)。读取日期：2026-09-14。
+对应文档：[学习文档](<../../llm-inference/distributed-serving/P-D 分离的 RDMA、IB 与 GPU 可见性学习文档.md>)。读取日期：2026-09-14。
 
 - 原文：[P/D 分离中的 RDMA 传输：基于 Wireshark 的 IB 与 GPUDirect 分析](https://mp.weixin.qq.com/s/kK6jmNGU7RrKlpnrKp10KA)
 - 作者：AI码酱；发布时间：2026-09-13T23:51:24+08:00。

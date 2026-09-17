@@ -11,7 +11,7 @@ from html import escape
 from build_pp_quick_data import EmbeddedModel, PAGE, ROOT
 from pp_source_baseline import SOURCE_COMMIT, SOURCE_FILES
 
-DOC = ROOT / 'sglang/PD Prefill PP loop 步骤详解.md'
+DOC = ROOT / 'sglang/disaggregation/PD Prefill PP loop 步骤详解.md'
 MARKER = '<script data-step-guide>\n'
 EXAMPLES = r"""
 const fs = require('node:fs');
