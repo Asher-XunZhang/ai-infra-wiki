@@ -16,10 +16,13 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
    await page.keyboard.press('Space');assert.equal(await group.locator('nav').isVisible(),true);
   }
   await page.getByRole('link',{name:/从推理全景开始/}).click();
+  // Cross-page clicks may resolve before deferred navigation state initializes.
+  await page.waitForLoadState('load');
   assert.match(page.url(),/journey.html/);assert.equal(await page.locator('[data-topic=overview]').evaluate(el=>el.open),true);
   assert.equal(await page.locator('[data-topic=pp-loop]').evaluate(el=>el.open),true,'other topic expansion persists');
   await page.locator('[data-topic=pp-loop]>summary').click();
   await page.locator('[data-topic=overview] a[href*="kv-cache.html"]').click();
+  await page.waitForLoadState('load');
   assert.equal(await page.locator('[data-topic=pp-loop]').evaluate(el=>el.open),false,'collapsed topic stays collapsed');
   assert.equal(await page.locator('[data-topic=overview] [aria-current=page]').count(),1);
   for(const width of [390,320]){
