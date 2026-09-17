@@ -27,6 +27,8 @@ for(const polls of [['Success','Failed','Success'],['Failed','Failed','Failed']]
 assert.deepEqual(M.terminalSet(['Success','Failed','Transferring']),[]);
 assert.deepEqual(M.consensus(['WaitingForInput','WaitingForInput','WaitingForInput'],[1]),{good:[],bad:['R0']});
 assert.deepEqual(M.consensus(['WaitingForInput','Bootstrapping','WaitingForInput']),{good:[],bad:[]});
+assert.equal(frame('bootstrap-wait','poll-bootstrap').after.ranks[1].poll,'Bootstrapping');
+assert.equal(frame('bootstrap-fail','poll-bootstrap').after.ranks[1].poll,'Failed');
 for(const id of ['bootstrap-fail','abort'])assert(M.create(id).frames.every(f=>f.after.ranks.every(q=>!q.kv&&!q.token)));
 assert(frame('metadata','metadata-blocked').after.ranks.every(q=>q.queue==='bootstrap'&&!q.metadata));
 assert(frame('budget','budget-blocked').after.ranks.every(q=>q.queue==='waiting'&&q.metadata&&!q.kv));
@@ -45,4 +47,4 @@ if(process.env.SGLANG_SOURCE_ROOT){
     assert(source[line-1].includes(text),`${key}: source anchor drift at ${file}:${line}: ${source[line-1]}`);
   }
 }
-console.log(`${M.scenarios.length} scenarios / ${count} snapshots: state, ownership, wait, failure, chunk and source checks passed.`);
+console.log(`${M.scenarios.length} scenarios / ${count} snapshots: state, ownership, wait, failure and chunk checks passed.${process.env.SGLANG_SOURCE_ROOT?' Pinned source anchors verified.':' Source anchor audit not requested.'}`);

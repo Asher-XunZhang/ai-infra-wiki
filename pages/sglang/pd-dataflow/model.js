@@ -69,7 +69,7 @@
       return verdict;
     }
     emit('start','R0 在三个 Prefill 级建立本地请求','本例输入 12 个 token。三个 rank 各有本地 Req / sender；Decode 是 KV 接收方，不是 PP3。关闭乐观 Prefill、HiCache、staging、投机与前缀复用。','bootstrap');
-    emit('poll-bootstrap','采样握手状态',id==='abort'?'PP1 已收到取消并标记 FINISH_ABORT；本例 sender 的 poll 仍为 WaitingForInput。':'poll 是最近一次观察，不是每一条通信完成后都自动更新的状态。','bootstrap', () => all({poll:'WaitingForInput'}));
+    emit('poll-bootstrap','采样握手状态',id==='abort'?'PP1 已收到取消并标记 FINISH_ABORT；本例 sender 的 poll 仍为 WaitingForInput。':'poll 是最近一次观察，不是每一条通信完成后都自动更新的状态。','bootstrap', () => {all({poll:'WaitingForInput'}); if(id==='bootstrap-wait')state.ranks[1].poll='Bootstrapping'; if(id==='bootstrap-fail')state.ranks[1].poll='Failed';});
     if (id==='bootstrap-wait') emit('handshake-delay','PP1 还在等待握手','未就绪不会自动变成失败；请求留在 bootstrap_queue。','bootstrap',()=>{state.ranks[1].poll='Bootstrapping';},null,'PP1 握手尚未就绪');
     if (id==='bootstrap-fail') emit('handshake-failure','PP1 观察到 Failed','这次失败将被传播到各级的 bad 名单。','bootstrap',()=>{state.ranks[1].poll='Failed';});
     let verdict = collect(1);
