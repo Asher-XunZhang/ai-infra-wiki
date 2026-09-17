@@ -20,7 +20,7 @@
 
 ---
 
-**第一次学习从这里开始：** [通用推理入门](llm-inference/README.md#入门主线) → 选择 [SGLang](sglang/README.md) 或 [vLLM](vllm/README.md)。下面的 PD / PP 交互专题适合在掌握请求、缓存和基本并行后阅读。
+**第一次学习可以先体验 [SGLang 推理全景](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html)，再进入文字主线：** [通用推理入门](llm-inference/README.md#入门主线) → 选择 [SGLang](sglang/README.md) 或 [vLLM](vllm/README.md)。下面的 PD / PP 交互专题适合在掌握请求、缓存和基本并行后阅读。
 
 <a id="interactive"></a>
 
@@ -32,16 +32,17 @@
 
 | 学习专题 | 可以观察什么 | 在线入口 |
 | --- | --- | --- |
+| **专题 00 · 推理全景** | 面向初学者，理解请求、P/D 与 Transformer、KV 复用、合并与分离部署、调度与延迟。五节内容，每节都有交互实验。 | [进入推理全景](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html) |
 | **专题 01 · 请求视角** | 跟随请求走完 PD 分离下的 Prefill：握手准入、切 chunk、组 batch、三级前向、KV 交接与资源释放。比较正常、等待、取消和部分 PP 失败的分支。 | [请求生命周期](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-lifecycle/) |
 | **专题 02 · 调度视角** | 同一轮为何“算 M3、收 M1”？追踪多个 batch 在 PP=3 中的交错执行，查看 CPU、GPU、通信与缓存事件之间的依赖。 | [快速入门](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html) · [依赖分析](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/) · [源码说明](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/notes.html) |
 
-**建议先理解单条请求，再理解多批次调度：**
+**初学者先读推理全景；掌握宏观行为后，再理解 PP 请求与多批次调度：**
 
 1. [单请求正常路径](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-lifecycle/?chunkSize=0)：先不切块，认清各模块的职责，以及请求、激活和 KV 的区别。
 2. 在“请求生命周期”里选择“一条请求 · 分三块”，观察 12 token 如何按 4 token 处理；首批详细，后续整段播放，也可段内单步。再调整请求数量、输入长度、chunk-size 与 batch-size，或尝试等待和部分失败场景。
 3. 进入“快速入门”和“依赖分析”，理解多个 batch 为何交错执行，以及新前向、旧结果和资源释放为什么会出现在同一轮 loop 中。
 
-页面提供固定源码链接与适用范围。两个专题采用不同的缓存场景；动画节奏和时间线均为教学示意，不代表真实 GPU trace 或性能测量。
+页面提供固定源码链接与适用范围。后两个专题采用不同的缓存场景；动画节奏和时间线均为教学示意，不代表真实 GPU trace 或性能测量。
 
 > [!TIP]
 > **用交互图建立直觉，用源码文档核对机制。** 网站是学习入口；下面的阅读路线和完整目录覆盖调度、并行、缓存、传输与性能分析。

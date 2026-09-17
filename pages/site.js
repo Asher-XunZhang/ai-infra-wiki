@@ -25,6 +25,17 @@
     if(event.data?.type==='learning-theme-ready'&&[...document.querySelectorAll('iframe')].some(frame=>event.source===frame.contentWindow))sendTheme();
   });
   applyTheme();
+  document.querySelectorAll('.topic-group').forEach(group=>{
+    const key='ai-infra-topic-'+group.dataset.topic;
+    const current=Boolean(group.querySelector('[aria-current="page"]'));
+    if(current)group.open=true;
+    else {
+      try {group.open=sessionStorage.getItem(key)==='open';} catch {}
+    }
+    group.addEventListener('toggle',()=>{
+      try {sessionStorage.setItem(key,group.open?'open':'closed');} catch {}
+    });
+  });
   const small=matchMedia('(max-width:900px)'),menu=document.querySelector('.sidebar-menu');
   function adaptMenu(){if(menu)menu.open=!small.matches;}
   small.addEventListener('change',adaptMenu);adaptMenu();
