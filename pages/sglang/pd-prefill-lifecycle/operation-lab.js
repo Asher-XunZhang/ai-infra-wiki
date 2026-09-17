@@ -1,4 +1,4 @@
-/* One renderer and one authoritative playback state for overview and data operations. */
+/* Shared renderer: both views consume snapshots from the same scenario model. */
 (() => {
   'use strict';
   const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -39,11 +39,12 @@
     }
     return content;
   }
-  function render(f,model){
+  function render(f,model,prefix=''){
+    const target=id=>document.getElementById(prefix+id);
     const s=f.after,b=f.work.batch,r=f.work.rank??0;
-    document.getElementById('operation-title').textContent=f.title;
-    document.getElementById('operation-description').textContent=f.description;
-    document.getElementById('operation-source').href='https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/'+f.source;
+    target('operation-title').textContent=f.title;
+    target('operation-description').textContent=f.description;
+    target('operation-source').href='https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/'+f.source;
     let html='';
     if(f.type==='intake')html=chain(f.work.rank===undefined?['输入文本 / 生成参数','Tokenizer → 完整 IDs','rid / bootstrap_room']:[r===0?'来自 Tokenizer 的请求':`PP${r-1} 转发的请求`,`PP${r} 本地 Req · 复用完整 IDs`,`sender + bootstrap_room<br>加入 bootstrap_queue`])+model.requests.map(q=>tokenRow(q)).join('');
     else if(['budget','cut','pack'].includes(f.type))html=batchView(f,model);
@@ -65,8 +66,8 @@
     }else if(['release','cleanup'].includes(f.type)){
       html=`<div class="release-list">返回 PP${r} 的 release_rids：${pill(set(s.release))}</div><div class="result-cards">`+f.work.ids.map(id=>{const a=f.before.ranks[r].requests[id],q=s.ranks[r].requests[id];return `<div class="${q.reason==='FINISH_ABORT'?'failed-card':''}"><strong>${id} · ${q.released?esc(q.reason):q.permit?'本地复查通过':'仍需等待'}</strong><span>本地 poll：${esc(a.sender)} → ${esc(q.sender)}</span><span>KV 引用：${a.holdsKv?'持有':'未持有'} → ${q.holdsKv?'仍持有':'未持有'}</span><span>metadata：${a.metadata?'占用':'未占用'} → ${q.metadata?'仍占用':'未占用'}</span><span>队列：${queues[a.queue]} → ${queues[q.queue]}</span><div class="resource-pair"><i class="${q.holdsKv?'held':'returned'}">KV 引用 ${q.holdsKv?'●':'○'}</i><i class="${q.metadata?'held':'returned'}">metadata ${q.metadata?'●':'○'}</i></div></div>`;}).join('')+'</div>';
     }else html=`<div class="outcome-cards">${s.requests.map(q=>`<div class="${q.outcome==='success'?'good':'bad'}"><strong>${q.rid} · ${doneLabel(q.outcome)}</strong><p>${q.outcome==='success'?'已完成本次 KV 交接，Decode 可继续。':'不把终态共识当作成功，检查下面各级原因。'}</p>${s.ranks.map((rank,i)=>`<small>PP${i}：${esc(rank.requests[q.rid].reason??rank.requests[q.rid].sender)}</small>`).join('')}</div>`).join('')}</div>`;
-    document.getElementById('operation-visual').innerHTML=html;
-    document.getElementById('request-state').innerHTML='<div class="state-scroll"><table><thead><tr><th>请求 / PP</th><th>队列</th><th>本地状态 / 原因</th><th>KV 已算 / 已提交</th><th>请求引用 / metadata</th></tr></thead><tbody>'+model.requests.flatMap(req=>s.ranks.map((rank,i)=>{const q=rank.requests[req.rid];return `<tr><th>${req.rid} / PP${i}</th><td>${queues[q.queue]}</td><td>${esc(q.reason??q.sender)}</td><td>${q.cacheEnd} / ${q.sendEnd}</td><td>${q.holdsKv?'持有':'无'} / ${q.metadata?'占用':'无'}</td></tr>`;})).join('')+'</tbody></table></div>';
+    target('operation-visual').innerHTML=html;
+    target('request-state').innerHTML='<div class="state-scroll"><table><thead><tr><th>请求 / PP</th><th>队列</th><th>本地状态 / 原因</th><th>KV 已算 / 已提交</th><th>请求引用 / metadata</th></tr></thead><tbody>'+model.requests.flatMap(req=>s.ranks.map((rank,i)=>{const q=rank.requests[req.rid];return `<tr><th>${req.rid} / PP${i}</th><td>${queues[q.queue]}</td><td>${esc(q.reason??q.sender)}</td><td>${q.cacheEnd} / ${q.sendEnd}</td><td>${q.holdsKv?'持有':'无'} / ${q.metadata?'占用':'无'}</td></tr>`;})).join('')+'</tbody></table></div>';
   }
   window.PrefillOperationLab={render};
 })();

@@ -19,3 +19,32 @@ body[data-page=lifecycle] .lesson-header h1{font-size:28px;margin:8px 0}body[dat
 .operation-visual{max-height:360px;overflow:auto;padding:0 2px 8px;scrollbar-gutter:stable}.player-toolbar{position:sticky;top:76px;z-index:4;background:var(--surface)}@media(max-width:600px){.operation-visual{max-height:460px}.player-toolbar{position:static}}@media print{.operation-visual{max-height:none;overflow:visible}.player-toolbar{position:static}}@media(prefers-reduced-motion:reduce){.pipeline-player *,.pipeline-player *:before,.pipeline-player *:after{animation:none!important;transition:none!important}}
 
 .kv-input-ports circle{fill:var(--flow-kv);stroke:var(--bg);stroke-width:1}.decode-ready-wire{stroke:var(--muted)}.decode-ready-label{fill:var(--muted);font-size:12px}
+
+/* The chapter stays put; only this local cursor advances. */
+.life-walkthrough.is-interactive .life-layout{grid-template-columns:150px minmax(0,1fr) minmax(330px,.85fr);gap:22px;align-items:start;min-height:850px;overflow-anchor:none}
+.life-walkthrough.is-interactive .life-nav{position:sticky;top:90px;max-height:calc(100dvh - 110px);overflow:auto}
+.reading-companion.pipeline-player{position:sticky;top:90px;margin:0;padding:0;overflow:hidden;border-top:3px solid var(--accent);font-size:13px}
+.reading-companion>details>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;padding:15px;background:var(--accent-soft);color:var(--accent)}
+.reading-companion>details>summary span{font-size:11px;font-weight:400;color:var(--muted)}
+.reader-body{padding:0 14px 14px;height:calc(100dvh - 170px);max-height:780px;overflow:auto;scrollbar-gutter:stable}
+.reader-scenario{font-size:12px;line-height:1.8;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.reader-hint{font-size:11px;line-height:1.8;color:var(--muted)}
+.reader-occurrence-label{display:block;margin:14px 0 7px;font-size:12px;font-weight:600}
+#reader-occurrence{width:100%;font-size:12px}.reader-context{color:var(--accent);font:12px/1.8 ui-monospace,monospace;overflow-wrap:anywhere}
+.reader-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:6px;border-block:1px solid var(--border);padding:10px 0;position:sticky;top:0;z-index:1;background:var(--surface)}
+.reader-toolbar button{padding:6px 9px;font-size:12px}#reader-play{background:var(--accent);color:var(--bg);border-color:var(--accent)}#reader-progress{font-size:11px;color:var(--muted);flex-basis:100%}
+.reader-operation h3{font-size:17px;line-height:1.6;margin:14px 0 8px}#reader-operation-description{font-size:12px;line-height:1.9}
+.reading-companion .operation-visual{max-height:none;min-height:0;overflow:visible;padding:0}
+.reading-companion .data-flow{flex-direction:column;gap:4px;margin:10px 0}.reading-companion .data-flow>div{padding:8px 12px;font-size:12px}.reading-companion .data-arrow{rotate:90deg;font-size:19px}
+.reading-companion .token{width:34px;min-height:40px;gap:4px}.reading-companion .token b{font-size:10px}.reading-companion .token-row{gap:6px}.reading-companion .request-label{flex-wrap:wrap;gap:5px;font-size:11px}
+.reading-companion .layer-strip{grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible}.reading-companion .layer-strip>span{padding:8px 2px;font-size:11px}
+.reading-companion .budget-meters{gap:8px}.reading-companion .budget-meters>div{padding:10px}.reading-companion .budget-meters span,.reading-companion .budget-meters small{font-size:11px}
+.reading-companion .candidate-list,.reading-companion .result-cards,.reading-companion .outcome-cards,.reading-companion .set-equations{grid-template-columns:minmax(0,1fr);gap:8px}
+.reading-companion .candidate-list>div,.reading-companion .result-cards>div,.reading-companion .outcome-cards>div{padding:10px;font-size:12px}
+.reading-companion .terminal-sets{flex-direction:column;gap:6px}.reading-companion .terminal-sets>div{width:100%;padding:10px;font-size:12px}.reading-companion .terminal-sets>span{display:none}
+.reading-companion .data-caption,.reading-companion .branch-note,.reading-companion .release-list,.reading-companion .consensus-answer,.reading-companion .set-equations code,.reading-companion .set-equations b{font-size:12px;overflow-wrap:anywhere}
+.reading-companion .batch-envelope{padding:10px}.reading-companion .page-unit{font-size:11px;padding:8px}.reading-companion .request-state{font-size:12px;margin-top:16px}.reading-companion table{font-size:11px}.reading-companion td,.reading-companion th{padding:7px}
+.reader-links{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;font-size:12px}.reader-links button{font-size:11px;padding:6px}#reader-empty{padding:14px;border-left:2px solid var(--accent);background:var(--soft);line-height:1.9}
+@media(max-width:1399px){.life-walkthrough.is-interactive .life-layout{grid-template-columns:150px minmax(0,1fr);gap:20px}.reading-companion.pipeline-player{position:static;grid-column:2;grid-row:1}.life-walkthrough.is-interactive .life-detail{grid-column:2;grid-row:2}.life-walkthrough.is-interactive .life-nav{grid-row:1 / span 2}.reader-body{height:420px;max-height:55dvh}.reading-companion .data-flow{flex-direction:row}.reading-companion .data-arrow{rotate:0deg}}
+@media(max-width:700px){.life-walkthrough.is-interactive .life-layout{grid-template-columns:minmax(0,1fr);gap:18px}.life-walkthrough.is-interactive .life-nav{position:static;grid-column:1;grid-row:1;max-height:none}.reading-companion.pipeline-player{grid-column:1;grid-row:2}.life-walkthrough.is-interactive .life-detail{grid-column:1;grid-row:3}.reading-companion .data-flow{flex-direction:column}.reading-companion .data-arrow{rotate:90deg}.reader-body{height:440px;max-height:65dvh}.reader-hint{display:none}.reader-scenario{margin:8px 0;font-size:11px}.reader-occurrence-label{margin-top:8px}}
+@media print{.reading-companion{display:none!important}.life-walkthrough.is-interactive .life-layout{display:block;min-height:0}}

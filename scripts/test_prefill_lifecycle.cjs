@@ -104,3 +104,26 @@ for(const model of [chunks,single,batching,rounded,boot,allBad,abort,wait,transf
 // Bounded parameter sweep includes short final pages, queue capacity, and several chunk sizes.
 for(let i=0;i<36;i++)validate(api.createScenario({requests:i%4+1,inputLength:[1,3,5,12,17,31][i%6],pageSize:[1,2,4][i%3],chunkSize:i%5===0?0:[1,2,4][i%3]*(i%4+1),batchSize:(i*3)%4+1}));
 console.log(`PASS: ${scenarios} scenarios / ${checkedFrames} frames; shared budgets, complete ranges, compression equivalence, per-rank partial failures, local repoll guards, ownership and reverse seeking.`);
+
+// The reading view must cover exactly the selected scenario's frames, including
+// compressed batches and missing stages, without inventing a normal fallback.
+const reading=require('../pages/sglang/pd-prefill-lifecycle/reading-companion.js');
+for(const model of [chunks,single,batching,boot,allBad,abort,wait,transfer,repoll]){
+  for(let phase=0;phase<12;phase++){
+    const items=reading.occurrences(model,phase);
+    assert.deepEqual(items.flatMap(i=>i.frames),model.frames.filter(f=>f.phase===phase));
+    for(const item of items){
+      assert(item.frames.every((f,i)=>model.frames[item.start+i]===f),'A fragment cannot jump across another phase');
+      assert(item.frames.every(f=>(reading.batchOf(f)?.id??null)===item.batch));
+      for(const f of item.frames)assert.equal(items[reading.chooseOccurrence(items,f)],item,'Exact action must restore the same occurrence');
+    }
+  }
+}
+const b2=byKey(chunks,'B2-cut'),sends=reading.occurrences(chunks,8);
+assert.equal(sends[reading.chooseOccurrence(sends,b2)].batch,'B2','Switching chapters must retain the current batch');
+assert.equal(sends[reading.chooseOccurrence(sends,byKey(chunks,'B2-output-1'))].frames[0].work.rank,1,'Retain rank when that batch has several occurrences');
+for(let phase=3;phase<=10;phase++)assert.deepEqual(reading.occurrences(allBad,phase),[]);
+assert.equal(reading.chooseOccurrence([],b2),-1);
+assert.equal(reading.chooseOccurrence(reading.occurrences(single,8),b2),0,'A new scenario cannot retain a removed batch');
+assert.equal(html.includes('reading-companion.js'),true);
+console.log('PASS: reading occurrence coverage, causal continuity, exact action restore, batch/rank context and absent phases.');

@@ -34,7 +34,7 @@
     $('player-prev').disabled=eventIndex===0;$('player-next').disabled=eventIndex===model.events.length-1;
     $('player-seek').setAttribute('aria-valuetext',`${eventIndex+1}：${g.title}`);
     window.PrefillOperationLab.render(f,model);draw(f);$('module-description').textContent='当前模块：'+f.active.map(id=>model.nodes[id].title).join(' · ')+'。点击组件可查看职责。';
-    articles.forEach((a,i)=>a.hidden=i!==f.phase);phaseLinks.forEach((a,i)=>{if(i===f.phase)a.setAttribute('aria-current','step');else a.removeAttribute('aria-current');});
+
     [...$('event-list').children].forEach((li,i)=>li.firstElementChild.setAttribute('aria-current',i===eventIndex?'step':'false'));
     if(write)history.replaceState(null,'',scenarioUrl(f.key));
     if(!playing){$('player-play').textContent=eventIndex===model.events.length-1?'↺ 重播':'▶ 播放全程';$('player-mode').textContent='已暂停 · 可单步';}
@@ -46,8 +46,8 @@
     else{eventIndex++;frameIndex=0;}
     show();schedule();
   },duration);}
-  function play(groupOnly=false){if(playing){pause();show();return;}if(!groupOnly&&eventIndex===model.events.length-1){eventIndex=0;frameIndex=0;show();}if(groupOnly&&frameIndex===activeGroup().frames.length-1)frameIndex=0;playing=true;onlyGroup=groupOnly;player.classList.add('is-playing');$('player-play').textContent='Ⅱ 暂停';$('player-play').setAttribute('aria-pressed','true');$('play-group').textContent='Ⅱ 暂停';$('player-mode').textContent=groupOnly?'播放当前整段':'播放全程';show();schedule();}
-  function jump(e,f=0){pause();eventIndex=Math.max(0,Math.min(model.events.length-1,e));frameIndex=Math.max(0,Math.min(activeGroup().frames.length-1,f));show();}
+  function play(groupOnly=false){reader.pause();if(playing){pause();show();return;}if(!groupOnly&&eventIndex===model.events.length-1){eventIndex=0;frameIndex=0;show();}if(groupOnly&&frameIndex===activeGroup().frames.length-1)frameIndex=0;playing=true;onlyGroup=groupOnly;player.classList.add('is-playing');$('player-play').textContent='Ⅱ 暂停';$('player-play').setAttribute('aria-pressed','true');$('play-group').textContent='Ⅱ 暂停';$('player-mode').textContent=groupOnly?'播放当前整段':'播放全程';show();schedule();}
+  function jump(e,f=0){reader.pause();pause();eventIndex=Math.max(0,Math.min(model.events.length-1,e));frameIndex=Math.max(0,Math.min(activeGroup().frames.length-1,f));show();}
   function populate(){
     $('event-list').replaceChildren();model.events.forEach((g,i)=>{const li=document.createElement('li'),button=document.createElement('button');button.type='button';button.textContent=g.title;button.addEventListener('click',()=>{jump(i);$('operation-lab').scrollIntoView({block:'start'});});li.append(button);$('event-list').append(li);});$('player-seek').max=model.events.length-1;
     $('scenario-summary').textContent=`${model.config.requests} 条请求 · ${model.batches} 个 batch · ${model.events.length} 个阅读步骤`;
@@ -64,20 +64,24 @@
   function fill(config){for(const field of fields)if(field!=='waitRid')$(`config-${field}`).value=config[field];draftFailures=config.failed.map(a=>[...a]);failureFields();$('config-waitRid').value=config.waitRid;}
   function readForm(){return {...Object.fromEntries(fields.map(k=>[k,$(`config-${k}`).value])),failed:collectFailures()};}
   function scenarioUrl(key){const url=new URL(location.href);url.search='';for(const k of fields)url.searchParams.set(k,model.config[k]);url.searchParams.set('failed',JSON.stringify(model.config.failed));url.hash=`action=${encodeURIComponent(key)}`;return url.pathname+url.search+url.hash;}
-  function apply(raw,write=true){try{const next=api.createScenario(raw);pause();model=next;eventIndex=frameIndex=0;populate();$('config-error').hidden=true;$('config-status').textContent=`已生成 ${model.batches} 个 batch。`;show(write);return true;}catch(e){$('config-error').hidden=false;$('config-error').textContent=e.message;return false;}}
+  function apply(raw,write=true){try{const next=api.createScenario(raw);pause();model=next;eventIndex=frameIndex=0;populate();reader.setModel(model);$('config-error').hidden=true;$('config-status').textContent=`已生成 ${model.batches} 个 batch。`;show(write);if(write)reader.writePosition();return true;}catch(e){$('config-error').hidden=false;$('config-error').textContent=e.message;return false;}}
   function fromHash(){
     let key;try{key=decodeURIComponent(location.hash.replace(/^#action=/,''));}catch{return;}
     const legacy={'#event-intake':'intake','#event-proxy-01':'B1-proxy-0-1','#event-batch-0':'B1-pack','#chunked-event-chunk-2-cut':'B2-cut','#event-handoff':'finish'};key=legacy[location.hash]??key;
-    for(let e=0;e<model.events.length;e++){const f=model.events[e].frames.findIndex(x=>x.key===key);if(f>=0){jump(e,f);return;}}
-    const phase=articles.findIndex(a=>'#'+a.id===location.hash);if(phase>=0){const e=model.events.findIndex(g=>g.frames.some(f=>f.phase===phase));if(e>=0)jump(e,model.events[e].frames.findIndex(f=>f.phase===phase));}
+    for(let e=0;e<model.events.length;e++){const f=model.events[e].frames.findIndex(x=>x.key===key);if(f>=0){jump(e,f);reader.select(activeFrame().phase,activeFrame(),false);return;}}
+    const phase=articles.findIndex(a=>'#'+a.id===location.hash);if(phase>=0){const e=model.events.findIndex(g=>g.frames.some(f=>f.phase===phase));if(e>=0)jump(e,model.events[e].frames.findIndex(f=>f.phase===phase));reader.select(phase,null,false);}
   }
+  const reader=window.PrefillReading.mount({articles,links:phaseLinks,onInteract:pause,
+    onFrame:(frame,chapter)=>{const url=new URL(scenarioUrl(frame?.key??activeFrame().key),location.href);if(chapter)url.hash=chapter;history.replaceState(null,'',url.pathname+url.search+url.hash);},
+    onFull:frame=>{for(let e=0;e<model.events.length;e++){const f=model.events[e].frames.indexOf(frame);if(f>=0){jump(e,f);break;}}$('operation-lab').scrollIntoView({block:'start'});$('operation-title').setAttribute('tabindex','-1');$('operation-title').focus({preventScroll:true});}
+  });
   $('scenario-form').addEventListener('submit',e=>{e.preventDefault();if(apply(readForm()))$('config-preset').value='custom';});
   $('config-preset').addEventListener('change',e=>{if(!api.presets[e.target.value])return;const config=api.normalize(api.presets[e.target.value]);fill(config);apply(config);});
   $('config-requests').addEventListener('change',()=>{draftFailures=collectFailures();failureFields();});$('config-fault').addEventListener('change',failureFields);
   $('player-reset').addEventListener('click',()=>jump(0));$('player-prev').addEventListener('click',()=>jump(eventIndex-1));$('player-next').addEventListener('click',()=>jump(eventIndex+1));$('player-play').addEventListener('click',()=>play());
   $('player-seek').addEventListener('input',e=>jump(Number(e.target.value)));$('frame-prev').addEventListener('click',()=>jump(eventIndex,frameIndex-1));$('frame-next').addEventListener('click',()=>jump(eventIndex,frameIndex+1));$('frame-seek').addEventListener('input',e=>jump(eventIndex,Number(e.target.value)));$('play-group').addEventListener('click',()=>play(true));$('player-speed').addEventListener('change',schedule);
-  $('share-scenario').addEventListener('click',async()=>{const url=new URL(scenarioUrl(activeFrame().key),location.href).href;try{await navigator.clipboard.writeText(url);$('config-status').textContent='已复制当前参数和动作位置。';}catch{$('config-status').textContent='参数已保存在地址栏，可复制当前网址。';}});
-  phaseLinks.forEach((a,phase)=>a.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey)return;e.preventDefault();const index=model.events.findIndex(g=>g.frames.some(f=>f.phase===phase));if(index>=0){jump(index,model.events[index].frames.findIndex(f=>f.phase===phase));$('operation-lab').scrollIntoView({block:'start'});}}));
+  $('share-scenario').addEventListener('click',async()=>{const url=location.href;try{await navigator.clipboard.writeText(url);$('config-status').textContent='已复制当前参数和动作位置。';}catch{$('config-status').textContent='参数已保存在地址栏，可复制当前网址。';}});
+
   for(const el of svg.querySelectorAll('[data-node]')){const inspect=()=>{pause();const id=el.dataset.node;$('module-description').textContent=`${model.nodes[id].title}：${model.nodes[id].role}`;const flat=model.frames.indexOf(activeFrame()),next=model.frames.findIndex((f,i)=>i>flat&&f.active.includes(id));if(next>=0){const button=document.createElement('button');button.textContent='跳到该组件的下一次操作';button.type='button';button.addEventListener('click',()=>{const target=model.frames[next];for(let e=0;e<model.events.length;e++){const f=model.events[e].frames.indexOf(target);if(f>=0){jump(e,f);$('operation-lab').scrollIntoView({block:'start'});break;}}});$('module-description').append(button);}};el.addEventListener('click',inspect);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();inspect();}});}
   player.addEventListener('keydown',e=>{if(e.target.closest('input,select,button,a,summary,[data-node]'))return;if(e.key==='ArrowRight'){e.preventDefault();jump(eventIndex+1);}if(e.key==='ArrowLeft'){e.preventDefault();jump(eventIndex-1);}if(e.key===' '){e.preventDefault();play();}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});window.addEventListener('pagehide',pause);window.addEventListener('hashchange',fromHash);
