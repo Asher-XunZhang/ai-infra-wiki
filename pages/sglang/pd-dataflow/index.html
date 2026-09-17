@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>数据流状态机 · PD Prefill 与 PP 调度</title><meta name="description" content="逐步观察三个 Prefill PP 级在正常、等待、分块与失败条件下的请求状态、数据流和释放条件。">
+<link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="dataflow.css">
+<script src="../../site.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script></head>
+<body data-page="dataflow"><a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header>
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航"><details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary><div class="sidebar-content"><a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a><p class="nav-label">SGLANG · 专题 01</p><h2 class="sidebar-title">一条请求的 Prefill 旅程</h2><nav aria-label="请求生命周期专题"><a class="course-link" href="../../sglang/pd-prefill-lifecycle/index.html"><span class="course-number">01</span><span><strong>请求生命周期</strong><small>从接入、三级前向到 KV 释放</small></span></a></nav><p class="nav-label">SGLANG · 专题 02</p><h2 class="sidebar-title">PD Prefill 与 PP 调度</h2><nav aria-label="专题阅读顺序"><a class="course-link" href="../../sglang/pd-prefill-pp-loop/quick.html"><span class="course-number">01</span><span><strong>快速入门</strong><small>先看 loop 与 batch 的关系</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/index.html"><span class="course-number">02</span><span><strong>依赖分析</strong><small>追踪每一步的前置条件</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/notes.html"><span class="course-number">03</span><span><strong>源码阅读</strong><small>把图中的行为对应到代码</small></span></a><a class="course-link" href="../../sglang/pd-dataflow/index.html" aria-current="page"><span class="course-number">04</span><span><strong>数据流状态机</strong><small>观察等待、分块与失败的变化</small></span></a></nav><div class="sidebar-note"><span class="status-dot"></span> 基于固定源码的学习材料<p>先理解整体，再追踪依赖，最后回到源码。</p></div><a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 <span aria-hidden="true">↗</span></a></div></details></aside><div class="site-content">
+<header class="lesson-header" id="main-content" tabindex="-1">
+<div class="lesson-kicker"><span class="eyebrow">SGLANG / PD PREFILL</span><span class="lesson-count">04 / 04 · 数据流状态机</span></div>
+<h1>数据走到哪，<br>状态为什么停在这里？</h1>
+<p>握手共识、模型前向和 KV 交接各有自己的推进条件。选择一种情况，跟随请求 R0，逐步看三个 PP 级持有什么、在等什么，以及哪条数据流使状态改变。</p>
+<div class="meta-tags"><span>PP = 3 · 单请求 R0</span><span>12 token · page = 4</span><span>因果走读 · 非实测时间轴</span><a href="https://github.com/sgl-project/sglang/tree/882577451e764a515df2a386a055012e8f075a16">开源源码 882577451e ↗</a></div>
+<details class="context-disclosure"><summary>场景范围与源码版本</summary><p>固定 2026-09-17 读取的 main 提交。CUDA、普通 FULL attention、PP=3、depth=0；关闭 HiCache、staging、乐观 Prefill、投机、logprob 和前缀复用。分块示例每块 4 token，普通 overlap 关闭；“跳过结果通信”场景显式开启 SGLANG_PP_SKIP_PURE_CHUNKED_OUTPUT_COMM，其余场景关闭。</p><p>每一帧是源码允许的机制步骤示意，不是实际运行 trace；页面按请求因果顺序展开，不表示三级全局同步或真实 loop 交错。batch、chunked_req 是执行容器/引用，不全是队列。最近 poll、已提交边界和请求资源所有权分别记录。Decode 内部接收状态、错误传播、调度及底层 DMA 退役不在模型内。</p><p>其它调度页面固定在 279339f113；本页独立采用 882577451e，不将两版行号混用。<a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/disaggregation/PD%20Prefill%20数据流状态机.md">阅读完整源码依据 ↗</a></p></details>
+</header>
+<main>
+<section class="flow-lab" aria-labelledby="lab-title">
+<div class="flow-settings"><div><p class="eyebrow">改变条件，观察边界</p><h2 id="lab-title">同一请求，不同的前进条件</h2></div><label for="scenario">情景选择<select id="scenario"></select></label></div>
+<p id="scenario-description" class="flow-intro"></p>
+<div class="flow-controls"><button id="prev" type="button">← 上一步</button><button id="play" type="button">播放</button><button id="next" type="button">下一步 →</button><button id="restart" type="button">从头看</button><label for="milestone">跳至关键变化<select id="milestone"></select></label><button id="share" type="button">复制当前状态链接</button></div>
+<label class="flow-progress" for="progress">因果步骤 <output id="position"></output><input id="progress" type="range" min="0" step="1" value="0"></label>
+<div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+<div class="current-event"><div><span id="event-kind" class="eyebrow"></span><h2 id="event-title"></h2><p id="event-detail"></p></div><a id="source" target="_blank" rel="noopener">查看本步源码 ↗</a></div>
+<div id="gate" class="flow-gate" hidden></div>
+<div class="flow-board">
+<div class="board-heading"><h3>三个 Prefill 级，各自保留一份状态</h3><span>点击某一级，查看下面的状态转换</span></div>
+<div id="rank-cards" class="rank-grid"></div>
+<div class="flow-routes" aria-label="当前数据流"><div class="route-heading"><h3>消息与数据通路</h3><span>亮起的通路对应当前步骤</span></div><div id="routes"></div></div>
+<div class="consensus-row"><div><span>截至当前传播级 · good / bad</span><strong id="bootstrap-sets"></strong></div><div><span>截至当前传播级 · 终态交集</span><strong id="terminal-set"></strong></div><p>前缀交集尚不是许可；最终名单回流后，还要执行本地检查。</p></div>
+</div>
+<div class="state-inspector"><div class="board-heading"><h3 id="inspector-title">PP0 · 状态与持有关系</h3><label for="rank">观察流水级<select id="rank"><option value="0">PP0 · 首级</option><option value="1">PP1 · 中间级</option><option value="2">PP2 · 末级</option></select></label></div>
+<div id="state-path" class="state-path" aria-label="请求状态转换"></div>
+<p class="muted">点击状态节点，跳到本场景中本级下一次进入该状态的步骤，到末尾后回到首次进入；灰色节点表示本场景不经过。中间块沿续算分支返回 batch。</p>
+<div class="inspector-grid"><section><h4>本步改变了什么</h4><ul id="changes"></ul><p id="rank-hint"></p></section><section><h4>R0 的 token 区间</h4><div id="tokens"></div><p class="muted">已计算与已提交均为历史边界；收尾后不代表仍占有物理 KV。提交不等于接收完成。</p></section></div>
+</div>
+</section>
+<section class="flow-reading"><h2>先分清三件事，再理解状态机</h2><div class="reading-cards"><article><span class="eyebrow">01 / 计算通路</span><h3>激活走 PP，KV 去 Decode</h3><p>激活连接模型的前后层；每级只生产并发送自己的 KV。首 token 结果沿环回流，不能把这三条通路画成同一根箭头。</p></article><article><span class="eyebrow">02 / 准入边界</span><h3>握手好，也可能还不能算</h3><p>共同 good 之后仍要完成本地 metadata 分配；进了 waiting_queue，还要通过选批预算。每一道门挡住的是不同阶段。</p></article><article><span class="eyebrow">03 / 释放边界</span><h3>终态有成功，也有失败</h3><p>release 汇总 Success ∪ Failed 的交集；本级复查后按各自结果清理。清理请求引用不等于缓存物理清空，也不证明端到端成功。</p></article></div></section>
+<nav class="lesson-pager" aria-label="继续学习"><a href="../pd-prefill-pp-loop/index.html"><small>回到调度视角</small><strong>依赖分析 ←</strong><span>理解多个 batch 如何交错推进</span></a><a class="next" href="../pd-prefill-lifecycle/index.html"><small>回到请求视角</small><strong>请求生命周期 →</strong><span>调整请求数、长度与批次参数</span></a></nav>
+<noscript><p>请启用 JavaScript 操作状态机。上方“完整源码依据”提供可直接阅读的状态表与机制说明。</p></noscript>
+</main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><span>静态源码推演 · 未做设备运行验证</span><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>
