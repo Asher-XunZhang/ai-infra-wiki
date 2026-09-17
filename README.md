@@ -207,6 +207,7 @@ flowchart TB
 - [推理引擎与集群推理层分工](<./llm-inference/推理引擎与集群推理层分工学习文档.md>) — 区分单实例执行能力与集群级控制面职责。
 - [大模型推理全链路优化](<./llm-inference/大模型推理全链路优化学习文档.md>) — 从算子融合、异构分页、混合精度到 CPU/GPU 调度与赤兔，并提供八篇来源的阅读地图。
 - [Kimi K3 混合注意力缓存与 Mooncake 状态传输](<./llm-inference/Kimi K3 混合注意力缓存与 Mooncake 状态传输学习文档.md>) — KDA 检查点、状态所有权、三家引擎缓存设计、Flat KV 与 EPD。
+- [KDA Cache 检查点、前缀复用与投机回滚](<./llm-inference/KDA Cache 检查点、前缀复用与投机回滚学习文档.md>) — 共同恢复边界、共享状态隔离、内部检查点与 ReplaySSM 的提交语义。
 - [KV Cache 与 MoE 权重的分层内存](<./llm-inference/KV Cache 与 MoE 权重的分层内存学习文档.md>) — 对比 OasisKV 预取、ReRAM 专家池与 SAC 按需访问，拆清数据位置和性能证据。
 - [Chunked Prefill 与 Prefill-Decode 共推](<./llm-inference/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) — 从静态批处理走向连续批处理与分块调度。
 - [KV Cache 容量优化技术地图](<./llm-inference/KV Cache 容量优化技术地图学习文档.md>) — GQA、MLA、滑窗、跨层共享与稀疏注意力的统一地图。

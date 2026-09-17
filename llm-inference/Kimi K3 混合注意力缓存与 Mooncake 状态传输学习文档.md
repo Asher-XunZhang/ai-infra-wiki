@@ -239,6 +239,8 @@ sequenceDiagram
 
 ## 8. 阅读路线与参考
 
+关于恢复边界、内部检查点与投机状态提交，可继续阅读 [KDA Cache 检查点、前缀复用与投机回滚](<./KDA Cache 检查点、前缀复用与投机回滚学习文档.md>)。该文也区分了前缀补算与 ReplaySSM 的局部递推重放。
+
 先读[前缀命中定义](<../sglang/SGLang RadixAttention 前缀缓存命中定义学习文档.md>)，再读本文，最后进入 [SGLang K3 推理协同优化](<../sglang/SGLang Kimi K3 推理协同优化学习文档.md>)。
 
 - [SGLang 官方 K3 文章](https://www.lmsys.org/blog/2026-07-27-kimi-k3-day0-support/)：COW、checkpoint、统一容量与并行。
