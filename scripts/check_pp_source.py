@@ -41,18 +41,24 @@ def check_artifacts():
 
     # Both visible badges and source hyperlinks must identify the reviewed SHA.
     links = set()
+    dataflow_links = set()
+    dataflow_page = ROOT / 'pages/sglang/pd-dataflow/index.html'
+    dataflow_commit = '882577451e764a515df2a386a055012e8f075a16'
     for path in [*(ROOT / 'pages').rglob('*.html'), ROOT / 'sglang/disaggregation/PD Prefill PP loop 步骤详解.md']:
         text = unescape(path.read_text(encoding='utf-8'))
         for commit, source, first, last in re.findall(
             r'https://github.com/sgl-project/sglang/blob/([0-9a-f]{40})/'
             r'(python/[^\s"<>\)]+?)#L(\d+)(?:-L(\d+))?', text
         ):
-            assert commit == SOURCE_COMMIT, (path, commit)
-            links.add((source, int(first), int(last or first)))
+            expected_commit = dataflow_commit if path == dataflow_page else SOURCE_COMMIT
+            assert commit == expected_commit, (path, commit)
+            # The independent dataflow baseline is audited by test_pd_queues.cjs.
+            target = dataflow_links if path == dataflow_page else links
+            target.add((source, int(first), int(last or first)))
     for name in ('index.html', 'quick.html', 'notes.html'):
         assert SOURCE_SHORT in (PAGE / name).read_text(encoding='utf-8'), name
     assert '${data.sourceCommit}' in outer.srcdoc, 'Detail links must use the loaded model baseline'
-    print(f'Checked {len(models)} models, {len(refs)} graph anchors, {len(links)} page source links.')
+    print(f'Checked {len(models)} models, {len(refs)} graph anchors, {len(links)} PP page source links and {len(dataflow_links)} separate dataflow links.')
     return links
 
 

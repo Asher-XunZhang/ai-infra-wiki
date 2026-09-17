@@ -78,6 +78,53 @@ stateDiagram-v2
 - 中间块不追加有效首 token，也不会把整个请求当作完成。
 - 成功收尾依次释放请求 KV 所有权、调用缓存 `finish(SUCCESS)`、清理 sender，随后归还 metadata 并移出 inflight。物理页可能仍由前缀缓存管理。
 
+### 2.1 源码的状态机就是 queue 吗？
+
+不是。queue 归属是调度状态的一部分；`pending_bootstrap`、`finished_reason`、`disagg_kv_sender.poll()`、KV 所有权、metadata 槽、batch 和续算引用共同决定能否前进。源码没有一个等同于本页教学阶段的单一 `state` 枚举。比如 `finalize_bootstrap` 已清除 pending 并分配 metadata，而 `pop_bootstrapped` 还未在函数尾重建列表时，请求仍在 bootstrap 列表里；同一个队列中字段已经变化。
+
+[队列流转交互面板](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-dataflow/#queue-lab)默认跟随上方情景，但独立播放更细的容器操作。可选择本地 PP 级、单步、重播、跳到操作，并点击容器查看职责。飞行标签表达本步关系；卡片保持操作后的成员快照，减少等待动画结束才能读说明的负担。多个 R0 标签指向本级同一个 Req，并非多份请求。
+
+| 源码容器 / 字段 | 实际含义 | 主要变化 |
+| --- | --- | --- |
+| `disagg_prefill_bootstrap_queue.queue` | PrefillBootstrapQueue 内部请求列表 | `add` 追加；`pop_bootstrapped` 过滤成功或失败条目 |
+| `waiting_queue` | 等待选批的 Req 列表，不保证严格 FIFO | `extend(good_reqs)`；过滤掉 `can_run_set` 中选中的请求 |
+| `ScheduleBatch.reqs` | 一次执行的 Req 引用集合 | `init_new(can_run_list, ...)`；后续 `filter_batch` 移除已完成或续算条目 |
+| `scheduler.chunked_req` | 单个续算 Req 引用，不是队列 | 选批保留未算完者；最后一块 `add_chunked_req` 返回 None |
+| `disagg_prefill_inflight_queue` | 最终块处理后待传输收尾的请求列表 | `append(req)`；处理终态后重建为 `undone_reqs` |
+| `disagg_prefill_pending_chunk_rids` | 已发中间块但未结束分块的 rid 集合 | 中间块 send 后 add；最终块 send 后 discard；异常路径也须清理 |
+| `mbs / last_mbs` | PP 微批槽中的 batch 引用 | 槽可继续引用旧 batch；不是 Req 必须逐站经过的 queue |
+| `last_rank_comm_queue`、`send_*_work`、tensor inbox | 事件、通信任务或消息的容器 | 不画成请求队列，避免把控制与数据通信误当作 Req 入队 |
+
+```mermaid
+flowchart LR
+    B[bootstrap 请求列表] -->|有效名单且本地 finalize 成功| W[waiting_queue]
+    W -->|选中并过滤 waiting| E[batch.reqs]
+    E -.->|同一 Req 的续算引用| C[chunked_req]
+    C -.->|add_chunked_req 直接选下一块| E
+    E -->|最终块结果 append| I[inflight 请求列表]
+    I -->|名单允许且本地终态 后续重建列表| X[完成或中止 非队列]
+    I -->|不在名单或复查非终态| I
+```
+
+**图意解读：** 箭头表达准入或引用关系，不意味着所有容器互斥。`inflight.append(req)` 后，旧 `batch.reqs` 仍可保留同一个 Req，直到后续过滤。普通分块清理旧 batch 引用时，`chunked_req` 仍保留，KV 也仍持有；下一块直接通过 adder 选入，**不会每块都先回 waiting_queue**。最后一块选入时可以清空续算指针，但 Req 仍在执行 batch 内。
+
+**真正回队的另一条路径：** 启用乐观 Prefill 时，`optimistic_release_and_requeue` 会释放 KV、重置请求，并根据尝试次数插入 waiting 或追加回 bootstrap。这是另一配置下的重试机制；本页关闭乐观模式，仅提供源码入口，不混入普通分块动画。
+
+**源码锚点（均固定本页 commit）：**
+
+| 行为 | 位置 |
+| --- | --- |
+| bootstrap 入队与过滤 | `disaggregation/prefill.py::PrefillBootstrapQueue.add / pop_bootstrapped` |
+| waiting 入队 | `managers/scheduler_pp_mixin.py::process_bootstrapped_queue`，L605–623 |
+| waiting 过滤、设置续算引用、构建 batch | `managers/scheduler.py::_get_new_batch_prefill_raw`，L4025–4060 |
+| 续算直接选入及最后一块清空指针 | `managers/schedule_policy.py::add_chunked_req`，L950–1000 |
+| 最终块进入 inflight | `disaggregation/prefill.py`，L860 |
+| inflight 保留未完成者并重建列表 | `disaggregation/prefill.py::process_disagg_prefill_inflight_queue`，L972–1080 |
+| 旧 batch 的引用过滤 | `disaggregation/prefill.py::process_prefill_chunk`，L1210–1251；`managers/schedule_batch.py::filter_batch`，L3571 |
+| pending rid 集合与乐观回队 | `disaggregation/prefill.py`，L1508–1551 |
+
+面板按本地 R0 的因果顺序归并步骤，不复现循环的逐条语句或跨级时钟。显示的 0 / 1 只统计示例请求；非全服务队列长度。静态断言覆盖三种 PP 级、十二种情景中的保留条件、并存引用、续算和清理次序，不构成设备运行证明。
+
 ## 3. 三道容易混淆的门
 
 ### 3.1 握手共识与本地准入
