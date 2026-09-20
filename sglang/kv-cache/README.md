@@ -41,6 +41,7 @@
 
 按目标继续：
 
+- [v0.5.20：SWA 分叉缓存与外部 Linker](<../version-studies/SGLang v0.5.20 缓存调度与 Serving 协同学习文档.md>)：版本案例；先读 Unified Radix Cache，再区分分叉恢复条件与远端内存的管理权。
 - [分离部署与状态交接](<../disaggregation/README.md>)
 - [模型适配与特殊执行机制](<../model-support/README.md>)
 - [缓存身份与生命周期](<../../vllm/kv-cache/README.md>)

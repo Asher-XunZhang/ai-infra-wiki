@@ -41,6 +41,7 @@
 
 按目标继续：
 
+- [v0.5.20：HRRN、Graph 与采样协同](<../version-studies/SGLang v0.5.20 缓存调度与 Serving 协同学习文档.md>)：版本案例；掌握调度和执行主线后，比较实例内排序、实例路由和采样同步。
 - [前缀缓存与分层存储](<../kv-cache/README.md>)
 - [并行拓扑与负载分工](<../parallelism/README.md>)
 - [性能观察与调优案例](<../performance-engineering/README.md>)

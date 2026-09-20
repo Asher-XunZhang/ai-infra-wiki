@@ -44,6 +44,7 @@
 
 按目标继续：
 
+- [v0.5.20：DSpark 与 PD、DCP 组合](<../version-studies/SGLang v0.5.20 缓存调度与 Serving 协同学习文档.md>)：版本参考；先读状态交接主线，再核对 draft/target 布局与 Responses API 限制。
 - [集群服务与分离部署](<../../llm-inference/distributed-serving/README.md>)
 - [KV 传输与外部缓存接入](<../../vllm/disaggregation/README.md>)
 - [性能观察与调优案例](<../performance-engineering/README.md>)

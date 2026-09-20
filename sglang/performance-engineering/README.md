@@ -36,6 +36,7 @@
 
 按目标继续：
 
+- [v0.5.20：模拟器与性能数字的适用范围](<../version-studies/SGLang v0.5.20 缓存调度与 Serving 协同学习文档.md>)：方法案例；读过指标基础后，比较模拟预测、实卡测试、算子耗时和完整请求指标。
 - [模型适配与特殊执行机制](<../model-support/README.md>)
 - [版本演进与组合边界](<../version-studies/README.md>)
 - [性能工程与综合优化](<../../llm-inference/performance-engineering/README.md>)

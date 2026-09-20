@@ -186,6 +186,7 @@ AMD Lean Attention 把长短不均的 KV 工作重新分给计算单元；原文
 
 ## 9. 继续阅读
 
+- [v0.5.20 缓存调度与 Serving 协同](<SGLang v0.5.20 缓存调度与 Serving 协同学习文档.md>)：后续版本的 SWA 分叉、路由与调度、模拟器及接口变化；分别保留两个版本的证据边界。
 - [v0.5.18 推理系统协同演进](<./SGLang v0.5.18 推理系统协同演进学习文档.md>)：版本演进的前一站。
 - [Unified Radix Cache](<../kv-cache/SGLang Unified Radix Cache 学习文档.md>)：逻辑缓存结构。
 - [Kimi K3 推理协同优化](<../model-support/SGLang Kimi K3 推理协同优化学习文档.md>)：理解可变状态与投机提交。
