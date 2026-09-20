@@ -1,97 +1,65 @@
+/* Plain-language figures; the accounting model is shared with the model tests. */
 (() => {
   'use strict';
-  const api=window.InferenceOverview,$=id=>document.getElementById(id);
-  const tokens=(n,prefix,kind='')=>Array.from({length:n},(_,i)=>`<span class="token ${kind}">${prefix}${i+1}</span>`).join('');
-  const listen=(ids,render)=>ids.forEach(id=>$(id).addEventListener('input',render));
-  const page=document.body.dataset.lesson;
-  if(page==='journey'){
-    let step=0;
-    function render(){
-      const s=api.generation($('prompt-size').value,step);
-      $('prompt-size-value').textContent=s.prompt;
-      $('journey-step').textContent=`${step} / 5 · ${s.phase}`;
-      $('journey-prev').disabled=step===0;$('journey-next').disabled=step===5;
-      $('journey-flow').innerHTML=['接入与分词','排队 / 准入','Prefill','Decode × 4','输出结束'].map((x,i)=>`<div class="flow-node ${i===(step===0?1:step===1?2:step<5?3:4)?'active':''}">${x}<small>${['文本 → token IDs','先有资源，再计算','全部输入经过模型','上一输出作为新输入','达到教学输出上限'][i]}</small></div>`).join('<span class="flow-arrow" aria-hidden="true">→</span>');
-      $('journey-input').innerHTML=step===0?tokens(s.prompt,'p'):step===1?tokens(s.prompt,'p','new'):`<span class="token new">y${step-1}</span>`;
-      $('journey-output-tokens').innerHTML=step?tokens(step,'y','new'):'尚未生成';
-      $('journey-kv').innerHTML=step?tokens(s.prompt,'p')+tokens(step-1,'y'):'尚未写入';
-      $('generation-loop').innerHTML=`<div class="generation-chain"><div><small>本轮送入</small><strong>${step<=1?'p1…p'+s.prompt:'y'+(step-1)}</strong></div><span aria-hidden="true">→</span><div class="generation-model"><small>同一个完整模型</small><strong>层 1 → … → 层 L</strong></div><span aria-hidden="true">→</span><div><small>${step?'刚采样':'尚未采样'}</small><strong>${step?'y'+step:'?'}</strong></div></div><div class="feedback-path">${step===0?'等待准入，尚未进入模型':step===5?'已达到本例输出上限 · 不再送回模型':`↶ 下一轮把 y${step} 送回输入端，再经过完整模型`}</div>`;
-      $('journey-output').innerHTML=step===0?'请求已被分词为示例 token p1…pN，正在等调度器接纳。此时还没有 KV，也没有输出。':`<strong>${s.phase} 完成：已有 ${step} 个输出 token，KV 覆盖 ${s.kv} 个位置。</strong> ${step===1?'最后一个输入位置的 logits 用于采样 y1。Prefill 已经产出了第一个输出 token。':`把 y${step-1} 输入完整模型，写入它的 KV，再采样 y${step}。历史 token 的 K/V 直接复用。`} 最新输出 y${step} 尚未经过下一轮前向，因此这里还没有它的 KV。${step===5?'本例到此停止；生产中还可能由 EOS、停止串、长度上限或取消结束。':''}`;
-    }
-    $('journey-prev').onclick=()=>{step=Math.max(0,step-1);render();};
-    $('journey-next').onclick=()=>{step=Math.min(5,step+1);render();};
-    $('journey-reset').onclick=()=>{step=0;render();};
-    listen(['prompt-size'],()=>{step=0;render();});render();
-  }
-  if(page==='transformer'){
-    let phase='prefill';
-    const descriptions={embedding:'把本轮输入的 token ID 查成向量。Prefill 输入多个位置；普通 Decode 每条请求输入一个位置。',attention:'在每一层为当前位置计算 Q/K/V；K/V 写入该层缓存，Q 与可见历史 K/V 进行 attention。Decode 没有跳过 attention。',mlp:'每一层还要执行前馈网络（MLP）以及归一化、残差。Decode 并不是只读 KV，不做模型计算。',head:'最终隐藏状态经输出头得到词表 logits，再由采样步骤选出下一个 token。采样是生成流程的一步，不是另一半 Transformer。'};
-    function render(){
-      const p=phase==='prefill';
-      $('phase-prefill').setAttribute('aria-pressed',String(p));$('phase-decode').setAttribute('aria-pressed',String(!p));
-      $('transformer-input').innerHTML=p?tokens(4,'p','new'):'<span class="token new">y1</span>';
-      $('transformer-shape').textContent=p?'4 个新位置 × hidden size':'1 个新位置 × hidden size';
-      $('attention-title').textContent=p?'同一层：4 个输入位置的因果可见性':'同一层：y1 可以读取 4 个 prompt 位置和自身';
-      const cols=p?4:5;
-      $('attention-grid').style.gridTemplateColumns=`repeat(${cols+1},minmax(0,1fr))`;
-      const keys=p?['p1','p2','p3','p4']:['p1','p2','p3','p4','y1'];
-      const header='<span class="attention-axis">Q ↓<br>K/V →</span>'+keys.map(t=>`<span class="attention-axis">${t}</span>`).join('');
-      $('attention-grid').innerHTML=header+(p?Array.from({length:4},(_,r)=>`<span class="attention-axis">p${r+1}</span>`+Array.from({length:4},(_,c)=>`<span class="attention-cell ${c<=r?'allowed':'masked'}" aria-label="p${r+1} ${c<=r?'可看':'不可看'} p${c+1}">${c<=r?'可看':'遮住'}</span>`).join('')).join(''):'<span class="attention-axis">y1</span>'+keys.map(t=>`<span class="attention-cell allowed" aria-label="y1 可看 ${t}">可看</span>`).join(''));
-      $('phase-summary').textContent=p?'Prefill：这些位置可以组成一次批量前向，但因果遮罩仍阻止它们看到未来。最后位置用于预测 y1。':'Decode：只新增 y1 这个位置的计算；各层读取自己的历史 KV，最终预测 y2。';
-      $('transformer-output').innerHTML=`<strong>${$('model-part').selectedOptions[0].textContent}</strong> · ${descriptions[$('model-part').value]}`;
-      document.querySelectorAll('[data-part]').forEach(n=>n.classList.toggle('active',n.dataset.part===$('model-part').value));
-    }
-    $('phase-prefill').onclick=()=>{phase='prefill';render();};$('phase-decode').onclick=()=>{phase='decode';render();};listen(['model-part'],render);render();
-  }
-  if(page==='kv-cache'){
-    function render(){
-      const s=api.cache(8,$('reuse-count').value,$('decode-count').value);
-      $('reuse-value').textContent=s.reuse;$('decode-value').textContent=s.decode;
-      $('cache-compute').textContent=s.computed;$('cache-count').textContent=s.kv;$('cache-output-count').textContent=s.outputs;
-      const kvCell=(label,reused)=>`<span class="cache-cell ${reused?'reused':'written'}"><b>${label}</b><span><i>K</i><i>V</i></span><small>${reused?'复用':'新写'}</small></span>`;
-      $('kv-layers').innerHTML=Array.from({length:3},(_,i)=>`<div class="kv-layer"><strong>层 ${i+1}</strong><div class="token-row">${Array.from({length:8},(_,j)=>kvCell('p'+(j+1),j<s.reuse)).join('')}${Array.from({length:s.decode},(_,j)=>kvCell('y'+(j+1),false)).join('')}<span class="cache-cell not-written"><b>y${s.outputs}</b><span><i>—</i><i>—</i></span><small>尚未写入</small></span></div></div>`).join('');
-      $('cache-output').innerHTML=`<strong>复用前 ${s.reuse} 个位置，这次 Prefill 新算 ${s.computed} 个位置。</strong> ${s.reuse?'复用的前缀必须完全匹配，并且缓存已可用；新后缀仍需读取这些 KV。':'没有前缀命中，8 个输入位置都需要计算。'} 此后执行 ${s.decode} 轮 Decode，得到 ${s.outputs} 个输出；每层的 KV 覆盖 ${s.kv} 个已处理位置。图中的相同标签代表同一 token，不代表不同层存着相同数值。`;
-    }
-    listen(['reuse-count','decode-count'],render);render();
-  }
-  if(page==='deployment'){
-    let step=0;
-    function render(){
-      const split=$('deployment-mode').value==='split';
-      const s=api.handoff(split,step,$('gate-kv').checked,$('gate-meta').checked,$('gate-slot').checked);
-      $('handoff-controls').hidden=!split;$('deployment-step').textContent=`${step+1} / 5`;
-      $('deployment-prev').disabled=step===0;$('deployment-next').disabled=step===4;
-      const names=split?['接入 / 选择 P、D','P：完整模型前向','P → D：交接状态','D：检查可执行条件','D：完整模型续写']:['接入 / 选择实例','本实例：完整模型前向','KV 留在本实例','本实例：调度下一轮','本实例：完整模型续写'];
-      $('deployment-flow').innerHTML=window.renderDeploymentScene(s,{
-        gpus:Number($('deployment-gpus').value),kv:$('gate-kv').checked,metadata:$('gate-meta').checked,
-      });
-      $('deployment-gates').innerHTML=split?[['gate-kv','KV 数据可用'],['gate-meta','元数据已匹配'],['gate-slot','本地执行资源可用']].map(([id,t])=>`<div class="gate ${step>=3&&$(id).checked?'ready':''}">${step<3?'交接后将检查':$(id).checked?'✓ 已满足':'○ 仍在等待'} · ${t}</div>`).join(''):`<div class="gate ${step?'ready':''}">${step?'KV 已在本实例保留':'Prefill 完成后，KV 将保留在本实例'}；没有跨 P/D 的接收门槛。本地调度和资源检查仍然存在。</div>`;
-      const detail=split?['路由协调两个服务角色。请求控制消息与大块 KV 数据可以走不同通路；不是客户端把完整模型搬来搬去。','P 侧服务组执行完整的模型层，处理 prompt 并采样 y1。P 不是模型的前半层。','交接 prompt 的 KV、首个输出 token 与必要元数据。层间 hidden states 与 P→D 的 KV 不是同一份对象；模型权重不会随每条请求传输。',s.ready?'教学门槛均已满足，请求可以进入后续可执行调度。实际实现还会受所选缓存、传输和并行路径约束。':'尚不能执行 Decode。切换下面的条件，观察“KV 已到”为什么仍然不够。',s.blocked?'等待中：缺失条件尚未满足，不能把本步骤画成已经完成的 Decode。':'D 侧服务组输入 y1，读取各层 prompt KV，经过完整模型后采样 y2；后续继续逐轮生成。']:['请求进入一个承担 P 与 D 两种工作的服务实例（实例可以包含多张 GPU）。','同一个服务组完成 Prefill，写入各层 KV，并采样 y1。','KV 在原实例保留，通过本地请求映射继续使用，无需跨角色复制。','调度器决定何时让它参加下一批执行；其他请求的 Prefill 可能占用执行时间。','本实例输入 y1，复用 KV 并采样 y2。P/D 的计算语义没有因为合并部署而改变。'];
-      $('deployment-output').innerHTML=`<strong>${s.blocked?'等待条件 · ':''}${names[step]}</strong><br>${detail[step]}`;
-    }
-    $('deployment-prev').onclick=()=>{step=Math.max(0,step-1);render();};$('deployment-next').onclick=()=>{step=Math.min(4,step+1);render();};
-    listen(['deployment-mode'],()=>{step=0;render();});listen(['deployment-gpus','gate-kv','gate-meta','gate-slot'],render);render();
-  }
-  if(page==='scheduling'){
-    let round=0;
-    function renderSchedule(){
-      const s=api.schedule($('chunk-size').value,round);round=s.round;
-      $('chunk-size-value').textContent=s.chunk;$('schedule-round').textContent=`${round} / ${s.rounds.length} 轮`;
-      $('schedule-next').disabled=round===s.rounds.length;
-      $('schedule-rounds').innerHTML=s.rounds.map((r,i)=>`<div class="round batch-round ${i===round-1?'active':''}"><strong>轮 ${i+1}<small>${i<round?'已执行':'未执行'}</small></strong><div class="batch-container"><div class="batch-label">一个 batch · ${1+r.prefill} 个新位置</div><div class="batch-work"><span class="batch-token from-a">A<small>Decode</small></span><b aria-hidden="true">＋</b><div class="batch-prefill">${Array.from({length:r.prefill},(_,j)=>`<span class="batch-token from-b">B·p${i*s.chunk+j+1}<small>Prefill</small></span>`).join('')}</div></div>${i===s.rounds.length-1?'<small class="batch-finish">最后一块完成 → B 采样 y1 → 下一轮可加入 Decode</small>':''}</div></div>`).join('');
-      $('batch-a').innerHTML=round?tokens(round,'续写','new'):'本实验尚未推进';$('batch-b').innerHTML=tokens(s.processed,'p','new')+`<span class="token pending">剩余 ${8-s.processed}</span>`;
-      $('schedule-output').innerHTML=`<strong>B 的 Prefill 已处理 ${s.processed} / 8 个输入位置。</strong> A 在这些教学轮次里续写了 ${s.aTokens} 个 token。${s.processed===8?'B 的最后一块完成，才在本例中采样 y1；下一轮它可参加 Decode。':'B 的中间块只积累状态，不把每个 chunk 当成一个输出 token。'} ${s.chunk===8?'一整块完成 B 的 Prefill，单轮工作较多。':'小块给调度器更多交错执行机会，但增加调度轮数。'} `;
-    }
-    $('schedule-next').onclick=()=>{round++;renderSchedule();};$('schedule-reset').onclick=()=>{round=0;renderSchedule();};listen(['chunk-size'],()=>{round=0;renderSchedule();});renderSchedule();
-    function renderLatency(){
-      const s=api.latency(...['latency-q','latency-p','latency-h','latency-d'].map(id=>$(id).value));
-      ['latency-q','latency-p','latency-h','latency-d'].forEach((id,i)=>$(id+'-value').textContent=s.values[i]);
-      $('ttft-value').textContent=s.ttft+' ms';$('tpot-value').textContent=s.tpot+' ms';$('total-value').textContent=s.total+' ms';
-      const parts=[['排队',s.values[0]],['Prefill',s.values[1]],['首 token 可见前的额外等待',s.values[2]],['D1',s.values[3]],['D2',s.values[3]],['D3',s.values[3]]];
-      $('latency-track').innerHTML=parts.filter(p=>p[1]).map(([label,n])=>`<div class="time-segment" style="flex:${n}" role="img" aria-label="${label}：${n} 毫秒" title="${label}：${n} ms"></div>`).join('');
-      $('latency-legend').textContent=parts.map(([l,n])=>`${l} ${n} ms`).join(' · ');
-      $('latency-output').textContent='教学假设：首 token 在排队、Prefill 和额外等待之后对客户端可见；此后 3 轮 Decode 各输出一个 token，忽略其他开销与重叠。改变排队时间只改变本模型的 TTFT；改变 Decode 单步时间影响后续输出间隔。真实 PD 中交接是否计入 TTFT，取决于首 token 何时被发送到客户端。';
-    }
-    listen(['latency-q','latency-p','latency-h','latency-d'],renderLatency);renderLatency();
+  for(const root of document.querySelectorAll('[data-diagram]')) {
+    const a=window.LearningDiagram.create(root,{j:0,phase:'prefill',query:3,reuse:3,decode:1,chunk:4,round:0,q:20,d:20});
+    const {s,$,esc,clamp,fmt,chip,node,path,button,select,slider,stepControls,stepBind,status,evidence,bind,controls,change,animationControls,animationBind,svgStart,tx,line}=a;
+function renderJourney(){
+ const j=s.j,p=['p1','p2','p3','p4'],labels=['接入与分词','Prefill · 层 1','Prefill · 层 2','Prefill · 层 3','采样首字 y1','Decode · 只看一轮'];
+ controls(animationControls('j',6,'j'));animationBind('j',6,'j');
+ let html=`<h3>${labels[j]}</h3><div class="wr-row">${(j===5?['y1']:p).map(x=>chip(x,j===0?'token ID':j===5?'上一轮输出':'同一轮处理','new')).join('')}</div><div class="wr-down">↓ ${j===0?'分词后排队，获准才执行':j===1?'Embedding：token ID → 输入向量':j<4?'接续上一层的隐藏状态':j===4?'取最后一个 prompt 位置的最终隐藏状态':'复用历史 KV，仍遍历完整模型'}</div>`;
+ html+=path([1,2,3].map(l=>node('层 '+l,j>=l?(j===5?'新增 y1 的 KV':'已写 p1…p4 的 KV'):'尚未计算',j===l||j===5?'active':'')));
+ if(j>0&&j<4)html+=`<div class="wr-label">当前层 ${j} · 因果 Attention → MLP</div><div class="wr-node"><div>p1 读 p1；p2 读 p1…p2；p3 读 p1…p3；p4 读全部 4 个位置。</div><div class="wr-row" style="margin-top:10px">${p.map(x=>chip(x,'K'+j+' / V'+j,'new')).join('')}</div><small>本层保存自己的 K/V；隐藏状态送往下一层。这里按层分解一次 Prefill，并非 3 轮请求调度。</small></div>`;
+ if(j===0)html+=node('待调度','此时还没有任何层的 KV，也没有输出 token。','wait');
+ if(j===4)html+=path([node('输出头','最后位置 → 词表 logits','active'),node('采样','得到首 token y1','active'),node('返回首字','y1 此时尚无 KV')]);
+ if(j===5)html+=`<div class="wr-label">每层：读历史 4 个位置，写入 y1 的 K/V</div><div class="wr-row">${p.map(x=>chip(x,'复用','read')).join('')}${chip('y1','本轮新写','new')}${chip('y2','新采样 · 无 KV','future')}</div><div class="wr-down">↶ 后续重复：上一输出 → 完整模型 → 下一输出；直到 EOS 或长度上限</div>`;
+ $('wr-scene').innerHTML=html;status(j===0?'一条文本请求先变成 token IDs，再等待执行资源。':j<4?`Prefill 同时处理 4 个输入位置；当前完成第 ${j} 层，尚未采样首字。`:j===4?'Prefill 最终得到 y1；缓存中只有已处理的 p1…p4，尚无 y1。':'输入 y1 → 各层新增它的 KV → 采样 y2；相同机制不再逐轮重复展示。');
+ evidence('3 层、4 个输入位置的普通因果 Transformer 教学示意；不表示真实模型只有 3 层。一次 Prefill 的层内多位置计算，与逐层依赖同时成立。','pages/sglang/inference-overview/model.js');
+}
+
+function renderTransformer(){
+ const p=s.phase==='prefill';s.query=p?Math.min(3,s.query):4;const keys=p?['p1','p2','p3','p4']:['p1','p2','p3','p4','y1'];
+ controls(button('t-p','Prefill · 4 个位置',p)+button('t-d','Decode · 1 个位置',!p));bind('t-p','click',()=>change(()=>{s.phase='prefill';s.query=3;}));bind('t-d','click',()=>change(()=>{s.phase='decode';s.query=4;}));
+ $('wr-scene').innerHTML=`<div class="wr-label">本轮输入 · 点选观察位置</div><div class="wr-row">${(p?keys:['y1']).map((x,i)=>button('tok-'+i,x,s.query===(p?i:4))).join('')}</div><div class="wr-down">↓ 每层都执行 Attention 和 MLP</div><div class="wr-node"><div class="wr-row"><span class="wr-token new">Q(${keys[s.query]})</span><span class="wr-small">${p?'4 个位置一起前向；当前只聚焦一个':'只新增 y1 的 Q/K/V'}</span></div><div class="wr-label">↓ 读取同层 K/V</div><div class="wr-row">${keys.map((x,i)=>chip(x,(i<=s.query?'可读':'× 遮罩')+' · '+(p||i===4?'新写':'复用'),(i<=s.query?'read':'mask')+(p||i===4?' new':''))).join('')}</div><div class="wr-down">↓</div>${path([node('Attention','Q 读取 '+(s.query+1)+' 个位置','active'),node('MLP','仍执行本层计算')])}</div><div class="wr-down">↓ 后续层 → 输出头 → 采样</div><div class="wr-row">${chip(p?'y1':'y2','本轮输出','new')}${chip(p?'y1':'y2','尚无 KV','future')}</div>`;
+ (p?keys:['y1']).forEach((_,i)=>bind('tok-'+i,'click',()=>change(()=>s.query=p?i:4)));
+ status(p?`${keys[s.query]} 只能读取当前位置及之前的 K/V；选择焦点不改变批量前向。`:'历史 K/V 被复用，但 Decode 仍运行完整模型。');
+}
+
+function renderCache(){
+ controls(slider('c-reuse','复用前缀',s.reuse,0,7)+slider('c-decode','Decode 轮数',s.decode,0,4));
+ for(const [id,key] of [['c-reuse','reuse'],['c-decode','decode']])bind(id,'input',e=>change(()=>s[key]=+e.target.value));
+ const accounting=window.InferenceOverview.cache(8,s.reuse,s.decode);
+ const cells=Array.from({length:8},(_,i)=>chip('p'+(i+1),i<s.reuse?'前缀复用':'本次 Prefill 写',i<s.reuse?'read':'new read')).concat(Array.from({length:s.decode},(_,i)=>chip('y'+(i+1),i===s.decode-1?'本轮新写':'已写入',i===s.decode-1?'new read':'read')));
+ $('wr-scene').innerHTML=`<div class="wr-label">各层覆盖相同的 token 位置</div><div class="wr-row">${cells.join('')}${chip('y'+(s.decode+1),'尚未写入','future')}</div><div class="wr-label">同一个 p8，在 3 层有 3 份独立的 K/V</div><div class="wr-three">${[1,2,3].map(l=>`<div class="wr-node"><h3>层 ${l}</h3><div class="wr-readonly">K[${l}, p8]<br>V[${l}, p8]</div><small>本层 Q 只读本层 KV</small></div>`).join('')}</div><div class="wr-note">K / V 是向量标识。位置数量相同，不表示各层向量数值相同或共享缓存。</div><div class="wr-output"><span>本次 Prefill 新算 <strong>${accounting.computed}</strong> 个位置</span><span>每层覆盖 <strong>${accounting.kv}</strong> 个位置</span></div>`;
+ status(`复用 ${s.reuse} 个前缀位置；不同层的 K/V 独立，不能互换。输出 y${s.decode+1} 尚无 KV。`);
+}
+
+function renderDeployment(){
+ controls('');
+ $('wr-scene').innerHTML=`<div class="wr-grid"><div class="wr-node"><h3>合并部署 · 一个实例</h3>${path([node('Prefill','完整模型前向 → y1'),node('Decode','输入 y1 → y2 → …')])}<div class="wr-down">↓ 写 KV　　↑ 读 KV</div>${node('本地 KV','留在同一实例内接续','active')}</div><div class="wr-node"><h3>PD 分离 · 两个角色</h3>${node('实例 P','完整模型前向 → y1','active')}<div class="wr-down">↓ KV + 首 token / 配对信息</div>${node('实例 D','完整模型前向 → y2 → …','active')}<div class="wr-note">P 与 D 分工于阶段；各角色覆盖完整模型计算。</div></div></div><div class="wr-label">D 执行前，三个条件要同时满足</div><div class="wr-three">${node('KV 可用','数据已经可读')}${node('配对正确','请求与 metadata 对得上')}${node('可执行','准入与执行资源允许')}</div>`;
+ status('KV 到达只是一个条件；角色分离会增加交接步骤，也让 P、D 能分别配置资源。');
+ evidence('架构与准入条件概览；省略每个角色内部的 TP / PP 切分与具体传输协议。','pages/sglang/inference-overview/deployment-scene.js');
+}
+
+function renderScheduling(){
+ const n=window.InferenceOverview.schedule(s.chunk,0).rounds.length;s.round=clamp(s.round,0,n-1);
+ controls(select('s-chunk','B 每轮输入',[[1,'1 token'],[2,'2 tokens'],[4,'4 tokens'],[8,'8 tokens']],s.chunk)+stepControls(s.round,n,'s'));bind('s-chunk','change',e=>change(()=>{s.chunk=+e.target.value;s.round=0;}));stepBind('s','round',n);
+ const narrow=$('wr-scene').clientWidth<480,visible=narrow?[s.round]:Array.from({length:n},(_,i)=>i);
+ let html=`<div class="wr-round-grid" style="grid-template-columns:60px repeat(${visible.length},minmax(0,1fr))"><span></span>${visible.map(i=>`<span class="wr-small" style="text-align:center">轮 ${i+1}</span>`).join('')}<span>A 续写</span>${visible.map(i=>`<div class="wr-round-cell ${i===s.round?'now':''}">y${i+1}</div>`).join('')}<span>B 输入</span>${visible.map(i=>`<div class="wr-round-cell ${i===s.round?'now':''}">p${i*s.chunk+1}…p${Math.min(8,(i+1)*s.chunk)}</div>`).join('')}</div>`;
+ html+=`<div class="wr-label">当前 batch · 轮 ${s.round+1}</div><div class="wr-node"><div class="wr-row">${chip('A','1 个 Decode 输入','read')}${Array.from({length:Math.min(s.chunk,8-s.round*s.chunk)},(_,i)=>chip('B:p'+(s.round*s.chunk+i+1),'Prefill','new')).join('')}</div></div><div class="wr-label">B 已处理 ${Math.min(8,(s.round+1)*s.chunk)} / 8 个位置</div><div class="wr-meter"><span style="width:${Math.min(8,(s.round+1)*s.chunk)/8*100}%"></span></div>`;
+ $('wr-scene').innerHTML=html;status(`本轮包含 A 的一次续写和 B 的一块输入；${s.round===n-1?'B 的 Prefill 到此完成。':'B 的中间块不等于一个输出 token。'}`);
+}
+
+function renderLatency(){
+ controls(slider('l-q','排队 ms',s.q,0,100,10)+slider('l-d','Decode 每步 ms',s.d,10,60,10));for(const [id,key] of [['l-q','q'],['l-d','d']])bind(id,'input',e=>change(()=>s[key]=+e.target.value));
+ const w=$('wr-scene').clientWidth,left=48,right=w-14,x=t=>left+t/360*(right-left);let svg=svgStart(w,204,'基线与调整后共用 0 到 360 毫秒时间轴');
+ [0,120,240,360].forEach(t=>{svg+=line(x(t),28,x(t),168)+tx(x(t),19,t,t===360?'text-anchor="end"':'text-anchor="middle"');});svg+=tx(right,195,'时间 ms →','text-anchor="end"');
+ [[20,20,'基线',62],[s.q,s.d,'当前',129]].forEach(([q,d,label,y])=>{svg+=tx(0,y+6,label);const parts=[[0,q,'var(--line)'],[q,q+60,'var(--green)']];parts.forEach(([a,b,c])=>{if(b>a)svg+=`<rect x="${x(a)}" y="${y-12}" width="${x(b)-x(a)}" height="22" fill="${c}" opacity=".45"/>`;});const tt=q+60;svg+=line(x(tt),y,x(tt+3*d),y,'var(--blue)','stroke-width="3"');for(let i=0;i<4;i++)svg+=`<circle cx="${x(tt+i*d)}" cy="${y}" r="5" fill="${i===0?'var(--amber)':'var(--blue)'}"/>`;svg+=tx(x(tt),y+29,`首字 ${tt} ms`);});
+ $('wr-scene').innerHTML=svg+'</svg>'+`<div class="wr-chips"><span class="wr-chip">灰：排队</span><span class="wr-chip">绿：Prefill 60 ms</span><span class="wr-chip">● 首字 / 后续输出</span></div><div class="wr-output"><span>首字等待 ${s.q+60} ms</span><span>后续间隔 ${s.d} ms</span><span>完成 ${s.q+60+3*s.d} ms</span></div>`;
+ status(`排队改变首字出现位置；Decode 单步时间改变后续三个输出之间的距离。`);
+}
+
+    const renders={journey:renderJourney,transformer:renderTransformer,cache:renderCache,deployment:renderDeployment,scheduling:renderScheduling,latency:renderLatency};
+    a.start(()=>{evidence(root.dataset.diagram==='scheduling'?'固定教学策略：A 每轮续写一次，B 共 8 个输入位置；真实顺序还取决于预算、准入与调度策略。':root.dataset.diagram==='latency'?'固定 Prefill=60 ms，4 个输出 token；忽略额外等待与重叠，不能用作性能预测。':'普通因果 Transformer 示意；省略多头、归一化、残差等细节。');renders[root.dataset.diagram]();});
   }
 })();

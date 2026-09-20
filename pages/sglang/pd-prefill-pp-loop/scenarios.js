@@ -66,6 +66,7 @@
   }
   function install(next,scene) {
     packet=next;active=scene.id;picker.value=active;
+    window.PP_SCENARIO_STATE={id:active,packet};
     extent=Math.max(baseExtent,Math.ceil(scene.summary.end/10)*10);
     summary(scene);applyScale(false);
     window.dispatchEvent(new CustomEvent('pp-timing-change',{detail:{id:active,packet}}));
