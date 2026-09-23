@@ -1,10 +1,12 @@
 # Pages 学习课程覆盖与维护
 
-Pages 按五层十二模块组织。页面正文服务初学者；本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
+Pages 按五层十二模块组织。页面正文围绕机制与源码展开；本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
 
 ## 每个模块的完成要求
 
 每个模块都需要：明确先修和学习目标；可长期阅读的仓内资料入口；逐行为核对的 SGLang 固定源码基线；解释机制的静态、动态或交互图；图旁解释与自测；正确的模块导航；桌面与手机阅读验证。源码事实、教学假设、未做的运行验证必须分别说明。只有引用一篇相关案例，不能算独立入门模块已经补齐。
+
+图的类型由机制决定，不统一套用一种形式。页面内容不描述使用者的水平。可视化必须直接呈现机制：用泳道、时序箭头、拓扑位置、数据块或资源槽位表达控制流、数据流和状态变化。交互步骤应改变图中的路径、位置、占用或依赖，而非只替换文字卡片、表格和字段值。默认只呈现当前机制所需的元素，完整流程与额外细节按需展开；避免元素堆积。详细说明与实现字段放在图旁的简短提示或展开区；验收要实际观察关键步骤及异常分支，确认不读长文也能辨认当前谁在做什么、数据怎样变化、为什么要这么做，以及前后步骤的依赖。
 
 ## 覆盖与补充顺序
 
@@ -13,7 +15,7 @@ Pages 按五层十二模块组织。页面正文服务初学者；本文件记�
 | 模块 | 已有入口与可视化 | 尚需补充或复核 |
 | --- | --- | --- |
 | 01 推理系统全景 | [请求生成](sglang/inference-overview/journey.html)，Prefill / Decode 交互 | 复核与其余十一模块的概念衔接，补齐总体系统边界 |
-| 02 请求生命周期与运行时架构 | [普通请求运行时](sglang/request-runtime/index.html)，进程图与四路径状态实验 | 已补独立入门课；深入分支连接原有源码章节 |
+| 02 请求生命周期与运行时架构 | [普通请求运行时](sglang/request-runtime/index.html)，当前步骤交接图、可展开的完整流程与四路径资源变化 | 已补独立入门课；深入分支连接原有源码章节 |
 | 03 模型执行、硬件与算子 | [Transformer](sglang/inference-overview/transformer.html)，逐层执行与 attention 图 | 补 Worker / Runner / 后端 / kernel 的层次与硬件瓶颈直觉 |
 | 04 KV Cache 与内存管理 | [KV 入门](sglang/inference-overview/kv-cache.html)，KV 位置与复用 | 补物理页、逻辑映射、共享与驱逐的资源视图 |
 | 05 调度与批处理 | [批处理](sglang/inference-overview/scheduling.html)，batch 与调度演示 | 补准入预算、长短请求与回撤边界 |
@@ -31,7 +33,7 @@ Pages 按五层十二模块组织。页面正文服务初学者；本文件记�
 
 - `node scripts/test_request_runtime.cjs`：检查输出 / KV 位置关系、取消回告与资源释放的先后关系、未派发失败没有后端分配等教学不变量。
 - `SGLANG_SOURCE_DIR=<source-checkout> node scripts/test_request_runtime.cjs`：额外读取固定 Git 对象，校验每个交互源码锚点的行号与函数名。不会修改源码仓库。
-- `node scripts/test_request_runtime_browser.cjs`：验证四条路径、参数、播放 / 暂停 / 重置、键盘、深浅主题、320 / 390 / 768 / 1440 布局与无 JS 阅读。
+- `node scripts/test_request_runtime_browser.cjs`：验证精简视图 / 完整流程、消息逐跳运动、减少动态效果、四条路径、参数、播放 / 暂停 / 重置、键盘、深浅主题、320 / 390 / 768 / 1440 布局与无 JS 阅读。
 - `node scripts/test_topic_navigation_browser.cjs`：首页与全部课程的共享导航和跨模块入口。
 - `python3 -B scripts/check_learning_docs.py`、`python3 -B scripts/build_learning_navigation.py --check`、`python3 -B scripts/build_pages.py`：文档引用、共享导航与发布构建。
 

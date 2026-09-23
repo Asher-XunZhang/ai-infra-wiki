@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const {execFileSync} = require('node:child_process');
 const M = require('../pages/sglang/request-runtime/model.js');
+const D = require('../pages/sglang/request-runtime/sequence.js');
 let checked = 0;
 for (const scenario of ['normal','queued-abort','running-abort','invalid']) {
  for (const cache of [false,true]) for (let outputs=1; outputs<=5; outputs++) {
@@ -8,6 +9,11 @@ for (const scenario of ['normal','queued-abort','running-abort','invalid']) {
   assert.equal(new Set(frames.map(f=>f.id)).size,frames.length);
   for(const f of frames){
    assert.ok(M.sources[f.source]);
+   const visual=D.event(f);assert.ok(visual.edges.length>0);
+   for(const [from,to] of visual.edges){assert.ok(from>=0&&from<6&&to>=0&&to<6);}
+   if(f.id==='abort-pending')assert.deepEqual(visual.edges,[[2,2,'待结束']]);
+   if(f.id==='invalid')assert.ok(visual.edges.every(([a,b])=>a===1&&b===1));
+   if(f.id==='prefill'||f.id.startsWith('decode-'))assert.deepEqual(visual.edges.map(e=>e.slice(0,2)),[[2,3],[3,4]]);
    assert.ok(f.visible<=f.sampled,'response cannot expose a token before sampling');
    assert.ok(!f.slot||f.forwards>0,'simplified allocation begins at execution');
    assert.ok(!f.cached||!f.slot,'model moves ownership at release');

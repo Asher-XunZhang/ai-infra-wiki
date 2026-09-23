@@ -48,12 +48,12 @@
 
 | 学习专题 | 可以观察什么 | 在线入口 |
 | --- | --- | --- |
-| **SGLang 推理全景** | 面向初学者，理解请求、P/D 与 Transformer、KV 复用、合并与分离部署、调度与延迟。五节内容，每节都有交互实验。 | [进入推理全景](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html) |
-| **普通请求运行时** | 区分前端、调度与反分词进程；单步比较正常生成、排队取消、执行中取消和输入验证失败，观察请求行与 KV 的不同生命周期。 | [进入运行时课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/request-runtime/) |
+| **SGLang 推理全景** | 理解请求、P/D 与 Transformer、KV 复用、合并与分离部署、调度与延迟。五节内容，每节都有交互实验。 | [进入推理全景](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html) |
+| **普通请求运行时** | 区分前端、调度与反分词进程；沿泳道箭头观察正常生成、排队取消、执行中取消和输入验证失败，用资源槽位理解请求行与 KV 的不同生命周期。 | [进入运行时课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/request-runtime/) |
 | **PD Prefill 请求旅程** | 跟随请求走完 PD 分离下的 Prefill：握手准入、切 chunk、组 batch、三级前向、KV 交接与资源释放。比较正常、等待、取消和部分 PP 失败的分支。 | [请求生命周期](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-lifecycle/) |
 | **PD Prefill 与 PP 调度** | 同一轮为何“算 M3、收 M1”？追踪多个 batch 在 PP=3 中的交错执行，查看 CPU、GPU、通信与缓存事件之间的依赖。 | [快速入门](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html) · [依赖分析](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/) · [源码说明](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/notes.html) |
 
-**初学者先读推理全景；掌握宏观行为后，再理解 PP 请求与多批次调度：**
+**推荐路线：推理全景 → PP 请求 → 多批次调度。**
 
 1. [单请求正常路径](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-lifecycle/?chunkSize=0)：先不切块，认清各模块的职责，以及请求、激活和 KV 的区别。
 2. 在“请求生命周期”里选择“一条请求 · 分三块”，观察 12 token 如何按 4 token 处理；首批详细，后续整段播放，也可段内单步。再调整请求数量、输入长度、chunk-size 与 batch-size，或尝试等待和部分失败场景。
