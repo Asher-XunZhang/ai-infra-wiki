@@ -1,6 +1,45 @@
-.home-route{display:flex;align-items:center;gap:12px 18px;flex-wrap:wrap;margin:30px 0 0;font-size:13px}.home-route>a{display:flex;align-items:center;gap:10px;color:var(--fg)}.home-route b{font:13px ui-monospace,monospace;color:var(--accent);padding:4px 7px;background:var(--accent-soft);border-radius:4px}.home-route>span{color:var(--muted)}
-.home-section{margin:42px 0 48px}.home-topic{padding:22px}.home-topic:hover{transform:none;border-color:var(--border)}.home-topic h3{font-size:20px;margin-top:18px}.home-topic p{margin-bottom:12px;line-height:1.85}.home-topic ul{font-size:12px;color:var(--muted);padding-left:18px;margin:0 0 24px}.home-topic li{margin:7px 0}.home-topic li::marker{color:var(--accent)}.home-topic .card-link{border-top:1px solid var(--border);padding-top:16px;line-height:1.8}.home-topic-links{display:flex;flex-wrap:wrap;gap:9px 15px;border-top:1px solid var(--border);padding-top:16px;margin-top:auto;font-size:12px}
-.home-questions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 28px}.home-questions>a{display:flex;gap:15px;align-items:center;padding:20px 4px;border-bottom:1px solid var(--border);color:var(--fg)}.home-questions>a:hover{color:var(--accent);text-decoration:none}.home-question-number{font:18px ui-monospace,monospace;color:var(--accent);flex:none}.home-questions strong{display:block;font-size:15px;font-weight:600}.home-questions small{display:block;font-size:12px;color:var(--muted);line-height:1.85;margin-top:6px}.home-questions>a>span:last-child{margin-left:auto;color:var(--accent)}
-.home-boundaries>div>p{font-size:13px;color:var(--muted);line-height:1.9}.home-boundaries .scope-note ul{padding-left:18px;margin:12px 0;font-size:13px;color:var(--muted)}.home-boundaries .scope-note li{margin:8px 0}
-@media(min-width:901px) and (max-width:1200px){.home-topics{grid-template-columns:1fr}.home-topic h3{margin-top:10px}}
-@media(max-width:700px){.home-topics,.home-questions{grid-template-columns:1fr}.home-section{margin:32px 0}.home-topic ul{margin-bottom:18px}.home-route{gap:9px;font-size:11px}.home-route>a{gap:5px}.home-route b{font-size:11px;padding:3px 5px}.home-questions>a{padding:17px 0}}
+/* The learning map shares the site's palette, cards and reading rhythm. */
+.home-route{display:flex;align-items:center;gap:12px 16px;flex-wrap:wrap;margin:30px 0 0;font-size:13px}
+.home-route>a{display:flex;align-items:center;gap:8px;color:var(--fg)}
+.home-route b{font:13px ui-monospace,monospace;color:var(--accent);padding:4px 7px;background:var(--accent-soft);border-radius:4px}
+.home-route>span{color:var(--muted)}
+.home-section{margin:42px 0 48px}
+.framework-intro{max-width:820px;font-size:14px;color:var(--muted);margin:0 0 20px}
+.framework-legend{display:flex;gap:12px 24px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding-bottom:26px;border-bottom:1px solid var(--border)}
+.framework-legend>span{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.module-status{display:inline-block;flex:none;font-size:11px;font-weight:500;border:1px solid var(--border);border-radius:20px;padding:3px 9px;line-height:1.6;color:var(--muted);background:var(--surface)}
+.module-status.available{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+.module-status.partial{color:var(--ochre)}
+.module-status.planned{border-style:dashed;background:transparent}
+.framework-stage{margin:32px 0 42px}
+.stage-heading{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px}
+.stage-number{display:grid;place-items:center;flex:none;width:38px;height:38px;margin-top:4px;background:var(--accent-soft);border-radius:9px;color:var(--accent);font-size:16px}
+.stage-heading .eyebrow{font-size:10px;letter-spacing:.08em}
+.stage-heading h3{font-size:21px;margin:5px 0 6px}
+.stage-heading p:last-child{font-size:13px;color:var(--muted);margin:0}
+.module-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.module-grid-two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.module-card{padding:22px;min-width:0}
+.module-card:hover{transform:none;border-color:var(--border)}
+.module-card:target{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.module-card h4{font-size:18px;line-height:1.55;font-weight:600;letter-spacing:-.02em;margin:18px 0 10px;color:var(--fg)}
+.module-card p{margin:0 0 14px;font-size:13px}
+.module-card .module-question{color:var(--fg);font-weight:500}
+.module-card .module-prerequisite{font-size:11px;color:var(--muted);margin:4px 0 20px}
+.module-entry{margin-top:auto;border-top:1px solid var(--border);padding-top:15px;display:flex;flex-direction:column;gap:10px;font-size:12px}
+.module-entry>a{line-height:1.85}
+.module-entry .module-pending{margin:0;font-size:12px;color:var(--muted);line-height:1.85}
+.module-lessons summary{font-size:12px;color:var(--accent);line-height:1.85}
+.module-lessons ul,.module-lessons ol{padding-left:20px;margin:12px 0 0;font-size:12px}
+.module-lessons li{padding-left:2px;margin:8px 0}
+.module-lessons li::marker{color:var(--muted)}
+.reading-routes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}
+.reading-routes article{border-top:2px solid var(--border);padding-top:18px}
+.route-label{font-size:11px;color:var(--accent)}
+.reading-routes h3{font-size:18px;margin:7px 0 12px}
+.reading-routes p{font-size:13px;line-height:1.9}
+.reading-routes .route-goal{font-size:12px;color:var(--muted)}
+.home-boundaries>div>p{font-size:13px;color:var(--muted);line-height:1.9}
+@media(min-width:901px) and (max-width:1200px){.module-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.reading-routes{gap:18px}}
+@media(max-width:760px){.module-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.reading-routes{grid-template-columns:1fr;gap:18px}}
+@media(max-width:600px){.module-grid{grid-template-columns:1fr;gap:14px}.module-card{padding:22px}.home-section{margin:32px 0}.framework-stage{margin:26px 0 34px}.framework-legend{gap:12px;font-size:11px}.home-route{gap:9px;font-size:11px}.home-route>a{gap:5px}.home-route b{font-size:11px;padding:3px 5px}.stage-heading{gap:12px}.stage-heading h3{font-size:19px}.stage-heading p:last-child{font-size:12px}.stage-number{width:30px;height:32px;font-size:14px}.framework-intro{font-size:13px}}
