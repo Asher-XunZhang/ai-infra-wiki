@@ -18,7 +18,7 @@
    ${active?`<circle class="seq-packet ${kind}" visibility="${reduced.matches?'visible':'hidden'}" r="5" cx="${reduced.matches?x1:0}" cy="${reduced.matches?y1:0}">${!reduced.matches?`<set attributeName="visibility" to="visible" begin="${hop*.55}s"/><animateMotion begin="${hop*.55}s" dur=".55s" path="${d}" fill="freeze"/>`:''}</circle>`:''}`;
  }
  function draw(){
-  const viewport=Math.max(210,get('sequence-scroll').clientWidth),width=overview?frames.length*column+24:viewport;
+  const viewport=Math.max(180,get('sequence-scroll').clientWidth),width=overview?frames.length*column+24:viewport;
   const activeLanes=new Set(diagram.event(frames[index]).edges.flatMap(([a,b])=>[a,b]));
   const shown=diagram.lanes.map((_,i)=>i).filter(i=>overview||activeLanes.has(i));
   const sy=i=>top+shown.indexOf(i)*pitch,height=shown.length*pitch+28;
@@ -31,7 +31,7 @@
   shown.forEach(i=>svg+=`<rect class="seq-lane lane-${i}" x="0" y="${sy(i)-25}" width="${width}" height="55"/><line class="seq-lifeline" x1="0" x2="${width}" y1="${sy(i)}" y2="${sy(i)}"/>`);
   frames.forEach((f,i)=>{
    if(!overview&&i!==index)return;
-   const e=diagram.event(f),active=i===index,gap=overview?(e.edges.length===3?42:52):(e.edges.length===3?Math.min(90,(viewport-70)/3):52),x=overview?i*column+12:viewport/2-17-(e.edges.length-1)*gap/2;
+   const e=diagram.event(f),active=i===index,gap=overview?(e.edges.length===3?42:52):(e.edges.length===3?Math.min(90,(viewport-70)/3):52),x=overview?i*column+12:viewport/2-(e.edges.length===1&&e.edges[0][0]===e.edges[0][1]?46:17)-(e.edges.length-1)*gap/2;
    svg+=`<g data-step="${i}" class="seq-event ${i<index?'past':active?'current':'future'}" tabindex="0" role="button" aria-label="步骤 ${i+1}：${esc(f.title)}" aria-pressed="${active}"><title>${esc(f.title)}</title><rect class="seq-column" x="${x-4}" y="0" width="${column-5}" height="${height-5}" rx="8"/><text class="seq-step-label" x="${x+8}" y="20">${String(i+1).padStart(2,'0')} ${e.label}</text>`;
    if(e.sample)svg+=`<g class="seq-computation"><rect x="${x+3}" y="${sy(3)-22}" width="128" height="48" rx="6"/><text x="${x+10}" y="${sy(3)-8}">GPU 前向</text>${[0,1,2].map(k=>`<rect class="compute-bar bar-${k}" x="${x+10+k*22}" y="${sy(3)+10}" width="17" height="7" rx="2"/>`).join('')}</g>`;
    e.edges.forEach(([from,to,label],j)=>svg+=arrow(x+17+j*gap,sy(from),x+17+j*gap,sy(to),label,e.kind,active,e.pending,j));

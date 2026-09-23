@@ -34,6 +34,7 @@ const M=require('../pages/sglang/request-runtime/model.js');
        assert.equal(await page.locator('.sequence-label').count(),6);
        assert.equal(await page.locator('.seq-event.current .seq-arrow').count()>0,true);
        assert.equal(await page.locator('.runtime-step-details').evaluate(e=>e.open),false);
+       assert.equal(await page.locator('#sequence-scroll').evaluate(el=>[...el.querySelectorAll('.current .seq-stop')].every(node=>{const b=node.getBBox();return b.x>=0&&b.x+b.width<=el.clientWidth;})),true,'current status marks remain inside the focus viewport');
        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${width}/${theme}/${scenario}/${i}`);
       }
       assert.equal(await page.locator('#next').isDisabled(),true);
