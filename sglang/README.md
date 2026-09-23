@@ -57,6 +57,8 @@
 
 [服务部署与运行治理](<serving-operations/README.md>) 提供启动、探活、路由准入、取消和退出的交互主线。
 
+性能主线：[指标口径与性能定位](<performance-engineering/SGLang 指标口径与性能定位学习文档.md>)，先核对秒表与样本，再进入 Trace 和调参案例。
+
 ## 按目标选择路线
 
 - **多卡与分离部署**：[并行拓扑与负载分工](<parallelism/README.md>) → [分离部署与状态交接](<disaggregation/README.md>)。

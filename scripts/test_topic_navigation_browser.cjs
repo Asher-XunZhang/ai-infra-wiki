@@ -2,6 +2,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const courses=[
+ ['sglang/performance-engineering/index.html','performance','practice'],
  ['sglang/serving-operations/index.html','serving-operations','serving'],
  ['sglang/advanced-generation/index.html','advanced-generation','serving'],
  ['sglang/communication/index.html','communication','distributed'],
@@ -32,6 +33,7 @@ const courses=[
   assert.equal(await page.locator('.module-card[data-coverage=planned]').count(),0);
   assert.equal(await page.locator('a[href="#"],a:not([href]),button[disabled]').count(),0);
   assert.match(await page.locator('#communication').innerText(),/已有课程[\s\S]*开始学习/);
+  assert.match(await page.locator('#performance').innerText(),/已有课程[\s\S]*开始学习/);
   assert.match(await page.locator('#serving-operations').innerText(),/已有课程[\s\S]*开始学习/);
   assert.deepEqual(await page.locator('a[href^="#"]').evaluateAll(links=>links.filter(a=>!document.getElementById(a.hash.slice(1))).map(a=>a.hash)),[]);
   for(const group of await page.locator('.topic-group').all()){

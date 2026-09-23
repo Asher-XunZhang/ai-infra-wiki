@@ -92,7 +92,11 @@
 <details class="topic-group" data-topic="framework-practice">
 <summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第五层 · 综合验证">
-<a class="course-link" data-module="performance" href="./#performance"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span></a>
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="./#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/performance-engineering/index.html">性能数字，究竟量到了哪一段？</a>
+</div></details>
 <details class="module-nav" data-module="case-studies">
 <summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#case-studies">模块目标与学习路线 ↗</a>
@@ -206,10 +210,10 @@
         <section id="stage-practice" class="framework-stage" aria-labelledby="stage-practice-title">
           <header class="stage-heading"><span class="stage-number" aria-hidden="true">五</span><div><p class="eyebrow">综合验证</p><h3 id="stage-practice-title">把机制连起来，用证据回答问题</h3><p>从入门就认识指标；积累机制理解后，再做完整案例与源码走读。</p></div></header>
           <div class="module-grid module-grid-two">
-            <article id="performance" class="lesson-card module-card" data-coverage="partial">
-              <div class="card-top"><span class="card-number">11</span><span class="module-status partial">部分内容</span></div>
+            <article id="performance" class="lesson-card module-card" data-coverage="available">
+              <div class="card-top"><span class="card-number">11</span><span class="module-status available">已有课程</span></div>
               <h4>性能分析与优化方法</h4><p class="module-question">瓶颈在哪里，怎样证明优化有效？</p><p>TTFT / ITL、吞吐与容量、负载和 SLO、benchmark、trace、瓶颈归因与版本回归。</p><p class="module-prerequisite">先修：请求与指标基础；按问题回补机制</p>
-              <div class="module-entry"><a href="sglang/inference-overview/scheduling.html">入门 · 首字等待与后续间隔 →</a><a href="sglang/pd-prefill-pp-loop/index.html">示意案例 · 改变 PP 耗时与依赖 →</a><p class="module-pending">待补：测量与诊断方法。现有时间线是教学示意。</p></div>
+              <div class="module-entry"><a href="sglang/performance-engineering/">开始学习 · 指标口径与性能定位 →</a><p class="module-related">观察请求计时、流式分包、单变量对照与失败样本筛选。</p></div>
             </article>
             <article id="case-studies" class="lesson-card module-card" data-coverage="partial">
               <div class="card-top"><span class="card-number">12</span><span class="module-status partial">部分内容</span></div>

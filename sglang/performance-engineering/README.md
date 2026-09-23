@@ -13,6 +13,10 @@
 - [请求、调度与执行主链](<../runtime/README.md>)
 - [前缀缓存与分层存储](<../kv-cache/README.md>)
 
+## 指标与机制主线
+
+先读 [SGLang 指标口径与性能定位](<SGLang 指标口径与性能定位学习文档.md>)，并操作 [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/performance-engineering/)：请求秒表、流式观测、单变量对照与失败样本筛选。然后根据现象选择下面的 Trace 与调优案例。
+
 ## 阅读顺序
 
 按表中顺序建立整体认识，再选择深入或选读内容。目录内的归档顺序不构成所有文章都必须读完的要求。
