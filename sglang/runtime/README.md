@@ -56,3 +56,7 @@
 ## 通信机制衔接
 
 [SGLang 通信与传输机制](<../parallelism/SGLang 通信与传输机制学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/communication/)：通过消息交接、collective、KV 页映射与就绪 / 回收门槛区分各层责任。文章使用独立固定提交，不替换本目录资料的历史基线。
+
+## 服务入口与退出衔接
+
+[服务生命周期与请求治理](<../serving-operations/SGLang 服务生命周期与请求治理学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/serving-operations/)：从实例外观察启动、健康、路由、排队取消与退出。

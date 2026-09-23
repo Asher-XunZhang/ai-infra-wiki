@@ -35,7 +35,7 @@ MODULES = [
         ('sglang/pd-prefill-lifecycle/index.html', 'PD Prefill 请求生命周期', 'SGLang · PD＋PP 案例'),
         ('sglang/pd-dataflow/index.html', '数据流、状态与队列', 'SGLang · PD＋PP 案例')]),
     ('advanced-generation', '模型结构与高级生成', 'serving', False, [('sglang/advanced-generation/index.html', '生成一个 token，还会改变哪些状态？', 'SGLang · 高级生成')]),
-    ('serving-operations', '服务部署与运行治理', 'serving', True, []),
+    ('serving-operations', '服务部署与运行治理', 'serving', False, [('sglang/serving-operations/index.html', '服务在线，请求就一定能完成吗？', 'SGLang · 服务治理')]),
     ('performance', '性能分析与优化方法', 'practice', False, []),
     ('case-studies', '综合案例与源码实践', 'practice', False, [
         ('sglang/pd-prefill-pp-loop/quick.html', 'PP loop 快速入门', 'SGLang · PD＋PP 案例'),

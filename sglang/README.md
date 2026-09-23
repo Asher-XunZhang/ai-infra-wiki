@@ -36,7 +36,7 @@
 | [模型适配与特殊执行机制](<model-support/README.md>) | [模型注册与权重加载](<source-study/09-model-specialization/01-模型注册配置与权重加载.md>) · [投机解码的 Draft、Verify、Commit](<source-study/08-advanced-generation/03-投机解码的DraftVerifyCommit.md>) |
 | [版本演进与组合边界](<version-studies/README.md>) | [源码变更与版本回归](<source-study/11-performance-engineering/06-源码变更阅读与版本回归检查.md>) |
 | [高级生成与状态提交](<advanced-generation/README.md>) | [高级生成特性全景](<source-study/architecture/09-高级生成特性插入位置.md>) |
-| 服务治理 | [网关、服务治理与性能诊断](<source-study/architecture/11-网关服务治理与性能诊断全景.md>) |
+| [服务部署与运行治理](<serving-operations/README.md>) | [网关、服务治理与性能诊断](<source-study/architecture/11-网关服务治理与性能诊断全景.md>) |
 | 扩展与综合应用 | [DSL、Diffusion 与插件边界](<source-study/architecture/12-DSL与Diffusion及插件边界.md>) |
 
 ## 按领域深入
@@ -54,6 +54,8 @@
 | [版本演进与组合边界](<version-studies/README.md>) | 在已有机制基础上比较跨模块变化、兼容约束和验证要求。 |
 
 [高级生成与状态提交](<advanced-generation/README.md>) 提供独立主线和交互课程，连接模型状态、投机验证与规则推进。
+
+[服务部署与运行治理](<serving-operations/README.md>) 提供启动、探活、路由准入、取消和退出的交互主线。
 
 ## 按目标选择路线
 

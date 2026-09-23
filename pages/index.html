@@ -83,7 +83,11 @@
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#advanced-generation">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/advanced-generation/index.html">生成一个 token，还会改变哪些状态？</a>
 </div></details>
-<a class="course-link" data-module="serving-operations" href="./#serving-operations"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong><small>预留模块</small></span></a>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="./#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/serving-operations/index.html">服务在线，请求就一定能完成吗？</a>
+</div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-practice">
 <summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
@@ -191,10 +195,10 @@
               <h4>模型结构与高级生成</h4><p class="module-question">模型与生成方式怎样改变执行？</p><p>MoE、特殊注意力与混合状态、量化、投机解码、约束生成和多模态，按子方向选读。</p><p class="module-prerequisite">先修：模型执行、缓存与调度；按需补并行</p>
               <div class="module-entry"><a href="sglang/advanced-generation/">开始学习 · 模型状态与高级生成 →</a><p class="module-related">观察历史状态、候选验证与词表筛选；其他模型特性连接源码专题。</p></div>
             </article>
-            <article id="serving-operations" class="lesson-card module-card" data-coverage="planned">
-              <div class="card-top"><span class="card-number">10</span><span class="module-status planned">预留模块</span></div>
+            <article id="serving-operations" class="lesson-card module-card" data-coverage="available">
+              <div class="card-top"><span class="card-number">10</span><span class="module-status available">已有课程</span></div>
               <h4>服务部署与运行治理</h4><p class="module-question">推理实例怎样组成可用的服务？</p><p>启动配置、资源规划、路由与负载均衡、背压、扩缩容、健康检查和故障恢复。</p><p class="module-prerequisite">先修：运行时与调度；按部署方式补并行或 P/D</p>
-              <div class="module-entry"><p class="module-pending">待建设：实例外的服务运行与治理课程。</p></div>
+              <div class="module-entry"><a href="sglang/serving-operations/">开始学习 · 服务生命周期与请求治理 →</a><p class="module-related">观察启动、探活、路由准入、超时取消和退出收尾。</p></div>
             </article>
           </div>
         </section>
