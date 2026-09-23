@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>模型执行与硬件机制 · AI Infra Wiki</title><meta name="description" content="追踪 Worker、Runner、后端与算子，观察图重放和计算访存边界。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="../inference-overview/overview.css"><link rel="stylesheet" href="../parallelism/parallelism.css"><link rel="stylesheet" href="execution.css"><script src="../../site.js" defer></script><script src="model.js" defer></script><script src="execution.js" defer></script></head>
+<body data-page="model-execution"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header><div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/journey.html">一条请求怎样变成回答</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../request-runtime/index.html">一条请求穿过哪些进程与对象</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance" open>
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="model-execution" open>
+<summary class="module-heading" aria-current="location"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/transformer.html">P / D 在 Transformer 里做什么</a>
+<a class="lesson-link" href="index.html" aria-current="page">一批输入，怎样变成设备上的计算？</a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">KV：模型留给下一轮的记忆</a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">多请求怎样共享一次执行</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<details class="module-nav" data-module="parallelism">
+<summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#parallelism">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../parallelism/index.html">多张卡，究竟切开了什么？</a>
+</div></details>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../communication/index.html">数据传过去，何时才算可用？</a>
+</div></details>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">合并部署与 PD 分离</a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD Prefill 请求生命周期</a>
+<a class="lesson-link" href="../pd-dataflow/index.html">数据流、状态与队列</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<details class="module-nav" data-module="advanced-generation">
+<summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#advanced-generation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../advanced-generation/index.html">生成一个 token，还会改变哪些状态？</a>
+</div></details>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../serving-operations/index.html">服务在线，请求就一定能完成吗？</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../performance-engineering/index.html">性能数字，究竟量到了哪一段？</a>
+</div></details>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">PP loop 快速入门</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">依赖分析与耗时场景</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP loop 源码阅读</a>
+</div></details>
+</nav></details>
+<div class="sidebar-note"><span class="status-dot"></span> 一张框架，逐步深入<p>先理解单实例，再连接多卡多机；模型、服务与性能按目标选读。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content" tabindex="-1"><!-- learning-context:start -->
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">学习框架</a><span aria-hidden="true">/</span><a href="../../#stage-instance">第二层 · 理解单实例</a><span aria-hidden="true">/</span><a href="../../#model-execution">03 模型执行、硬件与算子</a><span aria-hidden="true">/</span><span aria-current="page">一批输入，怎样变成设备上的计算？</span></nav>
+<!-- learning-context:end -->
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#model-execution">模块 03 / 模型执行、硬件与算子</a><span class="lesson-count">SGLang · 执行机制</span></div><h1>一批输入，怎样变成设备上的计算？</h1><p>跟随一次 Decode 的交接，再观察 CUDA Graph 的形状约束与线性层的计算、访存成本。</p><div class="meta-tags"><span>Worker / Runner / Backend / Kernel</span><span>源码 279339f113</span><span>机制演示 · 未运行 GPU 实验</span></div></header><p class="big-idea">调度决定本轮做什么；执行层把输入、地址和计算实现接起来。</p>
+<section class="parallel-lab exec-lab" data-execution-lab hidden aria-labelledby="exec-title"><div class="mode-picker" role="group" aria-label="选择执行机制"><button data-mode="chain" type="button" aria-pressed="true">执行交接</button><button data-mode="graph" type="button" aria-pressed="false">图重放</button><button data-mode="hardware" type="button" aria-pressed="false">计算与访存</button></div><h2 id="exec-title">一条执行主线，三个观察角度</h2>
+<div class="parallel-settings" data-settings="chain"><span>普通 Decode · 单 rank · Eager / Triton · 无 overlap</span></div>
+<div class="parallel-settings" data-settings="graph" hidden><label>真实请求<select id="graph-count"><option value="3">3 条</option><option value="1">1 条</option><option value="4">4 条</option><option value="5">5 条</option></select></label><label>执行条件<select id="graph-condition"><option value="ready">图已捕获，其余条件满足</option><option value="off">未启用图 runner</option><option value="override">动态 embedding 覆盖</option></select></label></div>
+<div class="parallel-settings" data-settings="hardware" hidden><label>本轮新位置 M<select id="matrix-rows"><option value="1">1 个</option><option value="16">16 个</option><option value="256">256 个</option></select></label><label>只改硬件能力<select id="hardware-upgrade"><option value="base">原配假设</option><option value="compute">算力 ×2</option><option value="memory">带宽 ×2</option></select></label></div>
+<div class="parallel-controls"><button id="exec-previous" type="button">上一步</button><button id="exec-play" type="button" aria-pressed="false">播放</button><button id="exec-next" type="button">下一步</button><button id="exec-reset" type="button">重置</button><output id="exec-status" aria-live="polite"></output></div><div class="exec-scene" id="exec-scene"></div><p class="parallel-caption" id="exec-caption"></p><details class="parallel-details"><summary>源码、公式与适用范围</summary><p id="exec-why"></p><a id="exec-source" href="#source-baseline">查看固定源码 ↗</a></details><p class="parallel-footnote">一次只显示当前交接。槽位、图桶和数值是教学设定；箭头表示调用或数据依赖，不表示新增网络进程。</p></section>
+<noscript><p class="big-idea">交互需要 JavaScript；下方职责图与完整笔记仍可阅读。</p></noscript>
+<details class="topology-detail exec-lab"><summary>执行层的职责总览</summary><div class="exec-flow"><span>Worker：整理输入</span><b>→</b><span>Runner：选择执行方式</span><b>→</b><span>模型：网络计算</span></div><div class="exec-flow"><span>Attention backend：地址与适配</span><b>→</b><span>kernel：具体设备工作</span></div><p>下方是模型计算内部的一段，其他线性层、Norm 等也有自己的实现入口。backend 不拥有请求准入和缓存淘汰策略；kernel 返回中间张量，不会直接替整套模型生成最终回答。</p></details>
+<details class="topology-detail exec-lab"><summary>如何追到真正执行的 kernel？</summary><div class="exec-flow"><span>实际模型调用点</span><b>→</b><span>生效后端 / dtype / shape</span><b>→</b><span>实现入口与 Trace</span></div><p>本页只追 Triton Decode 的代表路径。算子可能来自仓内实现或外部库；不能把一个 registry 画成所有模型都会经过的唯一入口。普通线性层的访存分析也不覆盖 Attention 的历史 KV、通信或采样成本。</p><p><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/05-model-execution/06-Kernel注册选择与实现阅读.md">Kernel 注册、选择与实现阅读（独立基线）↗</a></p></details>
+<section class="overview-section"><h2>先预测，再操作</h2><details class="self-check"><summary>有 Q/K/V，就可以调用 Attention 吗？</summary><p>还需要正确的历史 KV 地址、长度、层身份和本轮元数据。示例先准备索引，再在层内写入本轮 K/V 并执行计算。</p></details><details class="self-check"><summary>3 条请求填进容量 4 的图桶，会返回 4 条回答吗？</summary><p>不会。补齐行不属于真实请求；普通 Decode 输出按真实 token 行数裁回，再交给后续采样。</p></details><details class="self-check"><summary>没有走 CUDA Graph，是否说明 GPU 没执行？</summary><p>不是。Eager 仍然调用模型和设备算子。Graph 改变提交与重放方式，不是请求是否执行的开关。</p></details><details class="self-check"><summary>为什么算力翻倍，理想下界可能不变？</summary><p>若访存项仍更长，缩短计算项不改变两者的最大值。切换 M=1 与 M=256 比较；实际利用率还需运行测量。</p></details></section>
+<section class="overview-section source-notes" id="source-baseline"><h2>固定源码与继续阅读</h2><p>源码分析基线：<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">公开上游 SGLang main · 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>，读取于 2026-09-23。只读本地 Git 固定对象，保留原工作区未跟踪文件；未运行模型或 GPU 实验。硬件图采用自设参数，参考 <a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-gpu-background/index.html">NVIDIA GPU Performance Background</a> 与 <a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html">Matrix Multiplication Background</a>（读取于 2026-09-23）。</p><ul><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/runtime/SGLang%20执行分层与硬件机制学习文档.md">完整笔记：执行交接、图资格与资源边界</a></li><li><a href="../inference-overview/transformer.html">先修：模型层、Prefill 与 Decode</a></li><li><a href="../request-runtime/">先修：请求、batch 与资源生命周期</a></li><li><a href="../performance-engineering/">下一步：测量与定位实际瓶颈</a></li></ul></section><nav class="lesson-pager" aria-label="框架内继续学习"><a href="../inference-overview/transformer.html"><small>本模块 · 上一节</small><strong>← P / D 在 Transformer 里做什么</strong></a><a class="next" href="../inference-overview/kv-cache.html"><small>下一模块 · 04</small><strong>KV Cache 与内存管理 →</strong><span>从本模块入门课程开始</span></a></nav></main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

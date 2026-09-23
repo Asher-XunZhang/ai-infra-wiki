@@ -16,7 +16,7 @@ Pages 按五层十二模块组织。页面正文围绕机制与源码展开；�
 | --- | --- | --- |
 | 01 推理系统全景 | [请求生成](sglang/inference-overview/journey.html)，Prefill / Decode 交互 | 复核与其余十一模块的概念衔接，补齐总体系统边界 |
 | 02 请求生命周期与运行时架构 | [普通请求运行时](sglang/request-runtime/index.html)，当前步骤交接图、可展开的完整流程与四路径资源变化 | 已补独立入门课；深入分支连接原有源码章节 |
-| 03 模型执行、硬件与算子 | [Transformer](sglang/inference-overview/transformer.html)，逐层执行与 attention 图 | 补 Worker / Runner / 后端 / kernel 的层次与硬件瓶颈直觉 |
+| 03 模型执行、硬件与算子 | [Transformer](sglang/inference-overview/transformer.html) 与 [执行机制](sglang/model-execution/index.html)，执行交接、图重放补齐与成本下界 | 已补 Worker / Runner / backend / kernel 与硬件直觉；复杂模型、kernel 和执行模式连接独立基线源码课程 |
 | 04 KV Cache 与内存管理 | [KV 入门](sglang/inference-overview/kv-cache.html)，KV 位置与复用 | 补物理页、逻辑映射、共享与驱逐的资源视图 |
 | 05 调度与批处理 | [批处理](sglang/inference-overview/scheduling.html)，batch 与调度演示 | 补准入预算、长短请求与回撤边界 |
 | 06 并行与执行拓扑 | [并行分工](sglang/parallelism/index.html)，TP 算例、PP 时间格、DP 路由、EP 任务和 CP 因果矩阵 | 已补独立课程与固定源码锚点；复杂组合和 backend 约束连接深入章节 |
@@ -63,3 +63,8 @@ Pages 按五层十二模块组织。页面正文围绕机制与源码展开；�
 
 - `node scripts/test_performance.cjs`：许可内外计时、分包 ITL、TPOT 缺失、单变量收益与成功样本筛选；设置 `SGLANG_SOURCE_DIR` 核对固定锚点。
 - `node scripts/test_performance_browser.cjs`：四种图、全部分支与步骤、键盘和播放、四档宽度与两套主题、无 JS 阅读。
+
+## 执行课程的验证
+
+- `node scripts/test_execution.cjs`：图桶资格、真实请求守恒、补齐裁剪、矩阵成本与单资源变化；设置 `SGLANG_SOURCE_DIR` 检查固定源码锚点。
+- `node scripts/test_execution_browser.cjs`：执行数据交接、图资格分支、成本条比例、播放、键盘、减少动态效果、四档宽度与深浅主题、无 JS 阅读。

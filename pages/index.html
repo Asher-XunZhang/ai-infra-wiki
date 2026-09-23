@@ -42,6 +42,7 @@
 <summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#model-execution">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/inference-overview/transformer.html">P / D 在 Transformer 里做什么</a>
+<a class="lesson-link" href="sglang/model-execution/index.html">一批输入，怎样变成设备上的计算？</a>
 </div></details>
 <details class="module-nav" data-module="kv-memory">
 <summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -152,10 +153,10 @@
         <section id="stage-instance" class="framework-stage" aria-labelledby="stage-instance-title">
           <header class="stage-heading"><span class="stage-number" aria-hidden="true">二</span><div><p class="eyebrow">理解单实例</p><h3 id="stage-instance-title">算什么、存什么、何时执行</h3><p>先建立执行、内存和调度的基本模型，再逐个深入。</p></div></header>
           <div class="module-grid">
-            <article id="model-execution" class="lesson-card module-card" data-coverage="partial">
-              <div class="card-top"><span class="card-number">03</span><span class="module-status partial">部分内容</span></div>
+            <article id="model-execution" class="lesson-card module-card" data-coverage="available">
+              <div class="card-top"><span class="card-number">03</span><span class="module-status available">已有课程</span></div>
               <h4>模型执行、硬件与算子</h4><p class="module-question">一个 batch 怎样落到设备上计算？</p><p>Worker / Runner、张量与算子、显存与带宽、kernel、CUDA stream / event / graph。</p><p class="module-prerequisite">先修：推理全景；后续衔接运行时</p>
-              <div class="module-entry"><a href="sglang/inference-overview/transformer.html">入门 · Transformer 中的 P / D →</a><p class="module-pending">待补：模型执行链、硬件与算子专题。</p></div>
+              <div class="module-entry"><a href="sglang/inference-overview/transformer.html">入门 · Transformer 中的 P / D →</a><p class="module-related">继续观察 Worker / Runner 交接、CUDA Graph 补齐与计算 / 访存边界。</p><a href="sglang/model-execution/">继续学习 · 执行分层与硬件机制 →</a></div>
             </article>
             <article id="kv-memory" class="lesson-card module-card" data-coverage="partial">
               <div class="card-top"><span class="card-number">04</span><span class="module-status partial">部分内容</span></div>

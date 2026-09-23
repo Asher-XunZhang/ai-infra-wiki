@@ -22,7 +22,8 @@ MODULES = [
     ('request-runtime', '请求生命周期与运行时架构', 'foundations', False, [
         ('sglang/request-runtime/index.html', '一条请求穿过哪些进程与对象', 'SGLang · 入门')]),
     ('model-execution', '模型执行、硬件与算子', 'instance', False, [
-        ('sglang/inference-overview/transformer.html', 'P / D 在 Transformer 里做什么', 'SGLang · 入门')]),
+        ('sglang/inference-overview/transformer.html', 'P / D 在 Transformer 里做什么', 'SGLang · 入门'),
+        ('sglang/model-execution/index.html', '一批输入，怎样变成设备上的计算？', 'SGLang · 执行机制')]),
     ('kv-memory', 'KV Cache 与内存管理', 'instance', False, [
         ('sglang/inference-overview/kv-cache.html', 'KV：模型留给下一轮的记忆', 'SGLang · 入门')]),
     ('scheduling', '调度与批处理', 'instance', False, [
