@@ -7,7 +7,7 @@
  let frames,index=0,timer=null,overview=false;
  const column=142,top=56,pitch=64;
  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- function stop(){clearInterval(timer);timer=null;get('play').textContent='播放';get('play').setAttribute('aria-pressed','false');get('sequence-svg')?.pauseAnimations();}
+ function stop(pauseMotion=true){clearInterval(timer);timer=null;get('play').textContent='播放';get('play').setAttribute('aria-pressed','false');if(pauseMotion)get('sequence-svg')?.pauseAnimations();}
  function arrow(x1,y1,x2,y2,label,kind,active,pending,hop=0){
   const self=y1===y2;
   const d=self?`M ${x1} ${y1} h 58 v 22 h -58`:`M ${x1} ${y1} L ${x2} ${y2}`;
@@ -71,7 +71,7 @@
   get('step-explanation').textContent=f.explanation;
   get('step-fields').textContent=`前端：${f.front}；调度：${f.scheduler}；本轮：${f.batch}。dispatched=${f.dispatched}，abort_sent=${f.abortSent}，to_finish=${f.toFinish?'abort':'无'}，finished=${f.finished}。`;
   get('step-source').href=model.sourceURL(f.source);get('step-source').textContent=`源码 · ${model.sources[f.source][2]} ↗`;
-  if(index===frames.length-1)stop();
+  if(index===frames.length-1)stop(false);
  }
  function caption(f){
   const id=f.id;

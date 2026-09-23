@@ -47,6 +47,7 @@ const M=require('../pages/sglang/request-runtime/model.js');
    await page.selectOption('#outputs',String(outputs));
    await step(M.build({outputs}).length-1);
    assert.equal(await page.locator('#visible-cells .filled').count(),outputs);
+   assert.equal(await page.locator('#sequence-svg').evaluate(e=>e.animationsPaused()),false,'final response still animates after step playback ends');
   }
   await page.selectOption('#outputs','3');await page.locator('#reset').click();
   await page.locator('#step').focus();await page.keyboard.press('ArrowRight');
