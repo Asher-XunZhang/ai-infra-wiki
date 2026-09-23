@@ -65,6 +65,8 @@
 
 [调度准入与容量回撤](<runtime/SGLang 调度准入与容量回撤学习文档.md>) 连接候选顺序、输入与 KV 额度，以及回撤后的等待和恢复。
 
+[系统边界与学习地图](<runtime/SGLang 系统边界与学习地图学习文档.md>) 将请求主线、进程内职责与多卡拓扑连接到十二模块。
+
 ## 按目标选择路线
 
 - **多卡与分离部署**：[并行拓扑与负载分工](<parallelism/README.md>) → [分离部署与状态交接](<disaggregation/README.md>)。
@@ -81,3 +83,5 @@
 实例内执行主链归 `runtime/`；实例外 API、网关与运维归 `serving-operations/`。并行切分归 `parallelism/`，服务角色分离与跨角色状态交接归 `disaggregation/`。跨模块版本综述归 `version-studies/`，特定版本的性能案例仍归性能工程。
 
 完整维护规则见 [AGENTS.md：长期分类与学习导航](<../AGENTS.md#长期分类与学习导航>)。
+
+[跨模块机制验证练习](source-study/机制验证练习.md)：计时边界、共享 KV 回收和 PD＋PP 长尾；固定源码、交互预测与运行验证分开记录。

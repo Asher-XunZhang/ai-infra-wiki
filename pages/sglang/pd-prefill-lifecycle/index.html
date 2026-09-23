@@ -14,6 +14,7 @@
 <summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="../inference-overview/journey.html">一条请求怎样变成回答</a>
+<a class="lesson-link" href="../system-overview/index.html">推理系统里，哪些边界不能混在一起？</a>
 </div></details>
 <details class="module-nav" data-module="request-runtime">
 <summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -89,7 +90,7 @@
 <details class="module-nav" data-module="case-studies">
 <summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">PP loop 快速入门</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">机制验证练习与 PP loop</a>
 <a class="lesson-link" href="../pd-prefill-pp-loop/index.html">依赖分析与耗时场景</a>
 <a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP loop 源码阅读</a>
 </div></details>
@@ -289,5 +290,6 @@
 <tr><th>验证边界</th><td>静态源码走读与页面验证；步骤是因果阅读顺序，非实际 trace、性能仿真或同时发生的全局快照</td></tr></tbody></table></div>
 <p>本页固定当前读取的提交 <code>279339f113</code>。loop 入门 / 依赖图已统一到同一提交，但使用 HiCache host-hit 场景；可借它们理解调度交错，不能直接照搬其 L# 编号、耗时或缓存步骤。</p>
 <p><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/disaggregation/PD%20Prefill%20PP%3D3%20请求生命周期源码学习文档.md">阅读对应 Markdown 文档 ↗</a></p></section>
+<section class="prose life-reading" id="communication-bridge"><h2>把交接条件放回整条链路</h2><p>沿 <a href="../inference-overview/deployment.html#handoff-boundaries">P 收尾 / D 就绪的两侧边界</a> 分别检查：数据有没有到、身份是否匹配、资源是否仍被持有、下一轮能否接纳。</p><details><summary>继续观察通信、缓存与准入</summary><p><a href="../communication/">07 通信与传输</a>：消息、张量、KV 与完成条件；<a href="../kv-memory/">04 KV 与内存</a>：保护解除后，缓存仍可能持有页面；<a href="../scheduling/">05 调度与批处理</a>：就绪请求仍要通过本轮预算。</p><p>本页保持 <code>279339f113</code> 的固定源码与场景。通信课程同样固定 <code>279339f113</code>，但选择的后端与参数不同；本页各级事件不是其全局时钟快照。</p></details></section>
 <nav class="lesson-pager" aria-label="框架内继续学习"><a href="../inference-overview/deployment.html"><small>本模块 · 上一节</small><strong>← 合并部署与 PD 分离</strong></a><a class="next" href="../pd-dataflow/index.html"><small>本模块 · 下一节</small><strong>数据流、状态与队列 →</strong></a></nav></main>
 <footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><span>源码因果走读 · 非运行 trace</span><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

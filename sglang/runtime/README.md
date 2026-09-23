@@ -13,6 +13,10 @@
 - [推理基础](<../../llm-inference/foundations/README.md>)
 - [调度方法](<../../llm-inference/scheduling/README.md>)
 
+## 系统地图
+
+[系统边界与学习地图](<SGLang 系统边界与学习地图学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/system-overview/)：先区分进程、职责、设备资源和模型副本，再沿问题进入请求、执行、缓存与调度。先修为一次 Prefill / Decode 的输入输出关系。
+
 ## 阅读顺序
 
 先用推理全景建立宏观认识；首轮再读总览和请求生命周期，再读显存预算。CUDA Graph 是执行支线，先补下方 Worker / ModelRunner 与 Graph 课程入口。

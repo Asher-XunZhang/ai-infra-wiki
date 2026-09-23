@@ -2,6 +2,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const courses=[
+ ['sglang/system-overview/index.html','system-overview','foundations'],
  ['sglang/scheduling/index.html','scheduling','instance'],
  ['sglang/kv-memory/index.html','kv-memory','instance'],
  ['sglang/model-execution/index.html','model-execution','instance'],
@@ -33,7 +34,7 @@ const courses=[
   const expectedModules=await signature();assert.equal(expectedModules.length,12);
   assert.equal(await page.locator('.framework-stage').count(),5);
   assert.equal(await page.locator('.module-card').count(),12);
-  assert.equal(await page.locator('.module-card[data-coverage=planned]').count(),0);
+  assert.equal(await page.locator('.module-card[data-coverage=available]').count(),12);
   assert.equal(await page.locator('a[href="#"],a:not([href]),button[disabled]').count(),0);
   assert.match(await page.locator('#communication').innerText(),/已有课程[\s\S]*开始学习/);
   assert.match(await page.locator('#performance').innerText(),/已有课程[\s\S]*开始学习/);

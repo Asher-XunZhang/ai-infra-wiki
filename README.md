@@ -48,7 +48,8 @@
 
 | 学习专题 | 可以观察什么 | 在线入口 |
 | --- | --- | --- |
-| **SGLang 推理全景** | 理解请求、P/D 与 Transformer、KV 复用、合并与分离部署、调度与延迟。五节内容，每节都有交互实验。 | [进入推理全景](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html) |
+| **SGLang 推理全景** | 理解请求、P/D 与 Transformer、KV 复用、合并与分离部署、调度与延迟。五节内容，配合逐步演示与静态对照图。 | [进入推理全景](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html) |
+| **系统边界与分工** | 在跨进程流转、进程内调用和 TP / DP / PD 拓扑之间切换，再进入对应学习模块。 | [进入系统地图](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/system-overview/) |
 | **调度准入与容量回撤** | 观察排序与预算如何形成 batch、长短请求如何分配份额，以及回撤后保留文本和重建 KV。 | [进入调度机制课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/scheduling/) |
 | **KV 映射与共享回收** | 用尾页槽位、前缀匹配与共享页，观察请求结束、可驱逐和归还池内的区别。 | [进入缓存机制课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/kv-memory/) |
 | **普通请求运行时** | 区分前端、调度与反分词进程；沿泳道箭头观察正常生成、排队取消、执行中取消和输入验证失败，用资源槽位理解请求行与 KV 的不同生命周期。 | [进入运行时课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/request-runtime/) |

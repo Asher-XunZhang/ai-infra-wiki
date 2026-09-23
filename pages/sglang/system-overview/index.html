@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>推理系统的边界与分工 · AI Infra Wiki</title><meta name="description" content="沿请求跨进程流转、同进程执行和 TP / DP / PD 拓扑，理解系统边界。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="../inference-overview/overview.css"><link rel="stylesheet" href="../parallelism/parallelism.css"><link rel="stylesheet" href="system.css"><script src="../../site.js" defer></script><script src="model.js" defer></script><script src="system.js" defer></script></head>
+<body data-page="system-overview"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header><div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="topic-group" data-topic="framework-foundations" open>
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview" open>
+<summary class="module-heading" aria-current="location"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/journey.html">一条请求怎样变成回答</a>
+<a class="lesson-link" href="index.html" aria-current="page">推理系统里，哪些边界不能混在一起？</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../request-runtime/index.html">一条请求穿过哪些进程与对象</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/transformer.html">P / D 在 Transformer 里做什么</a>
+<a class="lesson-link" href="../model-execution/index.html">一批输入，怎样变成设备上的计算？</a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">KV：模型留给下一轮的记忆</a>
+<a class="lesson-link" href="../kv-memory/index.html">KV 放在哪里，又在何时回收？</a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">多请求怎样共享一次执行</a>
+<a class="lesson-link" href="../scheduling/index.html">排到前面，就能开始计算吗？</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<details class="module-nav" data-module="parallelism">
+<summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#parallelism">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../parallelism/index.html">多张卡，究竟切开了什么？</a>
+</div></details>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../communication/index.html">数据传过去，何时才算可用？</a>
+</div></details>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">合并部署与 PD 分离</a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD Prefill 请求生命周期</a>
+<a class="lesson-link" href="../pd-dataflow/index.html">数据流、状态与队列</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<details class="module-nav" data-module="advanced-generation">
+<summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#advanced-generation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../advanced-generation/index.html">生成一个 token，还会改变哪些状态？</a>
+</div></details>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../serving-operations/index.html">服务在线，请求就一定能完成吗？</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../performance-engineering/index.html">性能数字，究竟量到了哪一段？</a>
+</div></details>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">机制验证练习与 PP loop</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">依赖分析与耗时场景</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP loop 源码阅读</a>
+</div></details>
+</nav></details>
+<div class="sidebar-note"><span class="status-dot"></span> 一张框架，逐步深入<p>先理解单实例，再连接多卡多机；模型、服务与性能按目标选读。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content" tabindex="-1"><!-- learning-context:start -->
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">学习框架</a><span aria-hidden="true">/</span><a href="../../#stage-foundations">第一层 · 建立全局</a><span aria-hidden="true">/</span><a href="../../#system-overview">01 推理系统全景</a><span aria-hidden="true">/</span><span aria-current="page">推理系统里，哪些边界不能混在一起？</span></nav>
+<!-- learning-context:end -->
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#system-overview">模块 01 / 推理系统全景</a><span class="lesson-count">SGLang · 系统边界</span></div><h1>推理系统里，哪些边界不能混在一起？</h1><p>先跟随请求跨进程流转，再展开调度进程内部，最后比较多卡、多个副本与 P/D 两种服务角色。</p><div class="meta-tags"><span>职责 · 进程 · 副本 · 服务角色</span><span>源码 279339f113</span><span>机制演示 · 非运行 trace</span></div></header><p class="big-idea">先看框表示什么，再看箭头交接什么；框多，不一定进程多。</p>
+<section class="parallel-lab system-lab" data-system-lab hidden aria-labelledby="system-title"><div class="mode-picker" role="group" aria-label="选择系统视图"><button type="button" data-mode="service" aria-pressed="true">跨进程流转</button><button type="button" data-mode="inside" aria-pressed="false">进程内分工</button><button type="button" data-mode="topology" aria-pressed="false">向多卡扩展</button></div><h2 id="system-title">同一条主线，逐层展开</h2>
+<div class="parallel-settings" data-settings="service"><span>普通 Python HTTP · 单 tokenizer · 单卡 · 合并部署</span></div><div class="parallel-settings" data-settings="inside" hidden><span>一次两位置 Prefill · 这里数职责和资源，不数进程</span></div><div class="parallel-settings" data-settings="topology" hidden><label>选择部署关系<select id="system-topology"><option value="tp">TP=2 · 同一副本协作</option><option value="dp">DP=2 · 请求分给两个副本</option><option value="pd">P/D · 同一请求跨角色接力</option></select></label></div>
+<div class="parallel-controls" id="system-controls"><button type="button" id="system-previous">上一步</button><button type="button" id="system-play" aria-pressed="false">播放</button><button type="button" id="system-next">下一步</button><button type="button" id="system-reset">重置</button><output id="system-status" aria-live="polite"></output></div><div class="system-scene" id="system-scene"></div><p class="parallel-caption" id="system-caption"></p><div class="system-related" id="system-related" aria-label="当前机制的对应课程"></div><details class="parallel-details"><summary>固定源码与图的适用范围</summary><p id="system-why"></p><a id="system-source" href="#source-baseline">查看固定源码 ↗</a></details><p class="parallel-footnote">每次只高亮当前交接。数据标签与三层权重是教学设定，未运行模型、设备或网络实验。</p></section>
+<noscript><p class="big-idea">交互需要 JavaScript；下方职责图与完整笔记仍可阅读。</p></noscript>
+<details class="topology-detail system-lab"><summary>服务的请求与返回闭环</summary><div class="system-static"><span>客户端</span><b>→</b><span>入口 / Tokenizer</span><b>→</b><span>Scheduler 与执行</span><b>→</b><span>反分词 → 入口 → 客户端</span></div><p>普通单卡路径的 Worker / Runner 位于 Scheduler 进程内。请求排队、模型执行与结果可见是不同阶段；KV 的写入、共享与释放又各有条件。</p></details>
+<section class="overview-section system-lab"><h2>把问题放回学习框架</h2><p>先选正在追踪的边界，再进入相应模块。编号用于定位，所有支线不必依次走完。</p>
+<details class="self-check"><summary>请求已经到服务，为什么还没看到回答？</summary><div class="system-path-links"><a href="../request-runtime/">02 请求生命周期</a><span>→</span><a href="../serving-operations/">10 服务治理</a><span>→</span><a href="../performance-engineering/">11 性能口径</a></div><p>先找最后一次完成的交接，再区分未准入、未执行、结果未送达。</p></details>
+<details class="self-check"><summary>本轮算哪些位置，用哪些历史状态？</summary><div class="system-path-links"><a href="../scheduling/">05 调度</a><span>→</span><a href="../model-execution/">03 执行</a><span>↔</span><a href="../kv-memory/">04 KV 与内存</a><span>→</span><a href="../advanced-generation/">09 模型与生成</a></div><p>选批、计算、资源归属和生成状态分别有负责人，不能由一次 forward 的返回推断全部请求都结束。</p></details>
+<details class="self-check"><summary>跨卡或跨实例时，究竟交接了什么？</summary><div class="system-path-links"><a href="../parallelism/">06 并行拓扑</a><span>→</span><a href="../communication/">07 通信与传输</a><span>→</span><a href="../inference-overview/deployment.html">08 分离部署</a></div><p>先确定切分对象和通信组，再找载荷、完成条件与回收责任。</p></details>
+<details class="self-check"><summary>怎样把机制判断变成可验证的结论？</summary><div class="system-path-links"><a href="../pd-prefill-pp-loop/quick.html">12 综合案例与源码实践</a></div><p>先写预测，再改变一个条件观察依赖，最后回到固定源码。教学模型能检查因果关系，真实性能仍要在实际配置与流量中验证。</p></details></section>
+<section class="overview-section"><h2>读图自测</h2><details class="self-check"><summary>图里有 Scheduler、Worker、Runner，就一定是三个进程吗？</summary><p>不是。本页普通路径里，后两者由 Scheduler 进程内调用。换成多 rank、Ray 或其他启动方式时，需要重新核对进程外框。</p></details><details class="self-check"><summary>两张 GPU 一定对应两个完整模型副本吗？</summary><p>不是。TP=2 可以是两张卡共同完成一个副本；DP=2 示例则由两个副本分别接请求。PD 又按服务角色接力，同一请求跨两侧推进。</p></details><details class="self-check"><summary>GPU 产生了首 token，客户端就已经看到它了吗？</summary><p>还要经过结果处理、反分词与响应链。图中采样和可见分开变化；时间测量也需要分别界定。</p></details></section>
+<section class="overview-section source-notes" id="source-baseline"><h2>固定源码与继续阅读</h2><p>源码分析基线：<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">公开上游 SGLang main · 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>，读取于 2026-09-23。只读本地 Git 固定对象，当前检出分支与本文快照分开，未改动已有未跟踪文件。未运行模型或性能实验。</p><ul><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/runtime/SGLang%20系统边界与学习地图学习文档.md">完整笔记：系统边界与十二模块学习地图</a></li><li><a href="../inference-overview/journey.html">先修：一条请求怎样产生 token</a></li><li><a href="../request-runtime/">下一步：逐个请求对象与资源的生命周期</a></li></ul></section><nav class="lesson-pager" aria-label="框架内继续学习"><a href="../inference-overview/journey.html"><small>本模块 · 上一节</small><strong>← 一条请求怎样变成回答</strong></a><a class="next" href="../request-runtime/index.html"><small>下一模块 · 02</small><strong>请求生命周期与运行时架构 →</strong><span>从本模块入门课程开始</span></a></nav></main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

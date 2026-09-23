@@ -18,7 +18,8 @@ STAGES = [
 # A lesson has one primary module. Other modules may link to it as a related case.
 MODULES = [
     ('system-overview', '推理系统全景', 'foundations', False, [
-        ('sglang/inference-overview/journey.html', '一条请求怎样变成回答', 'SGLang · 入门')]),
+        ('sglang/inference-overview/journey.html', '一条请求怎样变成回答', 'SGLang · 入门'),
+        ('sglang/system-overview/index.html', '推理系统里，哪些边界不能混在一起？', 'SGLang · 系统边界')]),
     ('request-runtime', '请求生命周期与运行时架构', 'foundations', False, [
         ('sglang/request-runtime/index.html', '一条请求穿过哪些进程与对象', 'SGLang · 入门')]),
     ('model-execution', '模型执行、硬件与算子', 'instance', False, [
@@ -41,7 +42,7 @@ MODULES = [
     ('serving-operations', '服务部署与运行治理', 'serving', False, [('sglang/serving-operations/index.html', '服务在线，请求就一定能完成吗？', 'SGLang · 服务治理')]),
     ('performance', '性能分析与优化方法', 'practice', False, [('sglang/performance-engineering/index.html', '性能数字，究竟量到了哪一段？', 'SGLang · 性能分析')]),
     ('case-studies', '综合案例与源码实践', 'practice', False, [
-        ('sglang/pd-prefill-pp-loop/quick.html', 'PP loop 快速入门', 'SGLang · PD＋PP 案例'),
+        ('sglang/pd-prefill-pp-loop/quick.html', '机制验证练习与 PP loop', 'SGLang · 综合实践'),
         ('sglang/pd-prefill-pp-loop/index.html', '依赖分析与耗时场景', 'SGLang · PD＋PP 案例'),
         ('sglang/pd-prefill-pp-loop/notes.html', 'PP loop 源码阅读', 'SGLang · PD＋PP 案例')]),
 ]

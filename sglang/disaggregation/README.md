@@ -6,7 +6,7 @@
 
 本文是学习导航，分类与阅读顺序由整理者归纳。技术资料继续保留各自的来源、版本和验证边界；导航不表示已完成运行或性能复现。
 
-初次接触 PD 时，先看 [推理全景：合并部署与 PD 分离](../../pages/sglang/inference-overview/deployment.html)，配合 [学习指南](../runtime/SGLang%20推理全景学习指南.md) 理解完整模型与状态交接，再进入本领域。
+先看 [推理全景：合并部署与 PD 分离](../../pages/sglang/inference-overview/deployment.html)，配合 [学习指南](../runtime/SGLang%20推理全景学习指南.md) 理解完整模型与状态交接，再进入本领域。
 
 ## 先修知识
 
@@ -58,3 +58,5 @@
 ## 通信机制衔接
 
 [SGLang 通信与传输机制](<../parallelism/SGLang 通信与传输机制学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/communication/)：通过消息交接、collective、KV 页映射与就绪 / 回收门槛区分各层责任。文章使用独立固定提交，不替换本目录资料的历史基线。
+
+先用 [部署边界图](../../pages/sglang/inference-overview/deployment.html#handoff-boundaries) 分别判断 P 侧收尾和 D 侧就绪，再观察 [KV 持有与释放](../../pages/sglang/kv-memory/index.html)、[选批准入](../../pages/sglang/scheduling/index.html)。通信课程与生命周期页采用 `279339f113`；数据流状态机保留 `882577451e`。两侧条件之间的阅读连接不表示这些场景共享全局时钟，也不覆盖全部接收后端。
