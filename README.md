@@ -52,6 +52,7 @@
 | **普通请求运行时** | 区分前端、调度与反分词进程；沿泳道箭头观察正常生成、排队取消、执行中取消和输入验证失败，用资源槽位理解请求行与 KV 的不同生命周期。 | [进入运行时课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/request-runtime/) |
 | **并行分工与执行拓扑** | 分别观察 TP 权重切分与合并、PP 流水线、DP 请求分配、EP 专家任务与 CP 因果工作量。 | [进入并行课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/parallelism/) |
 | **通信与传输** | 用消息交接、collective 算例、KV 页映射和就绪门槛，区分发送、完成、可用与回收。 | [进入通信课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/communication/) |
+| **模型状态与高级生成** | 对比 token KV 与递推状态，逐步验证草稿前缀，并观察规则如何筛选词表。 | [进入生成课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/advanced-generation/) |
 | **PD Prefill 请求旅程** | 跟随请求走完 PD 分离下的 Prefill：握手准入、切 chunk、组 batch、三级前向、KV 交接与资源释放。比较正常、等待、取消和部分 PP 失败的分支。 | [请求生命周期](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-lifecycle/) |
 | **PD Prefill 与 PP 调度** | 同一轮为何“算 M3、收 M1”？追踪多个 batch 在 PP=3 中的交错执行，查看 CPU、GPU、通信与缓存事件之间的依赖。 | [快速入门](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html) · [依赖分析](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/) · [源码说明](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/notes.html) |
 
