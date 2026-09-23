@@ -2,6 +2,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const courses=[
+ ['sglang/scheduling/index.html','scheduling','instance'],
  ['sglang/kv-memory/index.html','kv-memory','instance'],
  ['sglang/model-execution/index.html','model-execution','instance'],
  ['sglang/performance-engineering/index.html','performance','practice'],

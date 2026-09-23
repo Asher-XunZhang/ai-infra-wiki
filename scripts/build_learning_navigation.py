@@ -28,7 +28,8 @@ MODULES = [
         ('sglang/inference-overview/kv-cache.html', 'KV：模型留给下一轮的记忆', 'SGLang · 入门'),
         ('sglang/kv-memory/index.html', 'KV 放在哪里，又在何时回收？', 'SGLang · 缓存机制')]),
     ('scheduling', '调度与批处理', 'instance', False, [
-        ('sglang/inference-overview/scheduling.html', '多请求怎样共享一次执行', 'SGLang · 入门')]),
+        ('sglang/inference-overview/scheduling.html', '多请求怎样共享一次执行', 'SGLang · 入门'),
+        ('sglang/scheduling/index.html', '排到前面，就能开始计算吗？', 'SGLang · 调度机制')]),
     ('parallelism', '并行与执行拓扑', 'distributed', False, [
         ('sglang/parallelism/index.html', '多张卡，究竟切开了什么？', 'SGLang · 并行分工')]),
     ('communication', '通信与传输', 'distributed', False, [('sglang/communication/index.html', '数据传过去，何时才算可用？', 'SGLang · 通信机制')]),

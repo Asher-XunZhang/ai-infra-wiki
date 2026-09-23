@@ -54,6 +54,7 @@
 <summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#scheduling">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/inference-overview/scheduling.html">多请求怎样共享一次执行</a>
+<a class="lesson-link" href="sglang/scheduling/index.html">排到前面，就能开始计算吗？</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-distributed">
@@ -164,10 +165,10 @@
               <h4>KV Cache 与内存管理</h4><p class="module-question">状态怎样分配、复用和回收？</p><p>逻辑 token 与物理页、KV Pool、前缀缓存、分页、引用寿命与分层存储。</p><p class="module-prerequisite">先修：推理全景、模型计算基础</p>
               <div class="module-entry"><a href="sglang/inference-overview/kv-cache.html">入门 · 每层 KV 与前缀复用 →</a><p class="module-related">继续观察物理页映射、整页命中与共享回收；分层存储按需深入。</p><a href="sglang/kv-memory/">继续学习 · 映射、共享与回收 →</a></div>
             </article>
-            <article id="scheduling" class="lesson-card module-card" data-coverage="partial">
-              <div class="card-top"><span class="card-number">05</span><span class="module-status partial">部分内容</span></div>
+            <article id="scheduling" class="lesson-card module-card" data-coverage="available">
+              <div class="card-top"><span class="card-number">05</span><span class="module-status available">已有课程</span></div>
               <h4>调度与批处理</h4><p class="module-question">谁决定这一轮算什么、算多少？</p><p>队列策略、准入预算、batching、chunk、抢占、公平性与 overlap。</p><p class="module-prerequisite">先修：请求、模型执行与 KV 基础</p>
-              <div class="module-entry"><a href="sglang/inference-overview/scheduling.html">入门 · 多请求与分块执行 →</a><p class="module-pending">待补：完整调度机制；PP loop 见综合案例。</p></div>
+              <div class="module-entry"><a href="sglang/inference-overview/scheduling.html">入门 · 多请求与分块执行 →</a><p class="module-related">继续观察排序与准入、长短请求、容量回撤；Overlap 与 PP 按需深入。</p><a href="sglang/scheduling/">继续学习 · 准入预算与回撤 →</a></div>
             </article>
           </div>
         </section>

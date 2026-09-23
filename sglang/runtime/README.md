@@ -15,7 +15,7 @@
 
 ## 阅读顺序
 
-初学者先用推理全景建立宏观认识；首轮再读总览和请求生命周期，再读显存预算。CUDA Graph 是执行支线，先补下方 Worker / ModelRunner 与 Graph 课程入口。
+先用推理全景建立宏观认识；首轮再读总览和请求生命周期，再读显存预算。CUDA Graph 是执行支线，先补下方 Worker / ModelRunner 与 Graph 课程入口。
 
 | 顺序 | 资料 | 阅读定位 | 学习重点 |
 | --- | --- | --- | --- |
@@ -29,6 +29,10 @@
 ## 执行分层主线
 
 [执行分层与硬件机制](<SGLang 执行分层与硬件机制学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/model-execution/)：沿 Worker / Runner / backend / kernel 追踪输入变化，观察图重放补齐与计算、访存边界。先读模型 Forward，再衔接 CUDA Graph 深入资料。
+
+## 调度准入与回撤主线
+
+[调度准入与容量回撤](<SGLang 调度准入与容量回撤学习文档.md>) 配合 [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/scheduling/)，观察排序、输入与 KV 预算、已有 chunk 续算、回撤后的文本与资源寿命。先修为批处理和 KV 映射；随后可进入下面的完整调度源码课程。
 
 ## 对应源码课程
 
