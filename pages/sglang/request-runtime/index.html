@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>请求生命周期与运行时架构 · AI Infra Wiki</title><meta name="description" content="单步观察 SGLang 普通请求、取消、进程消息和资源归属。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="../inference-overview/overview.css"><script src="../../site.js" defer></script><script src="model.js" defer></script><script src="runtime.js" defer></script><link rel="stylesheet" href="runtime.css"></head>
+<body data-page="request-runtime"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header><div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="topic-group" data-topic="framework-foundations" open>
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/journey.html">一条请求怎样变成回答</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime" open>
+<summary class="module-heading" aria-current="location"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="index.html" aria-current="page">一条请求穿过哪些进程与对象</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/transformer.html">P / D 在 Transformer 里做什么</a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">KV：模型留给下一轮的记忆</a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">多请求怎样共享一次执行</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<a class="course-link" data-module="parallelism" href="../../#parallelism"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span></a>
+<a class="course-link" data-module="communication" href="../../#communication"><span class="course-number">07</span><span><strong>通信与传输</strong><small>预留模块</small></span></a>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">合并部署与 PD 分离</a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD Prefill 请求生命周期</a>
+<a class="lesson-link" href="../pd-dataflow/index.html">数据流、状态与队列</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<a class="course-link" data-module="advanced-generation" href="../../#advanced-generation"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong><small>预留模块</small></span></a>
+<a class="course-link" data-module="serving-operations" href="../../#serving-operations"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong><small>预留模块</small></span></a>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<a class="course-link" data-module="performance" href="../../#performance"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span></a>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">PP loop 快速入门</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">依赖分析与耗时场景</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP loop 源码阅读</a>
+</div></details>
+</nav></details>
+<div class="sidebar-note"><span class="status-dot"></span> 一张框架，逐步深入<p>先理解单实例，再连接多卡多机；模型、服务与性能按目标选读。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content" tabindex="-1"><!-- learning-context:start -->
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">学习框架</a><span aria-hidden="true">/</span><a href="../../#stage-foundations">第一层 · 建立全局</a><span aria-hidden="true">/</span><a href="../../#request-runtime">02 请求生命周期与运行时架构</a><span aria-hidden="true">/</span><span aria-current="page">一条请求穿过哪些进程与对象</span></nav>
+<!-- learning-context:end -->
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#request-runtime">模块 02 / 请求生命周期与运行时架构</a><span class="lesson-count">SGLang · 入门</span></div><h1>一条请求穿过哪些进程与对象</h1><p>从 HTTP 入口走到前端状态、调度队列和模型执行，再沿输出回程理解完成、取消和资源释放。</p><div class="meta-tags"><span>普通单实例 · Python HTTP</span><span>TP=1 / PP=1 · 非重叠</span><span>源码 279339f113</span><span>教学模型 · 无 GPU 实验</span></div></header>
+<p class="big-idea">请求像一张持续跟踪的工单；batch 是这一轮的工作单。工单还在，工作单会换，资源和响应也各自有收尾时刻。</p>
+<section class="overview-section"><h2>先分清进程，才能读懂箭头</h2><p>这里选择一个 tokenizer worker、一个 detokenizer worker、一个 Scheduler rank 的普通文本生成。HTTP 和 TokenizerManager 在前端进程；Worker / ModelRunner 是本例 Scheduler 进程中的执行组件，不能因为名字叫 Worker 就把它画成另一台机器。</p>
+<div class="runtime-map" aria-label="三个进程的职责图">
+<article class="runtime-process"><small>进程 A · 前端</small><h3>HTTP + TokenizerManager</h3><p>接收输入、分词、校验；为每个 rid 保存 ReqState，等待并返回结果。</p><div class="runtime-component">保留：请求关联、响应等待者<br>发出：token ID、采样配置</div></article>
+<article class="runtime-process"><small>进程 B · 调度与执行</small><h3>Scheduler</h3><p>创建 Req、维护队列、做准入和组批；消费执行结果、更新结束状态。</p><div class="runtime-component">同进程执行组件<br>Worker → ModelRunner → 模型 / GPU<br>请求行、KV 与缓存管理</div></article>
+<article class="runtime-process"><small>进程 C · 反分词</small><h3>DetokenizerManager</h3><p>把输出 ID 转为增量文本；保留 rid 和结束原因，交回前端关联请求。</p><div class="runtime-component">接收：BatchTokenIDOutput<br>返回：BatchStrOutput</div></article>
+</div>
+<p class="runtime-route"><strong>入站 →</strong><span>客户端 / HTTP</span> → <span>A：准备 tokenized request</span> → <span>IPC</span> → <span>B：Req 与队列</span></p>
+<p class="runtime-route"><strong>回程 →</strong><span>B：输出 ID</span> → <span>C：反分词</span> → <span>A：按 rid 匹配</span> → <span>客户端</span></p>
+<p class="lab-note">箭头表示交接内容，宽度与距离不代表耗时。多 worker、Rust 服务、多卡和 PD 分离会改变拓扑；不能直接套用本图。<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/entrypoints/engine.py#L1051">核对启动装配 ↗</a></p></section>
+<section class="runtime-lab" data-runtime-lab hidden aria-labelledby="runtime-lab-title"><h2 id="runtime-lab-title">单步实验 · 同时看四份状态</h2><p>先走一遍正常生成，再比较两种取消。所有事件按教学顺序排列，非实测 trace；播放速度不对应真实耗时。</p>
+<div class="runtime-toolbar"><div class="runtime-controls"><label>请求路径<select id="scenario"><option value="normal">正常生成</option><option value="queued-abort">排队时取消</option><option value="running-abort">执行中取消</option><option value="invalid">输入验证失败</option></select></label><label>正常路径输出上限<select id="outputs"><option value="1">1 个 token</option><option value="2">2 个 token</option><option value="3" selected>3 个 token</option><option value="4">4 个 token</option><option value="5">5 个 token</option></select></label><label class="runtime-check"><input id="cache" type="checkbox" checked>有效 KV 可插入前缀缓存</label><button id="previous" type="button">上一步</button><button id="play" type="button" aria-pressed="false">播放</button><button id="next" type="button">下一步</button><button id="reset" type="button">重新开始</button></div>
+<div class="runtime-scrub"><label for="step">步骤</label><input id="step" type="range" min="0" value="0" max="1"><output id="step-count" for="step"></output></div></div><p id="runtime-status" class="runtime-mini" aria-live="polite" aria-atomic="true"></p><div id="runtime-snapshot" class="runtime-snapshot"></div></section>
+<noscript><p class="big-idea">单步实验需要 JavaScript。上方进程图与下方路径、自测、源码说明仍可完整阅读。</p></noscript>
+<section class="overview-section"><h2>同一个 R1，为什么需要不同对象？</h2><div class="table-wrap"><table class="overview-table"><thead><tr><th>对象</th><th>谁负责</th><th>它回答的问题</th></tr></thead><tbody><tr><td>GenerateReqInput</td><td>HTTP / 协议适配</td><td>用户要生成什么，参数是什么？</td></tr><tr><td>ReqState</td><td>TokenizerManager</td><td>结果回给谁？前端是否还在等待？</td></tr><tr><td>TokenizedGenerateReqInput</td><td>前端构造，经 IPC 交接</td><td>输入 ID、采样配置和 rid 是什么？</td></tr><tr><td>Req</td><td>Scheduler</td><td>已经生成多少，资源与结束状态如何？</td></tr><tr><td>ScheduleBatch / ForwardBatch</td><td>调度视图 / 执行视图</td><td>本轮哪些输入一起计算，tensor 和元数据如何组织？</td></tr></tbody></table></div><p>同一个 rid 关联不同对象，不表示它们共享同一块 Python 内存。一次 API 批量输入也不保证对应一次 GPU batch；调度器还要根据缓存、长度、预算和模式选择执行集合。</p></section>
+<section class="overview-section"><h2>正常结束：三种“完成”要分别核对</h2><ol><li><strong>后端生成完成：</strong>Req 记录结束原因，普通路径开始相应资源收尾。</li><li><strong>前端状态完成：</strong>输出经过回程，TokenizerManager 标记完成、移除关联状态并通知等待者。</li><li><strong>客户端观察到完成：</strong>还取决于响应发送和网络连接，前两项不是网络 ACK。</li></ol><p>输入 p1…p4、输出 y1…y3 的普通示例只需三次 forward：Prefill 输入四个 p，随后 Decode 分别输入 y1、y2。最终有六个计算过的位置；y3 被预测出来，却没有再作为输入，所以不能凭“输出三个”推断 KV 也增加三个。</p><p>本例默认 page_size=1、无前缀命中与其他持有者。启用可插入的 Radix Cache 时，有效前缀可由缓存接管，请求行仍要释放；关闭缓存时由分配器回收相关 KV。分页尾部、重复前缀、特殊模型和在途操作有各自约束，不能直接按本例个数计算生产显存。</p></section>
+<section class="overview-section"><h2>取消：先问请求现在归谁处理</h2><div class="table-wrap"><table class="overview-table"><thead><tr><th>位置</th><th>普通路径的处理</th><th>不能做的推断</th></tr></thead><tbody><tr><td>尚未派发</td><td>验证失败时清理前端未派发状态</td><td>不能假想后端已有 KV 要回收</td></tr><tr><td>还在等待队列，未开始执行</td><td>Scheduler 移出队列并回告前端</td><td>发出取消不等于后端已经处理</td></tr><tr><td>已进入运行集合</td><td>设置 to_finish，再通过结果处理推进结束与资源释放</td><td>不能理解为立即抢占 GPU 或立即释放全部 KV</td></tr></tbody></table></div><p>演示中的“执行中取消”选择已回传首段文本后取消，再走一次普通 Decode 的结果收尾；并不保证客户端看到额外采样文本。Overlap、Chunked Prefill、PD 传输和特殊缓存的在途状态，需要各自分析。继续阅读 <a href="../pd-prefill-lifecycle/">PD Prefill 请求生命周期</a> 时，留意那里额外的握手与交接队列。</p></section>
+<section class="overview-section"><h2>用边界定位问题</h2><p>看到“请求已派发”但迟迟没有回答，沿链逐段找证据：前端是否成功准备和发送 → Scheduler 是否接收并入队 → 是否获得预算进入 batch → 执行结果是否被消费 → 输出是否经过反分词和前端关联 → 客户端连接是否仍在。先确认停在哪一段，再研究该段的队列或对象。</p><p>这是定位顺序，不是“某条日志必然说明根因”的规则。资源未归还时，还要区分请求行、请求仍持有的 KV、缓存保留的 KV 和其他在途持有者。</p></section>
+<section class="overview-section"><h2>先预测，再操作验证</h2><details class="runtime-exercise"><summary>1. 前端 dispatched=true，此刻 GPU 一定在算吗？</summary><p>不一定。停在“发送”步骤，Scheduler 尚无 Req。这个标记来自前端派发路径；后端的接收、准入和执行需要各自证据。</p></details><details class="runtime-exercise"><summary>2. 正常生成三个输出，结束前应有几个 KV 位置？</summary><p>本例是 4 个输入 + y1、y2，共 6 个位置。y3 没有进入下一轮 forward。切换输出上限，再在资源交接前核对。</p></details><details class="runtime-exercise"><summary>3. 请求槽位释放后，为什么缓存里仍有 KV？</summary><p>请求行和缓存拥有不同生命周期。停在资源交接步骤，切换前缀缓存再走到同一步：一个保留有效前缀供后续复用，一个归还相关 KV；都不应让请求槽位继续被 R1 占用。</p></details><details class="runtime-exercise"><summary>4. 排队取消与运行取消都能立刻删掉所有状态吗？</summary><p>不能。普通尚未执行的等待请求可直接移除并回告；运行请求先登记待结束标记，经结果处理收尾。在取消已发出、但后端未处理的步骤，两条路径的后端状态都还在。</p></details></section>
+<section class="overview-section source-links"><h2>沿交接点回到源码</h2><p>源码分析基线：<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">公开上游 SGLang main 的固定提交 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>，读取于 2026-09-23。只读取 Git 对象；源码工作区原有未跟踪文件保留。未启动 SGLang、GPU 或网络性能实验。已有课程与深入资料继续保留各自基线。</p><div class="runtime-source-grid">
+<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/tokenizer_manager.py#L797">1 · 前端建立状态并派发<small>generate_request → _send_one_request</small></a>
+<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L2740">2 · 后端构造 Req 并入队<small>handle_generate_request → _add_request_to_queue</small></a>
+<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L1907">3 · 准备和执行本轮 batch<small>event_loop_normal → run_batch → process_batch_result</small></a>
+<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/detokenizer_manager.py#L443">4 · 输出 ID 变成文本<small>handle_batch_token_id_out → BatchStrOutput</small></a>
+<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L5257">5 · 按位置处理取消<small>abort_request：等待队列与在途请求</small></a>
+<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/common.py#L254">6 · 交接缓存并释放请求行<small>release_kv_cache → cache_finished_req</small></a></div></section>
+<section class="overview-section runtime-reading"><h2>继续读仓内资料</h2><ul><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/runtime/SGLang%20普通请求运行时与资源生命周期学习文档.md">本节完整学习笔记：对象、状态与源码映射</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/02-request-lifecycle/02-Tokenizer与进程间消息通路.md">深入：分词与 IPC 中不同 batch 的含义</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/02-request-lifecycle/06-完成取消与资源释放.md">深入：完成、取消与资源释放的分支</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/runtime/SGLang%20调度器请求生命周期与重叠调度学习文档.md">后续：Overlap 如何改变执行和收尾时序</a></li></ul></section>
+<nav class="lesson-pager" aria-label="框架内继续学习"><a href="../../#request-runtime"><small>回到所属模块</small><strong>← 02 请求生命周期与运行时架构</strong></a><a class="next" href="../inference-overview/transformer.html"><small>下一模块 · 03</small><strong>模型执行、硬件与算子 →</strong><span>从本模块入门课程开始</span></a></nav>
+</main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

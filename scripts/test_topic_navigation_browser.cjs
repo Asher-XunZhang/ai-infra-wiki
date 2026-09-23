@@ -2,6 +2,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const courses=[
+ ['sglang/request-runtime/index.html','request-runtime','foundations'],
  ['sglang/inference-overview/journey.html','system-overview','foundations'],
  ['sglang/inference-overview/transformer.html','model-execution','instance'],
  ['sglang/inference-overview/kv-cache.html','kv-memory','instance'],
@@ -24,10 +25,10 @@ const courses=[
   const expectedModules=await signature();assert.equal(expectedModules.length,12);
   assert.equal(await page.locator('.framework-stage').count(),5);
   assert.equal(await page.locator('.module-card').count(),12);
-  assert.equal(await page.locator('.module-card[data-coverage=planned]').count(),4);
+  assert.equal(await page.locator('.module-card[data-coverage=planned]').count(),3);
   assert.equal(await page.locator('a[href="#"],a:not([href]),button[disabled]').count(),0);
   assert.match(await page.locator('#communication').innerText(),/预留模块[\s\S]*待建设[\s\S]*关联案例/);
-  assert.equal(await page.locator('#request-runtime a,#advanced-generation a,#serving-operations a').count(),0);
+  assert.equal(await page.locator('#advanced-generation a,#serving-operations a').count(),0);
   assert.deepEqual(await page.locator('a[href^="#"]').evaluateAll(links=>links.filter(a=>!document.getElementById(a.hash.slice(1))).map(a=>a.hash)),[]);
   for(const group of await page.locator('.topic-group').all()){
    assert.equal(await group.evaluate(el=>el.open),false);
@@ -67,7 +68,7 @@ const courses=[
    await page.goto(base+route);await page.waitForLoadState('load');
    assert.equal(await page.locator('.topic-group').count(),5,route);
    assert.deepEqual(await signature(),expectedModules,route);
-   assert.equal(await page.locator('.site-sidebar .lesson-link').count(),10,route);
+   assert.equal(await page.locator('.site-sidebar .lesson-link').count(),courses.length,route);
    assert.equal(await page.locator('.site-sidebar [aria-current=page]').count(),1,route);
    assert.equal(await page.locator(`[data-module=${module}] .lesson-link[aria-current=page]`).count(),1,route);
    assert.equal(await page.locator(`[data-module=${module}]`).evaluate(e=>e.open),true,route);
@@ -102,6 +103,6 @@ const courses=[
   await staticPage.goto(base+'sglang/inference-overview/kv-cache.html');
   assert.equal(await staticPage.locator('[data-module=kv-memory] .lesson-link[aria-current=page]').isVisible(),true,'navigation is in HTML, not swapped after load');
   await staticPage.close();
-  assert.deepEqual(errors,[]);console.log('PASS: one framework on home and all 10 lessons; canonical module/current state, nested keyboard navigation, cross-module pager, breadcrumbs, placeholder anchors, desktop/mobile and no-JS navigation.');
+  assert.deepEqual(errors,[]);console.log('PASS: one framework on home and all lessons; canonical module/current state, nested keyboard navigation, cross-module pager, breadcrumbs, placeholder anchors, desktop/mobile and no-JS navigation.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

@@ -42,13 +42,14 @@
 
 先走通单实例，再扩展到多卡多机；模型、服务与性能按目标选读。全站首页与课程页共用五层十二模块导航，每门课程有唯一的主要归属：请求生成属于推理全景，Transformer、KV、调度分别进入对应基础模块，部署与 PD Prefill 旅程归入分离部署，PP loop 成套演示归入综合案例。入门路线与关联模块可以引用同一页面，各页面保留自己的版本与适用范围。
 
-维护导航时修改 `scripts/build_learning_navigation.py` 中的模块与课程映射，再运行该脚本更新全部页面。Pages 构建会检查生成一致性，避免首页与课程页使用不同导航。
+维护导航时修改 `scripts/build_learning_navigation.py` 中的模块与课程映射，再运行该脚本更新全部页面。Pages 构建会检查生成一致性，避免首页与课程页使用不同导航。逐模块的内容覆盖与补充范围见 [课程维护表](pages/COURSE_COVERAGE.md)。
 
 **已可阅读的交互课程：**
 
 | 学习专题 | 可以观察什么 | 在线入口 |
 | --- | --- | --- |
 | **SGLang 推理全景** | 面向初学者，理解请求、P/D 与 Transformer、KV 复用、合并与分离部署、调度与延迟。五节内容，每节都有交互实验。 | [进入推理全景](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html) |
+| **普通请求运行时** | 区分前端、调度与反分词进程；单步比较正常生成、排队取消、执行中取消和输入验证失败，观察请求行与 KV 的不同生命周期。 | [进入运行时课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/request-runtime/) |
 | **PD Prefill 请求旅程** | 跟随请求走完 PD 分离下的 Prefill：握手准入、切 chunk、组 batch、三级前向、KV 交接与资源释放。比较正常、等待、取消和部分 PP 失败的分支。 | [请求生命周期](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-lifecycle/) |
 | **PD Prefill 与 PP 调度** | 同一轮为何“算 M3、收 M1”？追踪多个 batch 在 PP=3 中的交错执行，查看 CPU、GPU、通信与缓存事件之间的依赖。 | [快速入门](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html) · [依赖分析](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/) · [源码说明](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/notes.html) |
 

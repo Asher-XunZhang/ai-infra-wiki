@@ -12,6 +12,8 @@
 
 ## 入门主线
 
+理解 P/D 后，可用 [普通请求运行时交互课程](../pages/sglang/request-runtime/index.html) 与 [完整笔记](runtime/SGLang%20普通请求运行时与资源生命周期学习文档.md) 连接前端、调度、执行、回程和资源收尾。
+
 1. 不熟悉推理时，先体验 [SGLang 推理全景交互专题](../pages/sglang/inference-overview/journey.html) 或读 [推理全景学习指南](runtime/SGLang%20推理全景学习指南.md)，再补充 [推理基础](<../llm-inference/foundations/README.md>) 或 [源码课程基础篇](<source-study/00-foundations/01-推理系统与SGLang职责地图.md>)。
 2. 读 [整体架构与心智模型](<source-study/architecture/README.md>)，先看 M01、M03，认清模块和请求。
 3. 进入 [请求、调度与执行主链](<runtime/README.md>)，先读调度总览、请求生命周期，再按需深入预算。

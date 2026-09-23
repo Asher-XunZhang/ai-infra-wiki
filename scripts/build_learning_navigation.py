@@ -19,7 +19,8 @@ STAGES = [
 MODULES = [
     ('system-overview', '推理系统全景', 'foundations', False, [
         ('sglang/inference-overview/journey.html', '一条请求怎样变成回答', 'SGLang · 入门')]),
-    ('request-runtime', '请求生命周期与运行时架构', 'foundations', True, []),
+    ('request-runtime', '请求生命周期与运行时架构', 'foundations', False, [
+        ('sglang/request-runtime/index.html', '一条请求穿过哪些进程与对象', 'SGLang · 入门')]),
     ('model-execution', '模型执行、硬件与算子', 'instance', False, [
         ('sglang/inference-overview/transformer.html', 'P / D 在 Transformer 里做什么', 'SGLang · 入门')]),
     ('kv-memory', 'KV Cache 与内存管理', 'instance', False, [
@@ -158,7 +159,7 @@ def build(check=False):
                 page.write_text(result, encoding='utf-8')
     if stale:
         raise SystemExit('Navigation is stale; run scripts/build_learning_navigation.py: ' + ', '.join(stale))
-    print(f'{"Checked" if check else "Generated"} shared framework navigation: {len(targets)} pages, 5 stages, 12 modules, 10 courses.')
+    print(f'{"Checked" if check else "Generated"} shared framework navigation: {len(targets)} pages, 5 stages, 12 modules, {len(targets) - 1} courses.')
 
 
 if __name__ == '__main__':

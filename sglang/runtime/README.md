@@ -20,6 +20,7 @@
 | 顺序 | 资料 | 阅读定位 | 学习重点 |
 | --- | --- | --- | --- |
 | 起步 | [SGLang 推理全景学习指南](<SGLang 推理全景学习指南.md>) · [交互专题](../../pages/sglang/inference-overview/journey.html) | 零基础入口 | 从 P/D、Transformer 与 KV 走到部署差异、调度和延迟。 |
+| 入门桥接 | [普通请求运行时与资源生命周期](<SGLang 普通请求运行时与资源生命周期学习文档.md>) · [交互课程](../../pages/sglang/request-runtime/index.html) | 主线 | 区分进程、对象与 batch，单步比较正常结束、两类取消和缓存归属。 |
 | 1 | [SGLang 调度机制总览与学习路线](<SGLang 调度机制总览与学习路线.md>) | 起步 | 先区分路由、排序、准入和执行时序。 |
 | 2 | [SGLang 调度器请求生命周期与重叠调度](<SGLang 调度器请求生命周期与重叠调度学习文档.md>) | 主线 | 从普通循环走到 Overlap、FutureMap 和结果处理。 |
 | 3 | [SGLang Chunked Prefill 与调度器显存预算](<SGLang Chunked Prefill 与调度器显存预算学习文档.md>) | 深入 | 理解 chunk 额度与请求、KV、显存预算的共同约束。 |

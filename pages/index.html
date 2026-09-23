@@ -29,7 +29,11 @@
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#system-overview">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/inference-overview/journey.html">一条请求怎样变成回答</a>
 </div></details>
-<a class="course-link" data-module="request-runtime" href="./#request-runtime"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong><small>预留模块</small></span></a>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="./#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/request-runtime/index.html">一条请求穿过哪些进程与对象</a>
+</div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-instance">
 <summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
@@ -115,12 +119,12 @@
               <p class="module-prerequisite">先修：无需推理基础</p>
               <div class="module-entry"><a href="sglang/inference-overview/journey.html">开始学习 · SGLang 推理全景 →</a><details class="module-lessons"><summary>查看已有基础课程（跨模块）</summary><ol><li><a href="sglang/inference-overview/journey.html">一条请求怎样变成回答</a></li><li><a href="sglang/inference-overview/transformer.html">P / D 在 Transformer 里做什么</a></li><li><a href="sglang/inference-overview/kv-cache.html">KV：模型留给下一轮的记忆</a></li><li><a href="sglang/inference-overview/scheduling.html">多请求怎样共享一次执行</a></li><li><a href="sglang/inference-overview/deployment.html">合并部署与 PD 分离</a></li></ol></details></div>
             </article>
-            <article id="request-runtime" class="lesson-card module-card" data-coverage="planned">
-              <div class="card-top"><span class="card-number">02</span><span class="module-status planned">预留模块</span></div>
+            <article id="request-runtime" class="lesson-card module-card" data-coverage="available">
+              <div class="card-top"><span class="card-number">02</span><span class="module-status available">已有课程</span></div>
               <h4>请求生命周期与运行时架构</h4><p class="module-question">从接入到结束，请求经过谁？</p>
               <p>API、分词、请求对象、队列、执行、采样、流式返回，以及取消和资源释放。</p>
               <p class="module-prerequisite">先修：推理系统全景</p>
-              <div class="module-entry"><p class="module-pending">待建设：普通请求的完整生命周期。现有 PD Prefill 旅程放在分离部署中深入阅读。</p></div>
+              <div class="module-entry"><a href="sglang/request-runtime/">开始学习 · 普通请求运行时 →</a><p class="module-related">进程与对象地图；正常生成、排队取消、执行中取消和输入验证失败的单步实验。</p></div>
             </article>
           </div>
         </section>
