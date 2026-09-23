@@ -2,6 +2,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const courses=[
+ ['sglang/communication/index.html','communication','distributed'],
  ['sglang/parallelism/index.html','parallelism','distributed'],
  ['sglang/request-runtime/index.html','request-runtime','foundations'],
  ['sglang/inference-overview/journey.html','system-overview','foundations'],
@@ -26,9 +27,9 @@ const courses=[
   const expectedModules=await signature();assert.equal(expectedModules.length,12);
   assert.equal(await page.locator('.framework-stage').count(),5);
   assert.equal(await page.locator('.module-card').count(),12);
-  assert.equal(await page.locator('.module-card[data-coverage=planned]').count(),3);
+  assert.equal(await page.locator('.module-card[data-coverage=planned]').count(),2);
   assert.equal(await page.locator('a[href="#"],a:not([href]),button[disabled]').count(),0);
-  assert.match(await page.locator('#communication').innerText(),/预留模块[\s\S]*待建设[\s\S]*关联案例/);
+  assert.match(await page.locator('#communication').innerText(),/已有课程[\s\S]*开始学习/);
   assert.equal(await page.locator('#advanced-generation a,#serving-operations a').count(),0);
   assert.deepEqual(await page.locator('a[href^="#"]').evaluateAll(links=>links.filter(a=>!document.getElementById(a.hash.slice(1))).map(a=>a.hash)),[]);
   for(const group of await page.locator('.topic-group').all()){
@@ -38,7 +39,8 @@ const courses=[
    await summary.focus();await page.keyboard.press('Enter');assert.equal(await group.locator('nav').isVisible(),false);
    await page.keyboard.press('Space');assert.equal(await group.locator('nav').isVisible(),true);
   }
-  await page.locator('.site-sidebar [data-module=communication]').click();
+  await page.locator('.site-sidebar [data-module=communication] > summary').click();
+  await page.locator('.site-sidebar [data-module=communication] .module-overview-link').click();
   await page.waitForURL(url=>url.hash==='#communication');assert.equal(await page.locator('#communication:target').count(),1);
   const lessons=page.locator('#system-overview .module-lessons');
   await lessons.locator('summary').focus();await page.keyboard.press('Enter');assert.equal(await lessons.locator('ol').isVisible(),true);

@@ -23,6 +23,10 @@
 | 2 | [SGLang 数据并行、负载均衡与专家并行边界](<SGLang 数据并行、负载均衡与专家并行边界学习文档.md>) | 起步 | 区分普通 DP、Gateway、DP Attention 和 EP/EPLB。 |
 | 3 | [SGLang Pipeline Parallel 模式](<SGLang Pipeline Parallel 模式学习文档.md>) | 深入 | 跟随请求理解 PP 层切分、microbatch 和反馈回路。 |
 
+## 通信主线
+
+完成分工概览后阅读 [SGLang 通信与传输机制](<SGLang 通信与传输机制学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/communication/)。从消息、P2P 张量与 collective 进入 KV 页映射，再区分传输完成、Decode 就绪和失败回收。
+
 ## 对应源码课程
 
 需要系统读代码时，从下面的课程入口衔接。课程与专题可能采用不同固定提交，阅读前分别核对文首基线。

@@ -62,7 +62,11 @@
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#parallelism">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/parallelism/index.html">多张卡，究竟切开了什么？</a>
 </div></details>
-<a class="course-link" data-module="communication" href="./#communication"><span class="course-number">07</span><span><strong>通信与传输</strong><small>预留模块</small></span></a>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="./#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/communication/index.html">数据传过去，何时才算可用？</a>
+</div></details>
 <details class="module-nav" data-module="disaggregation">
 <summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#disaggregation">模块目标与学习路线 ↗</a>
@@ -162,10 +166,10 @@
               <h4>并行与执行拓扑</h4><p class="module-question">多张卡怎样分担工作与状态？</p><p>rank、进程组、TP / PP / DP / EP / CP、负载分工与组合约束。</p><p class="module-prerequisite">先修：模型执行、KV 与调度基础</p>
               <div class="module-entry"><a href="sglang/parallelism/">开始学习 · 并行分工与执行拓扑 →</a><p class="module-related">用权重分块、流水线、请求路由、专家任务和因果矩阵观察五种分工。</p></div>
             </article>
-            <article id="communication" class="lesson-card module-card" data-coverage="planned">
-              <div class="card-top"><span class="card-number">07</span><span class="module-status planned">预留模块</span></div>
+            <article id="communication" class="lesson-card module-card" data-coverage="available">
+              <div class="card-top"><span class="card-number">07</span><span class="module-status available">已有课程</span></div>
               <h4>通信与传输</h4><p class="module-question">组件间传什么，何时才可以使用？</p><p>控制消息、张量通信、collective、KV 搬运、同机与跨机路径、RDMA、完成与回收。</p><p class="module-prerequisite">先修：内存基础、并行与 rank 概览</p>
-              <div class="module-entry"><p class="module-pending">待建设：通用通信与传输课程。</p><a href="sglang/pd-dataflow/index.html">关联案例 · PD 的三条通路 →</a></div>
+              <div class="module-entry"><a href="sglang/communication/">开始学习 · 从发送到可用 →</a><p class="module-related">用消息交接、数字交换、物理页映射与就绪门槛区分四种机制。</p></div>
             </article>
             <article id="disaggregation" class="lesson-card module-card" data-coverage="partial">
               <div class="card-top"><span class="card-number">08</span><span class="module-status partial">部分内容</span></div>

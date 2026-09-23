@@ -52,3 +52,7 @@
 收录 SGLang 的启动、请求、调度、Worker/Runner 与执行提交主链，包括 CUDA Graph 等执行机制。实例外服务治理按需归 serving-operations。
 
 后续文章先加入阅读表，标明先修、定位和学习重点。当形成多篇相互关联且需要独立导航的子主题时，再建立子目录；跨主题内容保留一份正文，由相关 README 交叉引用。
+
+## 通信机制衔接
+
+[SGLang 通信与传输机制](<../parallelism/SGLang 通信与传输机制学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/communication/)：通过消息交接、collective、KV 页映射与就绪 / 回收门槛区分各层责任。文章使用独立固定提交，不替换本目录资料的历史基线。

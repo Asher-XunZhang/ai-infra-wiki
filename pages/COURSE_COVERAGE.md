@@ -20,7 +20,7 @@ Pages 按五层十二模块组织。页面正文围绕机制与源码展开；�
 | 04 KV Cache 与内存管理 | [KV 入门](sglang/inference-overview/kv-cache.html)，KV 位置与复用 | 补物理页、逻辑映射、共享与驱逐的资源视图 |
 | 05 调度与批处理 | [批处理](sglang/inference-overview/scheduling.html)，batch 与调度演示 | 补准入预算、长短请求与回撤边界 |
 | 06 并行与执行拓扑 | [并行分工](sglang/parallelism/index.html)，TP 算例、PP 时间格、DP 路由、EP 任务和 CP 因果矩阵 | 已补独立课程与固定源码锚点；复杂组合和 backend 约束连接深入章节 |
-| 07 通信与传输 | PD 数据流可交叉阅读 | 建立 IPC、collective、点对点、KV 传输的独立主线；区分控制消息、激活与 KV；补握手、就绪与失败边界 |
+| 07 通信与传输 | [通信机制](sglang/communication/index.html)，消息 / 张量交接、三种 collective、KV 页映射、就绪与失败回收 | 已补独立课程和固定源码锚点；硬件传输实现与真实性能实验保留为深入方向 |
 | 08 分离部署与分布式状态交接 | [部署入门](sglang/inference-overview/deployment.html)、[PD 旅程](sglang/pd-prefill-lifecycle/index.html)、[数据流](sglang/pd-dataflow/index.html) | 复核通信模块衔接，保留交接条件、资源持有与历史假设 |
 | 09 模型结构与高级生成 | 仓内模型支持与高级生成源码章节 | 补模型状态差异、约束生成、草拟 / 验证 / 接受 / 回退的可视化入门 |
 | 10 服务部署与运行治理 | 仓内服务治理源码章节 | 补实例启动、健康检查、路由、背压、超时取消与退出的可视化闭环 |
@@ -43,3 +43,8 @@ Pages 按五层十二模块组织。页面正文围绕机制与源码展开；�
 
 - `node scripts/test_parallelism.cjs`：TP 数值、PP 前后级依赖、DP 单一归属、EP 任务守恒、CP 查询覆盖与因果配对数；设置 `SGLANG_SOURCE_DIR` 可核对 11 个固定源码锚点。
 - `node scripts/test_parallelism_browser.cjs`：五种机制、参数变化、步骤、播放与重置、键盘、减少动态效果、手机与桌面布局、深浅主题、无 JS 阅读。
+
+## 通信课程的验证
+
+- `node scripts/test_communication.cjs`：算子输出、页合并覆盖、源端完成与 ACK 去重、元数据 / rank / 缓存依赖；设置 `SGLANG_SOURCE_DIR` 额外核对固定源码锚点。
+- `node scripts/test_communication_browser.cjs`：四种机制及分支、移动端与桌面、深浅主题、运动方向、减少动态效果、键盘、播放和无 JS 阅读。

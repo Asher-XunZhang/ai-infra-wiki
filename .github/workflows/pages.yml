@@ -21,6 +21,7 @@ on:
       - 'scripts/test_inference_overview.cjs'
       - 'scripts/test_request_runtime.cjs'
       - 'scripts/test_parallelism.cjs'
+      - 'scripts/test_communication.cjs'
       - 'scripts/pp_source_baseline.py'
       - 'scripts/check_pp_source.py'
       - '.github/workflows/pages.yml'
@@ -64,6 +65,7 @@ jobs:
           node scripts/test_inference_overview.cjs
           node scripts/test_request_runtime.cjs
           node scripts/test_parallelism.cjs
+          node scripts/test_communication.cjs
       - name: Build pages with content-versioned assets
         run: python3 scripts/build_pages.py
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
