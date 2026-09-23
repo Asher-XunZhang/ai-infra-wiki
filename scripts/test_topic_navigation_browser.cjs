@@ -2,6 +2,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const courses=[
+ ['sglang/kv-memory/index.html','kv-memory','instance'],
  ['sglang/model-execution/index.html','model-execution','instance'],
  ['sglang/performance-engineering/index.html','performance','practice'],
  ['sglang/serving-operations/index.html','serving-operations','serving'],
@@ -64,12 +65,14 @@ const courses=[
   assert.match(page.url(),/journey.html/);
   assert.deepEqual(await signature(),expectedModules,'entering a lesson retains the entire framework');
   await page.locator('[data-module=kv-memory] > summary').click();
-  await page.locator('[data-module=kv-memory] .lesson-link').click();await page.waitForLoadState('load');
+  await page.locator('[data-module=kv-memory] .lesson-link').first().click();await page.waitForLoadState('load');
   assert.match(page.url(),/kv-cache.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/04 KV Cache/);
   await page.locator('[data-topic=framework-practice]>summary').click();
   const wasOpen=await page.locator('[data-topic=framework-practice]').evaluate(e=>e.open);
   await page.reload();assert.equal(await page.locator('[data-topic=framework-practice]').evaluate(e=>e.open),wasOpen);
   // The framework pager follows the module sequence, not the old five-page topic order.
+  await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
+  assert.match(page.url(),/kv-memory\/index.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/04 KV Cache/);
   await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
   assert.match(page.url(),/scheduling.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 调度/);
   for(const [route,module,stage] of courses){

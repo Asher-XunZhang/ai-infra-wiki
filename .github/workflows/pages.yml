@@ -26,6 +26,7 @@ on:
       - 'scripts/test_serving.cjs'
       - 'scripts/test_performance.cjs'
       - 'scripts/test_execution.cjs'
+      - 'scripts/test_kv_memory.cjs'
       - 'scripts/pp_source_baseline.py'
       - 'scripts/check_pp_source.py'
       - '.github/workflows/pages.yml'
@@ -74,6 +75,7 @@ jobs:
           node scripts/test_serving.cjs
           node scripts/test_performance.cjs
           node scripts/test_execution.cjs
+          node scripts/test_kv_memory.cjs
       - name: Build pages with content-versioned assets
         run: python3 scripts/build_pages.py
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5

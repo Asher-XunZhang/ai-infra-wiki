@@ -61,6 +61,8 @@
 
 [执行分层与硬件机制](<runtime/SGLang 执行分层与硬件机制学习文档.md>) 连接模型层、Runner、具体算子与图重放。
 
+[KV 映射与共享回收](<kv-cache/SGLang KV 映射与共享回收学习文档.md>) 用物理页与共享关系连接请求映射、缓存保护和驱逐。
+
 ## 按目标选择路线
 
 - **多卡与分离部署**：[并行拓扑与负载分工](<parallelism/README.md>) → [分离部署与状态交接](<disaggregation/README.md>)。

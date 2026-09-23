@@ -25,7 +25,8 @@ MODULES = [
         ('sglang/inference-overview/transformer.html', 'P / D 在 Transformer 里做什么', 'SGLang · 入门'),
         ('sglang/model-execution/index.html', '一批输入，怎样变成设备上的计算？', 'SGLang · 执行机制')]),
     ('kv-memory', 'KV Cache 与内存管理', 'instance', False, [
-        ('sglang/inference-overview/kv-cache.html', 'KV：模型留给下一轮的记忆', 'SGLang · 入门')]),
+        ('sglang/inference-overview/kv-cache.html', 'KV：模型留给下一轮的记忆', 'SGLang · 入门'),
+        ('sglang/kv-memory/index.html', 'KV 放在哪里，又在何时回收？', 'SGLang · 缓存机制')]),
     ('scheduling', '调度与批处理', 'instance', False, [
         ('sglang/inference-overview/scheduling.html', '多请求怎样共享一次执行', 'SGLang · 入门')]),
     ('parallelism', '并行与执行拓扑', 'distributed', False, [

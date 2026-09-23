@@ -13,6 +13,10 @@
 - [推理基础](<../../llm-inference/foundations/README.md>)
 - [请求、调度与执行主链](<../runtime/README.md>)
 
+## 映射与共享回收主线
+
+先读 [KV 映射与共享回收](<SGLang KV 映射与共享回收学习文档.md>)，配合 [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/kv-memory/) 观察尾页续写、整页命中、共享保护与驱逐。先修为 KV 计算与普通请求运行时；随后按问题进入下方前缀缓存、分层存储或混合状态资料。
+
 ## 阅读顺序
 
 首轮读前三篇即可。Mooncake 与 HiCache 源码是存储支线；Unified 是混合状态支线，建议配合通用模型结构专题阅读。

@@ -49,6 +49,7 @@
 | 学习专题 | 可以观察什么 | 在线入口 |
 | --- | --- | --- |
 | **SGLang 推理全景** | 理解请求、P/D 与 Transformer、KV 复用、合并与分离部署、调度与延迟。五节内容，每节都有交互实验。 | [进入推理全景](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html) |
+| **KV 映射与共享回收** | 用尾页槽位、前缀匹配与共享页，观察请求结束、可驱逐和归还池内的区别。 | [进入缓存机制课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/kv-memory/) |
 | **普通请求运行时** | 区分前端、调度与反分词进程；沿泳道箭头观察正常生成、排队取消、执行中取消和输入验证失败，用资源槽位理解请求行与 KV 的不同生命周期。 | [进入运行时课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/request-runtime/) |
 | **并行分工与执行拓扑** | 分别观察 TP 权重切分与合并、PP 流水线、DP 请求分配、EP 专家任务与 CP 因果工作量。 | [进入并行课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/parallelism/) |
 | **通信与传输** | 用消息交接、collective 算例、KV 页映射和就绪门槛，区分发送、完成、可用与回收。 | [进入通信课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/communication/) |
