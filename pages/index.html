@@ -18,35 +18,72 @@
 </header>
 <div class="site-layout">
   <aside class="site-sidebar" aria-label="学习导航">
-    <details class="sidebar-menu" open>
-      <summary>学习导航 <span aria-hidden="true">⌄</span></summary>
-      <div class="sidebar-content">
-        <a class="overview-link" href="./" aria-current="page">学习首页 <span aria-hidden="true">↗</span></a>
-        <details class="topic-group" data-topic="framework-foundations">
-          <summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
-          <nav aria-label="建立全局"><a class="course-link" href="#system-overview"><span class="course-number">01</span><span><strong>推理系统全景</strong></span></a><a class="course-link" href="#request-runtime"><span class="course-number">02</span><span><strong>请求生命周期与运行时</strong><small>预留模块</small></span></a></nav>
-        </details>
-        <details class="topic-group" data-topic="framework-instance">
-          <summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
-          <nav aria-label="理解单实例"><a class="course-link" href="#model-execution"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span></a><a class="course-link" href="#kv-memory"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span></a><a class="course-link" href="#scheduling"><span class="course-number">05</span><span><strong>调度与批处理</strong></span></a></nav>
-        </details>
-        <details class="topic-group" data-topic="framework-distributed">
-          <summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
-          <nav aria-label="扩展到多卡多机"><a class="course-link" href="#parallelism"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span></a><a class="course-link" href="#communication"><span class="course-number">07</span><span><strong>通信与传输</strong><small>预留模块 · 有关联案例</small></span></a><a class="course-link" href="#disaggregation"><span class="course-number">08</span><span><strong>分离部署与状态交接</strong></span></a></nav>
-        </details>
-        <details class="topic-group" data-topic="framework-serving">
-          <summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
-          <nav aria-label="理解功能与服务"><a class="course-link" href="#advanced-generation"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong><small>预留模块</small></span></a><a class="course-link" href="#serving-operations"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong><small>预留模块</small></span></a></nav>
-        </details>
-        <details class="topic-group" data-topic="framework-practice">
-          <summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
-          <nav aria-label="综合验证"><a class="course-link" href="#performance"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span></a><a class="course-link" href="#case-studies"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span></a></nav>
-        </details>
-        <div class="sidebar-note"><span class="status-dot"></span> 一张框架，逐步深入<p>先理解单实例，再连接多卡多机；模型、服务与性能按目标选读。</p></div>
-        <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 <span aria-hidden="true">↗</span></a>
-      </div>
-    </details>
-  </aside>
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="./" aria-current="page">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="./#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/inference-overview/journey.html">一条请求怎样变成回答</a>
+</div></details>
+<a class="course-link" data-module="request-runtime" href="./#request-runtime"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong><small>预留模块</small></span></a>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="./#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/inference-overview/transformer.html">P / D 在 Transformer 里做什么</a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="./#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/inference-overview/kv-cache.html">KV：模型留给下一轮的记忆</a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="./#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/inference-overview/scheduling.html">多请求怎样共享一次执行</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<a class="course-link" data-module="parallelism" href="./#parallelism"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span></a>
+<a class="course-link" data-module="communication" href="./#communication"><span class="course-number">07</span><span><strong>通信与传输</strong><small>预留模块</small></span></a>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="./#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/inference-overview/deployment.html">合并部署与 PD 分离</a>
+<a class="lesson-link" href="sglang/pd-prefill-lifecycle/index.html">PD Prefill 请求生命周期</a>
+<a class="lesson-link" href="sglang/pd-dataflow/index.html">数据流、状态与队列</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<a class="course-link" data-module="advanced-generation" href="./#advanced-generation"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong><small>预留模块</small></span></a>
+<a class="course-link" data-module="serving-operations" href="./#serving-operations"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong><small>预留模块</small></span></a>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<a class="course-link" data-module="performance" href="./#performance"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span></a>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="./#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/pd-prefill-pp-loop/quick.html">PP loop 快速入门</a>
+<a class="lesson-link" href="sglang/pd-prefill-pp-loop/index.html">依赖分析与耗时场景</a>
+<a class="lesson-link" href="sglang/pd-prefill-pp-loop/notes.html">PP loop 源码阅读</a>
+</div></details>
+</nav></details>
+<div class="sidebar-note"><span class="status-dot"></span> 一张框架，逐步深入<p>先理解单实例，再连接多卡多机；模型、服务与性能按目标选读。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside>
   <div class="site-content">
     <main id="main-content" tabindex="-1">
       <header class="home-hero">
@@ -76,7 +113,7 @@
               <h4 id="overview-topic-title">推理系统全景</h4><p class="module-question">一次回答是怎样生成的？</p>
               <p>从 token、Prefill / Decode 和 Transformer 出发，把 KV、调度与部署放回同一张图。</p>
               <p class="module-prerequisite">先修：无需推理基础</p>
-              <div class="module-entry"><a href="sglang/inference-overview/journey.html">开始学习 · SGLang 推理全景 →</a><details class="module-lessons"><summary>查看五节入门课程</summary><ol><li><a href="sglang/inference-overview/journey.html">一条请求怎样变成回答</a></li><li><a href="sglang/inference-overview/transformer.html">P / D 在 Transformer 里做什么</a></li><li><a href="sglang/inference-overview/kv-cache.html">KV：模型留给下一轮的记忆</a></li><li><a href="sglang/inference-overview/deployment.html">合并部署与 PD 分离</a></li><li><a href="sglang/inference-overview/scheduling.html">多请求怎样共享一次执行</a></li></ol></details></div>
+              <div class="module-entry"><a href="sglang/inference-overview/journey.html">开始学习 · SGLang 推理全景 →</a><details class="module-lessons"><summary>查看已有基础课程（跨模块）</summary><ol><li><a href="sglang/inference-overview/journey.html">一条请求怎样变成回答</a></li><li><a href="sglang/inference-overview/transformer.html">P / D 在 Transformer 里做什么</a></li><li><a href="sglang/inference-overview/kv-cache.html">KV：模型留给下一轮的记忆</a></li><li><a href="sglang/inference-overview/scheduling.html">多请求怎样共享一次执行</a></li><li><a href="sglang/inference-overview/deployment.html">合并部署与 PD 分离</a></li></ol></details></div>
             </article>
             <article id="request-runtime" class="lesson-card module-card" data-coverage="planned">
               <div class="card-top"><span class="card-number">02</span><span class="module-status planned">预留模块</span></div>

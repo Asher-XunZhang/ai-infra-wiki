@@ -25,8 +25,8 @@
     if(event.data?.type==='learning-theme-ready'&&[...document.querySelectorAll('iframe')].some(frame=>event.source===frame.contentWindow))sendTheme();
   });
   applyTheme();
-  document.querySelectorAll('.topic-group').forEach(group=>{
-    const key='ai-infra-topic-'+group.dataset.topic;
+  document.querySelectorAll('.topic-group,.module-nav').forEach(group=>{
+    const key=group.classList.contains('module-nav')?'ai-infra-module-'+group.dataset.module:'ai-infra-topic-'+group.dataset.topic;
     const current=Boolean(group.querySelector('[aria-current="page"]'));
     if(current)group.open=true;
     else {

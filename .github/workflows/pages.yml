@@ -6,6 +6,7 @@ on:
     paths:
       - 'pages/**'
       - 'scripts/build_pages.py'
+      - 'scripts/build_learning_navigation.py'
       - 'scripts/build_pp_scenarios.py'
       - 'scripts/build_pp_quick_data.py'
       - 'scripts/pp_timing_model.py'

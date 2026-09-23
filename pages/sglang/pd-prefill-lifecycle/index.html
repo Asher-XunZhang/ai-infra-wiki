@@ -3,9 +3,78 @@
 <title>一条请求的生命周期 · PD Prefill · PP=3</title><meta name="description" content="沿一条请求走完 PD 分离下 PP=3 的 Prefill：接入、bootstrap 共识、三级前向、结果回流、KV 传输与释放。">
 <link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="lifecycle.css"><script src="../../site.js" defer></script><script src="scenario-engine.js" defer></script><script src="operation-lab.js" defer></script><script src="reading-companion.js" defer></script><script src="player.js" defer></script><link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23216c51%22%2F%3E%3Ctext%20x%3D%228%22%20y%3D%2224%22%20fill%3D%22white%22%20font-family%3D%22Georgia%2Cserif%22%20font-weight%3D%22bold%22%20font-size%3D%2227%22%3Ea%3C%2Ftext%3E%3C%2Fsvg%3E"><link rel="stylesheet" href="../../diagrams.css"></head>
 <body data-page="lifecycle"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header>
-<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航"><details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary><div class="sidebar-content"><a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a><details class="topic-group" data-topic="overview"><summary><span class="topic-heading"><span class="nav-label">SGLANG · 专题00</span><strong class="sidebar-title">SGLang 推理全景</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary><nav aria-label="推理全景专题"><a class="course-link" href="../../sglang/inference-overview/journey.html"><span class="course-number">01</span><span><strong>一条请求怎样变成回答</strong></span></a><a class="course-link" href="../../sglang/inference-overview/transformer.html"><span class="course-number">02</span><span><strong>P / D 在 Transformer 里做什么</strong></span></a><a class="course-link" href="../../sglang/inference-overview/kv-cache.html"><span class="course-number">03</span><span><strong>KV：模型留给下一轮的记忆</strong></span></a><a class="course-link" href="../../sglang/inference-overview/deployment.html"><span class="course-number">04</span><span><strong>合并部署与 PD 分离</strong></span></a><a class="course-link" href="../../sglang/inference-overview/scheduling.html"><span class="course-number">05</span><span><strong>多请求怎样共享一次执行</strong></span></a></nav></details><details class="topic-group" data-topic="lifecycle" open><summary><span class="topic-heading"><span class="nav-label">SGLANG · 专题 01</span><strong class="sidebar-title">一条请求的 Prefill 旅程</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary><nav aria-label="请求生命周期专题"><a class="course-link" href="../../sglang/pd-prefill-lifecycle/index.html" aria-current="page"><span class="course-number">01</span><span><strong>请求生命周期</strong><small>从接入、三级前向到 KV 释放</small></span></a></nav></details><details class="topic-group" data-topic="pp-loop"><summary><span class="topic-heading"><span class="nav-label">SGLANG · 专题 02</span><strong class="sidebar-title">PD Prefill 与 PP 调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary><nav aria-label="专题阅读顺序"><a class="course-link" href="../../sglang/pd-prefill-pp-loop/quick.html"><span class="course-number">01</span><span><strong>快速入门</strong><small>先看 loop 与 batch 的关系</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/index.html"><span class="course-number">02</span><span><strong>依赖分析</strong><small>追踪每一步的前置条件</small></span></a><a class="course-link" href="../../sglang/pd-prefill-pp-loop/notes.html"><span class="course-number">03</span><span><strong>源码阅读</strong><small>把图中的行为对应到代码</small></span></a><a class="course-link" href="../../sglang/pd-dataflow/index.html"><span class="course-number">04</span><span><strong>数据流状态机</strong><small>观察等待、分块与失败的变化</small></span></a></nav></details><div class="sidebar-note"><span class="status-dot"></span> 基于固定源码的学习材料<p>先理解整体，再追踪依赖，最后回到源码。</p></div><a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 <span aria-hidden="true">↗</span></a></div></details></aside><div class="site-content">
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/journey.html">一条请求怎样变成回答</a>
+</div></details>
+<a class="course-link" data-module="request-runtime" href="../../#request-runtime"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong><small>预留模块</small></span></a>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/transformer.html">P / D 在 Transformer 里做什么</a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">KV：模型留给下一轮的记忆</a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">多请求怎样共享一次执行</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed" open>
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<a class="course-link" data-module="parallelism" href="../../#parallelism"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span></a>
+<a class="course-link" data-module="communication" href="../../#communication"><span class="course-number">07</span><span><strong>通信与传输</strong><small>预留模块</small></span></a>
+<details class="module-nav" data-module="disaggregation" open>
+<summary class="module-heading" aria-current="location"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">合并部署与 PD 分离</a>
+<a class="lesson-link" href="index.html" aria-current="page">PD Prefill 请求生命周期</a>
+<a class="lesson-link" href="../pd-dataflow/index.html">数据流、状态与队列</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<a class="course-link" data-module="advanced-generation" href="../../#advanced-generation"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong><small>预留模块</small></span></a>
+<a class="course-link" data-module="serving-operations" href="../../#serving-operations"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong><small>预留模块</small></span></a>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<a class="course-link" data-module="performance" href="../../#performance"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span></a>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">PP loop 快速入门</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">依赖分析与耗时场景</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP loop 源码阅读</a>
+</div></details>
+</nav></details>
+<div class="sidebar-note"><span class="status-dot"></span> 一张框架，逐步深入<p>先理解单实例，再连接多卡多机；模型、服务与性能按目标选读。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content">
 
-<main id="main-content" tabindex="-1"><header class="lesson-header"><div class="lesson-kicker"><span class="eyebrow">SGLANG / PD PREFILL</span><span class="lesson-count">专题 01 · 请求生命周期</span></div>
+<main id="main-content" tabindex="-1"><!-- learning-context:start -->
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">学习框架</a><span aria-hidden="true">/</span><a href="../../#stage-distributed">第三层 · 扩展到多卡多机</a><span aria-hidden="true">/</span><a href="../../#disaggregation">08 分离部署与分布式状态交接</a><span aria-hidden="true">/</span><span aria-current="page">PD Prefill 请求生命周期</span></nav>
+<!-- learning-context:end -->
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#disaggregation">模块 08 / 分离部署与分布式状态交接</a><span class="lesson-count">SGLang · PD＋PP 案例</span></div>
 <h1>一条请求，走完 PP=3 的 Prefill</h1><p>在同一张流水线图中，操控请求 <strong>R</strong> 从接入到释放。观察它此刻到达哪个模块、流动的是什么数据，以及各级仍持有哪些资源。</p>
 <div class="meta-tags"><span>PP = 3</span><span>1–4 条请求 · 12 个机制阶段</span><span>正常 / 等待 / 部分失败</span><a href="#baseline">源码 <code>279339f113</code> · 查看范围 ↓</a></div></header>
 <section class="pipeline-player" id="pipeline-player" aria-labelledby="pipeline-heading">
@@ -193,5 +262,5 @@
 <tr><th>验证边界</th><td>静态源码走读与页面验证；步骤是因果阅读顺序，非实际 trace、性能仿真或同时发生的全局快照</td></tr></tbody></table></div>
 <p>本页固定当前读取的提交 <code>279339f113</code>。loop 入门 / 依赖图已统一到同一提交，但使用 HiCache host-hit 场景；可借它们理解调度交错，不能直接照搬其 L# 编号、耗时或缓存步骤。</p>
 <p><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/disaggregation/PD%20Prefill%20PP%3D3%20请求生命周期源码学习文档.md">阅读对应 Markdown 文档 ↗</a></p></section>
-<nav class="lesson-pager" aria-label="相关学习"><a href="../pd-prefill-pp-loop/quick.html"><small>观察循环交错</small><strong>快速入门 · loop 与 batch</strong><span>切换到调度器视角</span></a><a class="next" href="../pd-prefill-pp-loop/notes.html"><small>继续阅读</small><strong>PP loop 源码说明 →</strong><span>同一源码基线，不同示例配置</span></a></nav></main>
+<nav class="lesson-pager" aria-label="框架内继续学习"><a href="../inference-overview/deployment.html"><small>本模块 · 上一节</small><strong>← 合并部署与 PD 分离</strong></a><a class="next" href="../pd-dataflow/index.html"><small>本模块 · 下一节</small><strong>数据流、状态与队列 →</strong></a></nav></main>
 <footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><span>源码因果走读 · 非运行 trace</span><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>
