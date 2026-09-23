@@ -19,8 +19,9 @@
 
 | 顺序 | 资料 | 阅读定位 | 学习重点 |
 | --- | --- | --- | --- |
-| 1 | [SGLang 数据并行、负载均衡与专家并行边界](<SGLang 数据并行、负载均衡与专家并行边界学习文档.md>) | 起步 | 区分普通 DP、Gateway、DP Attention 和 EP/EPLB。 |
-| 2 | [SGLang Pipeline Parallel 模式](<SGLang Pipeline Parallel 模式学习文档.md>) | 深入 | 跟随请求理解 PP 层切分、microbatch 和反馈回路。 |
+| 1 | [SGLang 并行分工与执行拓扑](<SGLang 并行分工与执行拓扑学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/parallelism/) | 主线 | 用权重分块、流水线、请求路由、专家任务与因果矩阵比较 TP / PP / DP / EP / CP。 |
+| 2 | [SGLang 数据并行、负载均衡与专家并行边界](<SGLang 数据并行、负载均衡与专家并行边界学习文档.md>) | 起步 | 区分普通 DP、Gateway、DP Attention 和 EP/EPLB。 |
+| 3 | [SGLang Pipeline Parallel 模式](<SGLang Pipeline Parallel 模式学习文档.md>) | 深入 | 跟随请求理解 PP 层切分、microbatch 和反馈回路。 |
 
 ## 对应源码课程
 

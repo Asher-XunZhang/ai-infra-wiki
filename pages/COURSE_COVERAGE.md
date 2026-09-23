@@ -19,7 +19,7 @@ Pages 按五层十二模块组织。页面正文围绕机制与源码展开；�
 | 03 模型执行、硬件与算子 | [Transformer](sglang/inference-overview/transformer.html)，逐层执行与 attention 图 | 补 Worker / Runner / 后端 / kernel 的层次与硬件瓶颈直觉 |
 | 04 KV Cache 与内存管理 | [KV 入门](sglang/inference-overview/kv-cache.html)，KV 位置与复用 | 补物理页、逻辑映射、共享与驱逐的资源视图 |
 | 05 调度与批处理 | [批处理](sglang/inference-overview/scheduling.html)，batch 与调度演示 | 补准入预算、长短请求与回撤边界 |
-| 06 并行与执行拓扑 | 现有 PP 案例可交叉阅读 | 建立 TP / PP / DP / EP 的独立拓扑入门；按输入、权重、激活和状态的切分讲解 |
+| 06 并行与执行拓扑 | [并行分工](sglang/parallelism/index.html)，TP 算例、PP 时间格、DP 路由、EP 任务和 CP 因果矩阵 | 已补独立课程与固定源码锚点；复杂组合和 backend 约束连接深入章节 |
 | 07 通信与传输 | PD 数据流可交叉阅读 | 建立 IPC、collective、点对点、KV 传输的独立主线；区分控制消息、激活与 KV；补握手、就绪与失败边界 |
 | 08 分离部署与分布式状态交接 | [部署入门](sglang/inference-overview/deployment.html)、[PD 旅程](sglang/pd-prefill-lifecycle/index.html)、[数据流](sglang/pd-dataflow/index.html) | 复核通信模块衔接，保留交接条件、资源持有与历史假设 |
 | 09 模型结构与高级生成 | 仓内模型支持与高级生成源码章节 | 补模型状态差异、约束生成、草拟 / 验证 / 接受 / 回退的可视化入门 |
@@ -38,3 +38,8 @@ Pages 按五层十二模块组织。页面正文围绕机制与源码展开；�
 - `python3 -B scripts/check_learning_docs.py`、`python3 -B scripts/build_learning_navigation.py --check`、`python3 -B scripts/build_pages.py`：文档引用、共享导航与发布构建。
 
 浏览器测试复用现有 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL` 环境变量，默认站点为 `http://127.0.0.1:8765/`。可先以 `python3 -m http.server 8765 --directory .pages-dist` 预览构建输出。网页与源码模型验证不替代 SGLang 实际运行或性能实验。
+
+## 并行课程的验证
+
+- `node scripts/test_parallelism.cjs`：TP 数值、PP 前后级依赖、DP 单一归属、EP 任务守恒、CP 查询覆盖与因果配对数；设置 `SGLANG_SOURCE_DIR` 可核对 11 个固定源码锚点。
+- `node scripts/test_parallelism_browser.cjs`：五种机制、参数变化、步骤、播放与重置、键盘、减少动态效果、手机与桌面布局、深浅主题、无 JS 阅读。

@@ -2,6 +2,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const courses=[
+ ['sglang/parallelism/index.html','parallelism','distributed'],
  ['sglang/request-runtime/index.html','request-runtime','foundations'],
  ['sglang/inference-overview/journey.html','system-overview','foundations'],
  ['sglang/inference-overview/transformer.html','model-execution','instance'],
