@@ -78,8 +78,10 @@ const courses=[
    assert.equal(await page.locator('[data-topic=overview],[data-topic=lifecycle],[data-topic=pp-loop]').count(),0,route);
    for(const width of [1440,390,320]){
     await page.setViewportSize({width,height:900});
+    // MediaQueryList change is delivered asynchronously after viewport resize.
+    await page.waitForFunction(()=>document.querySelector('.sidebar-menu').open===!matchMedia('(max-width:900px)').matches, null, {timeout:5000});
     if(width<901){
-     assert.equal(await page.locator('.sidebar-menu').evaluate(e=>e.open),false);
+     assert.equal(await page.locator('.sidebar-menu').evaluate(e=>e.open),false,`${route} ${width}`);
      await page.locator('.sidebar-menu>summary').click();
     }
     assert.equal(await page.locator(`[data-module=${module}] .lesson-link[aria-current=page]`).isVisible(),true);
