@@ -21,6 +21,7 @@
 | --- | --- | --- | --- |
 | 1 | [Context Parallel、PCP 与 DCP 总体](<Context Parallel、PCP 与 DCP 总体学习文档.md>) | 起步 | 建立 CP、PCP、DCP 的整体坐标系。 |
 | 2 | [PCP 长上下文 Prefill 并行](<PCP 长上下文 Prefill 并行学习文档.md>) | 深入 | 追踪长上下文 Prefill 的 token 分片与注意力计算。 |
+| 3 | [3D 并行训练的慢 Rank 定位](<../performance-engineering/3D 并行训练的慢 Rank 定位与通信等待传播学习文档.md>) | 案例：排障 | 先补 TP/PP/DP 坐标与组映射，再沿跨组依赖识别晚到者；正文归性能工程。 |
 
 ## 自测与下一步
 
