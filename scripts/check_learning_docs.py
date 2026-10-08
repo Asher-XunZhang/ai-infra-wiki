@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
-SUPPORT_DIRECTORIES = {"images", "pages", "scripts"}
+SUPPORT_DIRECTORIES = {"images", "pages", "scripts", "tests"}
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif", ".ico"}
 INLINE = re.compile(r'!?\[[^\]\n]*\]\((<[^>\n]+>|[^)\n]+)\)')
 REFERENCE = re.compile(r'^\s*\[[^\]\n]+\]:\s*(<[^>\n]+>|\S+)', re.M)

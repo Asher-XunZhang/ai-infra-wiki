@@ -16,7 +16,7 @@
 
 实线高亮表示大步骤中包含所选 batch 的操作，虚线表示多请求共享操作，均不表示整段耗时独属于它。归属来自原模型的明确对象及实际 release 名单；未列出请求成员的通用 bootstrap / 终态轮询不额外猜测归属。
 
-loop、进度带与高亮归属使用同一份详细版模型。仓库内 `scripts/build_pp_quick_data.py` 从详细页面提取模型并生成 `quick-data.js`，检查 48 次本地 loop 的连续覆盖、全部五份 batch 在三个流水级上的生命周期、激活先后及 release 所属；重建命令为 `python3 scripts/build_pp_quick_data.py`。这是图的逻辑一致性检查，没有新增 GPU 运行验证。
+loop、进度带与高亮归属使用同一份详细版模型。仓库内 `tests/pp/build_pp_quick_data.py` 从详细页面提取模型并生成 `quick-data.js`，检查 48 次本地 loop 的连续覆盖、全部五份 batch 在三个流水级上的生命周期、激活先后及 release 所属；重建命令为 `python3 tests/pp/build_pp_quick_data.py`。这是图的逻辑一致性检查，没有新增 GPU 运行验证。
 
 ### 切换耗时场景进行对照
 
@@ -42,7 +42,7 @@ loop、进度带与高亮归属使用同一份详细版模型。仓库内 `scrip
 
 所有场景固定 PP=3、depth=0、L1–L3 准入、L4–L8 每轮选择一份 batch，未模拟真实请求流、动态选批、后端竞争、逐层 CUDA 行为或失败恢复，不能计算吞吐、加速比或穷举真实工况。本文后续走读中的固定时间数字仍对应原示例。
 
-场景生成器为 `scripts/pp_timing_model.py`；用 `python3 -B scripts/build_pp_scenarios.py` 重建两种视图的数据与场景目录。生成时校验原示例完全一致、所有前置先完成、五份 batch 的跨级前向与 KV / release 顺序，以及生命周期完整覆盖。GitHub Pages 发布流程会重新运行这些校验。
+场景生成器为 `tests/pp/pp_timing_model.py`；用 `python3 -B tests/pp/build_pp_scenarios.py` 重建两种视图的数据与场景目录。生成时校验原示例完全一致、所有前置先完成、五份 batch 的跨级前向与 KV / release 顺序，以及生命周期完整覆盖。GitHub Pages 发布流程会重新运行这些校验。
 
 ### 自定义各阶段时间
 
@@ -60,7 +60,7 @@ loop、进度带与高亮归属使用同一份详细版模型。仓库内 `scrip
 
 “恢复起始预设”恢复进入自定义时的预设参数。成功计算的参数写入当前链接，因此刷新、复制链接、从快速入门跳转到依赖分析都能保留实验；固定 PP、请求集合和准入安排等模型边界仍然成立。零时长仅表示教学模型中的理想化操作，不表示实际硬件可以零开销完成。
 
-浏览器依赖模板由同一个 Python 模型在求解前导出为 `timing-template.js`，`timing-engine.js` 在 Web Worker 中重新计算；两页共用 `scenarios.js` 编辑器。`python3 -B scripts/test_pp_custom_timing.py` 需要 Node.js，逐项比较十个预设、混合自定义参数和零时长情况下的浏览器 / Python 结果，并复用源码顺序检查。它验证的是示意模型的一致性，不是 GPU 实测。
+浏览器依赖模板由同一个 Python 模型在求解前导出为 `timing-template.js`，`timing-engine.js` 在 Web Worker 中重新计算；两页共用 `scenarios.js` 编辑器。`python3 -B tests/pp/test_pp_custom_timing.py` 需要 Node.js，逐项比较十个预设、混合自定义参数和零时长情况下的浏览器 / Python 结果，并复用源码顺序检查。它验证的是示意模型的一致性，不是 GPU 实测。
 
 这张图展示 **SGLang 在 Prefill / Decode 分离部署时，Prefill 侧使用流水线并行（PP）的调度逻辑**。Prefill 处理输入 prompt、执行前向并产生 KV cache；Decode 接收所需 KV 后继续逐 token 生成。图中还包含 Prefill 为此推进的 bootstrap 状态、结果处理、KV 发送及请求释放。
 
@@ -211,7 +211,7 @@ CPU 已经提交异步操作，不代表对应设备流已经执行到那里：
 
 [打开交互图](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/)。
 
-依赖模型验证了前驱约束、每级五份前向（共 15 段）、本级 KV 提交晚于前向完成，以及五份请求的各级 release。2026-09-17 新增的 `scripts/test_pp_timing_model.py` 对全部十个场景检查 H2D / D2H 的必要源码依赖及合并 ACK 路径，并通过故意删除依赖的反例确认检查能拦住原来的遗漏。构建同时重建详细图与入门图数据。以上属于源码静态复核和教学模型检查，未运行 SGLang GPU 推理。
+依赖模型验证了前驱约束、每级五份前向（共 15 段）、本级 KV 提交晚于前向完成，以及五份请求的各级 release。2026-09-17 新增的 `tests/pp/test_pp_timing_model.py` 对全部十个场景检查 H2D / D2H 的必要源码依赖及合并 ACK 路径，并通过故意删除依赖的反例确认检查能拦住原来的遗漏。构建同时重建详细图与入门图数据。以上属于源码静态复核和教学模型检查，未运行 SGLang GPU 推理。
 
 ## 8. 怎样查看每一步的前置关系
 

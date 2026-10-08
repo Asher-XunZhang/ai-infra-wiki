@@ -867,6 +867,6 @@ PP0/PP1/PP2 都在 Prefill 侧。M# 是 batch；L# 是本级槽位迭代。同�
 
 ## 4. 维护与验证
 
-文字维护在 `pages/sglang/pd-prefill-pp-loop/step-guide.js`。运行 `python -B scripts/build_pp_step_guide.py` 同步 iframe 和本文；`build_pp_scenarios.py` 重建场景时也会同步。
+文字维护在 `pages/sglang/pd-prefill-pp-loop/step-guide.js`。运行 `python -B tests/pp/build_pp_step_guide.py` 同步 iframe 和本文；`build_pp_scenarios.py` 重建场景时也会同步。
 
 `test_pp_step_guide.py` 检查全部操作、等待、空轮、ACK、release、发送者分支和自定义时间场景，防止说明沿用错误的 batch 或固定轮次。`check_pp_source.py --source-root "$SGLANG_SOURCE_ROOT"` 检查固定基线与逐行源码锚点；`SGLANG_SOURCE_ROOT` 由读者设置为官方仓库的检出目录。

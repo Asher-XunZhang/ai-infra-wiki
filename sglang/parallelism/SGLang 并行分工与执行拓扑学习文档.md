@@ -175,7 +175,7 @@ TP=2、PP=2 的分组是 TP `[0,1]`、`[2,3]`，PP `[0,2]`、`[1,3]`。[S3] 同�
 | S13 | `model_executor/model_runner_components/layer_setup.py`，L153–159：PP 有效层范围 |
 | S14 | `mem_cache/kv_cache_configurator.py::_build_mha_kv_pool`，L1975：本级 MHA KV 池 |
 
-路径均相对于源码仓库的 `python/sglang/srt/`。脚本 `scripts/test_parallelism.cjs` 可通过 `SGLANG_SOURCE_DIR` 读取固定 Git 对象，核对交互使用的行号与函数；不修改源码仓库。
+路径均相对于源码仓库的 `python/sglang/srt/`。脚本 `tests/pages/test_parallelism.cjs` 可通过 `SGLANG_SOURCE_DIR` 读取固定 Git 对象，核对交互使用的行号与函数；不修改源码仓库。
 
 [S1]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/layers/linear.py#L492
 [S2]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/layers/linear.py#L1612

@@ -90,7 +90,7 @@ flowchart LR
 
 `scenario-engine.js` 负责参数校验、选批、分块和每请求 × 每 PP 的状态转换；每个原子动作保存前后快照。重复步骤压缩只改变展示分组，不删掉计算、通信或清理动作。`player.js` 管理一个播放时钟、两个进度控制和 URL；`operation-lab.js` 从同一个快照渲染当前数据变化；静态 HTML 保留拓扑、12 阶段说明和源码锚点。
 
-`node scripts/test_prefill_lifecycle.cjs` 检查具体切分结果、共享预算、连续区间、压缩/展开等价性、局部失败与等待、资源引用、本地复查保护和反向跳转。`scripts/test_prefill_lifecycle_browser.cjs` 另用真实 Chromium 检查参数生成、链接恢复、自动播放、段内控制、窄屏布局和减少动态效果。验证对象是教学引擎与网页，没有运行 SGLang / GPU / NCCL / Mooncake；动作顺序是符合所讲依赖的线性阅读顺序，不是完整并发调度模拟器。浏览器测试需要 Playwright、Chromium 和本地静态服务；默认地址为 `http://127.0.0.1:8765/sglang/pd-prefill-lifecycle/`，可用 `PREFILL_TEST_URL` 覆盖。
+`node tests/pages/test_prefill_lifecycle.cjs` 检查具体切分结果、共享预算、连续区间、压缩/展开等价性、局部失败与等待、资源引用、本地复查保护和反向跳转。`tests/pages/test_prefill_lifecycle_browser.cjs` 另用真实 Chromium 检查参数生成、链接恢复、自动播放、段内控制、窄屏布局和减少动态效果。验证对象是教学引擎与网页，没有运行 SGLang / GPU / NCCL / Mooncake；动作顺序是符合所讲依赖的线性阅读顺序，不是完整并发调度模拟器。浏览器测试需要 Playwright、Chromium 和本地静态服务；默认地址为 `http://127.0.0.1:8765/sglang/pd-prefill-lifecycle/`，可用 `PREFILL_TEST_URL` 覆盖。
 
 ### 三块示例：从同一序列切出不同区间
 

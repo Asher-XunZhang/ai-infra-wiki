@@ -4,13 +4,9 @@
 
 读取与制作日期：2026-10-08。图 01–26 为整理者绘制的 SVG 教学图，以数字带、表格抽行、读取权重、向量相加、数轴和逐 token 缓存展示机制。所有数值是人工例子，不是模型运行截图或性能数据。图 01 使用经典 Encoder–Decoder / Post-LN；图 22 单独展示 Pre-RMSNorm / RoPE / 门控 FFN 的 Decoder-only 结构示例，不代表全部语言模型。图 20 的权重与数字为手工构造。图 23 展开经典架构的全部主要推理模块，MoE 仅标为可选 FFN 替换；图 24–26 拆解专家选择、汇总和参数口径。
 
-生成脚本：[build_transformer_diagrams.py](../../scripts/build_transformer_diagrams.py)。脚本只依赖 Python 标准库，不读取作者机器上的外部源码路径。
+当前直接维护本目录 SVG 与本来源说明。一次性专用绘图生成器已清理；需要复现原始生成过程时，可查阅[固定提交中的生成器](https://github.com/Asher-XunZhang/ai-infra-wiki/blob/d95a982380b2136e4b0ab3e6dd356084a459df06/scripts/build_transformer_diagrams.py)，并在该版本的完整仓库中运行。它不是当前工作区提供的命令。
 
-```bash
-python3 -B scripts/build_transformer_diagrams.py
-python3 -B scripts/build_transformer_diagrams.py --check
-python3 -B scripts/check_learning_docs.py
-```
+修改图后核对正文数值、图意、文字布局与不同屏宽阅读，并执行 `python3 -B scripts/check_learning_docs.py` 检查路径；来源和原图校验值继续保留。
 
 ## 视觉表达参考
 

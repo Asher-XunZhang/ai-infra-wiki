@@ -43,8 +43,8 @@
 
 ### 验证与数据变化
 
-- 完整源码 commit 集中在 `scripts/pp_source_baseline.py`；详细图源码 URL 使用所加载模型的 commit，快速入门继承同一数据版本。
-- `python -B scripts/check_pp_source.py --source-root "$SGLANG_SOURCE_ROOT"` 检查本地 HEAD、源码工作区、42 个精确模型锚点、页面源码链接范围，以及缓存入口、准入、ACK 和成功清理的 AST 调用顺序。它不导入 SGLang，也不证明完整运行时行为。
+- 完整源码 commit 集中在 `tests/pp/pp_source_baseline.py`；详细图源码 URL 使用所加载模型的 commit，快速入门继承同一数据版本。
+- `python -B tests/pp/check_pp_source.py --source-root "$SGLANG_SOURCE_ROOT"` 检查本地 HEAD、源码工作区、42 个精确模型锚点、页面源码链接范围，以及缓存入口、准入、ACK 和成功清理的 AST 调用顺序。它不导入 SGLang，也不证明完整运行时行为。
 - 五项模型回归覆盖十个场景的必要依赖、删除 H2D/D2H/准入边的反例，以及拒绝旧版本数据派生当前入门图。
 - 原示例仍有 48 次可见本地 loop 和 15 段 GPU 前向；拆出准入提交后，已解析模型节点从 1604 变为 1619。
 - 原 0.48 u 选批占位拆为 0.36 u 预检查和 0.12 u 提交，中间保留回载准备；十个场景主要前向、KV 与最终释放时间保持一致。这是教学占位分配，不是版本间性能没有变化的证据。

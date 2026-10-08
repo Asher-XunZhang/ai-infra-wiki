@@ -194,6 +194,6 @@ R0=[0,12)，拆为 B1=[0,4)、B2=[4,8)、B3=[8,12)。每级保留先前前缀 KV
 | 终态交集与本地复查 | [scheduler_pp_mixin.py:667](https://github.com/sgl-project/sglang/blob/882577451e764a515df2a386a055012e8f075a16/python/sglang/srt/managers/scheduler_pp_mixin.py#L667)、[prefill.py:972](https://github.com/sgl-project/sglang/blob/882577451e764a515df2a386a055012e8f075a16/python/sglang/srt/disaggregation/prefill.py#L972) |
 | 纯中间块跳过结果通信 | [scheduler_pp_mixin.py:44](https://github.com/sgl-project/sglang/blob/882577451e764a515df2a386a055012e8f075a16/python/sglang/srt/managers/scheduler_pp_mixin.py#L44) |
 
-运行 `node scripts/test_pd_dataflow.cjs` 检查全部场景的状态、区间、终态清理和资源保留不变量。设置 `SGLANG_SOURCE_ROOT` 为本地开源源码检出目录时，还会以 `git show` 只读校验全部固定提交的精确源码锚点，不要求切换当前分支。
+运行 `node tests/pages/test_pd_dataflow.cjs` 检查全部场景的状态、区间、终态清理和资源保留不变量。设置 `SGLANG_SOURCE_ROOT` 为本地开源源码检出目录时，还会以 `git show` 只读校验全部固定提交的精确源码锚点，不要求切换当前分支。
 
 这些检查验证教学模型与所引用代码位置，不替代 SGLang 运行验证。页面未模拟真实后端错误传播、网络延迟、底层传输完成与物理页复用安全性。

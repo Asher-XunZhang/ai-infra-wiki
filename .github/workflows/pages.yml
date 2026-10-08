@@ -5,32 +5,8 @@ on:
     branches: [main]
     paths:
       - 'pages/**'
-      - 'scripts/build_pages.py'
-      - 'scripts/build_learning_navigation.py'
-      - 'scripts/build_pp_scenarios.py'
-      - 'scripts/build_pp_quick_data.py'
-      - 'scripts/pp_timing_model.py'
-      - 'scripts/test_pp_timing_model.py'
-      - 'scripts/test_pp_custom_timing.py'
-      - 'scripts/test_pp_dependency_view.py'
-      - 'scripts/build_pp_step_guide.py'
-      - 'scripts/test_pp_step_guide.py'
-      - 'scripts/test_prefill_lifecycle.cjs'
-      - 'scripts/test_pd_dataflow.cjs'
-      - 'scripts/test_pd_queues.cjs'
-      - 'scripts/test_inference_overview.cjs'
-      - 'scripts/test_request_runtime.cjs'
-      - 'scripts/test_parallelism.cjs'
-      - 'scripts/test_communication.cjs'
-      - 'scripts/test_generation.cjs'
-      - 'scripts/test_serving.cjs'
-      - 'scripts/test_performance.cjs'
-      - 'scripts/test_execution.cjs'
-      - 'scripts/test_kv_memory.cjs'
-      - 'scripts/test_scheduling.cjs'
-      - 'scripts/test_system_overview.cjs'
-      - 'scripts/pp_source_baseline.py'
-      - 'scripts/check_pp_source.py'
+      - 'scripts/**'
+      - 'tests/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -54,32 +30,34 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Validate documentation
+        run: python3 -B scripts/check_learning_docs.py
       - name: Validate and rebuild timing scenarios
         run: |
-          python3 -B scripts/test_pp_timing_model.py
-          python3 -B scripts/build_pp_scenarios.py
-          python3 -B scripts/test_pp_custom_timing.py
-          python3 -B scripts/test_pp_dependency_view.py
-          python3 -B scripts/test_pp_step_guide.py
-          python3 -B scripts/check_pp_source.py
+          python3 -B tests/pp/test_pp_timing_model.py
+          python3 -B tests/pp/build_pp_scenarios.py
+          python3 -B tests/pp/test_pp_custom_timing.py
+          python3 -B tests/pp/test_pp_dependency_view.py
+          python3 -B tests/pp/test_pp_step_guide.py
+          python3 -B tests/pp/check_pp_source.py
       - name: Validate parameterized request lifecycle
         run: |
-          node scripts/test_prefill_lifecycle.cjs
-          node scripts/test_pd_dataflow.cjs
-          node scripts/test_pd_queues.cjs
+          node tests/pages/test_prefill_lifecycle.cjs
+          node tests/pages/test_pd_dataflow.cjs
+          node tests/pages/test_pd_queues.cjs
       - name: Validate beginner inference teaching models
         run: |
-          node scripts/test_inference_overview.cjs
-          node scripts/test_request_runtime.cjs
-          node scripts/test_parallelism.cjs
-          node scripts/test_communication.cjs
-          node scripts/test_generation.cjs
-          node scripts/test_serving.cjs
-          node scripts/test_performance.cjs
-          node scripts/test_execution.cjs
-          node scripts/test_kv_memory.cjs
-          node scripts/test_scheduling.cjs
-          node scripts/test_system_overview.cjs
+          node tests/pages/test_inference_overview.cjs
+          node tests/pages/test_request_runtime.cjs
+          node tests/pages/test_parallelism.cjs
+          node tests/pages/test_communication.cjs
+          node tests/pages/test_generation.cjs
+          node tests/pages/test_serving.cjs
+          node tests/pages/test_performance.cjs
+          node tests/pages/test_execution.cjs
+          node tests/pages/test_kv_memory.cjs
+          node tests/pages/test_scheduling.cjs
+          node tests/pages/test_system_overview.cjs
       - name: Build pages with content-versioned assets
         run: python3 scripts/build_pages.py
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5

@@ -42,7 +42,7 @@
 
 先走通单实例，再扩展到多卡多机；模型、服务与性能按目标选读。全站首页与课程页共用五层十二模块导航，每门课程有唯一的主要归属：请求生成属于推理全景，Transformer、KV、调度分别进入对应基础模块，部署与 PD Prefill 旅程归入分离部署，PP loop 成套演示归入综合案例。入门路线与关联模块可以引用同一页面，各页面保留自己的版本与适用范围。
 
-维护导航时修改 `scripts/build_learning_navigation.py` 中的模块与课程映射，再运行该脚本更新全部页面。Pages 构建会检查生成一致性，避免首页与课程页使用不同导航。逐模块的内容覆盖与补充范围见 [课程维护表](pages/COURSE_COVERAGE.md)。
+维护导航时修改 `scripts/build_learning_navigation.py` 中的模块与课程映射，再运行该脚本更新全部页面。Pages 构建会检查生成一致性，避免首页与课程页使用不同导航。逐模块的内容覆盖与补充范围见 [课程维护表](pages/COURSE_COVERAGE.md)。工具与测试分别见 [scripts](scripts/README.md) 和 [tests](tests/README.md)。
 
 **已可阅读的交互课程：**
 
@@ -179,7 +179,8 @@ ai-infra-wiki/
 ├── sglang/          # 按技术领域归档；source-study/ 保留分阶段课程
 ├── vllm/            # 运行时、缓存、并行、分离部署与性能
 ├── pages/           # 交互式学习网站与可视化页面
-├── scripts/         # 页面构建、场景生成与验证工具
+├── scripts/         # 全站构建、共享导航与文档校验工具
+├── tests/           # 教学模型、PP 与页面回归测试
 ├── images/          # 文档图片，按长期主题归档
 ├── AGENTS.md        # 文档方法论、图片规则与验证清单
 └── README.md        # 你现在看到的知识入口

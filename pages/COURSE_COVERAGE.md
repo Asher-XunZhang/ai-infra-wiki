@@ -31,64 +31,64 @@ Pages 按五层十二模块组织。页面正文围绕机制与源码展开；�
 
 ## 运行时课程的验证
 
-- `node scripts/test_request_runtime.cjs`：检查输出 / KV 位置关系、取消回告与资源释放的先后关系、未派发失败没有后端分配等教学不变量。
-- `SGLANG_SOURCE_DIR=<source-checkout> node scripts/test_request_runtime.cjs`：额外读取固定 Git 对象，校验每个交互源码锚点的行号与函数名。不会修改源码仓库。
-- `node scripts/test_request_runtime_browser.cjs`：验证精简视图 / 完整流程、消息逐跳运动、减少动态效果、四条路径、参数、播放 / 暂停 / 重置、键盘、深浅主题、320 / 390 / 768 / 1440 布局与无 JS 阅读。
-- `node scripts/test_topic_navigation_browser.cjs`：首页与全部课程的共享导航和跨模块入口。
+- `node tests/pages/test_request_runtime.cjs`：检查输出 / KV 位置关系、取消回告与资源释放的先后关系、未派发失败没有后端分配等教学不变量。
+- `SGLANG_SOURCE_DIR=<source-checkout> node tests/pages/test_request_runtime.cjs`：额外读取固定 Git 对象，校验每个交互源码锚点的行号与函数名。不会修改源码仓库。
+- `node tests/pages/test_request_runtime_browser.cjs`：验证精简视图 / 完整流程、消息逐跳运动、减少动态效果、四条路径、参数、播放 / 暂停 / 重置、键盘、深浅主题、320 / 390 / 768 / 1440 布局与无 JS 阅读。
+- `node tests/pages/test_topic_navigation_browser.cjs`：首页与全部课程的共享导航和跨模块入口。
 - `python3 -B scripts/check_learning_docs.py`、`python3 -B scripts/build_learning_navigation.py --check`、`python3 -B scripts/build_pages.py`：文档引用、共享导航与发布构建。
 
 浏览器测试复用现有 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL` 环境变量，默认站点为 `http://127.0.0.1:8765/`。可先以 `python3 -m http.server 8765 --directory .pages-dist` 预览构建输出。网页与源码模型验证不替代 SGLang 实际运行或性能实验。
 
 ## 并行课程的验证
 
-- `node scripts/test_parallelism.cjs`：TP 数值、PP 前后级依赖、DP 单一归属、EP 任务守恒、CP 查询覆盖与因果配对数；设置 `SGLANG_SOURCE_DIR` 可核对 11 个固定源码锚点。
-- `node scripts/test_parallelism_browser.cjs`：五种机制、参数变化、步骤、播放与重置、键盘、减少动态效果、手机与桌面布局、深浅主题、无 JS 阅读。
+- `node tests/pages/test_parallelism.cjs`：TP 数值、PP 前后级依赖、DP 单一归属、EP 任务守恒、CP 查询覆盖与因果配对数；设置 `SGLANG_SOURCE_DIR` 可核对 11 个固定源码锚点。
+- `node tests/pages/test_parallelism_browser.cjs`：五种机制、参数变化、步骤、播放与重置、键盘、减少动态效果、手机与桌面布局、深浅主题、无 JS 阅读。
 
 ## 通信课程的验证
 
-- `node scripts/test_communication.cjs`：算子输出、页合并覆盖、源端完成与 ACK 去重、元数据 / rank / 缓存依赖；设置 `SGLANG_SOURCE_DIR` 额外核对固定源码锚点。
-- `node scripts/test_communication_browser.cjs`：四种机制及分支、移动端与桌面、深浅主题、运动方向、减少动态效果、键盘、播放和无 JS 阅读。
+- `node tests/pages/test_communication.cjs`：算子输出、页合并覆盖、源端完成与 ACK 去重、元数据 / rank / 缓存依赖；设置 `SGLANG_SOURCE_DIR` 额外核对固定源码锚点。
+- `node tests/pages/test_communication_browser.cjs`：四种机制及分支、移动端与桌面、深浅主题、运动方向、减少动态效果、键盘、播放和无 JS 阅读。
 
 ## 生成课程的验证
 
-- `node scripts/test_generation.cjs`：状态检查点、连续接受前缀、输出与 KV 的偏移、规则语言与合法项选择；设置 `SGLANG_SOURCE_DIR` 核对固定源码锚点。
-- `node scripts/test_generation_browser.cjs`：三种机制与全部分支、参数、播放、键盘、减少动态效果、四档屏宽与深浅主题、无 JS 阅读。
+- `node tests/pages/test_generation.cjs`：状态检查点、连续接受前缀、输出与 KV 的偏移、规则语言与合法项选择；设置 `SGLANG_SOURCE_DIR` 核对固定源码锚点。
+- `node tests/pages/test_generation_browser.cjs`：三种机制与全部分支、参数、播放、键盘、减少动态效果、四档屏宽与深浅主题、无 JS 阅读。
 
 ## 服务课程的验证
 
-- `node scripts/test_serving.cjs`：健康证据、候选过滤、队列容量与请求守恒、超时边界、取消回告及退出升级；设置 `SGLANG_SOURCE_DIR` 核对固定锚点。
-- `node scripts/test_serving_browser.cjs`：四组机制、全部分支、消息方向、参数、播放、键盘、减少动态效果、四档屏宽与深浅主题、无 JS 阅读。
+- `node tests/pages/test_serving.cjs`：健康证据、候选过滤、队列容量与请求守恒、超时边界、取消回告及退出升级；设置 `SGLANG_SOURCE_DIR` 核对固定锚点。
+- `node tests/pages/test_serving_browser.cjs`：四组机制、全部分支、消息方向、参数、播放、键盘、减少动态效果、四档屏宽与深浅主题、无 JS 阅读。
 
 ## 性能课程的验证
 
-- `node scripts/test_performance.cjs`：许可内外计时、分包 ITL、TPOT 缺失、单变量收益与成功样本筛选；设置 `SGLANG_SOURCE_DIR` 核对固定锚点。
-- `node scripts/test_performance_browser.cjs`：四种图、全部分支与步骤、键盘和播放、四档宽度与两套主题、无 JS 阅读。
+- `node tests/pages/test_performance.cjs`：许可内外计时、分包 ITL、TPOT 缺失、单变量收益与成功样本筛选；设置 `SGLANG_SOURCE_DIR` 核对固定锚点。
+- `node tests/pages/test_performance_browser.cjs`：四种图、全部分支与步骤、键盘和播放、四档宽度与两套主题、无 JS 阅读。
 
 ## 执行课程的验证
 
-- `node scripts/test_execution.cjs`：图桶资格、真实请求守恒、补齐裁剪、矩阵成本与单资源变化；设置 `SGLANG_SOURCE_DIR` 检查固定源码锚点。
-- `node scripts/test_execution_browser.cjs`：执行数据交接、图资格分支、成本条比例、播放、键盘、减少动态效果、四档宽度与深浅主题、无 JS 阅读。
+- `node tests/pages/test_execution.cjs`：图桶资格、真实请求守恒、补齐裁剪、矩阵成本与单资源变化；设置 `SGLANG_SOURCE_DIR` 检查固定源码锚点。
+- `node tests/pages/test_execution_browser.cjs`：执行数据交接、图资格分支、成本条比例、播放、键盘、减少动态效果、四档宽度与深浅主题、无 JS 阅读。
 
 ## KV 课程的验证
 
-- `node scripts/test_kv_memory.cjs`：跨页边界、地址唯一性、写入先后、命中页对齐、缓存身份、共享保护与容量守恒；设置 `SGLANG_SOURCE_DIR` 核对固定源码锚点。
-- `node scripts/test_kv_memory_browser.cjs`：三种图与全部参数、保护分支、四档宽度与深浅主题、键盘与播放、无 JS 阅读。图无连续运动，步骤改变真实占用与连线。
+- `node tests/pages/test_kv_memory.cjs`：跨页边界、地址唯一性、写入先后、命中页对齐、缓存身份、共享保护与容量守恒；设置 `SGLANG_SOURCE_DIR` 核对固定源码锚点。
+- `node tests/pages/test_kv_memory_browser.cjs`：三种图与全部参数、保护分支、四档宽度与深浅主题、键盘与播放、无 JS 阅读。图无连续运动，步骤改变真实占用与连线。
 
 ## 调度课程的验证
 
-- `node scripts/test_scheduling.cjs`：排序与接纳分离、首条输入例外、KV 严格边界、临时保护释放、chunk 份额守恒、回撤后资源与输出历史；设置 `SGLANG_SOURCE_DIR` 核对固定源码。
-- `node scripts/test_scheduling_browser.cjs`：三种机制、全部参数与终止分支、四档屏宽和两套主题、播放与键盘、无 JS 阅读。
+- `node tests/pages/test_scheduling.cjs`：排序与接纳分离、首条输入例外、KV 严格边界、临时保护释放、chunk 份额守恒、回撤后资源与输出历史；设置 `SGLANG_SOURCE_DIR` 核对固定源码。
+- `node tests/pages/test_scheduling_browser.cjs`：三种机制、全部参数与终止分支、四档屏宽和两套主题、播放与键盘、无 JS 阅读。
 
 ## 系统全景课程的验证
 
-- `node scripts/test_system_overview.cjs`：采样与可见先后、KV / 输出偏移、TP 与 DP / PD 的副本关系、其余十一模块的关联；设置 `SGLANG_SOURCE_DIR` 核对固定源码锚点。
-- `node scripts/test_system_overview_browser.cjs`：两条逐步链路、三类拓扑、箭头方向、减少动态效果、播放与键盘、深浅主题和四档宽度、无 JS 阅读。
+- `node tests/pages/test_system_overview.cjs`：采样与可见先后、KV / 输出偏移、TP 与 DP / PD 的副本关系、其余十一模块的关联；设置 `SGLANG_SOURCE_DIR` 核对固定源码锚点。
+- `node tests/pages/test_system_overview_browser.cjs`：两条逐步链路、三类拓扑、箭头方向、减少动态效果、播放与键盘、深浅主题和四档宽度、无 JS 阅读。
 
 ## 分离部署的跨模块验证
 
-- `node scripts/test_inference_overview_browser.cjs`：部署静态图、P/D 两侧条件、默认折叠的对照表和四档布局。
-- `SGLANG_SOURCE_ROOT=<source-checkout> node scripts/test_pd_dataflow.cjs` 与 `node scripts/test_pd_queues.cjs`：按各自模型固定版本核对状态、资源与队列；前缀环境变量应分别传给需要源码核对的命令。
-- `node scripts/test_prefill_lifecycle.cjs` 与 `node scripts/test_prefill_lifecycle_browser.cjs`：正常、等待、分块与失败分支；跨模块链接不改变原模型语义。
+- `node tests/pages/test_inference_overview_browser.cjs`：部署静态图、P/D 两侧条件、默认折叠的对照表和四档布局。
+- `SGLANG_SOURCE_ROOT=<source-checkout> node tests/pages/test_pd_dataflow.cjs` 与 `node tests/pages/test_pd_queues.cjs`：按各自模型固定版本核对状态、资源与队列；前缀环境变量应分别传给需要源码核对的命令。
+- `node tests/pages/test_prefill_lifecycle.cjs` 与 `node tests/pages/test_prefill_lifecycle_browser.cjs`：正常、等待、分块与失败分支；跨模块链接不改变原模型语义。
 
 ## 2026-09-23 主线验收
 
