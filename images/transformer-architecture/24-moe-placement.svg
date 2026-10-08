@@ -1,0 +1,259 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1120" viewBox="0 0 1000 1120" role="img" aria-labelledby="title desc">
+<title id="title">24 · MoE：同一层，多几个可选的加工台 ★</title><desc id="desc">Attention 负责读上下文；MoE 在 FFN 的位置，为每个 token 选择加工网络。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="1000" height="1120" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">24  MoE：同一层，多几个可选的加工台 ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">Attention 负责读上下文；MoE 在 FFN 的位置，为每个 token 选择加工网络。</text>
+<path d="M32,113 L968,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="1098" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="45" y="162" font-size="28" font-weight="650" fill="#168574" text-anchor="start">先走共同的注意力、残差与归一化</text>
+<rect x="149" y="235" width="118" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="208.0" y="269" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">我</text>
+<rect x="431" y="235" width="118" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="490.0" y="269" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">喜欢</text>
+<rect x="713" y="235" width="118" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="772.0" y="269" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">猫</text>
+<text x="44" y="211" font-size="29" font-weight="650" fill="#8255b4" text-anchor="start">普通 Dense FFN</text>
+<path d="M208,286 L208,329" fill="none" stroke="#2870c5" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<path d="M145,367.2 L208.0,348.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,367.2 L208.0,364.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,367.2 L208.0,380.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,367.2 L208.0,396.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,367.2 L208.0,412.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,392.8 L208.0,348.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,392.8 L208.0,364.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,392.8 L208.0,380.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,392.8 L208.0,396.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,392.8 L208.0,412.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M208.0,348.0 L271,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M208.0,348.0 L271,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M208.0,364.0 L271,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M208.0,364.0 L271,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M208.0,380.0 L271,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M208.0,380.0 L271,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M208.0,396.0 L271,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M208.0,396.0 L271,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M208.0,412.0 L271,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M208.0,412.0 L271,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="145" cy="367.2" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="145" cy="392.8" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="208.0" cy="348.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="208.0" cy="364.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="208.0" cy="380.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="208.0" cy="396.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="208.0" cy="412.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="271" cy="367.2" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="271" cy="392.8" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="208" y="458" font-size="24" font-weight="400" fill="#8255b4" text-anchor="middle">同一套 FFN 参数</text>
+<path d="M490,286 L490,329" fill="none" stroke="#2870c5" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<path d="M427,367.2 L490.0,348.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M427,367.2 L490.0,364.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M427,367.2 L490.0,380.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M427,367.2 L490.0,396.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M427,367.2 L490.0,412.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M427,392.8 L490.0,348.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M427,392.8 L490.0,364.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M427,392.8 L490.0,380.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M427,392.8 L490.0,396.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M427,392.8 L490.0,412.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M490.0,348.0 L553,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M490.0,348.0 L553,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M490.0,364.0 L553,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M490.0,364.0 L553,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M490.0,380.0 L553,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M490.0,380.0 L553,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M490.0,396.0 L553,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M490.0,396.0 L553,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M490.0,412.0 L553,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M490.0,412.0 L553,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="427" cy="367.2" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="427" cy="392.8" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="490.0" cy="348.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="490.0" cy="364.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="490.0" cy="380.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="490.0" cy="396.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="490.0" cy="412.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="553" cy="367.2" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="553" cy="392.8" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="490" y="458" font-size="24" font-weight="400" fill="#8255b4" text-anchor="middle">同一套 FFN 参数</text>
+<path d="M772,286 L772,329" fill="none" stroke="#2870c5" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<path d="M709,367.2 L772.0,348.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M709,367.2 L772.0,364.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M709,367.2 L772.0,380.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M709,367.2 L772.0,396.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M709,367.2 L772.0,412.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M709,392.8 L772.0,348.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M709,392.8 L772.0,364.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M709,392.8 L772.0,380.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M709,392.8 L772.0,396.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M709,392.8 L772.0,412.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M772.0,348.0 L835,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M772.0,348.0 L835,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M772.0,364.0 L835,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M772.0,364.0 L835,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M772.0,380.0 L835,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M772.0,380.0 L835,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M772.0,396.0 L835,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M772.0,396.0 L835,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M772.0,412.0 L835,367.2" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M772.0,412.0 L835,392.8" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="709" cy="367.2" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="709" cy="392.8" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="772.0" cy="348.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="772.0" cy="364.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="772.0" cy="380.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="772.0" cy="396.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="772.0" cy="412.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="835" cy="367.2" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="835" cy="392.8" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="772" y="458" font-size="24" font-weight="400" fill="#8255b4" text-anchor="middle">同一套 FFN 参数</text>
+<text x="45" y="526" font-size="29" font-weight="650" fill="#8255b4" text-anchor="start">换成 MoE：先分配，再各自加工</text>
+<rect x="150" y="558" width="118" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="209.0" y="592" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">我</text>
+<text x="209" y="649" font-size="24" font-weight="400" fill="#c87917" text-anchor="middle">Router 选两位</text>
+<path d="M209,671 L140,740" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.45" marker-end="url(#arrow)"/>
+<path d="M209,671 L380,740" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.45" marker-end="url(#arrow)"/>
+<rect x="432" y="558" width="118" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="491.0" y="592" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">喜欢</text>
+<text x="491" y="649" font-size="24" font-weight="400" fill="#c87917" text-anchor="middle">Router 选两位</text>
+<path d="M491,671 L380,740" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.45" marker-end="url(#arrow)"/>
+<path d="M491,671 L860,740" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.45" marker-end="url(#arrow)"/>
+<rect x="714" y="558" width="118" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="773.0" y="592" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">猫</text>
+<text x="773" y="649" font-size="24" font-weight="400" fill="#c87917" text-anchor="middle">Router 选两位</text>
+<path d="M773,671 L620,740" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.45" marker-end="url(#arrow)"/>
+<path d="M773,671 L860,740" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.45" marker-end="url(#arrow)"/>
+<rect x="49" y="752" width="182" height="160" rx="12" fill="#f4f0f8" stroke="#8255b4" stroke-width="2"/>
+<text x="140" y="790" font-size="27" font-weight="650" fill="#8255b4" text-anchor="middle">专家 1</text>
+<path d="M88,831.0 L140.0,816.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M88,831.0 L140.0,828.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M88,831.0 L140.0,841.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M88,831.0 L140.0,853.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M88,831.0 L140.0,866.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M88,851.0 L140.0,816.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M88,851.0 L140.0,828.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M88,851.0 L140.0,841.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M88,851.0 L140.0,853.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M88,851.0 L140.0,866.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M140.0,816.0 L192,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M140.0,816.0 L192,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M140.0,828.5 L192,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M140.0,828.5 L192,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M140.0,841.0 L192,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M140.0,841.0 L192,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M140.0,853.5 L192,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M140.0,853.5 L192,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M140.0,866.0 L192,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M140.0,866.0 L192,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="88" cy="831.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="88" cy="851.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="140.0" cy="816.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="140.0" cy="828.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="140.0" cy="841.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="140.0" cy="853.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="140.0" cy="866.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="192" cy="831.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="192" cy="851.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="140" y="893" font-size="20" font-weight="400" fill="#192d42" text-anchor="middle">独立的 FFN 参数</text>
+<rect x="289" y="752" width="182" height="160" rx="12" fill="#f4f0f8" stroke="#8255b4" stroke-width="2"/>
+<text x="380" y="790" font-size="27" font-weight="650" fill="#8255b4" text-anchor="middle">专家 2</text>
+<path d="M328,831.0 L380.0,816.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M328,831.0 L380.0,828.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M328,831.0 L380.0,841.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M328,831.0 L380.0,853.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M328,831.0 L380.0,866.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M328,851.0 L380.0,816.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M328,851.0 L380.0,828.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M328,851.0 L380.0,841.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M328,851.0 L380.0,853.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M328,851.0 L380.0,866.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M380.0,816.0 L432,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M380.0,816.0 L432,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M380.0,828.5 L432,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M380.0,828.5 L432,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M380.0,841.0 L432,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M380.0,841.0 L432,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M380.0,853.5 L432,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M380.0,853.5 L432,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M380.0,866.0 L432,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M380.0,866.0 L432,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="328" cy="831.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="328" cy="851.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="380.0" cy="816.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="380.0" cy="828.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="380.0" cy="841.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="380.0" cy="853.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="380.0" cy="866.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="432" cy="831.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="432" cy="851.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="380" y="893" font-size="20" font-weight="400" fill="#192d42" text-anchor="middle">独立的 FFN 参数</text>
+<rect x="529" y="752" width="182" height="160" rx="12" fill="#f4f0f8" stroke="#8255b4" stroke-width="2"/>
+<text x="620" y="790" font-size="27" font-weight="650" fill="#8255b4" text-anchor="middle">专家 3</text>
+<path d="M568,831.0 L620.0,816.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M568,831.0 L620.0,828.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M568,831.0 L620.0,841.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M568,831.0 L620.0,853.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M568,831.0 L620.0,866.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M568,851.0 L620.0,816.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M568,851.0 L620.0,828.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M568,851.0 L620.0,841.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M568,851.0 L620.0,853.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M568,851.0 L620.0,866.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M620.0,816.0 L672,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M620.0,816.0 L672,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M620.0,828.5 L672,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M620.0,828.5 L672,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M620.0,841.0 L672,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M620.0,841.0 L672,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M620.0,853.5 L672,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M620.0,853.5 L672,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M620.0,866.0 L672,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M620.0,866.0 L672,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="568" cy="831.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="568" cy="851.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="620.0" cy="816.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="620.0" cy="828.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="620.0" cy="841.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="620.0" cy="853.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="620.0" cy="866.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="672" cy="831.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="672" cy="851.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="620" y="893" font-size="20" font-weight="400" fill="#192d42" text-anchor="middle">独立的 FFN 参数</text>
+<rect x="769" y="752" width="182" height="160" rx="12" fill="#f4f0f8" stroke="#8255b4" stroke-width="2"/>
+<text x="860" y="790" font-size="27" font-weight="650" fill="#8255b4" text-anchor="middle">专家 4</text>
+<path d="M808,831.0 L860.0,816.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M808,831.0 L860.0,828.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M808,831.0 L860.0,841.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M808,831.0 L860.0,853.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M808,831.0 L860.0,866.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M808,851.0 L860.0,816.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M808,851.0 L860.0,828.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M808,851.0 L860.0,841.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M808,851.0 L860.0,853.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M808,851.0 L860.0,866.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M860.0,816.0 L912,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M860.0,816.0 L912,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M860.0,828.5 L912,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M860.0,828.5 L912,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M860.0,841.0 L912,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M860.0,841.0 L912,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M860.0,853.5 L912,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M860.0,853.5 L912,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M860.0,866.0 L912,831.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M860.0,866.0 L912,851.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="808" cy="831.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="808" cy="851.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="860.0" cy="816.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="860.0" cy="828.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="860.0" cy="841.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="860.0" cy="853.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="860.0" cy="866.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="912" cy="831.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="912" cy="851.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="860" y="893" font-size="20" font-weight="400" fill="#192d42" text-anchor="middle">独立的 FFN 参数</text>
+<rect x="32" y="952" width="936" height="100" rx="8" fill="#f6f3fa" stroke="none" stroke-width="2"/>
+<rect x="32" y="952" width="5" height="100" rx="0" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="52" y="988" font-size="26" font-weight="650" fill="#8255b4" text-anchor="start">每个 token 分别汇总自己的专家输出</text>
+<text x="52" y="1026" font-size="23" font-weight="400" fill="#192d42" text-anchor="start">图中各 token 选不同的两位；不是把三个 token 混成一个。</text>
+</g></svg>

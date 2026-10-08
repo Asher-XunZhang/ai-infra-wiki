@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="780" viewBox="0 0 840 780" role="img" aria-labelledby="title desc">
+<title id="title">12 · 归一化放前面、放后面，有什么不同？ ★</title><desc id="desc">顺着主线看位置，再看旁路：残差始终要认清加回谁。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="780" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">12  归一化放前面、放后面，有什么不同？ ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">顺着主线看位置，再看旁路：残差始终要认清加回谁。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="758" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="223" y="173" font-size="31" font-weight="650" fill="#2870c5" text-anchor="middle">Post-LN</text>
+<rect x="142" y="210" width="52" height="52" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<text x="168.0" y="246.85" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="197" y="210" width="52" height="52" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<text x="223.0" y="246.85" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<rect x="252" y="210" width="52" height="52" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<text x="278.0" y="246.85" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">3</text>
+<text x="332" y="245" font-size="27" font-weight="400" fill="#2870c5" text-anchor="start">x</text>
+<path d="M223,263 L223,303" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="223" cy="337" r="33" fill="#dde8f6" stroke="#2870c5" stroke-width="2"/>
+<text x="223" y="345.5" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">F</text>
+<path d="M223,369 L223,437" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="223" cy="471" r="33" fill="#dde8f6" stroke="#2870c5" stroke-width="2"/>
+<text x="223" y="479.5" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<path d="M223,503 L223,571" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="223" cy="605" r="33" fill="#dde8f6" stroke="#2870c5" stroke-width="2"/>
+<text x="223" y="613.5" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">LN</text>
+<path d="M138,236 L84,236 L84,471 L186,471" fill="none" stroke="#c87917" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="79" y="405" font-size="22" font-weight="400" fill="#c87917" text-anchor="end">保留 x</text>
+<text x="223" y="695" font-size="27" font-weight="650" fill="#2870c5" text-anchor="middle">LN(x + F(x))</text>
+<text x="620" y="173" font-size="31" font-weight="650" fill="#8255b4" text-anchor="middle">Pre-LN</text>
+<rect x="539" y="210" width="52" height="52" rx="6" fill="#d3c4e5" stroke="none" stroke-width="2"/>
+<text x="565.0" y="246.85" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="594" y="210" width="52" height="52" rx="6" fill="#b499d2" stroke="none" stroke-width="2"/>
+<text x="620.0" y="246.85" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<rect x="649" y="210" width="52" height="52" rx="6" fill="#a180c7" stroke="none" stroke-width="2"/>
+<text x="675.0" y="246.85" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">3</text>
+<text x="729" y="245" font-size="27" font-weight="400" fill="#8255b4" text-anchor="start">x</text>
+<path d="M620,263 L620,303" fill="none" stroke="#8255b4" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="620" cy="337" r="33" fill="#ebe4f3" stroke="#8255b4" stroke-width="2"/>
+<text x="620" y="345.5" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">LN</text>
+<path d="M620,369 L620,437" fill="none" stroke="#8255b4" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="620" cy="471" r="33" fill="#ebe4f3" stroke="#8255b4" stroke-width="2"/>
+<text x="620" y="479.5" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">F</text>
+<path d="M620,503 L620,571" fill="none" stroke="#8255b4" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="620" cy="605" r="33" fill="#ebe4f3" stroke="#8255b4" stroke-width="2"/>
+<text x="620" y="613.5" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<path d="M535,236 L481,236 L481,605 L583,605" fill="none" stroke="#c87917" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="476" y="405" font-size="22" font-weight="400" fill="#c87917" text-anchor="end">保留 x</text>
+<text x="620" y="695" font-size="27" font-weight="650" fill="#8255b4" text-anchor="middle">x + F(LN(x))</text>
+</g></svg>

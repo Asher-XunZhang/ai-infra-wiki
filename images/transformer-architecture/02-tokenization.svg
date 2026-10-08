@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="790" viewBox="0 0 840 790" role="img" aria-labelledby="title desc">
+<title id="title">02 · 模型为什么先把文字变成编号？</title><desc id="desc">编号用来定位词表；数字大，不代表意思更重要。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="790" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">02  模型为什么先把文字变成编号？</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">编号用来定位词表；数字大，不代表意思更重要。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="768" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="420" y="178" font-size="47" font-weight="650" fill="#192d42" text-anchor="middle">我喜欢猫</text>
+<rect x="159" y="249" width="126" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="222.0" y="283" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">我</text>
+<path d="M222,300 L222,374" fill="none" stroke="#2870c5" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="222" cy="422" r="44" fill="#dde8f6" stroke="#2870c5" stroke-width="2"/>
+<text x="222" y="433.56" font-size="34" font-weight="400" fill="#192d42" text-anchor="middle">17</text>
+<text x="222" y="504" font-size="23" font-weight="400" fill="#536778" text-anchor="middle">Token ID</text>
+<rect x="357" y="249" width="126" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="420.0" y="283" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">喜欢</text>
+<path d="M420,300 L420,374" fill="none" stroke="#2870c5" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="420" cy="422" r="44" fill="#dde8f6" stroke="#2870c5" stroke-width="2"/>
+<text x="420" y="433.56" font-size="34" font-weight="400" fill="#192d42" text-anchor="middle">42</text>
+<text x="420" y="504" font-size="23" font-weight="400" fill="#536778" text-anchor="middle">Token ID</text>
+<rect x="555" y="249" width="126" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="618.0" y="283" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">猫</text>
+<path d="M618,300 L618,374" fill="none" stroke="#2870c5" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="618" cy="422" r="44" fill="#dde8f6" stroke="#2870c5" stroke-width="2"/>
+<text x="618" y="433.56" font-size="34" font-weight="400" fill="#192d42" text-anchor="middle">9</text>
+<text x="618" y="504" font-size="23" font-weight="400" fill="#536778" text-anchor="middle">Token ID</text>
+<path d="M168,220 L168,207 L670,207 L670,220" fill="none" stroke="#a0adb9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
+<text x="420" y="567" font-size="28" font-weight="650" fill="#192d42" text-anchor="middle">一段文字 → 几块 token → 几个整数</text>
+<rect x="32" y="612" width="776" height="100" rx="8" fill="#eff6f5" stroke="none" stroke-width="2"/>
+<rect x="32" y="612" width="5" height="100" rx="0" fill="#168574" stroke="none" stroke-width="2"/>
+<text x="52" y="648" font-size="26" font-weight="650" fill="#168574" text-anchor="start">把 ID 当作“查表地址”</text>
+<text x="52" y="686" font-size="23" font-weight="400" fill="#192d42" text-anchor="start">真实切分可能是字、子词或字节；这里按三块做示例。</text>
+</g></svg>

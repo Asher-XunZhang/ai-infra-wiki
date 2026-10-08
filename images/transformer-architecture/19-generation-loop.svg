@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="940" viewBox="0 0 840 940" role="img" aria-labelledby="title desc">
+<title id="title">19 · 每轮究竟把哪个 token 送回模型？ ★</title><desc id="desc">已处理的前缀留在左边，刚选出的下一个 token 放在右边。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="940" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">19  每轮究竟把哪个 token 送回模型？ ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">已处理的前缀留在左边，刚选出的下一个 token 放在右边。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="918" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="40" y="170" font-size="26" font-weight="650" fill="#192d42" text-anchor="start">第 1 轮</text>
+<rect x="48" y="189" width="109" height="51" rx="10" fill="#f8eee1" stroke="#c87917" stroke-width="2"/>
+<text x="102.5" y="223" font-size="26" font-weight="650" fill="#c87917" text-anchor="middle">BOS</text>
+<path d="M165,215 L184,215" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<rect x="192" y="189" width="109" height="51" rx="10" fill="#fbfaf7" stroke="#168574" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="246.5" y="223" font-size="26" font-weight="650" fill="#168574" text-anchor="middle">我</text>
+<text x="57" y="286" font-size="23" font-weight="400" fill="#2870c5" text-anchor="start">本轮已处理</text>
+<text x="197" y="286" font-size="23" font-weight="400" fill="#168574" text-anchor="start">刚选出</text>
+<text x="40" y="325" font-size="26" font-weight="650" fill="#192d42" text-anchor="start">第 2 轮</text>
+<rect x="48" y="344" width="109" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="102.5" y="378" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">BOS</text>
+<rect x="181" y="344" width="109" height="51" rx="10" fill="#f8eee1" stroke="#c87917" stroke-width="2"/>
+<text x="235.5" y="378" font-size="26" font-weight="650" fill="#c87917" text-anchor="middle">我</text>
+<path d="M298,370 L317,370" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<rect x="325" y="344" width="109" height="51" rx="10" fill="#fbfaf7" stroke="#168574" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="379.5" y="378" font-size="26" font-weight="650" fill="#168574" text-anchor="middle">喜欢</text>
+<text x="57" y="441" font-size="23" font-weight="400" fill="#2870c5" text-anchor="start">本轮已处理</text>
+<text x="330" y="441" font-size="23" font-weight="400" fill="#168574" text-anchor="start">刚选出</text>
+<text x="40" y="480" font-size="26" font-weight="650" fill="#192d42" text-anchor="start">第 3 轮</text>
+<rect x="48" y="499" width="109" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="102.5" y="533" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">BOS</text>
+<rect x="181" y="499" width="109" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="235.5" y="533" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">我</text>
+<rect x="314" y="499" width="109" height="51" rx="10" fill="#f8eee1" stroke="#c87917" stroke-width="2"/>
+<text x="368.5" y="533" font-size="26" font-weight="650" fill="#c87917" text-anchor="middle">喜欢</text>
+<path d="M431,525 L450,525" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<rect x="458" y="499" width="109" height="51" rx="10" fill="#fbfaf7" stroke="#168574" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="512.5" y="533" font-size="26" font-weight="650" fill="#168574" text-anchor="middle">猫</text>
+<text x="57" y="596" font-size="23" font-weight="400" fill="#2870c5" text-anchor="start">本轮已处理</text>
+<text x="463" y="596" font-size="23" font-weight="400" fill="#168574" text-anchor="start">刚选出</text>
+<text x="40" y="635" font-size="26" font-weight="650" fill="#192d42" text-anchor="start">第 4 轮</text>
+<rect x="48" y="654" width="109" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="102.5" y="688" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">BOS</text>
+<rect x="181" y="654" width="109" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="235.5" y="688" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">我</text>
+<rect x="314" y="654" width="109" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="368.5" y="688" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">喜欢</text>
+<rect x="447" y="654" width="109" height="51" rx="10" fill="#f8eee1" stroke="#c87917" stroke-width="2"/>
+<text x="501.5" y="688" font-size="26" font-weight="650" fill="#c87917" text-anchor="middle">猫</text>
+<path d="M564,680 L583,680" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<rect x="591" y="654" width="109" height="51" rx="10" fill="#fbfaf7" stroke="#c65255" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="645.5" y="688" font-size="26" font-weight="650" fill="#c65255" text-anchor="middle">EOS</text>
+<text x="57" y="751" font-size="23" font-weight="400" fill="#2870c5" text-anchor="start">本轮已处理</text>
+<text x="596" y="751" font-size="23" font-weight="400" fill="#c65255" text-anchor="start">停止</text>
+<text x="39" y="848" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">实框：已有表示 / KV；虚框：还没作为输入计算。</text>
+</g></svg>

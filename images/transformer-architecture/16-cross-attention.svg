@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="960" viewBox="0 0 840 960" role="img" aria-labelledby="title desc">
+<title id="title">16 · 交叉注意力：写到这里，该查源句哪里？ ★</title><desc id="desc">左边是已读懂的源句，右边是正在形成的目标表示。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="960" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">16  交叉注意力：写到这里，该查源句哪里？ ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">左边是已读懂的源句，右边是正在形成的目标表示。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="938" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="47" y="168" font-size="27" font-weight="650" fill="#2870c5" text-anchor="start">Encoder 源表示 → K / V</text>
+<text x="511" y="168" font-size="27" font-weight="650" fill="#8255b4" text-anchor="start">Decoder 状态 → Q</text>
+<rect x="73" y="225" width="127" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="136.5" y="259" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">I</text>
+<rect x="74" y="288" width="39" height="39" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<rect x="116" y="288" width="39" height="39" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<rect x="158" y="288" width="39" height="39" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<rect x="73" y="356" width="127" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="136.5" y="390" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">love</text>
+<rect x="74" y="419" width="39" height="39" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<rect x="116" y="419" width="39" height="39" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<rect x="158" y="419" width="39" height="39" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<rect x="73" y="487" width="127" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="136.5" y="521" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">cats</text>
+<rect x="74" y="550" width="39" height="39" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<rect x="116" y="550" width="39" height="39" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<rect x="158" y="550" width="39" height="39" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<rect x="610" y="263" width="125" height="51" rx="10" fill="#efe9f5" stroke="#8255b4" stroke-width="2"/>
+<text x="672.5" y="297" font-size="26" font-weight="650" fill="#8255b4" text-anchor="middle">BOS</text>
+<rect x="610" y="449" width="125" height="51" rx="10" fill="#efe9f5" stroke="#8255b4" stroke-width="2"/>
+<text x="672.5" y="483" font-size="26" font-weight="650" fill="#8255b4" text-anchor="middle">我</text>
+<path d="M603,288 C440,288 393,251 210,251" fill="none" stroke="#168574" stroke-width="7.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.57" marker-end="url(#arrow)"/>
+<path d="M603,288 C440,288 393,382 210,382" fill="none" stroke="#168574" stroke-width="7.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.57" marker-end="url(#arrow)"/>
+<path d="M603,288 C440,288 393,513 210,513" fill="none" stroke="#168574" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.57" marker-end="url(#arrow)"/>
+<path d="M603,474 C440,474 393,251 210,251" fill="none" stroke="#168574" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round" opacity="0.57" marker-end="url(#arrow)"/>
+<path d="M603,474 C440,474 393,382 210,382" fill="none" stroke="#168574" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.57" marker-end="url(#arrow)"/>
+<path d="M603,474 C440,474 393,513 210,513" fill="none" stroke="#168574" stroke-width="11.1" stroke-linecap="round" stroke-linejoin="round" opacity="0.57" marker-end="url(#arrow)"/>
+<text x="440" y="591" font-size="24" font-weight="650" fill="#168574" text-anchor="middle">线越粗，读取比例越大</text>
+<text x="58" y="669" font-size="26" font-weight="650" fill="#192d42" text-anchor="start">同一关系画成表：</text>
+<text x="347" y="696" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">I</text>
+<text x="419" y="696" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">love</text>
+<text x="491" y="696" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">cats</text>
+<text x="245" y="754" font-size="25" font-weight="400" fill="#192d42" text-anchor="end">BOS</text>
+<text x="245" y="825" font-size="25" font-weight="400" fill="#192d42" text-anchor="end">我</text>
+<rect x="311" y="715" width="70" height="70" rx="3" fill="#abd3cd" stroke="none" stroke-width="2"/>
+<text x="346.0" y="761.08" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">0.4</text>
+<rect x="383" y="715" width="70" height="70" rx="3" fill="#abd3cd" stroke="none" stroke-width="2"/>
+<text x="418.0" y="761.08" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">0.4</text>
+<rect x="455" y="715" width="70" height="70" rx="3" fill="#cce4e0" stroke="none" stroke-width="2"/>
+<text x="490.0" y="761.08" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">0.2</text>
+<rect x="311" y="787" width="70" height="70" rx="3" fill="#dcedea" stroke="none" stroke-width="2"/>
+<text x="346.0" y="833.08" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">0.1</text>
+<rect x="383" y="787" width="70" height="70" rx="3" fill="#cce4e0" stroke="none" stroke-width="2"/>
+<text x="418.0" y="833.08" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">0.2</text>
+<rect x="455" y="787" width="70" height="70" rx="3" fill="#7ab9b0" stroke="none" stroke-width="2"/>
+<text x="490.0" y="833.08" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">0.7</text>
+<text x="613" y="768" font-size="24" font-weight="400" fill="#192d42" text-anchor="start">2 个目标位置</text>
+<text x="613" y="808" font-size="24" font-weight="400" fill="#192d42" text-anchor="start">× 3 个源位置</text>
+<text x="42" y="896" font-size="25" font-weight="400" fill="#192d42" text-anchor="start">源句早已给定，源位置靠后不等于目标侧的“未来”。</text>
+</g></svg>

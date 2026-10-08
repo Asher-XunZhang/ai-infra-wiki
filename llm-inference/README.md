@@ -12,6 +12,8 @@
 
 ## 入门主线
 
+模型原理前置：[Transformer 架构与推理流程](<model-architecture/Transformer 架构与推理流程学习文档.md>)。用模块细节图和形象解释先弄清向量、注意力、掩码、FFN 升降维与自回归生成；已经熟悉模型计算时可跳过。
+
 1. [LLM 推理系统心智模型与 SGLang、vLLM 选型边界](<foundations/LLM 推理系统心智模型与 SGLang、vLLM 选型边界学习文档.md>)：认清一次请求、资源和引擎边界。
 2. [LLM Prefill 与 Decode 阶段源码](<foundations/LLM Prefill 与 Decode 阶段源码学习文档.md>)：理解首 token、逐步生成与 KV 时序。
 3. [Chunked Prefill 与 Prefill-Decode 共推](<scheduling/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>)：理解每轮计算怎样安排。

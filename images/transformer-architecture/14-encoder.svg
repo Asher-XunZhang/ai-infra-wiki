@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="1060" viewBox="0 0 840 1060" role="img" aria-labelledby="title desc">
+<title id="title">14 · 一个 Encoder 层怎样更新三个位置？</title><desc id="desc">先互相读取，再分别加工；每步保留 token 数。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="1060" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">14  一个 Encoder 层怎样更新三个位置？</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">先互相读取，再分别加工；每步保留 token 数。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="1038" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<rect x="149" y="155" width="112" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="205.0" y="189" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">I</text>
+<rect x="145" y="232" width="38" height="38" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<rect x="186" y="232" width="38" height="38" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<rect x="227" y="232" width="38" height="38" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<rect x="367" y="155" width="112" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="423.0" y="189" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">love</text>
+<rect x="363" y="232" width="38" height="38" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<rect x="404" y="232" width="38" height="38" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<rect x="445" y="232" width="38" height="38" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<rect x="585" y="155" width="112" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="641.0" y="189" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">cats</text>
+<rect x="581" y="232" width="38" height="38" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<rect x="622" y="232" width="38" height="38" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<rect x="663" y="232" width="38" height="38" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<text x="36" y="314" font-size="27" font-weight="650" fill="#168574" text-anchor="start">自注意力：各位置可以互相读</text>
+<path d="M205,345 L205,453" fill="none" stroke="#168574" stroke-width="3" opacity="0.5" marker-end="url(#arrow)"/>
+<path d="M205,345 L423,453" fill="none" stroke="#168574" stroke-width="1.6" opacity="0.5" marker-end="url(#arrow)"/>
+<path d="M205,345 L641,453" fill="none" stroke="#168574" stroke-width="1.6" opacity="0.5" marker-end="url(#arrow)"/>
+<path d="M423,345 L205,453" fill="none" stroke="#168574" stroke-width="1.6" opacity="0.5" marker-end="url(#arrow)"/>
+<path d="M423,345 L423,453" fill="none" stroke="#168574" stroke-width="3" opacity="0.5" marker-end="url(#arrow)"/>
+<path d="M423,345 L641,453" fill="none" stroke="#168574" stroke-width="1.6" opacity="0.5" marker-end="url(#arrow)"/>
+<path d="M641,345 L205,453" fill="none" stroke="#168574" stroke-width="1.6" opacity="0.5" marker-end="url(#arrow)"/>
+<path d="M641,345 L423,453" fill="none" stroke="#168574" stroke-width="1.6" opacity="0.5" marker-end="url(#arrow)"/>
+<path d="M641,345 L641,453" fill="none" stroke="#168574" stroke-width="3" opacity="0.5" marker-end="url(#arrow)"/>
+<circle cx="205" cy="487" r="19" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="205" y="494.82" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<path d="M270,250 L284,250 L284,487 L226,487" fill="none" stroke="#c87917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="205" y="541" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">LN</text>
+<rect x="145" y="573" width="38" height="38" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<rect x="186" y="573" width="38" height="38" rx="6" fill="#add4ce" stroke="none" stroke-width="2"/>
+<rect x="227" y="573" width="38" height="38" rx="6" fill="#73b6ac" stroke="none" stroke-width="2"/>
+<circle cx="423" cy="487" r="19" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="423" y="494.82" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<path d="M488,250 L502,250 L502,487 L444,487" fill="none" stroke="#c87917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="423" y="541" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">LN</text>
+<rect x="363" y="573" width="38" height="38" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<rect x="404" y="573" width="38" height="38" rx="6" fill="#add4ce" stroke="none" stroke-width="2"/>
+<rect x="445" y="573" width="38" height="38" rx="6" fill="#73b6ac" stroke="none" stroke-width="2"/>
+<circle cx="641" cy="487" r="19" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="641" y="494.82" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<path d="M706,250 L720,250 L720,487 L662,487" fill="none" stroke="#c87917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="641" y="541" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">LN</text>
+<rect x="581" y="573" width="38" height="38" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<rect x="622" y="573" width="38" height="38" rx="6" fill="#add4ce" stroke="none" stroke-width="2"/>
+<rect x="663" y="573" width="38" height="38" rx="6" fill="#73b6ac" stroke="none" stroke-width="2"/>
+<text x="35" y="668" font-size="27" font-weight="650" fill="#8255b4" text-anchor="start">FFN：位置之间不再连线</text>
+<path d="M145,736.0 L205.0,712.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,736.0 L205.0,732.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,736.0 L205.0,752.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,736.0 L205.0,772.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,736.0 L205.0,792.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,768.0 L205.0,712.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,768.0 L205.0,732.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,768.0 L205.0,752.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,768.0 L205.0,772.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M145,768.0 L205.0,792.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M205.0,712.0 L265,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M205.0,712.0 L265,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M205.0,732.0 L265,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M205.0,732.0 L265,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M205.0,752.0 L265,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M205.0,752.0 L265,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M205.0,772.0 L265,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M205.0,772.0 L265,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M205.0,792.0 L265,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M205.0,792.0 L265,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="145" cy="736.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="145" cy="768.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="205.0" cy="712.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="205.0" cy="732.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="205.0" cy="752.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="205.0" cy="772.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="205.0" cy="792.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="265" cy="736.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="265" cy="768.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="205" cy="850" r="19" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="205" y="857.82" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<path d="M271,594 L290,594 L290,850 L226,850" fill="none" stroke="#c87917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="205" y="898" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">LN</text>
+<rect x="145" y="924" width="38" height="38" rx="6" fill="#73b6ac" stroke="none" stroke-width="2"/>
+<rect x="186" y="924" width="38" height="38" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<rect x="227" y="924" width="38" height="38" rx="6" fill="#add4ce" stroke="none" stroke-width="2"/>
+<path d="M363,736.0 L423.0,712.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M363,736.0 L423.0,732.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M363,736.0 L423.0,752.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M363,736.0 L423.0,772.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M363,736.0 L423.0,792.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M363,768.0 L423.0,712.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M363,768.0 L423.0,732.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M363,768.0 L423.0,752.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M363,768.0 L423.0,772.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M363,768.0 L423.0,792.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M423.0,712.0 L483,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M423.0,712.0 L483,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M423.0,732.0 L483,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M423.0,732.0 L483,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M423.0,752.0 L483,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M423.0,752.0 L483,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M423.0,772.0 L483,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M423.0,772.0 L483,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M423.0,792.0 L483,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M423.0,792.0 L483,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="363" cy="736.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="363" cy="768.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="423.0" cy="712.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="423.0" cy="732.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="423.0" cy="752.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="423.0" cy="772.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="423.0" cy="792.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="483" cy="736.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="483" cy="768.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="423" cy="850" r="19" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="423" y="857.82" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<path d="M489,594 L508,594 L508,850 L444,850" fill="none" stroke="#c87917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="423" y="898" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">LN</text>
+<rect x="363" y="924" width="38" height="38" rx="6" fill="#73b6ac" stroke="none" stroke-width="2"/>
+<rect x="404" y="924" width="38" height="38" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<rect x="445" y="924" width="38" height="38" rx="6" fill="#add4ce" stroke="none" stroke-width="2"/>
+<path d="M581,736.0 L641.0,712.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M581,736.0 L641.0,732.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M581,736.0 L641.0,752.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M581,736.0 L641.0,772.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M581,736.0 L641.0,792.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M581,768.0 L641.0,712.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M581,768.0 L641.0,732.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M581,768.0 L641.0,752.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M581,768.0 L641.0,772.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M581,768.0 L641.0,792.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M641.0,712.0 L701,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M641.0,712.0 L701,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M641.0,732.0 L701,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M641.0,732.0 L701,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M641.0,752.0 L701,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M641.0,752.0 L701,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M641.0,772.0 L701,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M641.0,772.0 L701,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M641.0,792.0 L701,736.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M641.0,792.0 L701,768.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="581" cy="736.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="581" cy="768.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="641.0" cy="712.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="641.0" cy="732.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="641.0" cy="752.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="641.0" cy="772.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="641.0" cy="792.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="701" cy="736.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="701" cy="768.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="641" cy="850" r="19" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="641" y="857.82" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<path d="M707,594 L726,594 L726,850 L662,850" fill="none" stroke="#c87917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="641" y="898" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">LN</text>
+<rect x="581" y="924" width="38" height="38" rx="6" fill="#73b6ac" stroke="none" stroke-width="2"/>
+<rect x="622" y="924" width="38" height="38" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<rect x="663" y="924" width="38" height="38" rx="6" fill="#add4ce" stroke="none" stroke-width="2"/>
+<text x="40" y="1000" font-size="25" font-weight="400" fill="#192d42" text-anchor="start">堆叠 N 层后，仍是一排源位置表示，供 Decoder 查询。</text>
+</g></svg>

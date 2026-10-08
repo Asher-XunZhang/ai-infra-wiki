@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="870" viewBox="0 0 840 870" role="img" aria-labelledby="title desc">
+<title id="title">06 · Q、K、V 为什么要分三份？ ★</title><desc id="desc">同一份表示，分别改写成“怎么问、怎么匹配、拿回什么”。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="870" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">06  Q、K、V 为什么要分三份？ ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">同一份表示，分别改写成“怎么问、怎么匹配、拿回什么”。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="848" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="40" y="162" font-size="29" font-weight="650" fill="#192d42" text-anchor="start">同一个输入向量 x = [1, 2]</text>
+<circle cx="66" cy="281" r="29" fill="#ebe4f3" stroke="#8255b4" stroke-width="2"/>
+<text x="66" y="290.52" font-size="28" font-weight="400" fill="#192d42" text-anchor="middle">Q</text>
+<text x="115" y="244" font-size="24" font-weight="650" fill="#8255b4" text-anchor="start">查询条件</text>
+<rect x="115" y="263" width="44" height="44" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<text x="137.0" y="294.49" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="162" y="263" width="44" height="44" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<text x="184.0" y="294.49" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<text x="231" y="294" font-size="33" font-weight="400" fill="#192d42" text-anchor="start">×</text>
+<rect x="279" y="233" width="44" height="44" rx="3" fill="#9e7ac4" stroke="none" stroke-width="2"/>
+<text x="301.0" y="262.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="325" y="233" width="44" height="44" rx="3" fill="#f5f1f9" stroke="none" stroke-width="2"/>
+<text x="347.0" y="262.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">0</text>
+<rect x="279" y="279" width="44" height="44" rx="3" fill="#f5f1f9" stroke="none" stroke-width="2"/>
+<text x="301.0" y="308.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">0</text>
+<rect x="325" y="279" width="44" height="44" rx="3" fill="#9e7ac4" stroke="none" stroke-width="2"/>
+<text x="347.0" y="308.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<text x="389" y="294" font-size="33" font-weight="400" fill="#192d42" text-anchor="start">=</text>
+<rect x="436" y="263" width="56" height="56" rx="6" fill="#d3c4e5" stroke="none" stroke-width="2"/>
+<text x="464.0" y="302.53" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="495" y="263" width="56" height="56" rx="6" fill="#b499d2" stroke="none" stroke-width="2"/>
+<text x="523.0" y="302.53" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<text x="598" y="295" font-size="24" font-weight="400" fill="#8255b4" text-anchor="start">用法不同</text>
+<circle cx="66" cy="450" r="29" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="66" y="459.52" font-size="28" font-weight="400" fill="#192d42" text-anchor="middle">K</text>
+<text x="115" y="413" font-size="24" font-weight="650" fill="#c87917" text-anchor="start">匹配索引</text>
+<rect x="115" y="432" width="44" height="44" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<text x="137.0" y="463.49" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="162" y="432" width="44" height="44" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<text x="184.0" y="463.49" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<text x="231" y="463" font-size="33" font-weight="400" fill="#192d42" text-anchor="start">×</text>
+<rect x="279" y="402" width="44" height="44" rx="3" fill="#d4964a" stroke="none" stroke-width="2"/>
+<text x="301.0" y="431.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="325" y="402" width="44" height="44" rx="3" fill="#d4964a" stroke="none" stroke-width="2"/>
+<text x="347.0" y="431.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="279" y="448" width="44" height="44" rx="3" fill="#fbf4ec" stroke="none" stroke-width="2"/>
+<text x="301.0" y="477.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">0</text>
+<rect x="325" y="448" width="44" height="44" rx="3" fill="#d4964a" stroke="none" stroke-width="2"/>
+<text x="347.0" y="477.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<text x="389" y="463" font-size="33" font-weight="400" fill="#192d42" text-anchor="start">=</text>
+<rect x="436" y="432" width="56" height="56" rx="6" fill="#ecd0ae" stroke="none" stroke-width="2"/>
+<text x="464.0" y="471.53" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="495" y="432" width="56" height="56" rx="6" fill="#d69a51" stroke="none" stroke-width="2"/>
+<text x="523.0" y="471.53" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">3</text>
+<text x="598" y="464" font-size="24" font-weight="400" fill="#c87917" text-anchor="start">用法不同</text>
+<circle cx="66" cy="619" r="29" fill="#daebe9" stroke="#168574" stroke-width="2"/>
+<text x="66" y="628.52" font-size="28" font-weight="400" fill="#192d42" text-anchor="middle">V</text>
+<text x="115" y="582" font-size="24" font-weight="650" fill="#168574" text-anchor="start">读取内容</text>
+<rect x="115" y="601" width="44" height="44" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<text x="137.0" y="632.49" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="162" y="601" width="44" height="44" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<text x="184.0" y="632.49" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<text x="231" y="632" font-size="33" font-weight="400" fill="#192d42" text-anchor="start">×</text>
+<rect x="279" y="571" width="44" height="44" rx="3" fill="#49a093" stroke="none" stroke-width="2"/>
+<text x="301.0" y="600.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="325" y="571" width="44" height="44" rx="3" fill="#ecf5f4" stroke="none" stroke-width="2"/>
+<text x="347.0" y="600.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">0</text>
+<rect x="279" y="617" width="44" height="44" rx="3" fill="#49a093" stroke="none" stroke-width="2"/>
+<text x="301.0" y="646.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="325" y="617" width="44" height="44" rx="3" fill="#49a093" stroke="none" stroke-width="2"/>
+<text x="347.0" y="646.44" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<text x="389" y="632" font-size="33" font-weight="400" fill="#192d42" text-anchor="start">=</text>
+<rect x="436" y="601" width="56" height="56" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<text x="464.0" y="640.53" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">3</text>
+<rect x="495" y="601" width="56" height="56" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<text x="523.0" y="640.53" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">4</text>
+<text x="598" y="633" font-size="24" font-weight="400" fill="#168574" text-anchor="start">用法不同</text>
+<rect x="32" y="735" width="776" height="100" rx="8" fill="#eff6f5" stroke="none" stroke-width="2"/>
+<rect x="32" y="735" width="5" height="100" rx="0" fill="#168574" stroke="none" stroke-width="2"/>
+<text x="52" y="771" font-size="26" font-weight="650" fill="#168574" text-anchor="start">Q 和 K 决定“读多少”，V 决定“读到什么”</text>
+<text x="52" y="809" font-size="23" font-weight="400" fill="#192d42" text-anchor="start">数字只是手工投影例子；三份向量不必相同。</text>
+</g></svg>

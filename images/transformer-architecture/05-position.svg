@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="1000" viewBox="0 0 840 1000" role="img" aria-labelledby="title desc">
+<title id="title">05 · 同一个词，换个位置为什么不一样？ ★</title><desc id="desc">内容相同，再加入不同的位置表示，后续输入就不同。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="1000" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">05  同一个词，换个位置为什么不一样？ ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">内容相同，再加入不同的位置表示，后续输入就不同。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="978" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="40" y="164" font-size="26" font-weight="650" fill="#192d42" text-anchor="start">经典加法位置编码：两个位置上的同一个 token</text>
+<text x="39" y="263" font-size="26" font-weight="650" fill="#192d42" text-anchor="start">位置 0</text>
+<rect x="183" y="234" width="54" height="54" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<text x="210.0" y="272.19" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<rect x="240" y="234" width="54" height="54" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<text x="267.0" y="272.19" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<text x="316" y="268" font-size="32" font-weight="400" fill="#192d42" text-anchor="start">+</text>
+<rect x="356" y="234" width="54" height="54" rx="6" fill="#faf2e8" stroke="none" stroke-width="2"/>
+<text x="383.0" y="272.19" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">0</text>
+<rect x="413" y="234" width="54" height="54" rx="6" fill="#ecd0ae" stroke="none" stroke-width="2"/>
+<text x="440.0" y="272.19" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<text x="490" y="268" font-size="32" font-weight="400" fill="#192d42" text-anchor="start">=</text>
+<rect x="532" y="234" width="73" height="73" rx="6" fill="#73b6ac" stroke="none" stroke-width="2"/>
+<text x="568.5" y="284.92" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<rect x="608" y="234" width="73" height="73" rx="6" fill="#73b6ac" stroke="none" stroke-width="2"/>
+<text x="644.5" y="284.92" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<text x="39" y="407" font-size="26" font-weight="650" fill="#192d42" text-anchor="start">位置 1</text>
+<rect x="183" y="378" width="54" height="54" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<text x="210.0" y="416.19" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<rect x="240" y="378" width="54" height="54" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<text x="267.0" y="416.19" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<text x="316" y="412" font-size="32" font-weight="400" fill="#192d42" text-anchor="start">+</text>
+<rect x="356" y="378" width="54" height="54" rx="6" fill="#eed5b7" stroke="none" stroke-width="2"/>
+<text x="383.0" y="416.19" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">0.84</text>
+<rect x="413" y="378" width="54" height="54" rx="6" fill="#f2e0c8" stroke="none" stroke-width="2"/>
+<text x="440.0" y="416.19" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">0.54</text>
+<text x="490" y="412" font-size="32" font-weight="400" fill="#192d42" text-anchor="start">=</text>
+<rect x="532" y="378" width="73" height="73" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<text x="568.5" y="428.92" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2.84</text>
+<rect x="608" y="378" width="73" height="73" rx="6" fill="#8ec4bc" stroke="none" stroke-width="2"/>
+<text x="644.5" y="428.92" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1.54</text>
+<text x="183" y="204" font-size="25" font-weight="650" fill="#2870c5" text-anchor="start">内容</text>
+<text x="356" y="204" font-size="25" font-weight="650" fill="#c87917" text-anchor="start">位置</text>
+<text x="532" y="204" font-size="25" font-weight="650" fill="#168574" text-anchor="start">相加后的表示</text>
+<text x="42" y="542" font-size="24" font-weight="400" fill="#536778" text-anchor="start">同一份内容 + 不同站位 → 不同表示。</text>
+<text x="42" y="577" font-size="24" font-weight="400" fill="#536778" text-anchor="start">例：二维正弦 PE；内容列已包含 Embedding 的缩放。</text>
+<path d="M32,606 L808,606" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="40" y="653" font-size="28" font-weight="650" fill="#8255b4" text-anchor="start">另一种方案 RoPE：转动 Q / K 的方向</text>
+<circle cx="205" cy="794" r="98" fill="#fbfaf7" stroke="#d9d6e0" stroke-width="2"/>
+<path d="M92,794 L325,794" fill="none" stroke="#a0adb9" stroke-width="1" opacity="1" marker-end="url(#arrow)"/>
+<path d="M205,900 L205,677" fill="none" stroke="#a0adb9" stroke-width="1" opacity="1" marker-end="url(#arrow)"/>
+<path d="M205,794 L289.9,745" fill="none" stroke="#2870c5" stroke-width="4" opacity="1" marker-end="url(#arrow)"/>
+<path d="M205,794 L205,696" fill="none" stroke="#8255b4" stroke-width="4" opacity="1" marker-end="url(#arrow)"/>
+<path d="M248,769 A50,50 0 0 0 205,744" fill="none" stroke="#c87917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="298" y="747" font-size="22" font-weight="400" fill="#2870c5" text-anchor="start">原方向</text>
+<text x="395" y="733" font-size="25" font-weight="400" fill="#536778" text-anchor="start">像转动指针，长度保持。</text>
+<text x="395" y="768" font-size="25" font-weight="400" fill="#536778" text-anchor="start">不同位置转不同角度，</text>
+<text x="395" y="803" font-size="25" font-weight="400" fill="#536778" text-anchor="start">匹配分数能反映相对距离。</text>
+<text x="395" y="872" font-size="23" font-weight="400" fill="#536778" text-anchor="start">这是另一条位置编码路线，</text>
+<text x="395" y="907" font-size="23" font-weight="400" fill="#536778" text-anchor="start">不是在上半图之后再做一次。</text>
+</g></svg>

@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="1070" viewBox="0 0 840 1070" role="img" aria-labelledby="title desc">
+<title id="title">21 · KV Cache：留住旧笔记，只补新的一页 ★</title><desc id="desc">每层保留自己的 K / V；新 Query 仍要读取全部合法历史。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="1070" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">21  KV Cache：留住旧笔记，只补新的一页 ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">每层保留自己的 K / V；新 Query 仍要读取全部合法历史。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="1048" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="44" y="171" font-size="28" font-weight="650" fill="#192d42" text-anchor="start">第 1 步：prompt 已处理，刚选出 y₁</text>
+<text x="45" y="256" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">层 1</text>
+<rect x="159" y="222" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="198" y="246" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₁</text>
+<text x="198" y="271" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="250" y="222" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="289" y="246" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₂</text>
+<text x="289" y="271" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="341" y="222" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="380" y="246" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₃</text>
+<text x="380" y="271" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<text x="45" y="347" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">层 2</text>
+<rect x="159" y="313" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="198" y="337" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₁</text>
+<text x="198" y="362" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="250" y="313" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="289" y="337" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₂</text>
+<text x="289" y="362" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="341" y="313" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="380" y="337" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₃</text>
+<text x="380" y="362" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<text x="45" y="438" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">层 3</text>
+<rect x="159" y="404" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="198" y="428" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₁</text>
+<text x="198" y="453" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="250" y="404" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="289" y="428" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₂</text>
+<text x="289" y="453" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="341" y="404" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="380" y="428" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₃</text>
+<text x="380" y="453" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="548" y="277" width="108" height="51" rx="10" fill="#fbfaf7" stroke="#c87917" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="602.0" y="311" font-size="26" font-weight="650" fill="#c87917" text-anchor="middle">y₁</text>
+<text x="534" y="391" font-size="23" font-weight="400" fill="#c87917" text-anchor="start">刚选出，还没算它的 KV</text>
+<path d="M32,503 L808,503" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="44" y="558" font-size="27" font-weight="650" fill="#192d42" text-anchor="start">第 2 步：输入 y₁，逐层算出并追加它的 KV</text>
+<text x="43" y="644" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">层 1</text>
+<rect x="159" y="610" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="198" y="634" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₁</text>
+<text x="198" y="659" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="250" y="610" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="289" y="634" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₂</text>
+<text x="289" y="659" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="341" y="610" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="380" y="634" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₃</text>
+<text x="380" y="659" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="432" y="610" width="78" height="59" rx="6" fill="#f4e4d1" stroke="none" stroke-width="2"/>
+<text x="471" y="634" font-size="21" font-weight="400" fill="#c87917" text-anchor="middle">y₁</text>
+<text x="471" y="659" font-size="20" font-weight="400" fill="#c87917" text-anchor="middle">K / V</text>
+<circle cx="641" cy="638" r="29" fill="#daebe9" stroke="#168574" stroke-width="2"/>
+<text x="641" y="647.18" font-size="27" font-weight="400" fill="#192d42" text-anchor="middle">q</text>
+<path d="M159,675 L159,686 L511,686 L511,675" fill="none" stroke="#168574" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
+<path d="M607,638 L557,638 L557,686 L516,686" fill="none" stroke="#168574" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="43" y="736" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">层 2</text>
+<rect x="159" y="702" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="198" y="726" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₁</text>
+<text x="198" y="751" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="250" y="702" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="289" y="726" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₂</text>
+<text x="289" y="751" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="341" y="702" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="380" y="726" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₃</text>
+<text x="380" y="751" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="432" y="702" width="78" height="59" rx="6" fill="#f4e4d1" stroke="none" stroke-width="2"/>
+<text x="471" y="726" font-size="21" font-weight="400" fill="#c87917" text-anchor="middle">y₁</text>
+<text x="471" y="751" font-size="20" font-weight="400" fill="#c87917" text-anchor="middle">K / V</text>
+<circle cx="641" cy="730" r="29" fill="#daebe9" stroke="#168574" stroke-width="2"/>
+<text x="641" y="739.18" font-size="27" font-weight="400" fill="#192d42" text-anchor="middle">q</text>
+<path d="M159,767 L159,778 L511,778 L511,767" fill="none" stroke="#168574" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
+<path d="M607,730 L557,730 L557,778 L516,778" fill="none" stroke="#168574" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="43" y="828" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">层 3</text>
+<rect x="159" y="794" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="198" y="818" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₁</text>
+<text x="198" y="843" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="250" y="794" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="289" y="818" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₂</text>
+<text x="289" y="843" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="341" y="794" width="78" height="59" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="380" y="818" font-size="21" font-weight="400" fill="#2870c5" text-anchor="middle">p₃</text>
+<text x="380" y="843" font-size="20" font-weight="400" fill="#2870c5" text-anchor="middle">K / V</text>
+<rect x="432" y="794" width="78" height="59" rx="6" fill="#f4e4d1" stroke="none" stroke-width="2"/>
+<text x="471" y="818" font-size="21" font-weight="400" fill="#c87917" text-anchor="middle">y₁</text>
+<text x="471" y="843" font-size="20" font-weight="400" fill="#c87917" text-anchor="middle">K / V</text>
+<circle cx="641" cy="822" r="29" fill="#daebe9" stroke="#168574" stroke-width="2"/>
+<text x="641" y="831.18" font-size="27" font-weight="400" fill="#192d42" text-anchor="middle">q</text>
+<path d="M159,859 L159,870 L511,870 L511,859" fill="none" stroke="#168574" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
+<path d="M607,822 L557,822 L557,870 L516,870" fill="none" stroke="#168574" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="625" y="920" font-size="23" font-weight="400" fill="#168574" text-anchor="middle">y₁ 的 Query</text>
+<text x="39" y="992" font-size="27" font-weight="650" fill="#192d42" text-anchor="start">全部层完成后选出 y₂；此刻仍没有 y₂ 的 KV。</text>
+</g></svg>

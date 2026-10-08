@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="1080" viewBox="0 0 840 1080" role="img" aria-labelledby="title desc">
+<title id="title">17 · Decoder 的三道工序，各处理什么？</title><desc id="desc">先整理已写内容，再查询源句，最后加工融合后的特征。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="1080" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">17  Decoder 的三道工序，各处理什么？</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">先整理已写内容，再查询源句，最后加工融合后的特征。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="1058" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<rect x="246" y="155" width="114" height="51" rx="10" fill="#e1efed" stroke="#168574" stroke-width="2"/>
+<text x="303.0" y="189" font-size="26" font-weight="650" fill="#168574" text-anchor="middle">BOS</text>
+<rect x="489" y="155" width="114" height="51" rx="10" fill="#e1efed" stroke="#168574" stroke-width="2"/>
+<text x="546.0" y="189" font-size="26" font-weight="650" fill="#168574" text-anchor="middle">我</text>
+<text x="40" y="260" font-size="28" font-weight="650" fill="#168574" text-anchor="start">① 目标内部：只读合法前缀</text>
+<path d="M303,304 L303,371" fill="none" stroke="#168574" stroke-width="4" opacity="1" marker-end="url(#arrow)"/>
+<path d="M546,304 L546,371" fill="none" stroke="#168574" stroke-width="4" opacity="1" marker-end="url(#arrow)"/>
+<path d="M303,304 L546,371" fill="none" stroke="#168574" stroke-width="4" opacity="1" marker-end="url(#arrow)"/>
+<path d="M546,304 L303,371" fill="none" stroke="#c65255" stroke-width="2" opacity="1" stroke-dasharray="6 5"/>
+<text x="676" y="341" font-size="22" font-weight="400" fill="#c65255" text-anchor="start">禁止逆向</text>
+<rect x="244" y="397" width="38" height="38" rx="6" fill="#add4ce" stroke="none" stroke-width="2"/>
+<rect x="285" y="397" width="38" height="38" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<rect x="326" y="397" width="38" height="38" rx="6" fill="#73b6ac" stroke="none" stroke-width="2"/>
+<rect x="487" y="397" width="38" height="38" rx="6" fill="#add4ce" stroke="none" stroke-width="2"/>
+<rect x="528" y="397" width="38" height="38" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<rect x="569" y="397" width="38" height="38" rx="6" fill="#73b6ac" stroke="none" stroke-width="2"/>
+<text x="420" y="477" font-size="23" font-weight="400" fill="#c87917" text-anchor="middle">+ 残差 · LN</text>
+<text x="40" y="552" font-size="28" font-weight="650" fill="#2870c5" text-anchor="start">② 目标查询源句：交叉注意力</text>
+<rect x="40" y="590" width="100" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="90.0" y="624" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">I</text>
+<path d="M154,615 L233,668" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.5" marker-end="url(#arrow)"/>
+<path d="M154,615 L476,668" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.5" marker-end="url(#arrow)"/>
+<rect x="40" y="650" width="100" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="90.0" y="684" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">love</text>
+<path d="M154,675 L233,668" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.5" marker-end="url(#arrow)"/>
+<path d="M154,675 L476,668" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.5" marker-end="url(#arrow)"/>
+<rect x="40" y="710" width="100" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="90.0" y="744" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">cats</text>
+<path d="M154,735 L233,668" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.5" marker-end="url(#arrow)"/>
+<path d="M154,735 L476,668" fill="none" stroke="#2870c5" stroke-width="2" opacity="0.5" marker-end="url(#arrow)"/>
+<rect x="244" y="646" width="38" height="38" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<rect x="285" y="646" width="38" height="38" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<rect x="326" y="646" width="38" height="38" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<rect x="487" y="646" width="38" height="38" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<rect x="528" y="646" width="38" height="38" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<rect x="569" y="646" width="38" height="38" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<text x="420" y="757" font-size="23" font-weight="400" fill="#c87917" text-anchor="middle">+ 残差 · LN</text>
+<text x="40" y="826" font-size="28" font-weight="650" fill="#8255b4" text-anchor="start">③ 各自加工：FFN</text>
+<path d="M243,885.1 L303.0,865.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M243,885.1 L303.0,881.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M243,885.1 L303.0,898.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M243,885.1 L303.0,915.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M243,885.1 L303.0,932.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M243,911.9 L303.0,865.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M243,911.9 L303.0,881.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M243,911.9 L303.0,898.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M243,911.9 L303.0,915.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M243,911.9 L303.0,932.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M303.0,865.0 L363,885.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M303.0,865.0 L363,911.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M303.0,881.75 L363,885.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M303.0,881.75 L363,911.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M303.0,898.5 L363,885.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M303.0,898.5 L363,911.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M303.0,915.25 L363,885.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M303.0,915.25 L363,911.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M303.0,932.0 L363,885.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M303.0,932.0 L363,911.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="243" cy="885.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="243" cy="911.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="303.0" cy="865.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="303.0" cy="881.75" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="303.0" cy="898.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="303.0" cy="915.25" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="303.0" cy="932.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="363" cy="885.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="363" cy="911.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<path d="M486,885.1 L546.0,865.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M486,885.1 L546.0,881.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M486,885.1 L546.0,898.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M486,885.1 L546.0,915.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M486,885.1 L546.0,932.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M486,911.9 L546.0,865.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M486,911.9 L546.0,881.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M486,911.9 L546.0,898.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M486,911.9 L546.0,915.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M486,911.9 L546.0,932.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M546.0,865.0 L606,885.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M546.0,865.0 L606,911.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M546.0,881.75 L606,885.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M546.0,881.75 L606,911.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M546.0,898.5 L606,885.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M546.0,898.5 L606,911.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M546.0,915.25 L606,885.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M546.0,915.25 L606,911.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M546.0,932.0 L606,885.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M546.0,932.0 L606,911.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="486" cy="885.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="486" cy="911.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="546.0" cy="865.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="546.0" cy="881.75" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="546.0" cy="898.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="546.0" cy="915.25" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="546.0" cy="932.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="606" cy="885.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="606" cy="911.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="420" y="984" font-size="26" font-weight="400" fill="#c87917" text-anchor="middle">+ 残差 · LN → 下一 Decoder 层</text>
+</g></svg>

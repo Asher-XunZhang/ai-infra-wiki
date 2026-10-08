@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="820" viewBox="0 0 840 820" role="img" aria-labelledby="title desc">
+<title id="title">03 · 开始、结束、补齐，各用什么标记？</title><desc id="desc">BOS 给起点，EOS 表示结束，PAD 只是对齐长度。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="820" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">03  开始、结束、补齐，各用什么标记？</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">BOS 给起点，EOS 表示结束，PAD 只是对齐长度。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="798" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<rect x="70" y="218" width="116" height="51" rx="10" fill="#f8eee1" stroke="#c87917" stroke-width="2"/>
+<text x="128.0" y="252" font-size="26" font-weight="650" fill="#c87917" text-anchor="middle">BOS</text>
+<rect x="214" y="218" width="116" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="272.0" y="252" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">我</text>
+<rect x="358" y="218" width="116" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="416.0" y="252" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">喜欢</text>
+<rect x="502" y="218" width="116" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="560.0" y="252" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">猫</text>
+<rect x="646" y="218" width="116" height="51" rx="10" fill="#f8e9e9" stroke="#c65255" stroke-width="2"/>
+<text x="704.0" y="252" font-size="26" font-weight="650" fill="#c65255" text-anchor="middle">EOS</text>
+<path d="M82,187 L82,143 L118,155 L82,167" fill="none" stroke="#c87917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1"/>
+<text x="90" y="317" font-size="26" font-weight="650" fill="#c87917" text-anchor="start">起点</text>
+<circle cx="704" cy="162" r="26" fill="#f6e3e4" stroke="#c65255" stroke-width="2"/>
+<text x="704" y="170.16" font-size="24" font-weight="400" fill="#192d42" text-anchor="middle">停</text>
+<text x="630" y="317" font-size="25" font-weight="650" fill="#c65255" text-anchor="start">被选中后结束</text>
+<text x="40" y="391" font-size="28" font-weight="650" fill="#192d42" text-anchor="start">同批长度不同，就可能补 PAD</text>
+<text x="57" y="465" font-size="24" font-weight="400" fill="#192d42" text-anchor="start">句子 1</text>
+<rect x="228" y="432" width="131" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="293.5" y="466" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">我</text>
+<rect x="396" y="432" width="131" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="461.5" y="466" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">喜欢</text>
+<rect x="564" y="432" width="131" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="629.5" y="466" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">猫</text>
+<text x="57" y="558" font-size="24" font-weight="400" fill="#192d42" text-anchor="start">句子 2</text>
+<rect x="228" y="525" width="131" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="293.5" y="559" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">你好</text>
+<rect x="396" y="525" width="131" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="461.5" y="559" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">世界</text>
+<rect x="564" y="525" width="131" height="51" rx="10" fill="#f3f4f6" stroke="#a0adb9" stroke-width="2"/>
+<text x="629.5" y="559" font-size="26" font-weight="650" fill="#a0adb9" text-anchor="middle">PAD</text>
+<path d="M623,592 L623,636 L439,636" fill="none" stroke="#a0adb9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="52" y="678" font-size="27" font-weight="650" fill="#192d42" text-anchor="start">PAD 不是内容，要从注意力读取中排除。</text>
+<text x="52" y="728" font-size="23" font-weight="400" fill="#536778" text-anchor="start">起始 / 结束 ID 的具体规则由模型协议决定。</text>
+</g></svg>

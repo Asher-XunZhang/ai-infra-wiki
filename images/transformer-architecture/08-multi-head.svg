@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="960" viewBox="0 0 840 960" role="img" aria-labelledby="title desc">
+<title id="title">08 · 多个头，多出了什么能力？ ★</title><desc id="desc">对同一批位置保留几种不同读法，再合并这些读法的结果。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="960" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">08  多个头，多出了什么能力？ ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">对同一批位置保留几种不同读法，再合并这些读法的结果。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="938" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="204" y="173" font-size="31" font-weight="650" fill="#2870c5" text-anchor="middle">头 1</text>
+<rect x="46" y="211" width="91" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="91.5" y="245" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">我</text>
+<path d="M91,263 L204,363" fill="none" stroke="#2870c5" stroke-width="10.799999999999999" opacity="0.7" marker-end="url(#arrow)"/>
+<rect x="158" y="211" width="91" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="203.5" y="245" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">喜欢</text>
+<path d="M203,263 L204,363" fill="none" stroke="#2870c5" stroke-width="3.8000000000000003" opacity="0.7" marker-end="url(#arrow)"/>
+<rect x="270" y="211" width="91" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="315.5" y="245" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">猫</text>
+<path d="M315,263 L204,363" fill="none" stroke="#2870c5" stroke-width="2.4000000000000004" opacity="0.7" marker-end="url(#arrow)"/>
+<text x="204" y="406" font-size="24" font-weight="400" fill="#2870c5" text-anchor="middle">同一个 Query</text>
+<rect x="76" y="443" width="200" height="19" rx="3" fill="#f0f5fb" stroke="none" stroke-width="2"/>
+<rect x="76" y="443" width="140.0" height="19" rx="3" fill="#2870c5" stroke="none" stroke-width="2"/>
+<text x="291" y="458.2" font-size="24" font-weight="400" fill="#2870c5" text-anchor="start">0.7</text>
+<rect x="76" y="485" width="200" height="19" rx="3" fill="#f0f5fb" stroke="none" stroke-width="2"/>
+<rect x="76" y="485" width="40.0" height="19" rx="3" fill="#2870c5" stroke="none" stroke-width="2"/>
+<text x="291" y="500.2" font-size="24" font-weight="400" fill="#2870c5" text-anchor="start">0.2</text>
+<rect x="76" y="527" width="200" height="19" rx="3" fill="#f0f5fb" stroke="none" stroke-width="2"/>
+<rect x="76" y="527" width="20.0" height="19" rx="3" fill="#2870c5" stroke="none" stroke-width="2"/>
+<text x="291" y="542.2" font-size="24" font-weight="400" fill="#2870c5" text-anchor="start">0.1</text>
+<text x="204" y="600" font-size="23" font-weight="400" fill="#2870c5" text-anchor="middle">各自得到 2 维结果</text>
+<rect x="145" y="628" width="57" height="57" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="173.5" y="668.2" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">a</text>
+<rect x="205" y="628" width="57" height="57" rx="6" fill="#cfdff2" stroke="none" stroke-width="2"/>
+<text x="233.5" y="668.2" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">b</text>
+<text x="608" y="173" font-size="31" font-weight="650" fill="#8255b4" text-anchor="middle">头 2</text>
+<rect x="450" y="211" width="91" height="51" rx="10" fill="#efe9f5" stroke="#8255b4" stroke-width="2"/>
+<text x="495.5" y="245" font-size="26" font-weight="650" fill="#8255b4" text-anchor="middle">我</text>
+<path d="M495,263 L608,363" fill="none" stroke="#8255b4" stroke-width="2.4000000000000004" opacity="0.7" marker-end="url(#arrow)"/>
+<rect x="562" y="211" width="91" height="51" rx="10" fill="#efe9f5" stroke="#8255b4" stroke-width="2"/>
+<text x="607.5" y="245" font-size="26" font-weight="650" fill="#8255b4" text-anchor="middle">喜欢</text>
+<path d="M607,263 L608,363" fill="none" stroke="#8255b4" stroke-width="3.8000000000000003" opacity="0.7" marker-end="url(#arrow)"/>
+<rect x="674" y="211" width="91" height="51" rx="10" fill="#efe9f5" stroke="#8255b4" stroke-width="2"/>
+<text x="719.5" y="245" font-size="26" font-weight="650" fill="#8255b4" text-anchor="middle">猫</text>
+<path d="M719,263 L608,363" fill="none" stroke="#8255b4" stroke-width="10.799999999999999" opacity="0.7" marker-end="url(#arrow)"/>
+<text x="608" y="406" font-size="24" font-weight="400" fill="#8255b4" text-anchor="middle">同一个 Query</text>
+<rect x="480" y="443" width="200" height="19" rx="3" fill="#f6f3fa" stroke="none" stroke-width="2"/>
+<rect x="480" y="443" width="20.0" height="19" rx="3" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="695" y="458.2" font-size="24" font-weight="400" fill="#8255b4" text-anchor="start">0.1</text>
+<rect x="480" y="485" width="200" height="19" rx="3" fill="#f6f3fa" stroke="none" stroke-width="2"/>
+<rect x="480" y="485" width="40.0" height="19" rx="3" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="695" y="500.2" font-size="24" font-weight="400" fill="#8255b4" text-anchor="start">0.2</text>
+<rect x="480" y="527" width="200" height="19" rx="3" fill="#f6f3fa" stroke="none" stroke-width="2"/>
+<rect x="480" y="527" width="140.0" height="19" rx="3" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="695" y="542.2" font-size="24" font-weight="400" fill="#8255b4" text-anchor="start">0.7</text>
+<text x="608" y="600" font-size="23" font-weight="400" fill="#8255b4" text-anchor="middle">各自得到 2 维结果</text>
+<rect x="549" y="628" width="57" height="57" rx="6" fill="#e6ddf0" stroke="none" stroke-width="2"/>
+<text x="577.5" y="668.2" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">c</text>
+<rect x="609" y="628" width="57" height="57" rx="6" fill="#e3d9ee" stroke="none" stroke-width="2"/>
+<text x="637.5" y="668.2" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">d</text>
+<path d="M265,691 L343,758" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<path d="M669,691 L505,758" fill="none" stroke="#8255b4" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="303" y="774" width="56" height="56" rx="6" fill="#d4e2f3" stroke="none" stroke-width="2"/>
+<text x="331.0" y="813.53" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">a</text>
+<rect x="362" y="774" width="56" height="56" rx="6" fill="#cfdff2" stroke="none" stroke-width="2"/>
+<text x="390.0" y="813.53" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">b</text>
+<rect x="421" y="774" width="56" height="56" rx="6" fill="#e6ddf0" stroke="none" stroke-width="2"/>
+<text x="449.0" y="813.53" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">c</text>
+<rect x="480" y="774" width="56" height="56" rx="6" fill="#e3d9ee" stroke="none" stroke-width="2"/>
+<text x="508.0" y="813.53" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">d</text>
+<text x="45" y="812" font-size="24" font-weight="650" fill="#192d42" text-anchor="start">拼接 2 + 2 = 4 维</text>
+<text x="562" y="812" font-size="24" font-weight="650" fill="#192d42" text-anchor="start">再由 W_O 混合</text>
+<text x="42" y="901" font-size="26" font-weight="650" fill="#168574" text-anchor="start">各头都读完整的合法位置；不是每头分一段句子。</text>
+</g></svg>

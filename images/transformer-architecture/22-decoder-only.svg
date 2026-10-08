@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="1130" viewBox="0 0 840 1130" role="img" aria-labelledby="title desc">
+<title id="title">22 · Decoder-only：在同一条序列后继续写 ★</title><desc id="desc">prompt 和已生成 token 走同一套层，没有独立的源句编码器。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="1130" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">22  Decoder-only：在同一条序列后继续写 ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">prompt 和已生成 token 走同一套层，没有独立的源句编码器。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="1108" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<rect x="181" y="156" width="112" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="237.0" y="190" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">我</text>
+<rect x="181" y="234" width="35" height="35" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<rect x="219" y="234" width="35" height="35" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<rect x="257" y="234" width="35" height="35" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<rect x="351" y="156" width="112" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="407.0" y="190" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">喜欢</text>
+<rect x="351" y="234" width="35" height="35" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<rect x="389" y="234" width="35" height="35" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<rect x="427" y="234" width="35" height="35" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<rect x="521" y="156" width="112" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="577.0" y="190" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">猫</text>
+<rect x="521" y="234" width="35" height="35" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<rect x="559" y="234" width="35" height="35" rx="6" fill="#5e94d4" stroke="none" stroke-width="2"/>
+<rect x="597" y="234" width="35" height="35" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<text x="40" y="318" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">一排 token 表示</text>
+<rect x="118" y="378" width="632" height="420" rx="11" fill="#f0f1eb" stroke="#c3cec5" stroke-width="2"/>
+<rect x="108" y="368" width="632" height="420" rx="11" fill="#f0f1eb" stroke="#c3cec5" stroke-width="2"/>
+<rect x="98" y="358" width="632" height="420" rx="11" fill="#f0f1eb" stroke="#c3cec5" stroke-width="2"/>
+<rect x="98" y="358" width="632" height="420" rx="11" fill="white" stroke="#b0c1b5" stroke-width="2"/>
+<text x="121" y="405" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">一层：Pre-RMSNorm + RoPE + 门控 FFN</text>
+<rect x="138" y="445" width="51" height="51" rx="3" fill="#49a093" stroke="none" stroke-width="2"/>
+<rect x="191" y="445" width="51" height="51" rx="3" fill="#faeff0" stroke="none" stroke-width="2"/>
+<rect x="191" y="445" width="51" height="51" rx="3" fill="url(#hatch)" stroke="none" stroke-width="2"/>
+<rect x="244" y="445" width="51" height="51" rx="3" fill="#faeff0" stroke="none" stroke-width="2"/>
+<rect x="244" y="445" width="51" height="51" rx="3" fill="url(#hatch)" stroke="none" stroke-width="2"/>
+<rect x="138" y="498" width="51" height="51" rx="3" fill="#abd3cd" stroke="none" stroke-width="2"/>
+<rect x="191" y="498" width="51" height="51" rx="3" fill="#8ac2ba" stroke="none" stroke-width="2"/>
+<rect x="244" y="498" width="51" height="51" rx="3" fill="#faeff0" stroke="none" stroke-width="2"/>
+<rect x="244" y="498" width="51" height="51" rx="3" fill="url(#hatch)" stroke="none" stroke-width="2"/>
+<rect x="138" y="551" width="51" height="51" rx="3" fill="#cce4e0" stroke="none" stroke-width="2"/>
+<rect x="191" y="551" width="51" height="51" rx="3" fill="#bbdcd7" stroke="none" stroke-width="2"/>
+<rect x="244" y="551" width="51" height="51" rx="3" fill="#9bcbc3" stroke="none" stroke-width="2"/>
+<text x="370" y="472" font-size="25" font-weight="400" fill="#536778" text-anchor="start">RMSNorm → 因果注意力</text>
+<text x="370" y="509" font-size="25" font-weight="400" fill="#536778" text-anchor="start">Q / K 应用 RoPE</text>
+<text x="370" y="546" font-size="25" font-weight="400" fill="#536778" text-anchor="start">读取与追加本层 KV</text>
+<text x="370" y="583" font-size="25" font-weight="400" fill="#536778" text-anchor="start">再加回原输入</text>
+<path d="M147,677.1 L206.0,660.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M147,677.1 L206.0,674.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M147,677.1 L206.0,688.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M147,677.1 L206.0,702.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M147,677.1 L206.0,717.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M147,699.9 L206.0,660.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M147,699.9 L206.0,674.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M147,699.9 L206.0,688.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M147,699.9 L206.0,702.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M147,699.9 L206.0,717.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M206.0,660.0 L265,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M206.0,660.0 L265,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M206.0,674.25 L265,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M206.0,674.25 L265,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M206.0,688.5 L265,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M206.0,688.5 L265,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M206.0,702.75 L265,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M206.0,702.75 L265,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M206.0,717.0 L265,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M206.0,717.0 L265,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="147" cy="677.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="147" cy="699.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="206.0" cy="660.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="206.0" cy="674.25" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="206.0" cy="688.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="206.0" cy="702.75" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="206.0" cy="717.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="265" cy="677.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="265" cy="699.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<path d="M342,677.1 L401.0,660.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M342,677.1 L401.0,674.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M342,677.1 L401.0,688.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M342,677.1 L401.0,702.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M342,677.1 L401.0,717.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M342,699.9 L401.0,660.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M342,699.9 L401.0,674.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M342,699.9 L401.0,688.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M342,699.9 L401.0,702.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M342,699.9 L401.0,717.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M401.0,660.0 L460,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M401.0,660.0 L460,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M401.0,674.25 L460,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M401.0,674.25 L460,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M401.0,688.5 L460,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M401.0,688.5 L460,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M401.0,702.75 L460,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M401.0,702.75 L460,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M401.0,717.0 L460,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M401.0,717.0 L460,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="342" cy="677.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="342" cy="699.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="401.0" cy="660.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="401.0" cy="674.25" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="401.0" cy="688.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="401.0" cy="702.75" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="401.0" cy="717.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="460" cy="677.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="460" cy="699.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<path d="M537,677.1 L596.0,660.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M537,677.1 L596.0,674.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M537,677.1 L596.0,688.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M537,677.1 L596.0,702.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M537,677.1 L596.0,717.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M537,699.9 L596.0,660.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M537,699.9 L596.0,674.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M537,699.9 L596.0,688.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M537,699.9 L596.0,702.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M537,699.9 L596.0,717.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M596.0,660.0 L655,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M596.0,660.0 L655,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M596.0,674.25 L655,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M596.0,674.25 L655,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M596.0,688.5 L655,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M596.0,688.5 L655,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M596.0,702.75 L655,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M596.0,702.75 L655,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M596.0,717.0 L655,677.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M596.0,717.0 L655,699.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="537" cy="677.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="537" cy="699.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="596.0" cy="660.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="596.0" cy="674.25" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="596.0" cy="688.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="596.0" cy="702.75" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="596.0" cy="717.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="655" cy="677.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="655" cy="699.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="414" y="753" font-size="25" font-weight="400" fill="#8255b4" text-anchor="middle">RMSNorm → 门控 FFN → 残差</text>
+<text x="720" y="838" font-size="26" font-weight="650" fill="#192d42" text-anchor="end">× N 层</text>
+<path d="M417,790 L417,867" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<text x="418" y="907" font-size="28" font-weight="650" fill="#192d42" text-anchor="middle">最终 RMSNorm → LM Head</text>
+<rect x="224" y="945" width="330" height="25" rx="3" fill="#eff6f5" stroke="none" stroke-width="2"/>
+<rect x="224" y="945" width="230.99999999999997" height="25" rx="3" fill="#168574" stroke="none" stroke-width="2"/>
+<text x="569" y="965.0" font-size="24" font-weight="400" fill="#168574" text-anchor="start">候选 A</text>
+<rect x="224" y="986" width="330" height="25" rx="3" fill="#f6f3fa" stroke="none" stroke-width="2"/>
+<rect x="224" y="986" width="99.0" height="25" rx="3" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="569" y="1006.0" font-size="24" font-weight="400" fill="#8255b4" text-anchor="start">候选 B</text>
+<path d="M710,965 L797,965 L797,182 L709,182" fill="none" stroke="#c87917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<text x="42" y="1064" font-size="25" font-weight="400" fill="#192d42" text-anchor="start">选出的新 token 接回序列；满足停止条件就结束。</text>
+</g></svg>

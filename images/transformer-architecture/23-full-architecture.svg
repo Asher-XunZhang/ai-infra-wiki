@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1460" height="2500" viewBox="0 0 1460 2500" role="img" aria-labelledby="title desc">
+<title id="title">23 · Transformer 全模块总览 ★</title><desc id="desc">沿左右两条竖线向下读：源句先编码，目标前缀逐步生成；橙色长线把新 token 接回输入。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="1460" height="2500" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">23  Transformer 全模块总览 ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">沿左右两条竖线向下读：源句先编码，目标前缀逐步生成；橙色长线把新 token 接回输入。</text>
+<path d="M32,113 L1428,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="2478" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="60" y="168" font-size="32" font-weight="650" fill="#2870c5" text-anchor="start">① 源句：先读懂</text>
+<text x="812" y="168" font-size="32" font-weight="650" fill="#168574" text-anchor="start">② 目标：接着写</text>
+<text x="60" y="212" font-size="25" font-weight="400" fill="#192d42" text-anchor="start">I love cats → Tokenizer → 源 IDs</text>
+<text x="812" y="212" font-size="25" font-weight="400" fill="#192d42" text-anchor="start">起始 BOS；此刻已有 BOS / 我</text>
+<rect x="80" y="234" width="124" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="142.0" y="268" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">I</text>
+<rect x="231" y="234" width="124" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="293.0" y="268" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">love</text>
+<rect x="382" y="234" width="124" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="444.0" y="268" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">cats</text>
+<rect x="865" y="234" width="124" height="51" rx="10" fill="#e1efed" stroke="#168574" stroke-width="2"/>
+<text x="927.0" y="268" font-size="26" font-weight="650" fill="#168574" text-anchor="middle">BOS</text>
+<rect x="1016" y="234" width="124" height="51" rx="10" fill="#e1efed" stroke="#168574" stroke-width="2"/>
+<text x="1078.0" y="268" font-size="26" font-weight="650" fill="#168574" text-anchor="middle">我</text>
+<path d="M320.0,285 L320.0,310" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="90" y="310" width="460" height="80" rx="10" fill="#eef4fa" stroke="#2870c5" stroke-width="2"/>
+<text x="108" y="344" font-size="26" font-weight="650" fill="#2870c5" text-anchor="start">★ 词嵌入 Embedding</text>
+<text x="108" y="374" font-size="23" font-weight="400" fill="#536778" text-anchor="start">查 ID → 每个 token 一条 d 维数字带</text>
+<path d="M320.0,390 L320.0,420" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="90" y="420" width="460" height="80" rx="10" fill="#eef4fa" stroke="#2870c5" stroke-width="2"/>
+<text x="108" y="454" font-size="26" font-weight="650" fill="#2870c5" text-anchor="start">★ 加入位置信息</text>
+<text x="108" y="484" font-size="23" font-weight="400" fill="#536778" text-anchor="start">经典结构：缩放词嵌入后加正弦 PE</text>
+<path d="M1070.0,285 L1070.0,310" fill="none" stroke="#168574" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="815" y="310" width="510" height="80" rx="10" fill="#ecf5f4" stroke="#168574" stroke-width="2"/>
+<text x="833" y="344" font-size="26" font-weight="650" fill="#168574" text-anchor="start">★ 词嵌入 Embedding</text>
+<text x="833" y="374" font-size="23" font-weight="400" fill="#536778" text-anchor="start">查 ID → 每个 token 一条 d 维数字带</text>
+<path d="M1070.0,390 L1070.0,420" fill="none" stroke="#168574" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="815" y="420" width="510" height="80" rx="10" fill="#ecf5f4" stroke="#168574" stroke-width="2"/>
+<text x="833" y="454" font-size="26" font-weight="650" fill="#168574" text-anchor="start">★ 加入位置信息</text>
+<text x="833" y="484" font-size="23" font-weight="400" fill="#536778" text-anchor="start">经典结构：缩放词嵌入后加正弦 PE</text>
+<rect x="38" y="532" width="550" height="756" rx="16" fill="white" stroke="#2870c5" stroke-width="2"/>
+<rect x="754" y="532" width="625" height="1126" rx="16" fill="white" stroke="#168574" stroke-width="2"/>
+<text x="61" y="573" font-size="30" font-weight="650" fill="#2870c5" text-anchor="start">Encoder 层 × Nₑ</text>
+<text x="815" y="573" font-size="30" font-weight="650" fill="#168574" text-anchor="start">Decoder 层 × N_d</text>
+<path d="M320,500 L320,584" fill="none" stroke="#2870c5" stroke-width="3" opacity="1"/>
+<path d="M1070,500 L1070,584" fill="none" stroke="#168574" stroke-width="3" opacity="1"/>
+<path d="M320.0,580 L320.0,610" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="100" y="610" width="440" height="175" rx="10" fill="#eef4fa" stroke="#2870c5" stroke-width="2"/>
+<text x="118" y="644" font-size="26" font-weight="650" fill="#2870c5" text-anchor="start">★ 多头自注意力</text>
+<text x="118" y="674" font-size="23" font-weight="400" fill="#536778" text-anchor="start">Q / K / V 都来自本层源表示</text>
+<text x="118" y="708" font-size="23" font-weight="400" fill="#536778" text-anchor="start">源位置互相读取 → 拼接 → W_O</text>
+<text x="118" y="742" font-size="23" font-weight="400" fill="#536778" text-anchor="start">填充掩码：源 PAD 不可读</text>
+<path d="M320.0,589 L73,589 L73,822 L302.0,822" fill="none" stroke="#c87917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<path d="M320.0,785 L320.0,804" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="320.0" cy="822" r="18" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="320.0" y="830.5" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<text x="350.0" y="830" font-size="22" font-weight="400" fill="#c87917" text-anchor="start">★ 残差相加</text>
+<path d="M320.0,840 L320.0,855" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="100" y="855" width="440" height="52" rx="6" fill="#fbf6ef" stroke="#c87917" stroke-width="2"/>
+<text x="320.0" y="889" font-size="24" font-weight="650" fill="#c87917" text-anchor="middle">★ LayerNorm：逐 token 整理尺度</text>
+<path d="M320,907 L320,944" fill="none" stroke="#2870c5" stroke-width="3" opacity="1"/>
+<path d="M320.0,940 L320.0,970" fill="none" stroke="#8255b4" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="100" y="970" width="440" height="175" rx="10" fill="#f5f1f9" stroke="#8255b4" stroke-width="2"/>
+<text x="118" y="1004" font-size="26" font-weight="650" fill="#8255b4" text-anchor="start">★ FFN：每个位置各自加工</text>
+<text x="118" y="1034" font-size="23" font-weight="400" fill="#536778" text-anchor="start">上投影 d → d_ff</text>
+<text x="118" y="1068" font-size="23" font-weight="400" fill="#536778" text-anchor="start">非线性激活 ReLU</text>
+<text x="118" y="1102" font-size="23" font-weight="400" fill="#536778" text-anchor="start">下投影 d_ff → d</text>
+<path d="M430,1088.9 L467.5,1076.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M430,1088.9 L467.5,1086.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M430,1088.9 L467.5,1097.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M430,1088.9 L467.5,1108.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M430,1088.9 L467.5,1119.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M430,1106.1 L467.5,1076.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M430,1106.1 L467.5,1086.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M430,1106.1 L467.5,1097.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M430,1106.1 L467.5,1108.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M430,1106.1 L467.5,1119.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M467.5,1076.0 L505,1088.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M467.5,1076.0 L505,1106.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M467.5,1086.75 L505,1088.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M467.5,1086.75 L505,1106.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M467.5,1097.5 L505,1088.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M467.5,1097.5 L505,1106.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M467.5,1108.25 L505,1088.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M467.5,1108.25 L505,1106.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M467.5,1119.0 L505,1088.9" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M467.5,1119.0 L505,1106.1" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="430" cy="1088.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="430" cy="1106.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="467.5" cy="1076.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="467.5" cy="1086.75" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="467.5" cy="1097.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="467.5" cy="1108.25" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="467.5" cy="1119.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="505" cy="1088.9" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="505" cy="1106.1" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<path d="M320.0,949 L73,949 L73,1182 L302.0,1182" fill="none" stroke="#c87917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<path d="M320.0,1145 L320.0,1164" fill="none" stroke="#8255b4" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="320.0" cy="1182" r="18" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="320.0" y="1190.5" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<text x="350.0" y="1190" font-size="22" font-weight="400" fill="#c87917" text-anchor="start">★ 残差相加</text>
+<path d="M320.0,1200 L320.0,1215" fill="none" stroke="#8255b4" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="100" y="1215" width="440" height="52" rx="6" fill="#fbf6ef" stroke="#c87917" stroke-width="2"/>
+<text x="320.0" y="1249" font-size="24" font-weight="650" fill="#c87917" text-anchor="middle">★ LayerNorm：逐 token 整理尺度</text>
+<path d="M320,1267 L320,1310" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="60" y="1310" width="520" height="110" rx="10" fill="#eef4fa" stroke="#2870c5" stroke-width="2"/>
+<text x="78" y="1344" font-size="26" font-weight="650" fill="#2870c5" text-anchor="start">最终源表示 H_enc：保留整排位置</text>
+<text x="78" y="1374" font-size="23" font-weight="400" fill="#536778" text-anchor="start">各层参数不同；最后一层输出供所有</text>
+<text x="78" y="1408" font-size="23" font-weight="400" fill="#536778" text-anchor="start">Decoder 层的交叉注意力分别投影 K/V</text>
+<path d="M580,1365 L678,1365 L678,1074 L815,1074" fill="none" stroke="#2870c5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="598" y="1290" font-size="25" font-weight="650" fill="#2870c5" text-anchor="start">K / V</text>
+<path d="M1070.0,580 L1070.0,610" fill="none" stroke="#168574" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="815" y="610" width="510" height="175" rx="10" fill="#ecf5f4" stroke="#168574" stroke-width="2"/>
+<text x="833" y="644" font-size="26" font-weight="650" fill="#168574" text-anchor="start">★ 带因果掩码的多头自注意力</text>
+<text x="833" y="674" font-size="23" font-weight="400" fill="#536778" text-anchor="start">Q / K / V 来自本层目标表示</text>
+<text x="833" y="708" font-size="23" font-weight="400" fill="#536778" text-anchor="start">前瞻掩码 + 目标填充掩码</text>
+<text x="833" y="742" font-size="23" font-weight="400" fill="#536778" text-anchor="start">只读取自身与合法历史 → 拼接 → W_O</text>
+<path d="M1070.0,589 L788,589 L788,822 L1052.0,822" fill="none" stroke="#c87917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<path d="M1070.0,785 L1070.0,804" fill="none" stroke="#168574" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="1070.0" cy="822" r="18" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="1070.0" y="830.5" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<text x="1100.0" y="830" font-size="22" font-weight="400" fill="#c87917" text-anchor="start">★ 残差相加</text>
+<path d="M1070.0,840 L1070.0,855" fill="none" stroke="#168574" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="815" y="855" width="510" height="52" rx="6" fill="#fbf6ef" stroke="#c87917" stroke-width="2"/>
+<text x="1070.0" y="889" font-size="24" font-weight="650" fill="#c87917" text-anchor="middle">★ LayerNorm：逐 token 整理尺度</text>
+<path d="M1070,907 L1070,944" fill="none" stroke="#168574" stroke-width="3" opacity="1"/>
+<path d="M1070.0,940 L1070.0,970" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="815" y="970" width="510" height="175" rx="10" fill="#eef4fa" stroke="#2870c5" stroke-width="2"/>
+<text x="833" y="1004" font-size="26" font-weight="650" fill="#2870c5" text-anchor="start">★ 交叉多头注意力</text>
+<text x="833" y="1034" font-size="23" font-weight="400" fill="#536778" text-anchor="start">Q：上一步目标表示；K/V：H_enc</text>
+<text x="833" y="1068" font-size="23" font-weight="400" fill="#536778" text-anchor="start">源填充掩码：排除源 PAD</text>
+<text x="833" y="1102" font-size="23" font-weight="400" fill="#536778" text-anchor="start">目标查询源句 → 拼接 → W_O</text>
+<path d="M1070.0,949 L788,949 L788,1182 L1052.0,1182" fill="none" stroke="#c87917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<path d="M1070.0,1145 L1070.0,1164" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="1070.0" cy="1182" r="18" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="1070.0" y="1190.5" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<text x="1100.0" y="1190" font-size="22" font-weight="400" fill="#c87917" text-anchor="start">★ 残差相加</text>
+<path d="M1070.0,1200 L1070.0,1215" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="815" y="1215" width="510" height="52" rx="6" fill="#fbf6ef" stroke="#c87917" stroke-width="2"/>
+<text x="1070.0" y="1249" font-size="24" font-weight="650" fill="#c87917" text-anchor="middle">★ LayerNorm：逐 token 整理尺度</text>
+<path d="M1070,1267 L1070,1304" fill="none" stroke="#168574" stroke-width="3" opacity="1"/>
+<path d="M1070.0,1300 L1070.0,1330" fill="none" stroke="#8255b4" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="815" y="1330" width="510" height="175" rx="10" fill="#f5f1f9" stroke="#8255b4" stroke-width="2"/>
+<text x="833" y="1364" font-size="26" font-weight="650" fill="#8255b4" text-anchor="start">★ FFN：每个位置各自加工</text>
+<text x="833" y="1394" font-size="23" font-weight="400" fill="#536778" text-anchor="start">上投影 d → d_ff → 非线性 → 下投影 d</text>
+<text x="833" y="1428" font-size="23" font-weight="400" fill="#536778" text-anchor="start">与左侧同类工序，使用自己的参数</text>
+<text x="833" y="1462" font-size="23" font-weight="400" fill="#536778" text-anchor="start">现代变体：这个槽位可替换为 MoE</text>
+<path d="M1070.0,1309 L788,1309 L788,1542 L1052.0,1542" fill="none" stroke="#c87917" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<path d="M1070.0,1505 L1070.0,1524" fill="none" stroke="#8255b4" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<circle cx="1070.0" cy="1542" r="18" fill="#f6eada" stroke="#c87917" stroke-width="2"/>
+<text x="1070.0" y="1550.5" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">+</text>
+<text x="1100.0" y="1550" font-size="22" font-weight="400" fill="#c87917" text-anchor="start">★ 残差相加</text>
+<path d="M1070.0,1560 L1070.0,1575" fill="none" stroke="#8255b4" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="815" y="1575" width="510" height="52" rx="6" fill="#fbf6ef" stroke="#c87917" stroke-width="2"/>
+<text x="1070.0" y="1609" font-size="24" font-weight="650" fill="#c87917" text-anchor="middle">★ LayerNorm：逐 token 整理尺度</text>
+<path d="M1070,1627 L1070,1690" fill="none" stroke="#168574" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="815" y="1690" width="510" height="110" rx="10" fill="#ecf5f4" stroke="#168574" stroke-width="2"/>
+<text x="833" y="1724" font-size="26" font-weight="650" fill="#168574" text-anchor="start">取最后有效目标位置 → LM Head</text>
+<text x="833" y="1754" font-size="23" font-weight="400" fill="#536778" text-anchor="start">d 维表示 → 词表 V 个分数 logits</text>
+<text x="833" y="1788" font-size="23" font-weight="400" fill="#536778" text-anchor="start">本例：用“我”所在位置预测后继</text>
+<path d="M1070,1800 L1070,1830" fill="none" stroke="#168574" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="815" y="1830" width="510" height="110" rx="10" fill="#ecf5f4" stroke="#168574" stroke-width="2"/>
+<text x="833" y="1864" font-size="26" font-weight="650" fill="#168574" text-anchor="start">★ 解码选择：决定下一个 token</text>
+<text x="833" y="1894" font-size="23" font-weight="400" fill="#536778" text-anchor="start">Greedy 取最大分；或 Softmax 后采样</text>
+<text x="833" y="1928" font-size="23" font-weight="400" fill="#536778" text-anchor="start">例如选出“喜欢”：此刻尚未处理它</text>
+<path d="M1070,1940 L1070,1970" fill="none" stroke="#168574" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="1008" y="1970" width="124" height="51" rx="10" fill="#fbfaf7" stroke="#c87917" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="1070.0" y="2004" font-size="26" font-weight="650" fill="#c87917" text-anchor="middle">喜欢</text>
+<rect x="793" y="2036" width="535" height="45" rx="8" fill="#fcf6f6" stroke="#c65255" stroke-width="2"/>
+<text x="803" y="2068" font-size="29" font-weight="650" fill="#c65255" text-anchor="start">EOS / 长度等停止条件？</text>
+<path d="M1070,2021 L1070,2036" fill="none" stroke="#c87917" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<path d="M1328,2058 L1424,2058 L1424,259 L1170,259" fill="none" stroke="#c87917" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="1164" y="2027" font-size="23" font-weight="400" fill="#c87917" text-anchor="start">否：接回前缀</text>
+<path d="M1070,2081 L1070,2110" fill="none" stroke="#c65255" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<text x="1096" y="2102" font-size="22" font-weight="400" fill="#c65255" text-anchor="start">是</text>
+<rect x="815" y="2110" width="510" height="108" rx="10" fill="#faf1f1" stroke="#c65255" stroke-width="2"/>
+<text x="833" y="2144" font-size="26" font-weight="650" fill="#c65255" text-anchor="start">结束：Token IDs → 输出文字</text>
+<text x="833" y="2174" font-size="23" font-weight="400" fill="#536778" text-anchor="start">去除协议特殊标记，再 Detokenize</text>
+<text x="833" y="2208" font-size="23" font-weight="400" fill="#536778" text-anchor="start">最终文字示例：我喜欢猫</text>
+<rect x="60" y="1480" width="630" height="268" rx="10" fill="#ecf5f4" stroke="#168574" stroke-width="2"/>
+<text x="78" y="1514" font-size="26" font-weight="650" fill="#168574" text-anchor="start">放大任意一个注意力头</text>
+<text x="78" y="1544" font-size="23" font-weight="400" fill="#536778" text-anchor="start">① 本子层输入分别投影出 Q、K、V</text>
+<text x="78" y="1578" font-size="23" font-weight="400" fill="#536778" text-anchor="start">② QKᵀ / √d_k：给“读哪个位置”打分</text>
+<text x="78" y="1612" font-size="23" font-weight="400" fill="#536778" text-anchor="start">③ 加 mask：允许 +0；禁止 −∞</text>
+<text x="78" y="1646" font-size="23" font-weight="400" fill="#536778" text-anchor="start">④ Softmax：每个 Query 的读取份额</text>
+<text x="78" y="1680" font-size="23" font-weight="400" fill="#536778" text-anchor="start">⑤ 权重 × V：汇总内容</text>
+<text x="78" y="1714" font-size="23" font-weight="400" fill="#536778" text-anchor="start">多个头分别算 → Concat 拼接 → W_O</text>
+<rect x="60" y="1785" width="630" height="174" rx="10" fill="#f5f1f9" stroke="#8255b4" stroke-width="2"/>
+<text x="78" y="1819" font-size="26" font-weight="650" fill="#8255b4" text-anchor="start">MoE 放在哪里？见图 24–26</text>
+<text x="78" y="1849" font-size="23" font-weight="400" fill="#536778" text-anchor="start">替换层内 FFN：Router → Top-k 专家</text>
+<text x="78" y="1883" font-size="23" font-weight="400" fill="#536778" text-anchor="start">选中专家各自做 FFN → 按权重相加</text>
+<text x="78" y="1917" font-size="23" font-weight="400" fill="#536778" text-anchor="start">输出仍为 d 维；残差与归一化仍保留</text>
+<rect x="60" y="1990" width="630" height="230" rx="10" fill="#eef4fa" stroke="#2870c5" stroke-width="2"/>
+<text x="78" y="2024" font-size="26" font-weight="650" fill="#2870c5" text-anchor="start">KV Cache 是推理复用，不是另一个子层</text>
+<text x="78" y="2054" font-size="23" font-weight="400" fill="#536778" text-anchor="start">Decoder 各层：旧 self-attention K/V 保留</text>
+<text x="78" y="2088" font-size="23" font-weight="400" fill="#536778" text-anchor="start">新 token：计算并追加本层 K/V</text>
+<text x="78" y="2122" font-size="23" font-weight="400" fill="#536778" text-anchor="start">当前 Q：仍读取全部合法 K/V</text>
+<text x="78" y="2156" font-size="23" font-weight="400" fill="#536778" text-anchor="start">交叉注意力的源 K/V 也可逐层预先缓存</text>
+<text x="78" y="2190" font-size="23" font-weight="400" fill="#536778" text-anchor="start">上图为完整前缀视图；缓存细节见图 21</text>
+<rect x="32" y="2260" width="1396" height="100" rx="8" fill="#eff6f5" stroke="none" stroke-width="2"/>
+<rect x="32" y="2260" width="5" height="100" rx="0" fill="#168574" stroke="none" stroke-width="2"/>
+<text x="52" y="2296" font-size="26" font-weight="650" fill="#168574" text-anchor="start">读图边界：主干是经典 Encoder–Decoder / Post-LN</text>
+<text x="52" y="2334" font-size="23" font-weight="400" fill="#192d42" text-anchor="start">每层各有参数；框内所有子层随层堆叠重复。PAD 掩码来自输入有效长度。</text>
+<text x="52" y="2396" font-size="25" font-weight="400" fill="#536778" text-anchor="start">现代 Decoder-only：移除独立 Encoder 和交叉注意力，prompt 与输出共用一条序列。</text>
+<text x="52" y="2435" font-size="25" font-weight="400" fill="#536778" text-anchor="start">Pre-Norm / RMSNorm、RoPE、SwiGLU 与 MoE 是需按模型选择的变体；对照图 22。</text>
+</g></svg>

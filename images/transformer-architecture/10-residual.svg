@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="900" viewBox="0 0 840 900" role="img" aria-labelledby="title desc">
+<title id="title">10 · 残差连接：保留底稿，再叠加修订 ★</title><desc id="desc">输出 = 原表示 + 子层给出的变化；不是把两份向量拼起来。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="900" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">10  残差连接：保留底稿，再叠加修订 ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">输出 = 原表示 + 子层给出的变化；不是把两份向量拼起来。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="878" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<path d="M135,640 L610.0,640" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<path d="M160,665 L160,177.5" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1" marker-end="url(#arrow)"/>
+<path d="M285,636 L285,644" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1"/>
+<text x="285" y="674" font-size="21" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<path d="M156,515 L164,515" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1"/>
+<text x="137" y="522" font-size="21" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<path d="M410,636 L410,644" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1"/>
+<text x="410" y="674" font-size="21" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<path d="M156,390 L164,390" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1"/>
+<text x="137" y="397" font-size="21" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<path d="M535,636 L535,644" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1"/>
+<text x="535" y="674" font-size="21" font-weight="400" fill="#192d42" text-anchor="middle">3</text>
+<path d="M156,265 L164,265" fill="none" stroke="#a0adb9" stroke-width="2" opacity="1"/>
+<text x="137" y="272" font-size="21" font-weight="400" fill="#192d42" text-anchor="middle">3</text>
+<path d="M160,640 L410,515" fill="none" stroke="#2870c5" stroke-width="7" opacity="1" marker-end="url(#arrow)"/>
+<path d="M410,515 L285,265" fill="none" stroke="#c87917" stroke-width="7" opacity="1" marker-end="url(#arrow)"/>
+<path d="M160,640 L285,265" fill="none" stroke="#168574" stroke-width="5" opacity="1" marker-end="url(#arrow)"/>
+<text x="430" y="558" font-size="27" font-weight="650" fill="#2870c5" text-anchor="start">底稿 x = [2, 1]</text>
+<text x="427" y="338" font-size="25" font-weight="400" fill="#c87917" text-anchor="start">修订 Δ = [−1, 2]</text>
+<text x="427" y="373" font-size="25" font-weight="400" fill="#c87917" text-anchor="start">从蓝箭头的终点出发</text>
+<text x="45" y="182" font-size="26" font-weight="400" fill="#168574" text-anchor="start">合起来 y = [1, 3]</text>
+<text x="45" y="217" font-size="26" font-weight="400" fill="#168574" text-anchor="start">绿箭头直接指向最终结果</text>
+<text x="420" y="744" font-size="34" font-weight="650" fill="#192d42" text-anchor="middle">[2, 1] + [−1, 2] = [1, 3]</text>
+<text x="47" y="826" font-size="27" font-weight="400" fill="#192d42" text-anchor="start">每个分量对应相加，所以两边必须同宽。</text>
+</g></svg>

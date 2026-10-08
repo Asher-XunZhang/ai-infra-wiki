@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="950" viewBox="0 0 840 950" role="img" aria-labelledby="title desc">
+<title id="title">15 · “我”能看见谁，不能看见谁？ ★</title><desc id="desc">当前输入位置预测下一个 token；允许看自己，屏蔽后面。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="950" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">15  “我”能看见谁，不能看见谁？ ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">当前输入位置预测下一个 token；允许看自己，屏蔽后面。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="928" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="335" y="166" font-size="27" font-weight="650" fill="#192d42" text-anchor="middle">被读取的位置（Key）</text>
+<text x="267" y="217" font-size="27" font-weight="400" fill="#192d42" text-anchor="middle">BOS</text>
+<text x="367" y="217" font-size="27" font-weight="400" fill="#192d42" text-anchor="middle">我</text>
+<text x="467" y="217" font-size="27" font-weight="400" fill="#192d42" text-anchor="middle">喜欢</text>
+<text x="567" y="217" font-size="27" font-weight="400" fill="#192d42" text-anchor="middle">猫</text>
+<text x="38" y="320" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">查询</text>
+<text x="38" y="357" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">位置</text>
+<text x="170" y="302" font-size="26" font-weight="400" fill="#192d42" text-anchor="end">BOS</text>
+<text x="170" y="402" font-size="26" font-weight="400" fill="#192d42" text-anchor="end">我</text>
+<text x="170" y="502" font-size="26" font-weight="400" fill="#192d42" text-anchor="end">喜欢</text>
+<text x="170" y="602" font-size="26" font-weight="400" fill="#192d42" text-anchor="end">猫</text>
+<rect x="218" y="241" width="98" height="98" rx="3" fill="#d2e8e4" stroke="none" stroke-width="2"/>
+<rect x="318" y="241" width="98" height="98" rx="3" fill="#faeff0" stroke="none" stroke-width="2"/>
+<rect x="318" y="241" width="98" height="98" rx="3" fill="url(#hatch)" stroke="none" stroke-width="2"/>
+<rect x="418" y="241" width="98" height="98" rx="3" fill="#faeff0" stroke="none" stroke-width="2"/>
+<rect x="418" y="241" width="98" height="98" rx="3" fill="url(#hatch)" stroke="none" stroke-width="2"/>
+<rect x="518" y="241" width="98" height="98" rx="3" fill="#faeff0" stroke="none" stroke-width="2"/>
+<rect x="518" y="241" width="98" height="98" rx="3" fill="url(#hatch)" stroke="none" stroke-width="2"/>
+<rect x="218" y="341" width="98" height="98" rx="3" fill="#d2e8e4" stroke="none" stroke-width="2"/>
+<rect x="318" y="341" width="98" height="98" rx="3" fill="#d2e8e4" stroke="none" stroke-width="2"/>
+<rect x="418" y="341" width="98" height="98" rx="3" fill="#faeff0" stroke="none" stroke-width="2"/>
+<rect x="418" y="341" width="98" height="98" rx="3" fill="url(#hatch)" stroke="none" stroke-width="2"/>
+<rect x="518" y="341" width="98" height="98" rx="3" fill="#faeff0" stroke="none" stroke-width="2"/>
+<rect x="518" y="341" width="98" height="98" rx="3" fill="url(#hatch)" stroke="none" stroke-width="2"/>
+<rect x="218" y="441" width="98" height="98" rx="3" fill="#d2e8e4" stroke="none" stroke-width="2"/>
+<rect x="318" y="441" width="98" height="98" rx="3" fill="#d2e8e4" stroke="none" stroke-width="2"/>
+<rect x="418" y="441" width="98" height="98" rx="3" fill="#d2e8e4" stroke="none" stroke-width="2"/>
+<rect x="518" y="441" width="98" height="98" rx="3" fill="#faeff0" stroke="none" stroke-width="2"/>
+<rect x="518" y="441" width="98" height="98" rx="3" fill="url(#hatch)" stroke="none" stroke-width="2"/>
+<rect x="218" y="541" width="98" height="98" rx="3" fill="#d2e8e4" stroke="none" stroke-width="2"/>
+<rect x="318" y="541" width="98" height="98" rx="3" fill="#d2e8e4" stroke="none" stroke-width="2"/>
+<rect x="418" y="541" width="98" height="98" rx="3" fill="#d2e8e4" stroke="none" stroke-width="2"/>
+<rect x="518" y="541" width="98" height="98" rx="3" fill="#d2e8e4" stroke="none" stroke-width="2"/>
+<text x="267" y="302" font-size="24" font-weight="400" fill="#168574" text-anchor="middle">可读</text>
+<text x="367" y="302" font-size="24" font-weight="400" fill="#c65255" text-anchor="middle">遮住</text>
+<text x="467" y="302" font-size="24" font-weight="400" fill="#c65255" text-anchor="middle">遮住</text>
+<text x="567" y="302" font-size="24" font-weight="400" fill="#c65255" text-anchor="middle">遮住</text>
+<text x="267" y="402" font-size="24" font-weight="400" fill="#168574" text-anchor="middle">可读</text>
+<text x="367" y="402" font-size="24" font-weight="400" fill="#168574" text-anchor="middle">可读</text>
+<text x="467" y="402" font-size="24" font-weight="400" fill="#c65255" text-anchor="middle">遮住</text>
+<text x="567" y="402" font-size="24" font-weight="400" fill="#c65255" text-anchor="middle">遮住</text>
+<text x="267" y="502" font-size="24" font-weight="400" fill="#168574" text-anchor="middle">可读</text>
+<text x="367" y="502" font-size="24" font-weight="400" fill="#168574" text-anchor="middle">可读</text>
+<text x="467" y="502" font-size="24" font-weight="400" fill="#168574" text-anchor="middle">可读</text>
+<text x="567" y="502" font-size="24" font-weight="400" fill="#c65255" text-anchor="middle">遮住</text>
+<text x="267" y="602" font-size="24" font-weight="400" fill="#168574" text-anchor="middle">可读</text>
+<text x="367" y="602" font-size="24" font-weight="400" fill="#168574" text-anchor="middle">可读</text>
+<text x="467" y="602" font-size="24" font-weight="400" fill="#168574" text-anchor="middle">可读</text>
+<text x="567" y="602" font-size="24" font-weight="400" fill="#168574" text-anchor="middle">可读</text>
+<rect x="209" y="333" width="419" height="111" rx="6" fill="none" stroke="#c87917" stroke-width="2"/>
+<text x="653" y="382" font-size="24" font-weight="650" fill="#c87917" text-anchor="start">看这一行</text>
+<text x="45" y="712" font-size="28" font-weight="650" fill="#192d42" text-anchor="start">输入到“我”时：</text>
+<rect x="45" y="753" width="124" height="51" rx="10" fill="#e1efed" stroke="#168574" stroke-width="2"/>
+<text x="107.0" y="787" font-size="26" font-weight="650" fill="#168574" text-anchor="middle">BOS</text>
+<rect x="199" y="753" width="124" height="51" rx="10" fill="#e1efed" stroke="#168574" stroke-width="2"/>
+<text x="261.0" y="787" font-size="26" font-weight="650" fill="#168574" text-anchor="middle">我</text>
+<rect x="353" y="753" width="124" height="51" rx="10" fill="#fbfaf7" stroke="#a0adb9" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="415.0" y="787" font-size="26" font-weight="650" fill="#a0adb9" text-anchor="middle">喜欢</text>
+<rect x="507" y="753" width="124" height="51" rx="10" fill="#fbfaf7" stroke="#a0adb9" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="569.0" y="787" font-size="26" font-weight="650" fill="#a0adb9" text-anchor="middle">猫</text>
+<path d="M700,778 L756,778" fill="none" stroke="#c87917" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<text x="420" y="873" font-size="28" font-weight="650" fill="#c87917" text-anchor="middle">读取 BOS 和“我”，然后预测“喜欢”。</text>
+</g></svg>

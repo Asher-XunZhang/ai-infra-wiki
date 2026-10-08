@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="960" viewBox="0 0 840 960" role="img" aria-labelledby="title desc">
+<title id="title">18 · 一串数字怎样变成下一个 token？ ★</title><desc id="desc">LM Head 给词表候选打分；解码策略再做选择。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="960" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">18  一串数字怎样变成下一个 token？ ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">LM Head 给词表候选打分；解码策略再做选择。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="938" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="35" y="171" font-size="27" font-weight="650" fill="#192d42" text-anchor="start">最后有效位置的表示</text>
+<rect x="416" y="142" width="51" height="51" rx="6" fill="#add4ce" stroke="none" stroke-width="2"/>
+<text x="441.5" y="178.18" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="470" y="142" width="51" height="51" rx="6" fill="#73b6ac" stroke="none" stroke-width="2"/>
+<text x="495.5" y="178.18" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<rect x="524" y="142" width="51" height="51" rx="6" fill="#50a497" stroke="none" stroke-width="2"/>
+<text x="549.5" y="178.18" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">3</text>
+<rect x="578" y="142" width="51" height="51" rx="6" fill="#add4ce" stroke="none" stroke-width="2"/>
+<text x="603.5" y="178.18" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<path d="M701,171 L750,171 L750,280 L662,280" fill="none" stroke="#168574" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="1" marker-end="url(#arrow)"/>
+<text x="36" y="241" font-size="27" font-weight="650" fill="#2870c5" text-anchor="start">词表分数 logits</text>
+<text x="91" y="313" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">我</text>
+<rect x="167" y="289" width="455" height="25" rx="3" fill="#f0f5fb" stroke="none" stroke-width="2"/>
+<rect x="167" y="289" width="407.6252792493825" height="25" rx="3" fill="#2870c5" stroke="none" stroke-width="2"/>
+<text x="637" y="309.0" font-size="24" font-weight="400" fill="#2870c5" text-anchor="start">1.79</text>
+<text x="91" y="377" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">你</text>
+<rect x="167" y="353" width="455" height="25" rx="3" fill="#f0f5fb" stroke="none" stroke-width="2"/>
+<rect x="167" y="353" width="249.934295671995" height="25" rx="3" fill="#2870c5" stroke="none" stroke-width="2"/>
+<text x="637" y="373.0" font-size="24" font-weight="400" fill="#2870c5" text-anchor="start">1.10</text>
+<text x="91" y="441" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">EOS</text>
+<rect x="167" y="417" width="455" height="25" rx="3" fill="#f0f5fb" stroke="none" stroke-width="2"/>
+<text x="637" y="437.0" font-size="24" font-weight="400" fill="#2870c5" text-anchor="start">0.00</text>
+<text x="36" y="521" font-size="27" font-weight="650" fill="#8255b4" text-anchor="start">Softmax：转成概率</text>
+<text x="91" y="592" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">我</text>
+<rect x="167" y="568" width="455" height="25" rx="3" fill="#f6f3fa" stroke="none" stroke-width="2"/>
+<rect x="167" y="568" width="273.0" height="25" rx="3" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="637" y="588.0" font-size="24" font-weight="400" fill="#8255b4" text-anchor="start">60%</text>
+<text x="91" y="656" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">你</text>
+<rect x="167" y="632" width="455" height="25" rx="3" fill="#f6f3fa" stroke="none" stroke-width="2"/>
+<rect x="167" y="632" width="136.5" height="25" rx="3" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="637" y="652.0" font-size="24" font-weight="400" fill="#8255b4" text-anchor="start">30%</text>
+<text x="91" y="720" font-size="25" font-weight="400" fill="#192d42" text-anchor="middle">EOS</text>
+<rect x="167" y="696" width="455" height="25" rx="3" fill="#f6f3fa" stroke="none" stroke-width="2"/>
+<rect x="167" y="696" width="45.5" height="25" rx="3" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="637" y="716.0" font-size="24" font-weight="400" fill="#8255b4" text-anchor="start">10%</text>
+<rect x="32" y="788" width="776" height="100" rx="8" fill="#eff6f5" stroke="none" stroke-width="2"/>
+<rect x="32" y="788" width="5" height="100" rx="0" fill="#168574" stroke="none" stroke-width="2"/>
+<text x="52" y="824" font-size="26" font-weight="650" fill="#168574" text-anchor="start">Greedy 选最大项“我”；采样则按概率抽取</text>
+<text x="52" y="862" font-size="23" font-weight="400" fill="#192d42" text-anchor="start">EOS 分数是 0，概率仍是 10%；0 分不等于被屏蔽。</text>
+</g></svg>

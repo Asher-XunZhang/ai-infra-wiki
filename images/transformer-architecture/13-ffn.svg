@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="960" viewBox="0 0 840 960" role="img" aria-labelledby="title desc">
+<title id="title">13 · FFN：每个 token 各自加工，参数共用 ★</title><desc id="desc">Attention 在位置之间读信息；FFN 在单个位置内部组合特征。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="840" height="960" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">13  FFN：每个 token 各自加工，参数共用 ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">Attention 在位置之间读信息；FFN 在单个位置内部组合特征。</text>
+<path d="M32,113 L808,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="938" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="216" y="171" font-size="27" font-weight="650" fill="#2870c5" text-anchor="middle">输入 d</text>
+<text x="440" y="171" font-size="27" font-weight="650" fill="#8255b4" text-anchor="middle">中间 d_ff</text>
+<text x="664" y="171" font-size="27" font-weight="650" fill="#168574" text-anchor="middle">输出 d</text>
+<rect x="35" y="269" width="105" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="87.5" y="303" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">我</text>
+<path d="M216,276 L440,240" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,276 L440,263" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,276 L440,286" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,276 L440,309" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,276 L440,332" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,276 L440,355" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,325 L440,240" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,325 L440,263" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,325 L440,286" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,325 L440,309" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,325 L440,332" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,325 L440,355" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,240 L664,276" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,240 L664,325" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,263 L664,276" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,263 L664,325" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,286 L664,276" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,286 L664,325" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,309 L664,276" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,309 L664,325" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,332 L664,276" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,332 L664,325" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,355 L664,276" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,355 L664,325" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<circle cx="216" cy="276" r="9" fill="#2870c5" stroke="none" stroke-width="2"/>
+<circle cx="216" cy="325" r="9" fill="#2870c5" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="240" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="263" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="286" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="309" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="332" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="355" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="664" cy="276" r="9" fill="#168574" stroke="none" stroke-width="2"/>
+<circle cx="664" cy="325" r="9" fill="#168574" stroke="none" stroke-width="2"/>
+<path d="M33,389 L779,389" fill="none" stroke="#e2e4df" stroke-width="1" opacity="1" stroke-dasharray="6 5"/>
+<rect x="35" y="453" width="105" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="87.5" y="487" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">喜欢</text>
+<path d="M216,460 L440,424" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,460 L440,447" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,460 L440,470" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,460 L440,493" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,460 L440,516" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,460 L440,539" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,509 L440,424" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,509 L440,447" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,509 L440,470" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,509 L440,493" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,509 L440,516" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,509 L440,539" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,424 L664,460" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,424 L664,509" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,447 L664,460" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,447 L664,509" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,470 L664,460" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,470 L664,509" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,493 L664,460" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,493 L664,509" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,516 L664,460" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,516 L664,509" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,539 L664,460" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,539 L664,509" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<circle cx="216" cy="460" r="9" fill="#2870c5" stroke="none" stroke-width="2"/>
+<circle cx="216" cy="509" r="9" fill="#2870c5" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="424" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="447" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="470" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="493" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="516" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="539" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="664" cy="460" r="9" fill="#168574" stroke="none" stroke-width="2"/>
+<circle cx="664" cy="509" r="9" fill="#168574" stroke="none" stroke-width="2"/>
+<path d="M33,573 L779,573" fill="none" stroke="#e2e4df" stroke-width="1" opacity="1" stroke-dasharray="6 5"/>
+<rect x="35" y="637" width="105" height="51" rx="10" fill="#e3ecf7" stroke="#2870c5" stroke-width="2"/>
+<text x="87.5" y="671" font-size="26" font-weight="650" fill="#2870c5" text-anchor="middle">猫</text>
+<path d="M216,644 L440,608" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,644 L440,631" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,644 L440,654" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,644 L440,677" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,644 L440,700" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,644 L440,723" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,693 L440,608" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,693 L440,631" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,693 L440,654" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,693 L440,677" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,693 L440,700" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M216,693 L440,723" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,608 L664,644" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,608 L664,693" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,631 L664,644" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,631 L664,693" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,654 L664,644" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,654 L664,693" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,677 L664,644" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,677 L664,693" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,700 L664,644" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,700 L664,693" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,723 L664,644" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<path d="M440,723 L664,693" fill="none" stroke="#8255b4" stroke-width="1.4" opacity="0.25"/>
+<circle cx="216" cy="644" r="9" fill="#2870c5" stroke="none" stroke-width="2"/>
+<circle cx="216" cy="693" r="9" fill="#2870c5" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="608" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="631" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="654" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="677" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="700" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="440" cy="723" r="9" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="664" cy="644" r="9" fill="#168574" stroke="none" stroke-width="2"/>
+<circle cx="664" cy="693" r="9" fill="#168574" stroke="none" stroke-width="2"/>
+<path d="M33,757 L779,757" fill="none" stroke="#e2e4df" stroke-width="1" opacity="1" stroke-dasharray="6 5"/>
+<text x="40" y="835" font-size="25" font-weight="650" fill="#192d42" text-anchor="start">同一套权重，分别用于三个 token；没有跨行连线。</text>
+<text x="40" y="886" font-size="25" font-weight="400" fill="#192d42" text-anchor="start">每行内部先展开，再非线性加工，最后回到原宽度。</text>
+</g></svg>

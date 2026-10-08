@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1370" viewBox="0 0 1040 1370" role="img" aria-labelledby="title desc">
+<title id="title">25 · MoE 手算：选四位中的两位，再汇总 ★</title><desc id="desc">同一个输入送入选中专家；汇总得到新的数字带，宽度仍是 d。。人工教学示例，不代表实测模型。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/></marker><pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0,10 L10,0" stroke="#c65255" stroke-width="1" opacity=".3"/></pattern></defs>
+<rect width="1040" height="1370" fill="#fbfaf7" rx="16"/>
+<g font-family="PingFang SC, Noto Sans CJK SC, Microsoft YaHei, sans-serif">
+<text x="32" y="49" font-size="32" font-weight="650" fill="#192d42" text-anchor="start">25  MoE 手算：选四位中的两位，再汇总 ★</text>
+<text x="32" y="90" font-size="24" font-weight="400" fill="#536778" text-anchor="start">同一个输入送入选中专家；汇总得到新的数字带，宽度仍是 d。</text>
+<path d="M32,113 L1008,113" fill="none" stroke="#d7ddd9" stroke-width="2" opacity="1"/>
+<text x="32" y="1348" font-size="19" font-weight="400" fill="#536778" text-anchor="start">原创教学示意 · 数字为人工例子 · ★ 核心模块</text>
+<text x="48" y="167" font-size="28" font-weight="650" fill="#2870c5" text-anchor="start">① 当前 token 的表示 x</text>
+<rect x="700" y="135" width="55" height="55" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<text x="727.5" y="173.86" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="758" y="135" width="55" height="55" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<text x="785.5" y="173.86" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<text x="48" y="226" font-size="26" font-weight="400" fill="#192d42" text-anchor="start">Router 线性投影：d 维 → 4 个专家分数</text>
+<text x="48" y="276" font-size="25" font-weight="400" fill="#192d42" text-anchor="start">本例 logits = [0, ln 6, ln 2, 0]；Top-2 选专家 2、3</text>
+<text x="48" y="330" font-size="28" font-weight="650" fill="#c87917" text-anchor="start">② 只在选中的分数之间 Softmax</text>
+<text x="70" y="384" font-size="24" font-weight="400" fill="#192d42" text-anchor="start">1</text>
+<rect x="120" y="364" width="370" height="25" rx="3" fill="#f8f9fa" stroke="none" stroke-width="2"/>
+<text x="505" y="384.0" font-size="24" font-weight="400" fill="#a0adb9" text-anchor="start">专家 1：不计算</text>
+<text x="70" y="433" font-size="24" font-weight="400" fill="#192d42" text-anchor="start">2</text>
+<rect x="120" y="413" width="370" height="25" rx="3" fill="#f6f3fa" stroke="none" stroke-width="2"/>
+<rect x="120" y="413" width="277.5" height="25" rx="3" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="505" y="433.0" font-size="24" font-weight="400" fill="#8255b4" text-anchor="start">专家 2：6 / (6+2) = 0.75</text>
+<text x="70" y="482" font-size="24" font-weight="400" fill="#192d42" text-anchor="start">3</text>
+<rect x="120" y="462" width="370" height="25" rx="3" fill="#f6f3fa" stroke="none" stroke-width="2"/>
+<rect x="120" y="462" width="92.5" height="25" rx="3" fill="#8255b4" stroke="none" stroke-width="2"/>
+<text x="505" y="482.0" font-size="24" font-weight="400" fill="#8255b4" text-anchor="start">专家 3：2 / (6+2) = 0.25</text>
+<text x="70" y="531" font-size="24" font-weight="400" fill="#192d42" text-anchor="start">4</text>
+<rect x="120" y="511" width="370" height="25" rx="3" fill="#f8f9fa" stroke="none" stroke-width="2"/>
+<text x="505" y="531.0" font-size="24" font-weight="400" fill="#a0adb9" text-anchor="start">专家 4：不计算</text>
+<text x="48" y="604" font-size="28" font-weight="650" fill="#8255b4" text-anchor="start">③ 两位专家分别加工同一个 x</text>
+<rect x="462" y="638" width="46" height="46" rx="6" fill="#b4cdeb" stroke="none" stroke-width="2"/>
+<text x="485.0" y="670.83" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">1</text>
+<rect x="511" y="638" width="46" height="46" rx="6" fill="#7ea9dc" stroke="none" stroke-width="2"/>
+<text x="534.0" y="670.83" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<path d="M510,700 L261,759" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="80" y="775" width="362" height="217" rx="13" fill="#f4f0f8" stroke="#8255b4" stroke-width="2"/>
+<text x="261" y="817" font-size="28" font-weight="650" fill="#8255b4" text-anchor="middle">专家 2：自己的 FFN</text>
+<path d="M195,865.7 L261.0,848.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M195,865.7 L261.0,862.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M195,865.7 L261.0,877.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M195,865.7 L261.0,892.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M195,865.7 L261.0,907.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M195,889.3 L261.0,848.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M195,889.3 L261.0,862.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M195,889.3 L261.0,877.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M195,889.3 L261.0,892.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M195,889.3 L261.0,907.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M261.0,848.0 L327,865.7" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M261.0,848.0 L327,889.3" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M261.0,862.75 L327,865.7" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M261.0,862.75 L327,889.3" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M261.0,877.5 L327,865.7" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M261.0,877.5 L327,889.3" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M261.0,892.25 L327,865.7" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M261.0,892.25 L327,889.3" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M261.0,907.0 L327,865.7" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M261.0,907.0 L327,889.3" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="195" cy="865.7" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="195" cy="889.3" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="261.0" cy="848.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="261.0" cy="862.75" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="261.0" cy="877.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="261.0" cy="892.25" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="261.0" cy="907.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="327" cy="865.7" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="327" cy="889.3" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<rect x="207" y="930" width="51" height="51" rx="6" fill="#b499d2" stroke="none" stroke-width="2"/>
+<text x="232.5" y="966.18" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">2</text>
+<rect x="261" y="930" width="51" height="51" rx="6" fill="#f2eef8" stroke="none" stroke-width="2"/>
+<text x="286.5" y="966.18" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">0</text>
+<path d="M510,700 L778,759" fill="none" stroke="#2870c5" stroke-width="3" opacity="1" marker-end="url(#arrow)"/>
+<rect x="597" y="775" width="362" height="217" rx="13" fill="#f4f0f8" stroke="#8255b4" stroke-width="2"/>
+<text x="778" y="817" font-size="28" font-weight="650" fill="#8255b4" text-anchor="middle">专家 3：自己的 FFN</text>
+<path d="M712,865.7 L778.0,848.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M712,865.7 L778.0,862.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M712,865.7 L778.0,877.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M712,865.7 L778.0,892.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M712,865.7 L778.0,907.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M712,889.3 L778.0,848.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M712,889.3 L778.0,862.75" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M712,889.3 L778.0,877.5" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M712,889.3 L778.0,892.25" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M712,889.3 L778.0,907.0" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M778.0,848.0 L844,865.7" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M778.0,848.0 L844,889.3" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M778.0,862.75 L844,865.7" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M778.0,862.75 L844,889.3" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M778.0,877.5 L844,865.7" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M778.0,877.5 L844,889.3" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M778.0,892.25 L844,865.7" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M778.0,892.25 L844,889.3" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M778.0,907.0 L844,865.7" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<path d="M778.0,907.0 L844,889.3" fill="none" stroke="#8255b4" stroke-width="1" opacity="0.25"/>
+<circle cx="712" cy="865.7" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="712" cy="889.3" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="778.0" cy="848.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="778.0" cy="862.75" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="778.0" cy="877.5" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="778.0" cy="892.25" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="778.0" cy="907.0" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="844" cy="865.7" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<circle cx="844" cy="889.3" r="4" fill="#8255b4" stroke="none" stroke-width="2"/>
+<rect x="724" y="930" width="51" height="51" rx="6" fill="#f2eef8" stroke="none" stroke-width="2"/>
+<text x="749.5" y="966.18" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">0</text>
+<rect x="778" y="930" width="51" height="51" rx="6" fill="#a180c7" stroke="none" stroke-width="2"/>
+<text x="803.5" y="966.18" font-size="23" font-weight="400" fill="#192d42" text-anchor="middle">4</text>
+<text x="48" y="1051" font-size="28" font-weight="650" fill="#168574" text-anchor="start">④ 按路由权重汇总两个输出</text>
+<text x="520" y="1110" font-size="30" font-weight="650" fill="#168574" text-anchor="middle">0.75 × [2, 0] + 0.25 × [0, 4] = [1.5, 1]</text>
+<rect x="32" y="1167" width="976" height="100" rx="8" fill="#eff6f5" stroke="none" stroke-width="2"/>
+<rect x="32" y="1167" width="5" height="100" rx="0" fill="#168574" stroke="none" stroke-width="2"/>
+<text x="52" y="1203" font-size="26" font-weight="650" fill="#168574" text-anchor="start">这是 MoE 子层输出，之后仍需走残差路径</text>
+<text x="52" y="1241" font-size="23" font-weight="400" fill="#192d42" text-anchor="start">专家输出为人工设定；此图还没有把原输入 x 加回来。</text>
+<text x="48" y="1320" font-size="24" font-weight="400" fill="#192d42" text-anchor="start">采用 Mixtral 式选中项归一化；其他模型的路由权重规则可能不同。</text>
+</g></svg>
