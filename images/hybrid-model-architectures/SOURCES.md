@@ -1,6 +1,6 @@
 # 面试官：GLM/Kimi/DS/Qwen架构有什么区别？：图片来源与提取记录
 
-读取时间：2026-10-08。关联[学习文档](<../../llm-inference/model-architecture/混合注意力、索引压缩与残差流架构对比学习文档.md>)。
+读取时间：2026-10-08。关联[学习文档](<../../大模型推理/模型架构/混合注意力、索引压缩与残差流架构对比学习文档.md>)。
 
 - 来源：[原文](https://mp.weixin.qq.com/s/N7TbIq01pMbJ0VtqyH5tBg)，作者 panda，网页发布时间 2026-09-16T15:13:36+08:00。
 - 使用完整桌面浏览器 User-Agent 与 scene=1 取得公开 HTML；按 js_content 提取，标准库 HTMLParser 与 lxml 独立核对图片数量及正文结尾。自闭合 br、img 按 void elements 处理，避免提前截断。

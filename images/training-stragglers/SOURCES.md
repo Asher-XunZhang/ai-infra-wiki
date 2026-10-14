@@ -1,6 +1,6 @@
 # 训练infra踩坑：万卡集群为何变慢？：图片来源与提取记录
 
-读取时间：2026-10-08。关联[学习文档](<../../llm-inference/performance-engineering/3D 并行训练的慢 Rank 定位与通信等待传播学习文档.md>)。
+读取时间：2026-10-08。关联[学习文档](<../../大模型推理/性能工程/3D 并行训练的慢 Rank 定位与通信等待传播学习文档.md>)。
 
 - 来源：[原文](https://mp.weixin.qq.com/s/2Y9W9U2fwgabKZjP8zkK8A)，作者 小白玩推理，网页发布时间 2026-09-29T22:20:22+08:00。
 - 使用完整桌面浏览器 User-Agent 与 scene=1 取得公开 HTML；按 js_content 提取，标准库 HTMLParser 与 lxml 独立核对图片数量及正文结尾。自闭合 br、img 按 void elements 处理，避免提前截断。

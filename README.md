@@ -20,7 +20,7 @@
 
 ---
 
-**第一次学习先看 [Pages 整体学习框架](https://asher-xunzhang.github.io/ai-infra-wiki/#learning-path)，从 [SGLang 推理全景](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html) 起步。** 文字主线：[通用推理入门](llm-inference/README.md#入门主线) → 选择 [SGLang](sglang/README.md) 或 [vLLM](vllm/README.md)。PD / PP 交互案例适合在掌握请求、缓存和基本并行后阅读。
+**第一次学习先看 [Pages 整体学习框架](https://asher-xunzhang.github.io/ai-infra-wiki/#learning-path)，从 [SGLang 推理全景](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html) 起步。** 文字主线：[通用推理入门](大模型推理/README.md#入门主线) → 选择 [SGLang](sglang/README.md) 或 [vLLM](vllm/README.md)。PD / PP 交互案例适合在掌握请求、缓存和基本并行后阅读。
 
 <a id="interactive"></a>
 
@@ -108,7 +108,7 @@ flowchart LR
 
 | 你的起点 | 推荐入口 | 完成这一轮的目标 |
 | --- | --- | --- |
-| 刚接触推理系统 | [通用推理入门主线](llm-inference/README.md#入门主线)，随后选择一个引擎 | 能解释请求、Prefill / Decode、调度和 KV 的关系 |
+| 刚接触推理系统 | [通用推理入门主线](大模型推理/README.md#入门主线)，随后选择一个引擎 | 能解释请求、Prefill / Decode、调度和 KV 的关系 |
 | 想理解引擎机制 | [SGLang 学习导航](sglang/README.md) 或 [vLLM 学习导航](vllm/README.md) | 能沿请求追踪决策、状态与资源生命周期 |
 | 准备系统读源码 | [SGLang 架构导读](sglang/source-study/architecture/README.md) → [分阶段课程](sglang/source-study/README.md) | 先建立整体地图，再把关键行为对应到固定版本源码 |
 | 有具体部署或性能问题 | 从各专题的“按目标选择路线”进入 | 找到相关机制、先修资料和验证边界 |
@@ -117,7 +117,7 @@ flowchart LR
 
 ## 知识星图
 
-调度专题可从[总览与学习路线](<./sglang/runtime/SGLang 调度机制总览与学习路线.md>)开始：先拆清路由、队列排序、admission 和 Overlap，再用请求生命周期与 64K→16K 的 chunk 对照理解性能取舍。来源清单记录了八条资料的采用、排除和核对依据。
+调度专题可从[总览与学习路线](<sglang/运行时/SGLang 调度机制总览与学习路线.md>)开始：先拆清路由、队列排序、admission 和 Overlap，再用请求生命周期与 64K→16K 的 chunk 对照理解性能取舍。来源清单记录了八条资料的采用、排除和核对依据。
 
 同一个机制经常横跨多条主线。下面这张图适合用来判断“下一篇该往哪里跳”。
 
@@ -149,22 +149,22 @@ flowchart TB
 
 | 如果你关心…… | 先抓住这个问题 | 推荐入口 |
 | --- | --- | --- |
-| 吞吐 / TTFT / TPOT | 请求什么时候被选中，Prefill 会不会阻塞 Decode？ | [Chunked Prefill 与共推](<./llm-inference/scheduling/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) |
-| OOM / 可服务并发 | 每个 token 的 KV 占多少，碎片和冗余在哪里？ | [KV Cache 容量优化地图](<./llm-inference/kv-cache/KV Cache 容量优化技术地图学习文档.md>) |
-| 前缀缓存命中 | “相同前缀”如何编码，命中后复用了哪一层资源？ | [RadixAttention 前缀命中定义](<./sglang/kv-cache/SGLang RadixAttention 前缀缓存命中定义学习文档.md>) |
-| 多卡扩展 | 切模型、切专家、切序列分别改变了什么？ | [Context Parallel、PCP 与 DCP](<./llm-inference/parallelism/Context Parallel、PCP 与 DCP 总体学习文档.md>) |
-| PD 分离 | 谁发起传输，KV 到齐前请求处于什么状态？ | [PD Prefill 请求生命周期](<./sglang/disaggregation/PD Prefill PP=3 请求生命周期源码学习文档.md>) |
-| Kernel / Trace | 一段耗时属于调度空洞、通信还是算子本身？ | [SGLang Torch Profiler 与 Trace](<./sglang/performance-engineering/SGLang Torch Profiler 与 Trace 性能分析学习文档.md>) |
+| 吞吐 / TTFT / TPOT | 请求什么时候被选中，Prefill 会不会阻塞 Decode？ | [Chunked Prefill 与共推](<大模型推理/调度方法/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) |
+| OOM / 可服务并发 | 每个 token 的 KV 占多少，碎片和冗余在哪里？ | [KV Cache 容量优化地图](<大模型推理/KV缓存/KV Cache 容量优化技术地图学习文档.md>) |
+| 前缀缓存命中 | “相同前缀”如何编码，命中后复用了哪一层资源？ | [RadixAttention 前缀命中定义](<sglang/KV缓存/SGLang RadixAttention 前缀缓存命中定义学习文档.md>) |
+| 多卡扩展 | 切模型、切专家、切序列分别改变了什么？ | [Context Parallel、PCP 与 DCP](<大模型推理/并行方法/Context Parallel、PCP 与 DCP 总体学习文档.md>) |
+| PD 分离 | 谁发起传输，KV 到齐前请求处于什么状态？ | [PD Prefill 请求生命周期](<sglang/分离部署/PD Prefill PP=3 请求生命周期源码学习文档.md>) |
+| Kernel / Trace | 一段耗时属于调度空洞、通信还是算子本身？ | [SGLang Torch Profiler 与 Trace](<sglang/性能工程/SGLang Torch Profiler 与 Trace 性能分析学习文档.md>) |
 
 <a id="catalog"></a>
 
 ## 按专题进入资料库
 
-资料按稳定技术领域存放，学习顺序在各级 README 中维护。先选一个专题，再沿“入门主线 → 机制深入 → 按目标选读”前进。
+资料按稳定技术领域存放，通用领域目录使用中文，项目名和工具目录保留英文；`sglang/source-study/` 保留已有分阶段课程结构。学习顺序在各级 README 中维护。先选一个专题，再沿“入门主线 → 机制深入 → 按目标选读”前进。
 
 | 专题入口 | 入门主线 | 进阶方向 |
 | --- | --- | --- |
-| [LLM 推理系统](llm-inference/README.md) | 推理基础 → 调度方法 → KV Cache | 并行、集群服务、模型状态、性能方法 |
+| [LLM 推理系统](大模型推理/README.md) | 推理基础 → 调度方法 → KV Cache | 并行、集群服务、模型状态、性能方法 |
 | [SGLang](sglang/README.md) | 架构 → 请求调度 → 缓存 → 执行分层 | 并行、分离部署、模型适配、性能与版本 |
 | [vLLM](vllm/README.md) | 引擎工作流 → 分块调度 → APC → KV 生命周期 | 并行、Connector 与 Attention 性能 |
 | [SGLang 系统源码课程](sglang/source-study/README.md) | 基础与架构导读 → 00–12 阶段 | 高级生成、服务治理、模型适配与综合实践 |
@@ -175,7 +175,7 @@ flowchart TB
 
 ```text
 ai-infra-wiki/
-├── llm-inference/   # 基础、调度、缓存、并行、集群、模型与性能
+├── 大模型推理/   # 基础、调度、缓存、并行、集群、模型与性能
 ├── sglang/          # 按技术领域归档；source-study/ 保留分阶段课程
 ├── vllm/            # 运行时、缓存、并行、分离部署与性能
 ├── pages/           # 交互式学习网站与可视化页面

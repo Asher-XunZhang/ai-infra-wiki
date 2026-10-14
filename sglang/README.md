@@ -12,12 +12,12 @@
 
 ## 入门主线
 
-理解 P/D 后，可用 [普通请求运行时交互课程](../pages/sglang/request-runtime/index.html) 与 [完整笔记](runtime/SGLang%20普通请求运行时与资源生命周期学习文档.md) 连接前端、调度、执行、回程和资源收尾。
+理解 P/D 后，可用 [普通请求运行时交互课程](../pages/sglang/request-runtime/index.html) 与 [完整笔记](%E8%BF%90%E8%A1%8C%E6%97%B6/SGLang%20%E6%99%AE%E9%80%9A%E8%AF%B7%E6%B1%82%E8%BF%90%E8%A1%8C%E6%97%B6%E4%B8%8E%E8%B5%84%E6%BA%90%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) 连接前端、调度、执行、回程和资源收尾。
 
-1. 不熟悉推理时，先体验 [SGLang 推理全景交互专题](../pages/sglang/inference-overview/journey.html) 或读 [推理全景学习指南](runtime/SGLang%20推理全景学习指南.md)，再补充 [推理基础](<../llm-inference/foundations/README.md>) 或 [源码课程基础篇](<source-study/00-foundations/01-推理系统与SGLang职责地图.md>)。
+1. 不熟悉推理时，先体验 [SGLang 推理全景交互专题](../pages/sglang/inference-overview/journey.html) 或读 [推理全景学习指南](%E8%BF%90%E8%A1%8C%E6%97%B6/SGLang%20%E6%8E%A8%E7%90%86%E5%85%A8%E6%99%AF%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97.md)，再补充 [推理基础](<../大模型推理/推理基础/README.md>) 或 [源码课程基础篇](<source-study/00-foundations/01-推理系统与SGLang职责地图.md>)。
 2. 读 [整体架构与心智模型](<source-study/architecture/README.md>)，先看 M01、M03，认清模块和请求。
-3. 进入 [请求、调度与执行主链](<runtime/README.md>)，先读调度总览、请求生命周期，再按需深入预算。
-4. 进入 [前缀缓存与分层存储](<kv-cache/README.md>)，首轮读技术主线、命中定义与 KV Pool。
+3. 进入 [请求、调度与执行主链](<运行时/README.md>)，先读调度总览、请求生命周期，再按需深入预算。
+4. 进入 [前缀缓存与分层存储](<KV缓存/README.md>)，首轮读技术主线、命中定义与 KV Pool。
 5. 回到 [模型执行分层](<source-study/architecture/06-模型执行与算子分层.md>)，把 Scheduler 与 Worker、Runner、Attention、kernel 接起来。
 
 完成标志：能解释一条请求何时可被接纳、谁持有 KV、谁发起计算，以及请求结束与缓存保留为什么不是一回事。
@@ -28,15 +28,15 @@
 
 | 机制领域 | 课程入口 |
 | --- | --- |
-| [请求、调度与执行主链](<runtime/README.md>) | [运行环境与最小请求](<source-study/01-getting-started/01-源码目录与最短阅读路线.md>) · [请求与 batch 对象](<source-study/02-request-lifecycle/01-API协议到内部请求对象.md>) · [调度主循环](<source-study/03-scheduling/01-NormalEventLoop与调度主循环.md>) · [Worker 与 ModelRunner](<source-study/05-model-execution/01-Worker与ModelRunner执行边界.md>) · [CUDA Graph 与执行模式](<source-study/05-model-execution/05-CUDAGraph编译与执行模式.md>) |
-| [前缀缓存与分层存储](<kv-cache/README.md>) | [缓存架构与资源所有权](<source-study/architecture/05-缓存架构与资源所有权.md>) · [请求视图与分配器](<source-study/04-kv-cache/01-请求视图物理槽位与分配器.md>) · [Unified 与混合状态组件](<source-study/04-kv-cache/04-UnifiedRadix与混合状态组件.md>) |
-| [并行拓扑与负载分工](<parallelism/README.md>) | [并行部署与通信拓扑](<source-study/architecture/07-并行部署与通信拓扑.md>) · [Rank 与进程组基础](<source-study/06-parallelism/01-Rank进程组与通信基础.md>) |
-| [分离部署与状态交接](<disaggregation/README.md>) | [先补 PD 三条通路](<source-study/architecture/08-PD与Encoder分离的三条通路.md>) · [完整 PD 源码主线](<source-study/07-disaggregation/01-PD分离职责与端到端请求地图.md>) |
-| [性能观察与调优案例](<performance-engineering/README.md>) | [Benchmark 设计与指标](<source-study/11-performance-engineering/01-Benchmark设计与指标口径.md>) · [投机解码的提交语义](<source-study/08-advanced-generation/03-投机解码的DraftVerifyCommit.md>) |
-| [模型适配与特殊执行机制](<model-support/README.md>) | [模型注册与权重加载](<source-study/09-model-specialization/01-模型注册配置与权重加载.md>) · [投机解码的 Draft、Verify、Commit](<source-study/08-advanced-generation/03-投机解码的DraftVerifyCommit.md>) |
-| [版本演进与组合边界](<version-studies/README.md>) | [源码变更与版本回归](<source-study/11-performance-engineering/06-源码变更阅读与版本回归检查.md>) |
-| [高级生成与状态提交](<advanced-generation/README.md>) | [高级生成特性全景](<source-study/architecture/09-高级生成特性插入位置.md>) |
-| [服务部署与运行治理](<serving-operations/README.md>) | [网关、服务治理与性能诊断](<source-study/architecture/11-网关服务治理与性能诊断全景.md>) |
+| [请求、调度与执行主链](<运行时/README.md>) | [运行环境与最小请求](<source-study/01-getting-started/01-源码目录与最短阅读路线.md>) · [请求与 batch 对象](<source-study/02-request-lifecycle/01-API协议到内部请求对象.md>) · [调度主循环](<source-study/03-scheduling/01-NormalEventLoop与调度主循环.md>) · [Worker 与 ModelRunner](<source-study/05-model-execution/01-Worker与ModelRunner执行边界.md>) · [CUDA Graph 与执行模式](<source-study/05-model-execution/05-CUDAGraph编译与执行模式.md>) |
+| [前缀缓存与分层存储](<KV缓存/README.md>) | [缓存架构与资源所有权](<source-study/architecture/05-缓存架构与资源所有权.md>) · [请求视图与分配器](<source-study/04-kv-cache/01-请求视图物理槽位与分配器.md>) · [Unified 与混合状态组件](<source-study/04-kv-cache/04-UnifiedRadix与混合状态组件.md>) |
+| [并行拓扑与负载分工](<并行方法/README.md>) | [并行部署与通信拓扑](<source-study/architecture/07-并行部署与通信拓扑.md>) · [Rank 与进程组基础](<source-study/06-parallelism/01-Rank进程组与通信基础.md>) |
+| [分离部署与状态交接](<分离部署/README.md>) | [先补 PD 三条通路](<source-study/architecture/08-PD与Encoder分离的三条通路.md>) · [完整 PD 源码主线](<source-study/07-disaggregation/01-PD分离职责与端到端请求地图.md>) |
+| [性能观察与调优案例](<性能工程/README.md>) | [Benchmark 设计与指标](<source-study/11-performance-engineering/01-Benchmark设计与指标口径.md>) · [投机解码的提交语义](<source-study/08-advanced-generation/03-投机解码的DraftVerifyCommit.md>) |
+| [模型适配与特殊执行机制](<模型适配/README.md>) | [模型注册与权重加载](<source-study/09-model-specialization/01-模型注册配置与权重加载.md>) · [投机解码的 Draft、Verify、Commit](<source-study/08-advanced-generation/03-投机解码的DraftVerifyCommit.md>) |
+| [版本演进与组合边界](<版本研究/README.md>) | [源码变更与版本回归](<source-study/11-performance-engineering/06-源码变更阅读与版本回归检查.md>) |
+| [高级生成与状态提交](<高级生成/README.md>) | [高级生成特性全景](<source-study/architecture/09-高级生成特性插入位置.md>) |
+| [服务部署与运行治理](<服务运维/README.md>) | [网关、服务治理与性能诊断](<source-study/architecture/11-网关服务治理与性能诊断全景.md>) |
 | 扩展与综合应用 | [DSL、Diffusion 与插件边界](<source-study/architecture/12-DSL与Diffusion及插件边界.md>) |
 
 ## 按领域深入
@@ -45,33 +45,33 @@
 
 | 领域 | 主要问题 |
 | --- | --- |
-| [请求、调度与执行主链](<runtime/README.md>) | 沿一条请求理解 Scheduler 的决策、资源预算与执行提交。 |
-| [前缀缓存与分层存储](<kv-cache/README.md>) | 从逻辑前缀到物理 KV，再追踪 Host 和外部存储的回载与释放。 |
-| [并行拓扑与负载分工](<parallelism/README.md>) | 区分请求副本、层内切分、流水线和专家负载。 |
-| [分离部署与状态交接](<disaggregation/README.md>) | 以 PD 与 PP 的组合为切口，学习跨角色、跨 stage 的请求和资源协调。 |
-| [性能观察与调优案例](<performance-engineering/README.md>) | 先形成可解释的测量，再选择参数、缓存或计算优化。 |
-| [模型适配与特殊执行机制](<model-support/README.md>) | 理解模型特性如何约束缓存、量化、生成和分布式执行。 |
-| [版本演进与组合边界](<version-studies/README.md>) | 在已有机制基础上比较跨模块变化、兼容约束和验证要求。 |
+| [请求、调度与执行主链](<运行时/README.md>) | 沿一条请求理解 Scheduler 的决策、资源预算与执行提交。 |
+| [前缀缓存与分层存储](<KV缓存/README.md>) | 从逻辑前缀到物理 KV，再追踪 Host 和外部存储的回载与释放。 |
+| [并行拓扑与负载分工](<并行方法/README.md>) | 区分请求副本、层内切分、流水线和专家负载。 |
+| [分离部署与状态交接](<分离部署/README.md>) | 以 PD 与 PP 的组合为切口，学习跨角色、跨 stage 的请求和资源协调。 |
+| [性能观察与调优案例](<性能工程/README.md>) | 先形成可解释的测量，再选择参数、缓存或计算优化。 |
+| [模型适配与特殊执行机制](<模型适配/README.md>) | 理解模型特性如何约束缓存、量化、生成和分布式执行。 |
+| [版本演进与组合边界](<版本研究/README.md>) | 在已有机制基础上比较跨模块变化、兼容约束和验证要求。 |
 
-[高级生成与状态提交](<advanced-generation/README.md>) 提供独立主线和交互课程，连接模型状态、投机验证与规则推进。
+[高级生成与状态提交](<高级生成/README.md>) 提供独立主线和交互课程，连接模型状态、投机验证与规则推进。
 
-[服务部署与运行治理](<serving-operations/README.md>) 提供启动、探活、路由准入、取消和退出的交互主线。
+[服务部署与运行治理](<服务运维/README.md>) 提供启动、探活、路由准入、取消和退出的交互主线。
 
-性能主线：[指标口径与性能定位](<performance-engineering/SGLang 指标口径与性能定位学习文档.md>)，先核对秒表与样本，再进入 Trace 和调参案例。
+性能主线：[指标口径与性能定位](<性能工程/SGLang 指标口径与性能定位学习文档.md>)，先核对秒表与样本，再进入 Trace 和调参案例。
 
-[执行分层与硬件机制](<runtime/SGLang 执行分层与硬件机制学习文档.md>) 连接模型层、Runner、具体算子与图重放。
+[执行分层与硬件机制](<运行时/SGLang 执行分层与硬件机制学习文档.md>) 连接模型层、Runner、具体算子与图重放。
 
-[KV 映射与共享回收](<kv-cache/SGLang KV 映射与共享回收学习文档.md>) 用物理页与共享关系连接请求映射、缓存保护和驱逐。
+[KV 映射与共享回收](<KV缓存/SGLang KV 映射与共享回收学习文档.md>) 用物理页与共享关系连接请求映射、缓存保护和驱逐。
 
-[调度准入与容量回撤](<runtime/SGLang 调度准入与容量回撤学习文档.md>) 连接候选顺序、输入与 KV 额度，以及回撤后的等待和恢复。
+[调度准入与容量回撤](<运行时/SGLang 调度准入与容量回撤学习文档.md>) 连接候选顺序、输入与 KV 额度，以及回撤后的等待和恢复。
 
-[系统边界与学习地图](<runtime/SGLang 系统边界与学习地图学习文档.md>) 将请求主线、进程内职责与多卡拓扑连接到十二模块。
+[系统边界与学习地图](<运行时/SGLang 系统边界与学习地图学习文档.md>) 将请求主线、进程内职责与多卡拓扑连接到十二模块。
 
 ## 按目标选择路线
 
-- **多卡与分离部署**：[并行拓扑与负载分工](<parallelism/README.md>) → [分离部署与状态交接](<disaggregation/README.md>)。
-- **性能与模型案例**：[性能观察与调优案例](<performance-engineering/README.md>) → [模型适配与特殊执行机制](<model-support/README.md>)。
-- **理解升级影响**：[版本演进与组合边界](<version-studies/README.md>) → [性能观察与调优案例](<performance-engineering/README.md>)。
+- **多卡与分离部署**：[并行拓扑与负载分工](<并行方法/README.md>) → [分离部署与状态交接](<分离部署/README.md>)。
+- **性能与模型案例**：[性能观察与调优案例](<性能工程/README.md>) → [模型适配与特殊执行机制](<模型适配/README.md>)。
+- **理解升级影响**：[版本演进与组合边界](<版本研究/README.md>) → [性能观察与调优案例](<性能工程/README.md>)。
 
 ## 后续资料如何扩展
 

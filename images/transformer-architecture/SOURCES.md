@@ -1,6 +1,6 @@
 # Transformer 架构学习图：来源与复现
 
-对应正文：[Transformer 架构与推理流程学习文档](<../../llm-inference/model-architecture/Transformer 架构与推理流程学习文档.md>)。
+对应正文：[Transformer 架构与推理流程学习文档](<../../大模型推理/模型架构/Transformer 架构与推理流程学习文档.md>)。
 
 读取与制作日期：2026-10-08。图 01–26 为整理者绘制的 SVG 教学图，以数字带、表格抽行、读取权重、向量相加、数轴和逐 token 缓存展示机制。所有数值是人工例子，不是模型运行截图或性能数据。图 01 使用经典 Encoder–Decoder / Post-LN；图 22 单独展示 Pre-RMSNorm / RoPE / 门控 FFN 的 Decoder-only 结构示例，不代表全部语言模型。图 20 的权重与数字为手工构造。图 23 展开经典架构的全部主要推理模块，MoE 仅标为可选 FFN 替换；图 24–26 拆解专家选择、汇总和参数口径。
 

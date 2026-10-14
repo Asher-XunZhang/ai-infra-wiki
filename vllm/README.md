@@ -12,11 +12,11 @@
 
 ## 入门主线
 
-1. 先掌握 [推理基础](<../llm-inference/foundations/README.md>)。
-2. [vLLM 从连续批处理到 PagedAttention 的引擎工作流](<runtime/vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>)：把请求、调度和分页缓存连起来。
-3. [vLLM Chunked Prefill 与 Block Size](<runtime/vLLM Chunked Prefill 与 Block Size 学习文档.md>)：分清计算 chunk 与存储 block。
-4. [vLLM APC 链式哈希](<kv-cache/vLLM APC 链式哈希学习文档.md>)：理解前缀缓存的块身份。
-5. [vLLM V1 KV Cache 管理全生命周期源码](<kv-cache/vLLM V1 KV Cache 管理全生命周期源码学习文档.md>)：沿固定源码追踪分配、引用、抢占与释放。
+1. 先掌握 [推理基础](<../大模型推理/推理基础/README.md>)。
+2. [vLLM 从连续批处理到 PagedAttention 的引擎工作流](<运行时/vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>)：把请求、调度和分页缓存连起来。
+3. [vLLM Chunked Prefill 与 Block Size](<运行时/vLLM Chunked Prefill 与 Block Size 学习文档.md>)：分清计算 chunk 与存储 block。
+4. [vLLM APC 链式哈希](<KV缓存/vLLM APC 链式哈希学习文档.md>)：理解前缀缓存的块身份。
+5. [vLLM V1 KV Cache 管理全生命周期源码](<KV缓存/vLLM V1 KV Cache 管理全生命周期源码学习文档.md>)：沿固定源码追踪分配、引用、抢占与释放。
 
 完成标志：能把一次调度迭代与逻辑 block、物理 KV 和请求生命周期对应起来。概念篇包含历史示例，具体实现以源码篇固定提交为准。
 
@@ -26,17 +26,17 @@
 
 | 领域 | 主要问题 |
 | --- | --- |
-| [引擎工作流与调度](<runtime/README.md>) | 把调度迭代、计算份额与 KV 存储组织成一条请求链路。 |
-| [缓存身份与生命周期](<kv-cache/README.md>) | 从逻辑块身份深入分配、引用、复用、抢占和释放。 |
-| [多卡执行与通信](<parallelism/README.md>) | 根据模型层、专家和上下文的切分对象选择阅读支线。 |
-| [KV 传输与外部缓存接入](<disaggregation/README.md>) | 把外部缓存和其他实例的 KV 接入本地请求生命周期。 |
-| [性能分析与执行优化](<performance-engineering/README.md>) | 从引擎行为继续深入 GPU 工作组织和可验证的性能取舍。 |
+| [引擎工作流与调度](<运行时/README.md>) | 把调度迭代、计算份额与 KV 存储组织成一条请求链路。 |
+| [缓存身份与生命周期](<KV缓存/README.md>) | 从逻辑块身份深入分配、引用、复用、抢占和释放。 |
+| [多卡执行与通信](<并行方法/README.md>) | 根据模型层、专家和上下文的切分对象选择阅读支线。 |
+| [KV 传输与外部缓存接入](<分离部署/README.md>) | 把外部缓存和其他实例的 KV 接入本地请求生命周期。 |
+| [性能分析与执行优化](<性能工程/README.md>) | 从引擎行为继续深入 GPU 工作组织和可验证的性能取舍。 |
 
 ## 按目标选择路线
 
-- **多卡执行**：[多卡执行与通信](<parallelism/README.md>)。
-- **外部缓存与 PD**：[KV 传输与外部缓存接入](<disaggregation/README.md>)。
-- **Attention 性能**：[性能分析与执行优化](<performance-engineering/README.md>)。
+- **多卡执行**：[多卡执行与通信](<并行方法/README.md>)。
+- **外部缓存与 PD**：[KV 传输与外部缓存接入](<分离部署/README.md>)。
+- **Attention 性能**：[性能分析与执行优化](<性能工程/README.md>)。
 
 ## 后续资料如何扩展
 
