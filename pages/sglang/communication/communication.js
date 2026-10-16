@@ -1,15 +1,14 @@
 (()=>{
 'use strict';
 const M=CommunicationModel,$=s=>document.querySelector(s),lab=$('[data-comm-lab]');
-let mode='message',step=0,timer=null;
-const kinds=()=>({message:$('#message-kind').value,collective:$('#collective-kind').value,kv:$('#kv-fragment').checked,gates:$('#gate-kind').value});
+let mode=window.LessonIntegration.prepare(lab,'communication','message'),step=0,timer=null;
+const kinds=()=>({message:$('#message-kind').value,collective:$('#collective-kind').value,kv:($('#kv-fragment')?.checked??false),gates:$('#gate-kind').value});
 const last=()=>mode==='message'?(kinds().message==='ipc'?2:4):mode==='collective'?2:mode==='kv'?5:['abort','timeout'].includes(kinds().gates)?3:kinds().gates==='cache'?6:5;
 const chip=(x,i=0,empty=false)=>`<span class="chip ${empty?'empty':i===1?'b':i===2?'c':''}">${x}</span>`;
 const chips=xs=>`<div class="chips">${xs.map((v,i)=>chip(v,typeof v==='string'&&/^[AB][01]$/.test(v)?(v[0]==='A'?0:1):i)).join('')}</div>`;
 const endpoint=(title,body,note='',active=false)=>`<div class="endpoint ${active?'active':''}"><h3>${title}</h3>${body}${note?`<small>${note}</small>`:''}</div>`;
 function wire(paths,active,label,loop=false,reverse=false){
- const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
- return `<p class="wire-label">${label}</p><div class="comm-wire"><svg viewBox="0 0 600 76" preserveAspectRatio="none" aria-label="${label}" role="img">${paths.map(([x1,x2],i)=>{const end=loop||reverse?3:72;const d=`M ${x1} ${reverse?72:3} C ${x1} ${loop?90:38} ${x2} ${loop?90:38} ${x2} ${end}`;return `<path d="${d}" class="${active?'live':''}"/>${active?`<circle cx="${reduced?x2:0}" cy="${reduced?end:0}" r="4">${reduced?'':`<animateMotion dur="1.6s" begin="${i*.08}s" repeatCount="indefinite" path="${d}"/>`}</circle>`:''}`;}).join('')}</svg></div>`;
+ return `<p class="wire-label">${label} · 箭头表示方向</p><div class="comm-wire"><svg viewBox="0 0 600 76" preserveAspectRatio="none" aria-label="${label}" role="img">${paths.map(([x1,x2])=>{const end=loop||reverse?3:72,d=`M ${x1} ${reverse?72:3} C ${x1} ${loop?90:38} ${x2} ${loop?90:38} ${x2} ${end}`,sign=loop||reverse?1:-1;return `<path d="${d}" class="${active?'live':''}"/>${active?`<path data-direction="${sign===1?'up':'down'}" d="M${x2-5} ${end+sign*8} L${x2} ${end} L${x2+5} ${end+sign*8}" class="live"/>`:''}`;}).join('')}</svg></div>`;
 }
 function message(){
  const ipc=kinds().message==='ipc',labels=ipc?['准备派发','发送侧已派发','调度侧收到请求']:['准备张量','发送形状与类型','接收侧分配空间','传递张量内容','等待完成后使用'];

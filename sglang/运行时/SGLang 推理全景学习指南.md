@@ -11,10 +11,10 @@
 | 源码仓库 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
 | 分支 | 公开上游 `main` 的固定快照，不声称是最新版本 |
 | commit | [`279339f113b79af84f27fd3ac92d0a13bd3f4cbd`](https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd) |
-| 读取时间 | 2026-09-17 |
+| 读取时间（DeepSeek-V3 路径另于 2026-10-15 复核） | 2026-09-17 |
 | 工作区状态 | 从本地 Git 对象只读提取该提交的文件，不读取当前分支文件作为证据。宿主源码检出含未跟踪的文档、脚本、工作笔记及备份，未清理、切换或修改；Wiki 开始修改前工作区干净 |
 | 操作边界 | 固定源码复核与浏览器教学交互验证；没有运行 SGLang 推理、GPU 实验或 benchmark |
-| 主线 | 普通自回归文本生成，以 Llama 风格 decoder-only Transformer 为模型例子 |
+| 主线 | 普通自回归文本生成，以简化 decoder-only Transformer 解释通用原理，以 DeepSeek-V3 核对实现 |
 | 不展开 | 投机解码、多模态 encoder、MLA、滑窗和混合状态模型、故障恢复与完整分布式协议 |
 
 交互图中的 token、层数、轮次和时间由整理者设计，用于解释机制。它们不代表实际分词、模型预测、真实 GPU trace 或 SGLang 的完整调度决策。P/D 分离与 PP 的细节在各自固定版本专题中继续阅读，不将不同基线混写成同一种实现。
@@ -68,7 +68,7 @@ flowchart TB
     H --> S[采样下一 token]
 ```
 
-**图意解读：** 两个入口汇入同一条模型链。图省略层内部的精确算子顺序；Llama 源码包含 attention 前归一化、attention 后归一化及残差融合。每层使用自己的 KV，采样属于生成流程，并不是另一半 Transformer。
+**图意解读：** 两个入口汇入同一条模型链。图省略层内部的精确算子顺序；DeepSeek-V3 的共享层实现包含归一化与残差交接，还使用 MLA 和按层配置选择的 MoE；图中的普通 Attention/MLP 是通用简化，并非其完整模型结构。每层使用自己的 KV，采样属于生成流程，并不是另一半 Transformer。
 
 Prefill 将多个位置组成一次前向，但因果遮罩仍限制每个位置只能看到自身与之前的位置。普通 Decode 新增一个位置，它会读历史 KV，同时仍执行 attention 和 MLP。使用 PP 时，只是把这一整条模型链分布到多个 stage；P、D 各自的服务组仍需覆盖所有层。
 
@@ -147,14 +147,16 @@ B 的中间 chunk 只积累状态；本例最后一个 chunk 才采样首个输�
 | --- | --- |
 | 按未复用的输入部分准备 EXTEND | [`schedule_batch.py::prepare_for_extend`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L2678) |
 | 准备普通 Decode 批次 | [`schedule_batch.py::prepare_for_decode`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L3470) |
-| 当前层 attention 的新 Q/K/V | [`llama.py::LlamaAttention.forward`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L239) |
-| 同一层内的 attention 与 MLP | [`llama.py::LlamaDecoderLayer.forward`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L340) |
-| Embedding、所有本级层、跨 PP 激活和最终 norm | [`llama.py::LlamaModel.forward`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L418) |
-| 最后一级 logits 处理 | [`llama.py::LlamaForCausalLM.forward`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L562) |
+| 当前层 MLA 的准备与计算分派 | [`deepseek_v2.py::DeepseekV2AttentionMLA.forward`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L2049) |
+| 同一层内的 MLA 与前馈网络 / MoE | [`deepseek_v2.py::DeepseekV2DecoderLayer.forward`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L2434) |
+| Embedding、所有本级层、跨 PP 激活和最终 norm | [`deepseek_v2.py::DeepseekV2Model.forward`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L2735) |
+| 最后一级 logits 处理 | [`deepseek_v2.py::DeepseekV2ForCausalLM.forward`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L3054) |
 | P 记录首 token | [`prefill.py` 输出处理](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L840) |
 | D 提交 P 生成的 token | [`decode.py::_commit_transfer_to_req`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/decode.py#L2256) |
 | metadata gate 与回载检查 | [`decode.py::_poll_with_metadata_gate`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/decode.py#L2332)、[Success 分支](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/decode.py#L2445) |
 | 选择下一批与更新运行批次 | [`scheduler.py::get_next_batch_to_run`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L3602)、[`update_running_batch`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L4141) |
+
+DeepSeek-V3 在此基线中由 `DeepseekV3ForCausalLM` 继承 `DeepseekV2ForCausalLM`，所以以上实现仍位于 `deepseek_v2.py`。这里只追踪普通 V3 路径，不套用 V3.2 的 DSA 分支。
 
 ## 7. 自测与下一步
 

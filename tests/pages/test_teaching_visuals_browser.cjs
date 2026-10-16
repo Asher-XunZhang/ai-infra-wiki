@@ -1,0 +1,32 @@
+/* Check the reader-visible invariants of the dedicated diagrams. */
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/';
+const output=process.env.MOTION_SCREENSHOT_DIR;
+const pages=[...['tokens','generation','attention','cache','deployment'].map(k=>['f-'+k,'foundations/'+k+'.html']),...['model-execution','kv-memory','scheduling','pd-dataflow','pd-prefill-lifecycle'].map(k=>[k,'sglang/'+k+'/index.html'])];
+(async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});try{
+ const page=await browser.newPage(),errors=[],overflow=[];page.on('pageerror',e=>errors.push(e.message));
+ const seek=async p=>page.locator('.motion-scrub input').evaluate((e,p)=>{e.value=p;e.dispatchEvent(new Event('input',{bubbles:true}));},p);
+ for(const [key,url]of pages){await page.goto(base+url);const film=page.locator('.mechanism-film');await film.waitFor();assert.equal(await film.locator('[data-teaching-kind]').count(),1,key);
+  const choice=film.locator('select[aria-label="连续演示条件"]'),count=await require('./choose_motion_scene.cjs').count(page);
+  for(let v=0;v<count;v++){if(count>1)await require('./choose_motion_scene.cjs')(page,v);const max=Number(await film.locator('input[type=range]').getAttribute('max'));
+   for(const width of [390,1440]){await page.setViewportSize({width,height:1000});await page.waitForTimeout(40);
+    for(let p=0;p<=max;p+=.5){await seek(p);const outside=await film.locator('svg').evaluate(svg=>{const b=svg.getBoundingClientRect();return [...svg.querySelectorAll('text')].filter(e=>{for(let a=e;a&&a!==svg;a=a.parentElement)if(Number(a.getAttribute('opacity')??1)<.02)return false;return !!e.textContent;}).filter(e=>{const r=e.getBoundingClientRect();return r.left<b.left-2||r.right>b.right+2||r.top<b.top-2||r.bottom>b.bottom+2;}).map(e=>e.textContent);});if(outside.length)overflow.push({key,v,width,p,outside});}
+    if(v===0&&output){fs.mkdirSync(output,{recursive:true});await seek(Math.max(0,max-1.5));await film.screenshot({path:path.join(output,key+'-'+width+'-process.png')});await seek(max);await film.screenshot({path:path.join(output,key+'-'+width+'-complete.png')});}
+   }
+  }
+ }
+ assert.deepEqual(overflow,[],'visible SVG labels must fit at intermediate and endpoint positions');
+ await page.goto(base+'foundations/generation.html');await seek(4);assert.deepEqual(await page.locator('[data-written]').evaluateAll(es=>es.map(e=>e.dataset.written)),['1.000','1.000','0.000']);
+ await seek(5.5);assert.equal(await page.locator('[data-motion-id=kv-2]').getAttribute('data-written'),'0.500');await seek(8);assert.equal(await page.locator('[data-written="1.000"]').count(),3,'last sampled output is not yet an input KV position');
+ await page.goto(base+'foundations/deployment.html');await seek(3);assert.deepEqual(await page.locator('[data-received]').evaluateAll(es=>es.map(e=>e.dataset.received)),['0.000','0.000']);
+ await seek(4.5);assert.equal(await page.locator('[data-motion-id=transfer-kv-1]').getAttribute('data-received'),'0.500');assert.equal(await page.locator('.teach-gate.is-ready').count(),1,'metadata alone does not satisfy payload and execution gates');assert.equal(await page.locator('[data-motion-id=source-kv-0]').getAttribute('opacity'),'1.000');
+ await seek(6);assert.equal(await page.locator('[data-motion-id=source-kv-0]').getAttribute('opacity'),'0.000');assert.equal(await page.locator('.teach-gate.is-ready').count(),2,'source cleanup is independent of D execution opportunity');
+ await page.goto(base+'sglang/kv-memory/');const geometry=await page.locator('.mechanism-film [data-slot]').evaluateAll(es=>es.map(e=>['x','y','width','height'].map(k=>e.getAttribute(k))));await seek(2.5);assert.deepEqual(await page.locator('.mechanism-film [data-slot]').evaluateAll(es=>es.map(e=>['x','y','width','height'].map(k=>e.getAttribute(k)))),geometry);assert.equal(await page.locator('.mechanism-film [data-slot="12"]').getAttribute('data-written'),'0.000','target 8 uses no new page');
+ await page.locator('.mechanism-film select[aria-label="连续演示条件"]').selectOption('1');await seek(2.5);assert.equal(await page.locator('.mechanism-film [data-slot="12"]').getAttribute('data-written'),'0.500');await seek(4);await page.locator('[data-motion-id=logical-6]').focus();await page.keyboard.press('Enter');assert.match(await page.locator('.mechanism-film svg').textContent(),/p6 → 槽 30/);
+ await page.goto(base+'sglang/scheduling/');await page.locator('.mechanism-film select[aria-label="连续演示条件"]').selectOption('2');await seek(4);assert.match(await page.locator('.mechanism-film svg').textContent(),/要求 9 < 9；不成立/,'final state preserves why admission failed');assert.match(await page.locator('.mechanism-film svg').textContent(),/未加入：KV 检查未过/);
+ await page.goto(base+'sglang/pd-dataflow/');await seek(0);const req=await page.locator('[data-motion-id=Req]').getAttribute('transform');await seek(6);assert.equal(await page.locator('[data-motion-id=Req]').getAttribute('transform'),req);assert.equal(await page.locator('[data-reference][data-amount="1.000"]').count(),2,'batch and inflight can reference the same local Req');
+ await page.goto(base+'sglang/pd-prefill-lifecycle/');await seek(1);const held=await page.locator('.teach-held').evaluateAll(es=>es.filter(e=>e.getAttribute('opacity')==='1.000').map(e=>e.classList.contains('is-free')));assert.ok(held.every(x=>!x),'control list does not release local holdings');
+ await page.goto(base+'foundations/cache.html');await page.locator('.batch-extra>summary').click();await page.locator('[data-foundation-lab] [data-action=play]').click();await page.locator('.batch-extra>summary').click();await page.waitForTimeout(100);assert.equal(await page.locator('[data-foundation-lab] [data-action=play]').getAttribute('aria-pressed'),'false','closing an experiment stops its playback');
+ assert.deepEqual(errors,[]);console.log('PASS: 10 dedicated diagrams, all variants/endpoints/midpoints at desktop and mobile; label containment, output/KV lag, P/D independent gates, fixed physical pages, keyboard address lookup, shared Req references and local release gating.');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});

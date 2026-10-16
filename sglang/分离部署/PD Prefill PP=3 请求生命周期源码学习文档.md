@@ -9,12 +9,12 @@
 | 源码仓库 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
 | 分支 | `main` |
 | commit | [`279339f113b79af84f27fd3ac92d0a13bd3f4cbd`](https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd) |
-| 读取时间 | 2026-09-17 |
-| 工作区状态 | SGLang 与 Wiki 开始时均干净；只在 Wiki 新增学习资料与页面 |
+| 读取时间 | 2026-09-17；DeepSeek-V3 路径于 2026-10-15 复核 |
+| 工作区状态 | 初版读取时干净；此次从 SGLang 固定 Git 对象复核，未修改外部源码；保留 Wiki 已有改动 |
 | 操作边界 | 只读源码分析；页面构建与交互验证；未启动 SGLang，未做 GPU/NCCL/Mooncake 运行实验 |
-| 主线 | CUDA、PD Prefill、PP=3、TP=CP=DP=1、pp_async_batch_depth=0；普通 Llama 类 FULL attention 生成请求；以 Mooncake 说明传输提交 |
+| 主线 | CUDA、PD Prefill、PP=3、TP=CP=DP=1、pp_async_batch_depth=0；DeepSeek-V3 普通生成请求（MLA、MoE；不展开专家内部计算）；以 Mooncake 说明传输提交 |
 | 示例假设 | 正文以单请求成功路径为主；交互可配置 1–4 条等长请求、输入长度、共享 chunk 预算、请求容量与页大小，支持正常、等待和部分失败。默认 12 token / chunk 预算 4 / 页大小 2。FCFS、P/D 冷缓存，其他内存预算充足 |
-| 不展开 | 外部路由选址、Decode 后续生成；关闭 HiCache/L3/staging、投机解码、乐观 Prefill、约束采样等分支 |
+| 不展开 | 外部路由选址、Decode 后续生成；关闭 HiCache/L3/staging、TBO、投机解码、乐观 Prefill、约束采样等分支 |
 
 PP loop 页面与本页现已统一到 `279339f113`。两者分别采用 HiCache host-hit 场景与关闭 HiCache 的冷缓存场景，不能直接照搬示例 loop 编号、耗时或缓存步骤。下文是源码事实与显式示例假设的因果整理，不是运行观察或性能时间线。
 
@@ -28,7 +28,7 @@ PP loop 页面与本页现已统一到 `279339f113`。两者分别采用 HiCache
 | bootstrap_room | 后端用于关联这次 P/D 传输的标识 |
 | proxy | 让下一级继续模型计算的中间激活 |
 | output | 末级采样结果等回流信息 |
-| KV / metadata | 本级 prompt 各层的键值缓存 / 首 token 等交接信息 |
+| KV / metadata | 本级 prompt 各层的历史状态（本例为 MLA 压缩表示） / 首 token 等交接信息 |
 | inflight | 已处理最终 Prefill 结果，仍需跟踪传输与收尾的请求集合 |
 
 ## 1. 先建立整体地图
@@ -215,7 +215,7 @@ R 被移出 waiting_queue，进入 ScheduleBatch；prepare_for_extend 设置 EXT
 
 第一段流水级从 token IDs 开始，把 prompt 变成中间激活，同时写下自己负责的层的 KV。
 
-以支持 PP 的 LlamaModel 为例，首级执行 embedding，再运行本级 [start_layer, end_layer) 内的层。本例用 30 层示意，PP0 负责 L0–L9；层数只是讲解用的配置假设。attention 后端将本级 KV 写入前面分配的位置。
+以 DeepSeek-V3 复用的 DeepseekV2Model 为例，首级执行 embedding，再运行本级 [start_layer, end_layer) 内的层。本例用 30 层示意，PP0 负责 L0–L9；层数只是讲解用的缩小配置，不是 DeepSeek-V3 的真实层数。注意力路径将本级压缩 KV 和位置相关状态写入前面分配的位置。Prefill 可采用展开后的注意力计算，缓存仍是 MLA 压缩表示；计算方式与存储方式要分开理解。
 
 _pp_launch_batch 在 forward stream 上等待 schedule stream，然后提交 run_batch 并记录 launch_event。非末级返回 PPProxyTensors（例如 hidden_states、residual）；发送前让调度流等待 launch_event，再提交 proxy 发送。CPU 提交完成不等于 GPU 已执行完成。
 
@@ -229,8 +229,9 @@ _pp_launch_batch 在 forward stream 上等待 schedule stream，然后提交 run
 
 | 行为 | 源码 |
 | --- | --- |
-| LlamaModel.forward | [`models/llama.py:426`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L426) |
-| 本级 KV 写入示例 | [`layers/attention/flashinfer_backend.py:1338`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/layers/attention/flashinfer_backend.py#L1338) |
+| DeepseekV2Model.forward | [`models/deepseek_v2.py:2735`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L2735) |
+| 展开计算路径的压缩缓存写入 | [`forward_mha.py::_set_mla_kv_buffer`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_common/attention_forward_methods/forward_mha.py#L583) |
+| MLA 缓存写入示例 | [`layers/attention/flashinfer_mla_backend.py:716`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/layers/attention/flashinfer_mla_backend.py#L716) |
 | _pp_launch_batch | [`managers/scheduler_pp_mixin.py:1221`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1221) |
 | 等待 launch_event 后发送 proxy | [`managers/scheduler_pp_mixin.py:337`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L337) |
 
@@ -238,7 +239,7 @@ _pp_launch_batch 在 forward stream 上等待 schedule stream，然后提交 run
 
 中间级从上游隐藏状态继续计算；它不会重新执行 embedding，也不会把上一级的 KV 搬来再算。
 
-_pp_recv_proxy_tensors 接收上一级的 proxy；LlamaModel.forward 从中取出 hidden_states 与 residual。PP1 计算 L10–L19，并将这些层的 KV 写在自己的 KV pool。
+_pp_recv_proxy_tensors 接收上一级的 proxy；DeepseekV2Model.forward 从中取出 hidden_states 与 residual。PP1 计算 L10–L19，并将这些层的 KV 写在自己的 KV pool。
 
 本级前向同样通过 _pp_launch_batch 提交。结果仍是中间激活，发送给 PP2；PP0 的 KV 留在 PP0，PP1 的 KV 留在 PP1。PP0 此时可推进其他 batch 的工作，具体交错取决于 loop 和通信依赖。
 
@@ -253,7 +254,7 @@ _pp_recv_proxy_tensors 接收上一级的 proxy；LlamaModel.forward 从中取�
 | 行为 | 源码 |
 | --- | --- |
 | _pp_recv_proxy_tensors | [`managers/scheduler_pp_mixin.py:858`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L858) |
-| 非首级读取 proxy 与逐层前向 | [`models/llama.py:432`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L432) |
+| 非首级读取 proxy 与逐层前向 | [`models/deepseek_v2.py:2753`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L2753) |
 | _pp_launch_batch | [`managers/scheduler_pp_mixin.py:1221`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1221) |
 
 ### 07. PP2：计算最后一段层，采样首 token
@@ -274,8 +275,8 @@ _pp_launch_batch 将末级的 event 和输出字典放进 last_rank_comm_queue�
 
 | 行为 | 源码 |
 | --- | --- |
-| 末级 norm | [`models/llama.py:451`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L451) |
-| 末级 logits_processor | [`models/llama.py:583`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L583) |
+| 末级 norm | [`models/deepseek_v2.py:2884`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L2884) |
+| 末级 logits_processor | [`models/deepseek_v2.py:3070`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L3070) |
 | 末级前向与 sample | [`managers/tp_worker.py:627`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/tp_worker.py#L627) |
 | event 与 last_rank_comm_queue | [`managers/scheduler_pp_mixin.py:1247`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1247) |
 

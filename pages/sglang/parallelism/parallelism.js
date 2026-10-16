@@ -2,7 +2,8 @@
  'use strict';
  const M=window.ParallelismModel,host=document.querySelector('[data-parallel-lab]');if(!M||!host)return;
  const $=id=>host.querySelector('#'+id),esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- let mode='tp',step=0,timer=null;
+ let mode='tp',step=0,timer=null,lastBoundary=null;
+ const handoffHost=document.createElement('div');$('parallel-scene').before(handoffHost);
  const titles={tp:'TP · 切一层的权重',pp:'PP · 按层接力',dp:'DP · 分配不同请求',ep:'EP · 分配专家任务',cp:'CP · 分担上下文查询'};
  const vector=(values,cls='')=>`<span class="number-vector ${cls}">${values.map(v=>`<b>${esc(v)}</b>`).join('')}</span>`;
  const layers=()=>'<div class="layer-stack" aria-label="全部四层">'+[1,2,3,4].map(i=>`<i>L${i}</i>`).join('')+'</div>';
@@ -30,12 +31,12 @@
   const header=Array.from({length:ticks},(_,i)=>`<small>t${i+1}</small>`).join('');
   let html=`<div class="pipeline-grid" style="--ticks:${ticks}"><div></div><div class="tick-head">${header}</div>`;
   for(let stage=0;stage<2;stage++){
-   const cells=Array.from({length:ticks},(_,i)=>{const batch=i+1-stage,valid=batch>0&&batch<=n;return `<button type="button" class="pipeline-cell ${valid?'batch-'+batch:'bubble'} ${i+1===step?'now':i+1<step?'past':'future'}" data-tick="${i+1}" aria-label="t${i+1}，阶段 ${stage}，${valid?'M'+batch:'空闲'}">${valid?'M'+batch:'·'}</button>`;}).join('');
-   html+=`<div class="stage-label"><strong>GPU ${stage}</strong><span>L${stage*2+1} · L${stage*2+2}</span><small>本级权重 / KV</small></div><div class="tick-row">${cells}</div>`;
+   const cells=Array.from({length:ticks},(_,i)=>{const batch=i+1-stage,valid=batch>0&&batch<=n;return `<button type="button" class="pipeline-cell ${valid?'batch-'+batch:'bubble'} ${i+1===step?'now':i+1<step?'past':'future'}" data-tick="${i+1}" aria-label="t${i+1}，阶段 ${stage}，${valid?'MB'+batch:'空闲'}">${valid?'MB'+batch:'·'}</button>`;}).join('');
+   html+=`<div class="stage-label"><strong>PP Stage ${stage}</strong><small>本例 GPU ${stage}</small><span>L${stage*2+1} · L${stage*2+2}</span><small>本级权重 / KV</small></div><div class="tick-row">${cells}</div>`;
   }
   html+='</div>';
-  if(step>=2&&step<=n+1)html+=`<div class="activation-handoff"><span>M${step-1} · GPU 0 的结果</span><b class="handoff-arrow">→</b><span>GPU 1 · 激活输入</span></div>`;
-  return {html,phase:step===0?'按层分配':`t${step} · 当前执行`,source:step===0?'layers':'pp',caption:step===0?'两级持有不同层；同一个 microbatch 必须先过 L1–2，再过 L3–4。':step===n+1?`GPU 1 正在完成 M${n}；GPU 0 已无后续 microbatch。`:step===1?'M1 先进入 GPU 0。GPU 1 还没有上一级的激活，不能提前算。':`GPU 0 处理 M${step}，同时 GPU 1 处理 M${step-1}；两张卡此刻处理的是不同 microbatch。`,why:'两级各用一个等长时隙是教学假设，用来展示前后级依赖和填充 / 排空。不是 SGLang event loop 的逐次复刻或吞吐预测。跨级激活继续下一层计算；本级 KV 随本级 Attention 层保存，不能把 PP 激活交接理解为 P/D 的 KV 搬运。'};
+  if(step>=2&&step<=n+1)html+=`<div class="activation-handoff"><span>MB${step-1} · GPU 0 的结果</span><b class="handoff-arrow">→</b><span>GPU 1 · 激活输入</span></div>`;
+  return {html,phase:step===0?'按层分配':`t${step} · 当前执行`,source:step===0?'layers':'pp',caption:step===0?'MB 表示 microbatch（微批次）；同一 MB 必须先经 Stage 0 的 L1–2，再经 Stage 1 的 L3–4。':step===n+1?`GPU 1 正在完成 MB${n}；GPU 0 已无后续 microbatch。`:step===1?'MB1 先进入 GPU 0。GPU 1 还没有上一级的激活，不能提前算。':`GPU 0 处理 MB${step}，同时 GPU 1 处理 MB${step-1}；两张卡此刻处理的是不同 microbatch。`,why:'Stage 是模型层的分工，MB 是送入流水线的工作单元，可包含多条请求。例中每个 stage 使用一张 GPU，编号恰好相同；stage 不等于 GPU 或进程组 rank。两级各用一个等长时隙是教学假设，用来展示前后级依赖和填充 / 排空。不是 SGLang event loop 的逐次复刻或吞吐预测。跨级激活继续下一层计算；本级 KV 随本级 Attention 层保存，不能把 PP 激活交接理解为 P/D 的 KV 搬运。'};
  }
  function dp(){
   const d=M.dataParallel()[step];
@@ -65,6 +66,7 @@
  function stop(){clearInterval(timer);timer=null;$('parallel-play').textContent='播放';$('parallel-play').setAttribute('aria-pressed','false');}
  function render(){
   const f=({tp,pp,dp,ep,cp}[mode])(),max=maximum();
+  if(lastBoundary!==mode){handoffHost.replaceChildren();window.HandoffBoundaries?.mount(handoffHost,'parallel-'+mode);lastBoundary=mode;}
   $('parallel-title').textContent=titles[mode];$('parallel-scene').innerHTML=f.html;$('parallel-scene').dataset.mode=mode;$('parallel-scene').dataset.step=step;
   $('parallel-status').textContent=`${step+1} / ${max+1} · ${f.phase}`;$('parallel-caption').textContent=f.caption;$('parallel-why').textContent=f.why;
   $('parallel-source').href=M.url(f.source);$('parallel-source').textContent='源码 · '+M.sources[f.source][2]+' ↗';

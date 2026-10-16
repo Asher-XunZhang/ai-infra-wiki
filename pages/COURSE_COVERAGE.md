@@ -1,6 +1,28 @@
 # Pages 学习课程覆盖与维护
 
-Pages 按五层十二模块组织。页面正文围绕机制与源码展开；本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
+Pages 分为“推理基础”和“SGLang 实现剖析”两章。第一章用十二课建立通用机制，第二章保留五层十二模块、二十节原有课程与各自的源码依据。本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
+
+## 两章之间怎样衔接
+
+第一章的 [十二节基础课](foundations/README.md) 依次解释文字与 token、逐步生成、Attention、KV、批处理、GPU、多卡分工、通信、角色分离、候选验证、服务生命周期和性能口径。每课使用具体例子，提供分步播放、回退、条件切换、自测、来源和无 JavaScript 正文。先修链接与上一课 / 下一课让读者按依赖继续。
+
+第二章保留旧网址和固定源码依据，课前只给实现目标与第一章的先修链接，不再嵌入同一套基础播放器。五节旧概览课分别改为批次准备、DeepSeek-V3 调用、前缀索引、调度入口和 PD 交接的源码导读；原有六幅通用机制图及说明归到第一章相应课程的选读区，避免在两章重复学习。
+
+第二章的其他交互保留具体实现问题：请求对象交接、KV 地址与共享保护、准入与回撤、Graph 资格、通信接口与释放、状态回退、服务治理及统计口径。机制上的必要回顾服务于这些实现问题，不另复制第一章课件。
+
+基础课的编辑入口是 `pages/foundations/courses.json`，选读机制图保存在 `extensions.json`；由 `scripts/build_foundations.py` 生成十二页；共享侧栏和课程映射由 `scripts/build_learning_navigation.py` 生成。两类生成一致性均由 `build_pages.py` 检查。
+
+### 基础章节验证
+
+- `node tests/pages/test_foundations.cjs`：真实分词固定样例、因果权重、KV 所属与释放、批次成员守恒、通信与 PP 依赖、统计样本边界。
+- `node tests/pages/test_foundations_browser.cjs`：全部场景与步骤、320 / 390 / 1440 宽度、深浅主题、自测反馈、键盘、播放暂停、减少动态效果、链接恢复与无 JavaScript 正文。
+- `node tests/pages/test_topic_navigation_browser.cjs`：两章目录、原有二十节实现课导航、旧路线 URL、跨模块翻页与移动端侧栏。
+
+本轮仅在本地构建与预览，尚未部署远程。浏览器中的教学模型不代表运行过 GPU 推理。
+
+## 连续机制演示审核
+
+2026-10-15 按阅读者需要理解的因果关系复核。24 个页面共 37 个可播放条件、250 个关键状态；基础 token、生成、Attention、KV、角色分离，以及 SGLang 执行、KV 内存、调度、PD 引用与收尾十页采用专用图形。连续批处理保留 token 序列与固定执行位置。八页仍以矩阵、序列或时间轴为主，将通用演示折叠；其余五页保留对象过程图。原参数实验、正文和源码依据保留。八节源码导读 / PP 课程保持原用途。逐课问题、调整理由、保留理由和复核步骤见 [Pages 机制可视化审核](MOTION_REVIEW.md)。
 
 ## 每个模块的完成要求
 
@@ -47,7 +69,7 @@ Pages 按五层十二模块组织。页面正文围绕机制与源码展开；�
 ## 通信课程的验证
 
 - `node tests/pages/test_communication.cjs`：算子输出、页合并覆盖、源端完成与 ACK 去重、元数据 / rank / 缓存依赖；设置 `SGLANG_SOURCE_DIR` 额外核对固定源码锚点。
-- `node tests/pages/test_communication_browser.cjs`：四种机制及分支、移动端与桌面、深浅主题、运动方向、减少动态效果、键盘、播放和无 JS 阅读。
+- `node tests/pages/test_communication_browser.cjs`：四种机制及分支、移动端与桌面、深浅主题、箭头方向、减少动态效果、键盘、播放和无 JS 阅读。
 
 ## 生成课程的验证
 
@@ -72,7 +94,7 @@ Pages 按五层十二模块组织。页面正文围绕机制与源码展开；�
 ## KV 课程的验证
 
 - `node tests/pages/test_kv_memory.cjs`：跨页边界、地址唯一性、写入先后、命中页对齐、缓存身份、共享保护与容量守恒；设置 `SGLANG_SOURCE_DIR` 核对固定源码锚点。
-- `node tests/pages/test_kv_memory_browser.cjs`：三种图与全部参数、保护分支、四档宽度与深浅主题、键盘与播放、无 JS 阅读。图无连续运动，步骤改变真实占用与连线。
+- `node tests/pages/test_kv_memory_browser.cjs`：三种图与全部参数、保护分支、四档宽度与深浅主题、键盘与播放、无 JS 阅读。该测试验证原参数实验的占用与连线；连续写入演示由 `test_mechanism_motion_browser.cjs` 另验。
 
 ## 调度课程的验证
 

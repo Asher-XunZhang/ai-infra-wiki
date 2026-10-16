@@ -1,22 +1,37 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>KV：模型留给下一轮的记忆 · SGLang 推理全景</title><meta name="description" content="拖动前缀命中与生成轮数，区分复用、新算与尚未写入。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="overview.css"><script src="../../site.js" defer></script><script src="model.js" defer></script><script src="../../diagrams.js" defer></script><script src="overview.js" defer></script><link rel="stylesheet" href="../../diagrams.css"></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RadixCache 与 Attention：前缀索引怎样连接 KV？ · AI Infra Wiki</title><meta name="description" content="把缓存复用落到请求索引、模型调用和生命周期三个接口。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="overview.css"><script src="../../motion/integration.js" defer></script><script src="../../site.js" defer></script><link rel="stylesheet" href="../../diagrams.css"><link rel="stylesheet" href="../../foundations/foundations.css"></head>
 <body data-page="inference-overview" data-lesson="kv-cache"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header><div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
 <details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
 <div class="sidebar-content">
 <a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="chapter-nav" data-chapter="foundations"><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="../../foundations/tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="../../foundations/generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="../../foundations/attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="../../foundations/cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="../../foundations/batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="../../foundations/hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="../../foundations/parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="../../foundations/communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="../../foundations/deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="../../foundations/speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="../../foundations/serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="../../foundations/metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="sglang" open><summary>第二章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
 <summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第一层 · 建立全局">
 <details class="module-nav" data-module="system-overview">
 <summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="journey.html">一条请求怎样变成回答</a>
-<a class="lesson-link" href="../system-overview/index.html">推理系统里，哪些边界不能混在一起？</a>
+<a class="lesson-link" href="journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
+<a class="lesson-link" href="../system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
 </div></details>
 <details class="module-nav" data-module="request-runtime">
 <summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#request-runtime">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../request-runtime/index.html">一条请求穿过哪些进程与对象</a>
+<a class="lesson-link" href="../request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-instance" open>
@@ -25,20 +40,20 @@
 <details class="module-nav" data-module="model-execution">
 <summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="transformer.html">P / D 在 Transformer 里做什么</a>
-<a class="lesson-link" href="../model-execution/index.html">一批输入，怎样变成设备上的计算？</a>
+<a class="lesson-link" href="transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
+<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
 </div></details>
 <details class="module-nav" data-module="kv-memory" open>
 <summary class="module-heading" aria-current="location"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="kv-cache.html" aria-current="page">KV：模型留给下一轮的记忆</a>
-<a class="lesson-link" href="../kv-memory/index.html">KV 放在哪里，又在何时回收？</a>
+<a class="lesson-link" href="kv-cache.html" aria-current="page">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
+<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
 </div></details>
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#scheduling">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="scheduling.html">多请求怎样共享一次执行</a>
-<a class="lesson-link" href="../scheduling/index.html">排到前面，就能开始计算吗？</a>
+<a class="lesson-link" href="scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-distributed">
@@ -47,19 +62,19 @@
 <details class="module-nav" data-module="parallelism">
 <summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#parallelism">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../parallelism/index.html">多张卡，究竟切开了什么？</a>
+<a class="lesson-link" href="../parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
 </div></details>
 <details class="module-nav" data-module="communication">
 <summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#communication">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../communication/index.html">数据传过去，何时才算可用？</a>
+<a class="lesson-link" href="../communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
 </div></details>
 <details class="module-nav" data-module="disaggregation">
 <summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="deployment.html">合并部署与 PD 分离</a>
-<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD Prefill 请求生命周期</a>
-<a class="lesson-link" href="../pd-dataflow/index.html">数据流、状态与队列</a>
+<a class="lesson-link" href="deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
+<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-serving">
@@ -68,12 +83,12 @@
 <details class="module-nav" data-module="advanced-generation">
 <summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#advanced-generation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../advanced-generation/index.html">生成一个 token，还会改变哪些状态？</a>
+<a class="lesson-link" href="../advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
 </div></details>
 <details class="module-nav" data-module="serving-operations">
 <summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#serving-operations">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../serving-operations/index.html">服务在线，请求就一定能完成吗？</a>
+<a class="lesson-link" href="../serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-practice">
@@ -82,19 +97,23 @@
 <details class="module-nav" data-module="performance">
 <summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#performance">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../performance-engineering/index.html">性能数字，究竟量到了哪一段？</a>
+<a class="lesson-link" href="../performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
 </div></details>
 <details class="module-nav" data-module="case-studies">
 <summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">机制验证练习与 PP loop</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">依赖分析与耗时场景</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP loop 源码阅读</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识</a>
 </div></details>
 </nav></details>
-<div class="sidebar-note"><span class="status-dot"></span> 一张框架，逐步深入<p>先理解单实例，再连接多卡多机；模型、服务与性能按目标选读。</p></div>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside><div class="site-content"><main id="main-content" tabindex="-1"><!-- learning-context:start -->
-<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">学习框架</a><span aria-hidden="true">/</span><a href="../../#stage-instance">第二层 · 理解单实例</a><span aria-hidden="true">/</span><a href="../../#kv-memory">04 KV Cache 与内存管理</a><span aria-hidden="true">/</span><span aria-current="page">KV：模型留给下一轮的记忆</span></nav>
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第二章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-instance">第二层 · 理解单实例</a><span aria-hidden="true">/</span><a href="../../#kv-memory">04 KV Cache 与内存管理</a><span aria-hidden="true">/</span><span aria-current="page">RadixCache 与 Attention：前缀索引怎样连接 KV？</span></nav>
 <!-- learning-context:end -->
-<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#kv-memory">模块 04 / KV Cache 与内存管理</a><span class="lesson-count">SGLang · 入门</span></div><h1>KV：模型留给下一轮的记忆</h1><p>拖动前缀命中与生成轮数，区分复用、新算与尚未写入。</p><div class="meta-tags"><span>普通自回归文本生成</span><span>教学示意 · 非运行 trace</span><span>源码 279339f113</span></div></header><p class="big-idea">KV 缓存省去历史位置的重复计算；它不是已经写好的答案，也不是模型权重。</p><section class="overview-section"><h2>同一个 token，在每层都有一份状态</h2><p>每层根据自己的输入计算 K/V，后续 token 在这一层读取这一层的历史 KV。hidden states 是本轮逐层传递的中间结果，权重是模型参数，KV 则随上下文增长，三者的内容与生命周期都不同。</p><p>前缀复用要求 token 前缀匹配且状态兼容、可用；不是语义相似就能命中。下图假定请求有 8 个输入位置，匹配的前缀已经在可用的设备缓存中。</p></section><section class="lab"><h2>交互 · 相同 token，不同层的独立 K/V</h2><div data-diagram="cache" aria-label="交互 · 相同 token，不同层的独立 K/V"></div><noscript>请启用 JavaScript 查看此图；机制与源码说明见本页正文。</noscript></section><section class="overview-section"><h2>为什么长上下文让 Decode 也变重？</h2><p>虽然普通 Decode 每轮只有一个新位置，它仍需在每一层使用历史 KV。对稠密 attention 而言，历史越长，访问的数据通常越多。“每轮输入一个 token”不等于“每轮工作量与上下文无关”。</p><p>请求结束后可以释放请求占有的资源，也可以把可复用前缀交由缓存管理器保留。缓存保留不意味着这条请求还在 Decode；未来复用也可能需要回载或重新准入。</p></section><details class="overview-selfcheck"><summary>自测 · 两个 prompt 意思一样，就能直接共用 KV 吗？</summary><p>不能这样推断。这里讨论的是匹配的 token 前缀和兼容的模型状态；措辞变化或前缀不同可能改变各层计算结果。</p></details><section class="overview-section source-links"><h2>回到源码核对</h2><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L2678">prepare_for_extend：去掉已复用前缀 ↗</a> · <code>managers/schedule_batch.py</code></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L239">LlamaAttention.forward：新 Q/K/V 与 attention ↗</a> · <code>models/llama.py</code></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L859">未完成请求与缓存处理 ↗</a> · <code>disaggregation/prefill.py</code></li></ul><p>阅读基线：公开上游 <code>main</code> / <code>279339f113b79af84f27fd3ac92d0a13bd3f4cbd</code>，读取于 2026-09-17。只读固定提交；未运行推理或性能实验。<a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/%E8%BF%90%E8%A1%8C%E6%97%B6/SGLang%20%E6%8E%A8%E7%90%86%E5%85%A8%E6%99%AF%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97.md">完整基线、源码映射与阅读笔记 ↗</a></p></section><nav class="lesson-pager" aria-label="框架内继续学习"><a href="../../#kv-memory"><small>回到所属模块</small><strong>← 04 KV Cache 与内存管理</strong></a><a class="next" href="../kv-memory/index.html"><small>本模块 · 下一节</small><strong>KV 放在哪里，又在何时回收？ →</strong></a></nav></main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#kv-memory">模块 04 / KV Cache 与内存管理</a><span class="lesson-count">SGLang · 源码导读</span></div><h1>RadixCache 与 Attention：前缀索引怎样连接 KV？</h1><p>把缓存复用落到请求索引、模型调用和生命周期三个接口。</p><div class="meta-tags"><span>普通自回归文本生成</span><span>固定提交 · 接口与状态对照</span><span>源码 279339f113</span></div></header><!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>连接请求的前缀索引、本轮输入范围与 attention 调用，再进入物理页和回收实现。</p><a href="../../foundations/cache.html">需要回顾原理：KV Cache 与前缀复用：为什么保存历史 K/V？</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">知道“旧 KV 可以复用”后，引擎还必须确定哪一段历史已经存在、实际存在哪里、哪些新位置需要计算。前缀树索引把文本前缀匹配与设备缓存地址连接起来。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-background"><summary>复用应当针对相同历史</summary><p>RadixAttention 作者文章从多次调用共享 prompt 前缀出发，用前缀树管理已算过的 KV，并在容量压力下驱逐。由此要问的是“哪些历史计算完全可以复用”，而不是两段文字表达的意思是否相近。</p><p class="design-source">概念与设计说明：<a href="https://www.lmsys.org/blog/2024-01-17-sglang/">SGLang 作者：RadixAttention（2024-01-17） ↗</a></p><p class="design-source">这是 2024 年设计背景；本课的命名空间和匹配约束以固定源码为准。 资料读取：2026-10-16。</p></details><section class="design-question" id="design-prefix-index"><h3>为什么要维护前缀索引，而不是只比较两句话是否相似？</h3><p>可复用的是符合计算条件的同一前缀状态，语义相似不足以保证数值相同。系统需要按 token 与相关身份找到精确匹配，再得到可读取的缓存位置。</p><details><summary>展开机制与具体例子</summary><p>本页普通 RadixCache 的 match_prefix 查找 token 序列与命名空间对应的最长匹配，返回设备索引及末端节点；请求据此确定本轮剩余输入范围。</p><div class="design-example"><strong>用一个例子理解</strong><p>相同输入文本若属于不同缓存命名空间，不能仅凭字符一致就共享条目。树节点存的是索引关系，不是复制一整份历史 KV。</p></div></details><p class="design-tradeoff"><strong>取舍与条件：</strong>查到索引不意味着已经执行本轮 Attention；还需要保护有效缓存、分配新位置并完成计算。分页与特殊后端的匹配边界要分别核对。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L397">match_prefix · 本课实现核对 ↗</a></p><ul class="design-links"><li><a href="../kv-memory/index.html">进一步区分请求映射和物理存储 →</a></li></ul></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-10-16。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end --><section class="implementation-map" aria-label="实现阅读路线"><h2>沿实现接口阅读</h2><ol><li><h3>选出本轮仍需处理的位置</h3><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L2678"><code>Req.prefix_indices → prepare_for_extend</code></a><p>批次准备按已有 prefix_indices 切取 get_fill_ids 的剩余部分，同时保存前缀长度与本轮长度。</p><p class="implementation-check">读到这里核对：“前缀可复用”必须体现为本轮输入范围，不能只看一个命中数字。</p></li><li><h3>计算剩余位置的新状态</h3><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L2049"><code>DeepseekV2AttentionMLA.forward</code></a><p>以 DeepSeek-V3 为例，MLA 注意力先准备本轮特征，再按后端与批次条件选择计算路径。缓存保存压缩的历史表示及位置相关部分，不能直接套用基础课完整 K/V 的存储示意。</p><p class="implementation-check">读到这里核对：地址准备、模型计算和缓存持有是三个责任，不能把它们都叫作“缓存”。</p></li><li><h3>追踪谁还持有这些位置</h3><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L859"><code>请求结果处理 → 缓存与资源管理</code></a><p>Prefill 的未完成请求仍有后续工作；处理分块、写入和缓存时，要结合请求状态判断。</p><p class="implementation-check">读到这里核对：下一课分别操作请求映射、共享保护和驱逐，不把请求结束等同于物理位置已空闲。</p></li></ol></section><a class="foundation-to-engine" href="../kv-memory/index.html"><small>继续查看具体执行与状态变化</small>继续观察物理页映射、保护与回收 →</a><section class="overview-section source-links"><h2>回到源码核对</h2><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L2678">prepare_for_extend：去掉已复用前缀 ↗</a> · <code>managers/schedule_batch.py</code></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L2049">DeepseekV2AttentionMLA.forward：MLA 的准备与计算分派 ↗</a> · <code>models/deepseek_v2.py</code></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L859">未完成请求与缓存处理 ↗</a> · <code>disaggregation/prefill.py</code></li></ul><p>阅读基线：公开上游 <code>main</code> / <code>279339f113b79af84f27fd3ac92d0a13bd3f4cbd</code>，读取于 2026-09-17；DeepSeek-V3 调用路径复核于 2026-10-15。只读固定提交；未运行推理或性能实验。<a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/%E8%BF%90%E8%A1%8C%E6%97%B6/SGLang%20%E6%8E%A8%E7%90%86%E5%85%A8%E6%99%AF%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97.md">完整基线、源码映射与阅读笔记 ↗</a></p></section><!-- reading-pagers:start -->
+<nav class="reading-route-pager" data-reading-route="first" data-route-title="从基础走向源码" data-route-position="3 / 4" aria-label="从基础走向源码 · 继续学习" hidden><a href="transformer.html?learn=first"><small>这条路线 · 上一节</small><strong>← DeepSeek-V3：Embedding、Decoder Layer 与输出头</strong></a><a class="next" href="scheduling.html?learn=first"><small>这条路线 · 下一节</small><strong>Scheduler：选批、Chunked Prefill 与 Decode 更新 →</strong></a></nav>
+<!-- reading-pagers:end -->
+<nav class="lesson-pager" aria-label="框架内继续学习"><a href="../../#kv-memory"><small>回到所属模块</small><strong>← 04 KV Cache 与内存管理</strong></a><a class="next" href="../kv-memory/index.html"><small>本模块 · 下一节</small><strong>KV Memory Pool：地址映射、分页与缓存回收 →</strong></a></nav></main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

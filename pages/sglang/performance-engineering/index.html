@@ -1,22 +1,37 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>性能分析与优化方法 · AI Infra Wiki</title><meta name="description" content="从计时边界、流式分包和样本筛选理解性能指标。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="../inference-overview/overview.css"><link rel="stylesheet" href="../parallelism/parallelism.css"><link rel="stylesheet" href="performance.css"><script src="../../site.js" defer></script><script src="model.js" defer></script><script src="performance.js" defer></script></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>TTFT、ITL、TPOT 与 P95：SGLang 性能观测 · AI Infra Wiki</title><meta name="description" content="从计时边界、流式分包和样本筛选理解性能指标。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="../inference-overview/overview.css"><link rel="stylesheet" href="../parallelism/parallelism.css"><link rel="stylesheet" href="performance.css"><script src="../../motion/integration.js" defer></script><script src="../../site.js" defer></script><script src="model.js" defer></script><script src="performance.js" defer></script><link rel="stylesheet" href="../../foundations/foundations.css"><link rel="stylesheet" href="../../motion/motion.css"><script src="../../vendor/gsap/gsap.min.js" defer></script><script src="../../motion/scenes.js" defer></script><script src="../../motion/boundaries.js" defer></script><script src="../../motion/player.js" defer></script></head>
 <body data-page="performance"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header><div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
 <details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
 <div class="sidebar-content">
 <a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="chapter-nav" data-chapter="foundations"><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="../../foundations/tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="../../foundations/generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="../../foundations/attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="../../foundations/cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="../../foundations/batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="../../foundations/hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="../../foundations/parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="../../foundations/communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="../../foundations/deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="../../foundations/speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="../../foundations/serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="../../foundations/metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="sglang" open><summary>第二章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
 <summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第一层 · 建立全局">
 <details class="module-nav" data-module="system-overview">
 <summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/journey.html">一条请求怎样变成回答</a>
-<a class="lesson-link" href="../system-overview/index.html">推理系统里，哪些边界不能混在一起？</a>
+<a class="lesson-link" href="../inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
+<a class="lesson-link" href="../system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
 </div></details>
 <details class="module-nav" data-module="request-runtime">
 <summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#request-runtime">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../request-runtime/index.html">一条请求穿过哪些进程与对象</a>
+<a class="lesson-link" href="../request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-instance">
@@ -25,20 +40,20 @@
 <details class="module-nav" data-module="model-execution">
 <summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/transformer.html">P / D 在 Transformer 里做什么</a>
-<a class="lesson-link" href="../model-execution/index.html">一批输入，怎样变成设备上的计算？</a>
+<a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
+<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
 </div></details>
 <details class="module-nav" data-module="kv-memory">
 <summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/kv-cache.html">KV：模型留给下一轮的记忆</a>
-<a class="lesson-link" href="../kv-memory/index.html">KV 放在哪里，又在何时回收？</a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
+<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
 </div></details>
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#scheduling">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/scheduling.html">多请求怎样共享一次执行</a>
-<a class="lesson-link" href="../scheduling/index.html">排到前面，就能开始计算吗？</a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-distributed">
@@ -47,19 +62,19 @@
 <details class="module-nav" data-module="parallelism">
 <summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#parallelism">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../parallelism/index.html">多张卡，究竟切开了什么？</a>
+<a class="lesson-link" href="../parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
 </div></details>
 <details class="module-nav" data-module="communication">
 <summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#communication">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../communication/index.html">数据传过去，何时才算可用？</a>
+<a class="lesson-link" href="../communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
 </div></details>
 <details class="module-nav" data-module="disaggregation">
 <summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/deployment.html">合并部署与 PD 分离</a>
-<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD Prefill 请求生命周期</a>
-<a class="lesson-link" href="../pd-dataflow/index.html">数据流、状态与队列</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
+<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-serving">
@@ -68,12 +83,12 @@
 <details class="module-nav" data-module="advanced-generation">
 <summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#advanced-generation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../advanced-generation/index.html">生成一个 token，还会改变哪些状态？</a>
+<a class="lesson-link" href="../advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
 </div></details>
 <details class="module-nav" data-module="serving-operations">
 <summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#serving-operations">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../serving-operations/index.html">服务在线，请求就一定能完成吗？</a>
+<a class="lesson-link" href="../serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-practice" open>
@@ -82,31 +97,35 @@
 <details class="module-nav" data-module="performance" open>
 <summary class="module-heading" aria-current="location"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#performance">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="index.html" aria-current="page">性能数字，究竟量到了哪一段？</a>
+<a class="lesson-link" href="index.html" aria-current="page">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
 </div></details>
 <details class="module-nav" data-module="case-studies">
 <summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">机制验证练习与 PP loop</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">依赖分析与耗时场景</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP loop 源码阅读</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识</a>
 </div></details>
 </nav></details>
-<div class="sidebar-note"><span class="status-dot"></span> 一张框架，逐步深入<p>先理解单实例，再连接多卡多机；模型、服务与性能按目标选读。</p></div>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside><div class="site-content"><main id="main-content" tabindex="-1"><!-- learning-context:start -->
-<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">学习框架</a><span aria-hidden="true">/</span><a href="../../#stage-practice">第五层 · 综合验证</a><span aria-hidden="true">/</span><a href="../../#performance">11 性能分析与优化方法</a><span aria-hidden="true">/</span><span aria-current="page">性能数字，究竟量到了哪一段？</span></nav>
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第二章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-practice">第五层 · 综合验证</a><span aria-hidden="true">/</span><a href="../../#performance">11 性能分析与优化方法</a><span aria-hidden="true">/</span><span aria-current="page">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</span></nav>
 <!-- learning-context:end -->
-<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#performance">模块 11 / 性能分析与优化方法</a><span class="lesson-count">SGLang · 性能分析</span></div><h1>性能数字，究竟量到了哪一段？</h1><p>先找到秒表边界，再用时间线和对照实验判断：变快的是计算、等待，还是统计里的样本？</p><div class="meta-tags"><span>TTFT / TPOT / ITL / 吞吐</span><span>源码 279339f113</span><span>教学数值 · 未运行性能实验</span></div></header>
-<p class="big-idea">同一个“更快”，需要回答：哪条请求、哪个区间、哪些成功结果。</p>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#performance">模块 11 / 性能分析与优化方法</a><span class="lesson-count">SGLang · 性能分析</span></div><h1>TTFT、ITL、TPOT 与 P95：SGLang 性能观测</h1><p>先找到秒表边界，再用时间线和对照实验判断：变快的是计算、等待，还是统计里的样本？</p><div class="meta-tags"><span>TTFT / TPOT / ITL / 吞吐</span><span>源码 279339f113</span><span>教学数值 · 未运行性能实验</span></div></header><!-- lesson-reading:start --><nav class="lesson-reading-nav" aria-label="本课阅读入口"><span>按问题阅读</span><a href="#implementation-why-title">从问题理解实现</a><a href="#perf-title">沿着时间与样本找原因</a><a href="#reading-topic-3">先预测，再操作</a><a href="#reading-topic-4">固定源码与继续阅读</a></nav><!-- lesson-reading:end --><!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>把观测区间映射到实际执行阶段，核对流式响应、压测统计和失败样本口径。</p><a href="../../foundations/metrics.html">需要回顾原理：TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">相同名字的指标可能在不同代码位置开始计时。先找到采样事件、计数对象和成功样本范围，才能判断“更快”来自执行改善，还是统计口径变化。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-background"><summary>先固定观察条件，再比较快慢</summary><p>官方 Bench Serving 指南同时支持不同请求入口、流式模式、到达速率和并发上限。这些选项会改变观察到的等待与延迟，所以相同指标名还必须配合同一工作负载和计时边界。</p><p class="design-source">概念与设计说明：<a href="https://docs.sglang.io/docs/developer_guide/bench_serving">SGLang 官方：Bench Serving Guide ↗</a></p><p class="design-source">本课继续回查固定版本的计时点、成功样本筛选和输出字段；教学数字不是实测。 资料读取：2026-10-16。</p></details><nav class="design-nav" aria-label="实现问题导航"><a href="#design-measurement">为什么先读 benchmark 计时点，再看指标数字？</a><a href="#design-samples">为什么成功率和延迟分布必须一起看？</a></nav><section class="design-question" id="design-measurement"><h3>为什么先读 benchmark 计时点，再看指标数字？</h3><p>客户端等许可、请求在服务端排队和 GPU 执行是不同区间。某段等待如果发生在计时开始之前，即使用户多等了，工具显示的 TTFT 也可能不变。</p><details><summary>展开机制与具体例子</summary><p>本页 native /generate adapter 从发请求前开始计时，按收到的有内容数据包更新指标；服务端 time_stats 有另一组起止点。流式包合并还会影响逐 token 间隔的推算。</p></details><p class="design-tradeoff"><strong>取舍与条件：</strong>客户端时间接近可见响应，但不能直接定位设备内部瓶颈；服务端 Trace 更细，却需关联请求和依赖。两者之差不能不加核对就命名为网络耗时。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/benchmark/serving.py#L701">adapter 的 st 计时点 · 本课实现核对 ↗</a></p><ul class="design-links"><li><a href="../../foundations/metrics.html#understand">基础章：延迟指标分别回答什么 →</a></li></ul></section><section class="design-question" id="design-samples"><h3>为什么成功率和延迟分布必须一起看？</h3><p>如果较慢请求失败并退出成功样本，P95 可能下降，但服务并没有因此更可靠或处理更多有效输出。先明确谁进入统计，再解释曲线。</p><details><summary>展开机制与具体例子</summary><p>calculate_metrics 按成功状态筛选相应指标；本页通过 R4 成功／失败对照，保持其余样本不变，观察分布和输出量一起变化。</p></details><p class="design-tradeoff"><strong>取舍与条件：</strong>筛选能明确指标含义，也可能隐藏失败体验。对照实验要固定负载、长度和统计边界，并同时报告错误与完成量。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/benchmark/serving.py#L1096">calculate_metrics · 本课实现核对 ↗</a></p></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-10-16。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end -->
+
 <section class="parallel-lab perf-lab" data-performance-lab hidden aria-labelledby="perf-title"><div class="mode-picker" role="group" aria-label="选择性能机制"><button type="button" data-mode="clock" aria-pressed="true">请求秒表</button><button type="button" data-mode="packet" aria-pressed="false">流式观测</button><button type="button" data-mode="experiment" aria-pressed="false">对照实验</button><button type="button" data-mode="sample" aria-pressed="false">样本筛选</button></div><h2 id="perf-title">沿着时间与样本找原因</h2>
 <div class="parallel-settings" data-settings="clock"><label>只改变一段<select id="clock-kind"><option value="base">基准请求</option><option value="client">客户端许可多等 120 ms</option><option value="queue">Scheduler 多等 120 ms</option><option value="compute">Prefill 耗时减半</option></select></label></div>
 <div class="parallel-settings" data-settings="packet" hidden><label>接收形态<select id="packet-kind"><option value="token">每包一个 token</option><option value="bundle">后 3 个 token 合在一包</option><option value="single">总共只输出一个 token</option></select></label></div>
 <div class="parallel-settings" data-settings="experiment" hidden><label>A/B 对照<select id="experiment-kind"><option value="concurrency">只增加并发许可</option><option value="prefill">只缩短 Prefill</option></select></label></div>
 <div class="parallel-settings" data-settings="sample" hidden><label>较慢的 R4<select id="sample-kind"><option value="all">最终成功</option><option value="failure">最终失败</option></select></label></div>
-<div class="parallel-controls"><button id="perf-previous" type="button">上一步</button><button id="perf-play" type="button" aria-pressed="false">播放</button><button id="perf-next" type="button">下一步</button><button id="perf-reset" type="button">重置</button><output id="perf-status" aria-live="polite"></output></div><div id="perf-scene" class="perf-scene"></div><p id="perf-caption" class="parallel-caption"></p><details class="parallel-details"><summary>口径、源码与教学假设</summary><p id="perf-why"></p><a id="perf-source" href="#source-baseline">查看对应源码 ↗</a></details><p class="parallel-footnote">数值用于解释机制，均非实测结果。请求秒表采用 native /generate 流式路径；其他协议需另核对适配器。</p></section>
+<div class="parallel-controls"><button id="perf-previous" type="button">上一步</button><button id="perf-play" type="button" aria-pressed="false">播放</button><button id="perf-next" type="button">下一步</button><button id="perf-reset" type="button">重置</button><output id="perf-status" aria-live="polite"></output></div><div id="perf-scene" class="perf-scene"></div><p id="perf-caption" class="parallel-caption"></p><details class="parallel-details"><summary>口径、源码与教学假设</summary><p id="perf-why"></p><a id="perf-source" href="#source-baseline">查看对应源码 ↗</a></details><p class="parallel-footnote">数值用于解释机制，均非实测结果。请求秒表采用 native /generate 流式路径；其他协议需另核对适配器。</p></section><p class="big-idea">同一个“更快”，需要回答：哪条请求、哪个区间、哪些成功结果。</p>
 <noscript><p class="big-idea">交互需要 JavaScript；下方边界图与完整笔记仍可阅读。</p></noscript>
 <details class="topology-detail perf-lab"><summary>先确定秒表放在哪一层</summary><div class="perf-flow"><span>客户端等许可</span><b>→</b><span>HTTP：发出 → 首包 → 结束</span></div><p>工具的单请求 TTFT 从 adapter 发请求前开始，到第一个有内容的包。E2E 在后续流数据到达后结束；许可前等待另记。服务端 time_stats 的起止点不同，不能直接把两者之差命名为网络耗时。</p></details>
 <details class="topology-detail perf-lab"><summary>看到 TTFT 上升，下一步采什么证据？</summary><div class="perf-flow"><span>相同请求 ID</span><b>→</b><span>排队 / 执行区间</span><b>→</b><span>CPU / GPU / 通信 Trace</span></div><p>先按请求关联端点时间，再检查长区间的依赖：等许可、等 batch、等前序 GPU 工作，还是等传输。CPU 提交时间不等于 GPU 执行时长；多流算子重叠时，把所有 kernel 时长相加也不是请求延迟。只缩短非关键路径可能没有端到端收益。</p><p><a href="../pd-prefill-pp-loop/index.html">操作 PP 依赖时间线 ↗</a> · <a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/11-performance-engineering/02-Profiler与时间线阅读.md">Profiler 与时间线源码专题（独立基线）↗</a></p></details>
-<section class="overview-section"><h2>先预测，再操作</h2><details class="self-check"><summary>用户多等了 120 ms，工具 TTFT 一定增加吗？</summary><p>不一定。若多等在客户端 semaphore 之前，adapter 的秒表还没开始。选择“客户端许可多等”与“Scheduler 多等”比较。</p></details><details class="self-check"><summary>ITL 都是 40 ms，证明模型均匀生成吗？</summary><p>不能。后 3 个 token 一起到达时，120 ms 的包间隔可以被均摊为三个 40 ms。包内真实生成时刻没有被测到。</p></details><details class="self-check"><summary>Prefill 耗时减半，吞吐为什么只提升 1.33 倍？</summary><p>在本例中 Prefill 原本占一半，Decode 没变；总时长降到原来的 3/4。真实服务还要看排队、重叠和其他成本。</p></details><details class="self-check"><summary>P95 下降的同时，为什么服务可能更差？</summary><p>若较慢请求失败，它会退出成功延迟分布。应同时看成功率、输出量、负载和原始错误；不要只看变好的一列。</p></details></section>
-<section class="overview-section source-notes" id="source-baseline"><h2>固定源码与继续阅读</h2><p>源码分析基线：<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">公开上游 SGLang main · 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>，读取于 2026-09-23。只读本地固定 Git 对象，原工作区未跟踪文件保留。未运行 SGLang、压测或 GPU 实验。仓内已有资料各自保留原基线。</p><ul><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/%E6%80%A7%E8%83%BD%E5%B7%A5%E7%A8%8B/SGLang%20%E6%8C%87%E6%A0%87%E5%8F%A3%E5%BE%84%E4%B8%8E%E6%80%A7%E8%83%BD%E5%AE%9A%E4%BD%8D%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md">完整笔记：秒表、数据包、实验与样本</a></li><li><a href="../request-runtime/">先修：请求、队列与执行边界</a></li><li><a href="../serving-operations/">服务治理：准入、超时和失败</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/11-performance-engineering/01-Benchmark设计与指标口径.md">深入：one_batch / offline / serving 的计时差异</a></li></ul></section><nav class="lesson-pager" aria-label="框架内继续学习"><a href="../../#performance"><small>回到所属模块</small><strong>← 11 性能分析与优化方法</strong></a><a class="next" href="../pd-prefill-pp-loop/quick.html"><small>下一模块 · 12</small><strong>综合案例与源码实践 →</strong><span>从本模块入门课程开始</span></a></nav></main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>
+<section class="overview-section"><h2 id="reading-topic-3">先预测，再操作</h2><details class="self-check"><summary>用户多等了 120 ms，工具 TTFT 一定增加吗？</summary><p>不一定。若多等在客户端 semaphore 之前，adapter 的秒表还没开始。选择“客户端许可多等”与“Scheduler 多等”比较。</p></details><details class="self-check"><summary>ITL 都是 40 ms，证明模型均匀生成吗？</summary><p>不能。后 3 个 token 一起到达时，120 ms 的包间隔可以被均摊为三个 40 ms。包内真实生成时刻没有被测到。</p></details><details class="self-check"><summary>Prefill 耗时减半，吞吐为什么只提升 1.33 倍？</summary><p>在本例中 Prefill 原本占一半，Decode 没变；总时长降到原来的 3/4。真实服务还要看排队、重叠和其他成本。</p></details><details class="self-check"><summary>P95 下降的同时，为什么服务可能更差？</summary><p>若较慢请求失败，它会退出成功延迟分布。应同时看成功率、输出量、负载和原始错误；不要只看变好的一列。</p></details></section>
+<section class="overview-section source-notes" id="source-baseline"><h2 id="reading-topic-4">固定源码与继续阅读</h2><p>源码分析基线：<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">公开上游 SGLang main · 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>，读取于 2026-09-23。只读本地固定 Git 对象，原工作区未跟踪文件保留。未运行 SGLang、压测或 GPU 实验。仓内已有资料各自保留原基线。</p><ul><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/%E6%80%A7%E8%83%BD%E5%B7%A5%E7%A8%8B/SGLang%20%E6%8C%87%E6%A0%87%E5%8F%A3%E5%BE%84%E4%B8%8E%E6%80%A7%E8%83%BD%E5%AE%9A%E4%BD%8D%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md">完整笔记：秒表、数据包、实验与样本</a></li><li><a href="../request-runtime/">先修：请求、队列与执行边界</a></li><li><a href="../serving-operations/">服务治理：准入、超时和失败</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/11-performance-engineering/01-Benchmark设计与指标口径.md">深入：one_batch / offline / serving 的计时差异</a></li></ul></section><!-- reading-pagers:start -->
+<nav class="reading-route-pager" data-reading-route="questions" data-route-title="带着现象找原因" data-route-position="1 / 4" aria-label="带着现象找原因 · 继续学习" hidden><a href="../../#reading-routes"><small>选择学习起点</small><strong>返回路线</strong></a><a class="next" href="../kv-memory/index.html?learn=questions"><small>这条路线 · 下一节</small><strong>KV Memory Pool：地址映射、分页与缓存回收 →</strong></a></nav>
+<!-- reading-pagers:end -->
+<nav class="lesson-pager" aria-label="框架内继续学习"><a href="../../#performance"><small>回到所属模块</small><strong>← 11 性能分析与优化方法</strong></a><a class="next" href="../pd-prefill-pp-loop/quick.html"><small>下一模块 · 12</small><strong>综合案例与源码实践 →</strong><span>从本模块入门课程开始</span></a></nav></main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

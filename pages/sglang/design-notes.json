@@ -1,0 +1,943 @@
+{
+  "sglang/inference-overview/journey.html": {
+    "problem": "同一轮可能包含长短不同的新输入，也可能只是多条请求各续写一个位置。引擎要先把“这些请求现在需要什么”转换成模型可执行的输入范围和写入地址。",
+    "topics": [
+      {
+        "id": "batch-view",
+        "title": "为什么需要 ScheduleBatch，而不是把请求列表直接交给模型？",
+        "why": "请求对象描述整个生命周期，模型 forward 只处理当前这一轮。把两者区分开，才能让同一请求跨多轮继续，又在每轮与不同请求一起计算。",
+        "mechanism": "ScheduleBatch（调度批次）保存本轮成员、前向模式、长度与缓存位置等信息。Extend 准备各请求尚需处理的一段；普通 Decode 准备各请求的一个新位置。模型还需要这些位置对应的索引，不能只接收几段文字。",
+        "tradeoff": "批次视图需要随请求完成、前缀命中和分块而更新；API 一次提交多条输入，不保证它们会进入同一个执行批次。",
+        "source": [
+          "managers/schedule_batch.py",
+          2678,
+          "prepare_for_extend"
+        ],
+        "example": "R1 有 4 个待算位置，R2 只剩 2 个：本轮共组织 6 个位置，同时保留它们各自的长度和地址。这个教学例里的 6 是输入位置数，不是 6 条请求。"
+      },
+      {
+        "id": "extend-mode",
+        "title": "为什么叫 Extend，不能一概理解为“首次读完整 prompt”？",
+        "why": "缓存命中或分块之后，本轮只需补算历史中的一段。以“扩展多少位置”描述工作，比假定每次都从头处理整段输入更准确。",
+        "mechanism": "沿 prepare_for_extend / prepare_for_decode 核对前向模式和本轮范围；刚采样的 token 进入下一轮输入后，才会得到对应的新 KV。",
+        "tradeoff": "本页讲普通生成入口；混合批次、投机和其他模式还有专用分支。先理解输入范围，再看分支条件。",
+        "source": [
+          "managers/schedule_batch.py",
+          3470,
+          "prepare_for_decode"
+        ],
+        "links": [
+          [
+            "先回顾 Prefill / Decode 的依赖",
+            "foundations/generation.html#why-phases"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "从一轮生成到服务多条请求",
+      "text": "项目作者的 Mini-SGLang 文章把分词、调度和执行分开介绍：在线服务要把持续到达的输入组织成可运行工作。沿这个问题阅读下面的 batch 视图，比先背对象字段更容易理解。",
+      "references": [
+        [
+          "Mini-SGLang 作者文章（2025-12-17）",
+          "https://www.lmsys.org/blog/2025-12-17-minisgl/"
+        ]
+      ],
+      "scope": "Mini-SGLang 用于理解职责；本课对象与字段以完整 SGLang 的固定源码为准。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/system-overview/index.html": {
+    "problem": "在线推理同时需要接入请求、组织计算和返回文字。这些职责推进速度不同；一张进程图的价值，是让读者知道每份状态由谁维护、等待发生在哪个边界。",
+    "topics": [
+      {
+        "id": "responsibility",
+        "title": "为什么分开前端、Scheduler 和反分词职责？",
+        "why": "接收连接与返回流式结果，需要前端状态；选择下一批工作，需要队列和资源状态；把输出 ID 变成文字，又需要输出处理。把职责说清楚，才能定位“已接收却没有回答”停在哪一步。",
+        "mechanism": "本页普通 Python 路径将 TokenizerManager、Scheduler 和 DetokenizerManager 按启动装配连接；Worker / Runner 是 Scheduler 进程内的执行组件。名称上的分层不自动意味着新进程。",
+        "tradeoff": "从职责可以理解这种拆分如何组织独立状态，但仅凭进程数不能断言性能或故障隔离效果。跨进程会增加消息关联与交接工作。",
+        "source": [
+          "entrypoints/engine.py",
+          1051,
+          "_launch_subprocesses"
+        ],
+        "links": [
+          [
+            "继续追踪同一 rid 的对象",
+            "sglang/request-runtime/index.html"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "先分清谁接入、谁计算、谁返回",
+      "text": "Mini-SGLang 作者用前端、分词服务和每卡调度后端建立系统地图。这提供了阅读入口；本课进一步区分 SGLang 的进程边界与进程内组件，沿一条请求确认职责。",
+      "references": [
+        [
+          "Mini-SGLang 作者文章（2025-12-17）",
+          "https://www.lmsys.org/blog/2025-12-17-minisgl/"
+        ]
+      ],
+      "scope": "高层结构参考作者讲解，具体启动装配由本课源码核对；两个项目的类与进程组织不混用。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/request-runtime/index.html": {
+    "problem": "请求既要让前端找到等待回答的连接，也要让后端知道算到了哪里。同一个请求标识串起这些状态，但不会让不同进程共享同一个 Python 对象。",
+    "topics": [
+      {
+        "id": "identity",
+        "title": "为什么要同时保留 ReqState、Req 和本轮 batch？",
+        "why": "它们回答的问题和存活时间不同：前端等回包，Scheduler 管进度与资源，batch 组织本轮计算。若只看本轮 batch，就无法判断前端是否仍在等待、资源是否已安全归还。",
+        "mechanism": "TokenizerManager 按 rid 关联前端状态；Scheduler 创建并更新 Req。Req 是调度侧请求对象，rid 是关联标识。原文“同一个 R1，为什么需要不同对象？”保留完整对照，取消与正常结束的分支继续在原图中观察。",
+        "tradeoff": "多个状态要保持关联与一致性；“后端完成”“前端收到结果”“客户端看到结束”仍要分别确认。请求越过一个边界，不代表整个生命周期结束。",
+        "source": [
+          "managers/tokenizer_manager.py",
+          797,
+          "generate_request"
+        ],
+        "example": "R1 已采样最后一个 token，但文字还在返回途中：后端的计算可以完成，前端的等待状态仍有用途。",
+        "links": [
+          [
+            "查看对象职责对照",
+            "sglang/request-runtime/index.html#reading-topic-4"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "为什么要从一条请求追踪多个阶段",
+      "text": "官方可观测性文档同时提供指标和逐请求追踪入口：服务整体状态与单条请求经过的阶段是不同观察尺度。下面把这种阅读方法落到同一个 rid 对应的前端等待、后端进度和本轮计算。",
+      "references": [
+        [
+          "SGLang 官方：Observability",
+          "https://docs.sglang.io/docs/advanced_features/observability"
+        ]
+      ],
+      "scope": "对象职责来自本课固定源码；官方文档提供观察方法，不是这些类的设计声明。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/inference-overview/transformer.html": {
+    "problem": "基础章已经解释向量与 Attention。本课要进一步回答：SGLang 如何把同一模型放到不同 PP 阶段执行，又怎样让下一阶段继续处理正确的中间结果？",
+    "topics": [
+      {
+        "id": "stage-contract",
+        "title": "为什么 PP 首级、中间级和末级的输入输出不同？",
+        "why": "前一阶段已经完成一部分模型层，后一阶段需要在中间特征上继续，而不是重新从 token ID 开始。只有执行到输出头，才得到用于选择下一 token 的词表分数。",
+        "mechanism": "所选 DeepSeek-V3 路径中，首级使用 Embedding；非首级读取 PPProxyTensors 中的 hidden_states 和 residual，再执行自己的层区间。末级交给 logits_processor，其他级返回供接力的中间张量。",
+        "tradeoff": "代理张量保存的是层间继续计算所需的数据；各层历史缓存有另一条存储与传输路径。PP 增加激活交接与依赖等待，不保证单个微批次延迟降低。",
+        "source": [
+          "models/deepseek_v2.py",
+          2735,
+          "DeepseekV2Model.forward（复用于 V3）"
+        ],
+        "links": [
+          [
+            "基础章：层划分与激活依赖",
+            "foundations/parallel.html#read-pp"
+          ]
+        ]
+      },
+      {
+        "id": "model-contract",
+        "title": "MLA、MoE 为什么会影响引擎接口？",
+        "why": "模型并非总是“每层相同的完整 K/V 加一个稠密前馈层”。缓存格式和计算组织改变后，后端需要知道应当存什么、读取什么、调用哪条实现。",
+        "mechanism": "DeepSeek-V3 的 MLA 使用压缩的历史表示，MoE 按路由组织专家工作。源码类复用 deepseek_v2.py；本课围绕 V3 的调用边界阅读，具体地址与 Triton MLA 路径在执行课展开。",
+        "tradeoff": "理解接口可以避免把基础课的简化 K/V 图当作所有模型的实际布局；具体内存与通信成本仍取决于模型配置和后端。",
+        "source": [
+          "models/deepseek_v2.py",
+          2434,
+          "Decoder Layer.forward"
+        ],
+        "links": [
+          [
+            "从模型接口追到执行后端",
+            "sglang/model-execution/index.html"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "模型结构会改变引擎要管理的状态",
+      "text": "DeepSeek-V3 技术报告采用 MLA 与 MoE 来改善计算和存储效率。它们也使引擎不能只套用一种普通 Attention 或稠密 FFN 的执行接口：需要对应的缓存表示、专家路由与并行组织。",
+      "references": [
+        [
+          "DeepSeek-V3 Technical Report（2025-02 版本）",
+          "https://arxiv.org/abs/2412.19437v2"
+        ],
+        [
+          "SGLang 官方：Pipeline Parallelism for Long Context",
+          "https://docs.sglang.io/docs/advanced_features/pipeline_parallelism"
+        ]
+      ],
+      "scope": "报告用于模型结构；PPProxyTensors 等具体接口以本课固定提交为准。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/model-execution/index.html": {
+    "problem": "调度器选好了请求，还不能把请求对象直接当成 GPU 输入。执行层需要把本轮 token、位置、历史地址和模型实现接起来，并判断能否使用已经准备好的执行图。",
+    "topics": [
+      {
+        "id": "forward-view",
+        "title": "为什么从 ScheduleBatch 转成 ForwardBatch？",
+        "why": "调度关注成员与资源，模型调用关注本轮张量与元数据。区分两种视图，使执行接口不必重新决定哪些请求入批。",
+        "mechanism": "ForwardBatch.init_new 从调度批次整理前向模式、长度、位置和缓存信息，随后 Runner 与选定后端使用这些信息调用模型。后端负责把当前布局接到实现，不能替代请求准入和缓存淘汰策略。",
+        "tradeoff": "这种职责分层需要维持元数据一致：token 内容正确但地址、长度或模式错误，计算仍可能读错历史。不能仅检查输入 ID。",
+        "source": [
+          "model_executor/forward_batch_info.py",
+          835,
+          "ForwardBatch.init_new"
+        ]
+      },
+      {
+        "id": "graph-buckets",
+        "title": "为什么图重放需要资格检查和图桶？",
+        "why": "已捕获的执行结构有输入规格与路径约束。运行时的请求数量和特性会变化，因此不能把所有批次直接送进同一张图。",
+        "mechanism": "can_run_graph 检查当前批次；符合条件时选取支持的规格，必要时补齐到图桶，并按真实输入行裁回结果。不符合时仍可走对应常规执行路径。",
+        "tradeoff": "图桶减少重复提交的机会，需要付出捕获、存储和可能的补齐工作；能进入图与端到端更快是不同判断。",
+        "source": [
+          "model_executor/runner/decode_cuda_graph_runner.py",
+          632,
+          "can_run_graph"
+        ],
+        "example": "本页 3 条普通 Decode 请求放入容量 4 的教学图桶，第四行是 PAD，不是第四条用户请求。",
+        "links": [
+          [
+            "先看 CUDA Graph 解决的提交开销",
+            "foundations/hardware.html#why-launch"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "减少组织开销，而不改变计算依赖",
+      "text": "SGLang 团队的调度文章指出，CPU 仍需选批、分配和匹配缓存，可以在 GPU 计算当前批次时准备下一批。NVIDIA 的 CUDA Graph 文档则解释如何复用执行图来减少重复提交开销。这是两类优化，不能合成一个“GPU 自动加速”开关。",
+      "references": [
+        [
+          "SGLang 团队：v0.4 调度设计（2024-12-04）",
+          "https://www.lmsys.org/blog/2024-12-04-sglang-v0-4/"
+        ],
+        [
+          "NVIDIA：CUDA Graphs",
+          "https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html"
+        ]
+      ],
+      "scope": "文章说明优化目标；ForwardBatch 的字段和图重放资格按下方源码核对。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/inference-overview/kv-cache.html": {
+    "problem": "知道“旧 KV 可以复用”后，引擎还必须确定哪一段历史已经存在、实际存在哪里、哪些新位置需要计算。前缀树索引把文本前缀匹配与设备缓存地址连接起来。",
+    "topics": [
+      {
+        "id": "prefix-index",
+        "title": "为什么要维护前缀索引，而不是只比较两句话是否相似？",
+        "why": "可复用的是符合计算条件的同一前缀状态，语义相似不足以保证数值相同。系统需要按 token 与相关身份找到精确匹配，再得到可读取的缓存位置。",
+        "mechanism": "本页普通 RadixCache 的 match_prefix 查找 token 序列与命名空间对应的最长匹配，返回设备索引及末端节点；请求据此确定本轮剩余输入范围。",
+        "tradeoff": "查到索引不意味着已经执行本轮 Attention；还需要保护有效缓存、分配新位置并完成计算。分页与特殊后端的匹配边界要分别核对。",
+        "source": [
+          "mem_cache/radix_cache.py",
+          397,
+          "match_prefix"
+        ],
+        "example": "相同输入文本若属于不同缓存命名空间，不能仅凭字符一致就共享条目。树节点存的是索引关系，不是复制一整份历史 KV。",
+        "links": [
+          [
+            "进一步区分请求映射和物理存储",
+            "sglang/kv-memory/index.html"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "复用应当针对相同历史",
+      "text": "RadixAttention 作者文章从多次调用共享 prompt 前缀出发，用前缀树管理已算过的 KV，并在容量压力下驱逐。由此要问的是“哪些历史计算完全可以复用”，而不是两段文字表达的意思是否相近。",
+      "references": [
+        [
+          "SGLang 作者：RadixAttention（2024-01-17）",
+          "https://www.lmsys.org/blog/2024-01-17-sglang/"
+        ]
+      ],
+      "scope": "这是 2024 年设计背景；本课的命名空间和匹配约束以固定源码为准。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/kv-memory/index.html": {
+    "problem": "请求长度不断增长，共享前缀又可能同时被多条请求读取。如果把“请求的第几个位置”直接等同于连续显存，就很难表达非连续分配和共享。",
+    "topics": [
+      {
+        "id": "indirection",
+        "title": "为什么请求行只记录 KV 地址？",
+        "why": "逻辑顺序与物理放置分开后，序列仍按位置读取，但实际存储可以来自不同页，也可以引用已有前缀。请求无需拥有连续的一整段物理空间。",
+        "mechanism": "ReqToTokenPool 保存请求到 token 槽位的映射，KV 池保存各层实际数值。本页的请求行、槽号和物理页是不同对象；地址准备完成之后仍要写入本轮数据。",
+        "tradeoff": "映射增加了一层索引管理，却支持非连续布局。池内归还位置也不等于把预分配 buffer 交还设备系统。",
+        "source": [
+          "mem_cache/memory_pool.py",
+          259,
+          "ReqToTokenPool"
+        ],
+        "example": "R1 的逻辑 p8 可以映射到槽 12；第 ℓ 层读取 K[12] / V[12]。换一层仍用槽 12，但取的是那一层的数值。"
+      },
+      {
+        "id": "ownership",
+        "title": "为什么共享缓存需要保护和驱逐两个动作？",
+        "why": "R1 结束时，R2 可能仍在读取同一前缀。即使没有活跃请求，也可能值得把前缀暂留给下一条请求，所以结束请求与归还物理页不能合并成一个判断。",
+        "mechanism": "lock_ref 表达活跃保护，解除保护后节点才可能进入可驱逐集合；驱逐再把位置归还分配器。树索引、请求引用与分配器分别维护相应关系。",
+        "tradeoff": "保留缓存能减少后续重算，也占用容量；驱逐腾出空间，却可能增加未来 miss 的计算。不能只凭“请求结束”预测显存立即下降。",
+        "source": [
+          "mem_cache/radix_cache.py",
+          668,
+          "inc_lock_ref / dec_lock_ref"
+        ],
+        "links": [
+          [
+            "基础原理：复用的成立条件",
+            "foundations/cache.html#why-invariant"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "逻辑位置与存储位置为什么分开",
+      "text": "PagedAttention 原论文针对 KV 持续增长带来的显存浪费与共享困难，讨论按块管理和非连续存储。RadixAttention 进一步说明跨请求前缀复用。两者帮助理解下面的地址映射与共享保护，但不代表 SGLang 直接使用相同数据结构。",
+      "references": [
+        [
+          "PagedAttention 原论文（2023）",
+          "https://arxiv.org/abs/2309.06180"
+        ],
+        [
+          "SGLang 作者：RadixAttention（2024-01-17）",
+          "https://www.lmsys.org/blog/2024-01-17-sglang/"
+        ]
+      ],
+      "scope": "原论文解释一般问题；ReqToTokenPool 与 lock_ref 的语义由 SGLang 固定源码确认。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/inference-overview/scheduling.html": {
+    "problem": "排队顺序只是调度的一部分：每轮还要处理已经运行的请求、已有分块和可用资源。Scheduler 必须持续更新计划，才能把新工作与未完成工作接续起来。",
+    "topics": [
+      {
+        "id": "event-loop",
+        "title": "为什么选批必须放在持续运行的循环里？",
+        "why": "新请求会到达，旧请求会完成，KV 可用量也会改变。一次排序无法覆盖之后所有轮次；循环需要把接收、选批、执行和结果消费连接起来。",
+        "mechanism": "普通 event_loop_normal 先处理收到的请求，再选择本轮 batch、运行并处理结果。get_next_batch_to_run 在已有状态上决定下一批；并非每轮都重建所有请求的生命周期。",
+        "tradeoff": "普通串行循环适合先建立依赖直觉。Overlap 和 PP 会改变组织与等待位置，不能把串行调用顺序当成所有模式的真实并行时间线。",
+        "source": [
+          "managers/scheduler.py",
+          1907,
+          "event_loop_normal"
+        ]
+      },
+      {
+        "id": "continuation",
+        "title": "为什么要单独追踪已有 chunked_req 和 running_batch？",
+        "why": "长输入分块后尚未算完，正在 Decode 的请求也需要继续；如果只看等待队列，会遗漏这些已经开始但未结束的工作。",
+        "mechanism": "get_new_batch_prefill 与 update_running_batch 分别处理相应路径，本页沿入口核对分块续算、批次合并和运行成员更新。具体预算在调度机制课操作。",
+        "tradeoff": "持续接纳新请求仍受资源门槛约束；“连续批处理”不意味着每条等待请求下一轮都能进入。",
+        "source": [
+          "managers/scheduler.py",
+          3770,
+          "get_new_batch_prefill"
+        ],
+        "links": [
+          [
+            "操作准入、分块与回撤",
+            "sglang/scheduling/index.html"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "循环要保持推进，也要处理依赖",
+      "text": "SGLang v0.4 调度文章说明：下一批的组织可以与当前 GPU 工作重叠，但必须处理未来 token 和同步依赖。先理解本课串行循环每轮负责什么，再看重叠模式把哪些工作移到同时进行。",
+      "references": [
+        [
+          "SGLang 团队：v0.4 调度设计（2024-12-04）",
+          "https://www.lmsys.org/blog/2024-12-04-sglang-v0-4/"
+        ]
+      ],
+      "scope": "历史文章解释重叠动机；本课先看普通循环，不把其调用顺序等同于所有模式的时间线。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/scheduling/index.html": {
+    "problem": "候选排在前面，不代表系统有足够资源计算它。SGLang 要把“先尝试谁”和“这轮能容纳谁”分开，还要处理请求继续增长造成的容量压力。",
+    "topics": [
+      {
+        "id": "admission",
+        "title": "为什么排序与准入预算不能合成一个分数？",
+        "why": "缓存命中多可能少算一些输入，却仍需要请求行、新 KV 和后续增长空间。一个“优先级高”的结论不能证明这些资源都足够。",
+        "mechanism": "FCFS 或 LPM 决定候选检查顺序，准入路径再检查输入、KV 与请求容量，提交可运行集合并记账。本页保留首条例外和等号边界，具体规则以所选分支为准。",
+        "tradeoff": "更偏向缓存复用的顺序可能减少输入工作，但不能据此承诺公平性或延迟。预算的保守程度也影响能接纳多少请求。",
+        "source": [
+          "managers/schedule_policy.py",
+          1267,
+          "_select_prefill_admission"
+        ],
+        "example": "两条请求都长 6 个 token，R2 命中 4 个，只需补算 2 个输入；这只能说明本轮输入工作不同，不能忽略其输出预算和资源持有。"
+      },
+      {
+        "id": "recovery",
+        "title": "为什么运行中的请求还可能 Retract？",
+        "why": "Decode 会继续增长 KV。已有批次在后续轮次可能遇到容量不足，需要先检查可回收空间，再按实现决定是否让部分请求退出运行集合。",
+        "mechanism": "Retract（回撤）释放或重整相应执行资源，保留普通文本路径的 token 历史并尝试回队；之后通过 Extend 重建未命中的状态，再继续生成。",
+        "tradeoff": "回撤能让出容量，但会增加重算与等待。回队失败或剩余请求仍放不下时还有终止分支，所以不能承诺必然恢复。",
+        "source": [
+          "managers/schedule_batch.py",
+          3214,
+          "retract_decode"
+        ],
+        "links": [
+          [
+            "已有输出与有效 KV 为什么不同",
+            "foundations/generation.html#why-phases"
+          ]
+        ]
+      },
+      {
+        "id": "chunk-budget",
+        "title": "为什么分块大小不是一个“越小越公平”的开关？",
+        "why": "减少单块工作量，只是给调度留出更多决策边界；下一轮先考虑谁，仍由具体策略决定。",
+        "mechanism": "本课固定路径优先续算已有 chunked_req，然后尝试等待请求。调整预算时，观察续算用了多少、剩余多少，再判断短请求是否能进入。",
+        "tradeoff": "小块增加轮次与组织开销；大块可能让其他工作等待更久。动画轮数用于解释决策，不能直接当成毫秒或公平性证明。",
+        "source": [
+          "managers/scheduler.py",
+          3894,
+          "adder.add_chunked_req"
+        ]
+      }
+    ],
+    "background": {
+      "title": "节省计算与保留容量是两件事",
+      "text": "RadixAttention 的前缀复用可以减少重复计算；PagedAttention 论文则讨论持续增长的 KV 如何限制 batch 容量。这两个问题一起解释了为什么命中多、排序靠前的请求，仍须通过资源准入检查。",
+      "references": [
+        [
+          "SGLang 作者：RadixAttention（2024-01-17）",
+          "https://www.lmsys.org/blog/2024-01-17-sglang/"
+        ],
+        [
+          "PagedAttention 原论文（2023）",
+          "https://arxiv.org/abs/2309.06180"
+        ]
+      ],
+      "scope": "这里将两类设计问题联系起来；SGLang 的排序、预算和回撤规则仍以本课版本为准。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/parallelism/index.html": {
+    "problem": "基础章解释切什么；实现章还要回答谁与谁协作。相同进程可能在不同通信组里承担不同角色，必须结合模型层和组内布局解释 rank。",
+    "topics": [
+      {
+        "id": "groups",
+        "title": "为什么配置里既有 rank，又有多个 process group？",
+        "why": "TP、PP 等协作范围不同。如果不明确组成员，就无法知道一次求和、收集或激活交接应当等待哪些参与者。",
+        "mechanism": "本页 TP=2、PP=2 的教学拓扑把同级 rank 组成 TP 组，再沿相同 TP 坐标组成 PP 组。一个进程在模型并行世界与子组中可以有不同编号，须注明范围。",
+        "tradeoff": "组划分组织协作，但不会消除通信成本；Attention DP、EP、CP 可能在既有世界内分组，不能把所有参数机械相乘得到卡数。",
+        "source": [
+          "distributed/parallel_state.py",
+          2507,
+          "initialize_model_parallel"
+        ],
+        "links": [
+          [
+            "回看各并行策略的完整输入与分工",
+            "foundations/parallel.html#parallel-overview"
+          ]
+        ]
+      },
+      {
+        "id": "layer-layout",
+        "title": "为什么 Attention 的 DP 不等同于独立服务副本？",
+        "why": "不同层的计算和权重组织不同，一种布局未必同时适合 Attention 与 MoE。层内按请求分组，和在服务入口复制整个模型，是不同层级的设计。",
+        "mechanism": "本页 Attention DP 示例仍在同一个模型并行世界中组织 Attention TP 子组，层间可能需要整理 token 布局。先确认当前是在讨论哪一层，再解释 DP 数值。",
+        "tradeoff": "更适合某层的分组可能引入布局转换与通信；是否能与其他并行选项组合，必须核对当前固定版本的约束。",
+        "source": [
+          "runtime_context.py",
+          151,
+          "Attention 并行宽度派生"
+        ]
+      }
+    ],
+    "background": {
+      "title": "按哪一层分工，就要找对应的协作组",
+      "text": "官方 DPA 指南区分整模型副本与 Attention 内的请求分工，并用 MLA 的重复 KV 占用说明 DPA 的价值。NCCL 文档定义了 communicator 中的 rank 与设备关系；这帮助理解同一进程为什么可以属于多个协作范围。",
+      "references": [
+        [
+          "SGLang 官方：DP、DPA 与 Router",
+          "https://docs.sglang.io/docs/advanced_features/dp_dpa_smg_guide"
+        ],
+        [
+          "NVIDIA：Creating a Communicator",
+          "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/communicators.html"
+        ]
+      ],
+      "scope": "当前官方文档的参数命名可能不同；本课保留固定版本配置，不直接套用新版启动参数。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/communication/index.html": {
+    "problem": "控制消息让组件知道“做什么”，张量和 KV 才携带实际计算数据。接口、参与者和载荷不同，它们的发送、完成和释放条件也不同。",
+    "topics": [
+      {
+        "id": "channels",
+        "title": "为什么不能把所有箭头都理解为同一种通信？",
+        "why": "进程间请求消息、PP 激活、组内集合通信和跨 P/D 的 KV 交接有不同对象与结果约定。只知道“跨 GPU”无法确定该调用哪个接口、等待什么完成条件。",
+        "mechanism": "本页分别从 IPC 派发、send_tensor_dict 和 KV backend 进入；元数据用于组织载荷身份与位置，注册 buffer 只是使传输引擎能访问内存，不代表请求已经准备好计算。",
+        "tradeoff": "接口分工使边界清楚，也需要跨组件跟踪进度。具体 TCP / RDMA 路径不能从逻辑箭头推断；本课未验证底层网络行为。",
+        "source": [
+          "distributed/parallel_state.py",
+          1744,
+          "send_tensor_dict"
+        ],
+        "links": [
+          [
+            "先区分通信操作与物理链路",
+            "foundations/communication.html#why-topology"
+          ]
+        ]
+      },
+      {
+        "id": "ready",
+        "title": "为什么收到 Success 还要检查身份和其他参与者？",
+        "why": "多个源 rank 可能分别负责一部分数据，同一 rank 的重复通知不能补足缺失的另一个；迟到或不匹配的元数据也不能让当前请求继续。",
+        "mechanism": "接收路径按参与者和请求信息核对状态，必要时等待元数据或缓存回载，再提交到 Req。bootstrap_room 是本例交接匹配使用的标识之一，不是物理地址。",
+        "tradeoff": "门控增加状态管理，却避免把局部进度当作全部数据可用。失败释放仍须核对在途操作的安全条件，不能仅凭超时就假设远端停止写入。",
+        "source": [
+          "disaggregation/decode.py",
+          2158,
+          "_commit_transfer_to_req"
+        ]
+      }
+    ],
+    "background": {
+      "title": "调用返回与数据可用有不同含义",
+      "text": "NVIDIA 对 NCCL 的说明明确区分提交到 CUDA stream 与设备异步执行完成。因此读通信图时，要先找载荷、参与者与完成语义，再判断下游能否读取；本课还分别展示 IPC 和 P/D 传输。",
+      "references": [
+        [
+          "NVIDIA：CUDA Stream Semantics",
+          "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/streams.html"
+        ],
+        [
+          "NVIDIA：Creating a Communicator",
+          "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/communicators.html"
+        ]
+      ],
+      "scope": "NCCL 语义只解释对应通道；不能替代 Mooncake、NIXL 或 IPC 的完成约定。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/inference-overview/deployment.html": {
+    "problem": "将 P 与 D 分开后，原本在同一服务组内使用的状态变成跨角色交接。除了传出 KV，还需要建立匹配关系、准备目标空间，并分别满足两侧的推进条件。",
+    "topics": [
+      {
+        "id": "bootstrap",
+        "title": "为什么先 bootstrap，而不是拿到一个地址就直接发送？",
+        "why": "发送方需要知道状态应交给哪个接收方、哪个请求以及哪些目标位置；接收方也需要提前准备相应资源和传输信息。",
+        "mechanism": "Bootstrap（交接初始化）建立所选路径需要的配对与接收信息。此后 P 计算并传输，D 检查载荷和 metadata；握手完成不等于目标已经拿到数据。",
+        "tradeoff": "提前准备使后续传输有明确目标，但也会占用接收资源并引入等待。具体是否允许乐观执行或其他重叠，要按参数和版本另行核对。",
+        "source": [
+          "disaggregation/decode.py",
+          1123,
+          "pop_preallocated"
+        ]
+      },
+      {
+        "id": "two-gates",
+        "title": "为什么 P 的释放条件与 D 的执行条件不同？",
+        "why": "P 关心本侧源资源是否仍被传输使用；D 关心是否拿到正确且可读取的状态，并能通过本轮调度。两个问题不能由同一条“发送完成”日志同时回答。",
+        "mechanism": "P 沿 inflight 队列处理传输状态和本地收尾；D 沿 transfer 队列核对接收、身份和后续可用条件。原页“两侧各有一道门”保留对应条件。",
+        "tradeoff": "分离可能减少角色干扰，却增加跨侧状态、容量与错误处理。局部释放或局部接收完成，都不是客户端成功收到回答的证明。",
+        "source": [
+          "disaggregation/decode.py",
+          2364,
+          "pop_transferred"
+        ],
+        "links": [
+          [
+            "对照两侧门槛",
+            "sglang/inference-overview/deployment.html#handoff-boundaries"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "为什么要把 Prefill 与 Decode 分开",
+      "text": "官方 PD 文档首先指出混合运行的干扰：长 Prefill 会推迟 Decode，Attention DP 中不同组的工作类型也可能不平衡。P/D 分离让两侧分别组织资源，但随后必须把历史状态交接过去。",
+      "references": [
+        [
+          "SGLang 官方：Why and What is PD Disaggregation?",
+          "https://docs.sglang.io/docs/advanced_features/pd_disaggregation#why-and-what-is-pd-disaggregation"
+        ]
+      ],
+      "scope": "这里只引用阶段干扰与分离目标；握手、资源预留和就绪条件以本课固定版本为准。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/pd-prefill-lifecycle/index.html": {
+    "problem": "在本页 PP=3 的 Prefill 案例中，每级计算并持有自己的层状态。首 token 已经生成后，这些资源可能仍被 KV 传输使用，因此需要继续跟踪请求直到各级完成本侧收尾。",
+    "topics": [
+      {
+        "id": "distributed-lifetime",
+        "title": "为什么请求已经完成 Prefill，还会留在 inflight？",
+        "why": "计算完成只说明本级数值已经得到，不说明传输不再读取它。保留请求与源 KV 的关联，才能在后续轮询中识别谁仍未结束、谁可以收尾。",
+        "mechanism": "inflight 表示已经进入交接但尚未完成本侧处理的集合。沿原有 12 步分别查看计算、结果回传、传输终态名单和本地释放，不把它们压成一个“完成”事件。",
+        "tradeoff": "这样能区分持有原因，但会延长源资源占用。慢接收方或慢链路可能反过来限制 P 侧接纳新请求。这里是依赖推导，不是性能测量。",
+        "source": [
+          "disaggregation/prefill.py",
+          971,
+          "process_disagg_prefill_inflight_queue"
+        ],
+        "links": [
+          [
+            "直接查看传输中的请求",
+            "sglang/pd-prefill-lifecycle/index.html#step-transfer"
+          ]
+        ]
+      },
+      {
+        "id": "consensus",
+        "title": "为什么 release 名单回来还要本地复查？",
+        "why": "名单反映一轮协作收集到的状态，本地 poll 可能因传播和观察时刻不同仍未进入终态。若只按名单释放，就会忽略此刻本地尚未满足的条件。",
+        "mechanism": "所选源码对名单内请求重新检查本地 Success / Failed；仍处于中间状态的请求继续保留。传输终态名单包含失败，不能直接称为“所有请求成功”。",
+        "tradeoff": "多一道检查保留了本地状态边界；错误路径的资源处理还取决于传输协议，不能从教学正常路径推出任意故障下都可立即释放。",
+        "source": [
+          "disaggregation/prefill.py",
+          998,
+          "名单过滤后的本地终态检查"
+        ],
+        "links": [
+          [
+            "查看释放前复查",
+            "sglang/pd-prefill-lifecycle/index.html#step-release"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "隔离计算之后，资源仍有跨侧依赖",
+      "text": "官方 PD 文档用阶段分离减少 Prefill 与 Decode 的调度干扰；这并不消除状态交接。沿本课的一个请求看，计算结束后还必须追踪源数据何时不再被传输使用，才能解释 inflight 的存在。",
+      "references": [
+        [
+          "SGLang 官方：Why and What is PD Disaggregation?",
+          "https://docs.sglang.io/docs/advanced_features/pd_disaggregation#why-and-what-is-pd-disaggregation"
+        ]
+      ],
+      "scope": "资源持有和各级收尾是结合本课源码的依赖分析，不是官方文档承诺的故障保证。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/pd-dataflow/index.html": {
+    "problem": "同一个请求会参与握手、模型前向和 KV 传输，但这三条通路携带的对象不同。先认清它们各自推进什么状态，才能理解请求为何会同时被多个容器引用。",
+    "topics": [
+      {
+        "id": "payloads",
+        "title": "为什么激活、KV 与 Req 引用不能画成同一张卡片？",
+        "why": "激活用于后一 PP stage 继续计算；KV 保存各层历史，交给 Decode 使用；Req 是进程本地的请求状态。它们可以属于同一 rid，却不是同一份可互换数据。",
+        "mechanism": "PP 前向交接激活，各级向 Decode 传本级 KV；等待、运行和 inflight 等容器组织本地 Req 的不同阶段。加入一个容器不一定复制 KV，也不一定代表发送网络载荷。",
+        "tradeoff": "分开画能追踪所有权和数据依赖。图中的容器关系是某个过程的教学观察，不能直接当作所有 rank 在同一时刻的全局快照。",
+        "source": [
+          "managers/scheduler_pp_mixin.py",
+          198,
+          "event_loop_pp_disagg_prefill"
+        ],
+        "links": [
+          [
+            "对照进程、张量与传输接口",
+            "sglang/communication/index.html"
+          ]
+        ]
+      },
+      {
+        "id": "chunk-output",
+        "title": "为什么分块期间某轮没有首 token，也可能仍有工作在推进？",
+        "why": "一段 prompt 尚未处理完时，该块主要是在建立中间历史状态。没有产生可见输出，不代表本轮没有计算或没有传输。",
+        "mechanism": "本页分别观察块完成、激活推进、KV 交接与最后一块后的结果处理。“跳过结果通信”是显式打开专用开关的场景，不适用于所有轮次。",
+        "tradeoff": "减少某条通信的条件依赖当前工作类型；不能把一个场景的省略推广成所有 PP 控制或数据通信都可跳过。",
+        "source": [
+          "managers/scheduler_pp_mixin.py",
+          198,
+          "Prefill PP loop 的分块与结果路径"
+        ]
+      }
+    ],
+    "background": {
+      "title": "两种分工，产生两种数据交接",
+      "text": "官方 PP 说明在阶段边界交接中间结果，PD 说明拆开 Prefill 与 Decode。两者叠加时，沿层推进的激活与给后续生成使用的 KV 有不同目的；图中需要分别追踪。",
+      "references": [
+        [
+          "SGLang 官方：Pipeline Parallelism for Long Context",
+          "https://docs.sglang.io/docs/advanced_features/pipeline_parallelism"
+        ],
+        [
+          "SGLang 官方：Why and What is PD Disaggregation?",
+          "https://docs.sglang.io/docs/advanced_features/pd_disaggregation#why-and-what-is-pd-disaggregation"
+        ]
+      ],
+      "scope": "本课容器引用、分块结果和具体载荷沿固定源码解释。",
+      "read_date": "2026-10-16"
+    },
+    "revision": "882577451e764a515df2a386a055012e8f075a16"
+  },
+  "sglang/advanced-generation/index.html": {
+    "problem": "投机候选尚未被接受，规则也有各请求自己的进度。执行层必须把“计算过”“允许输出”“正式提交”分开，才能在分歧或约束出现时保持状态一致。",
+    "topics": [
+      {
+        "id": "commit",
+        "title": "为什么验证后还要整理 KV 与模型状态？",
+        "why": "候选验证可能为以后被拒绝的位置执行过计算。如果只删掉输出文字而保留错误路径的状态，后续生成仍可能使用不属于正确前缀的历史。",
+        "mechanism": "EAGLE 验证路径根据接受结果组织有效输出与状态。本页用单链贪心例区别 root、接受候选和补出的 token；混合或递推模型还可能需要对应状态恢复。",
+        "tradeoff": "整理状态增加工作，且不同模型的回退方式不同。缩短 token 列表不等于所有状态都已恢复，接受率也不能单独证明加速。",
+        "source": [
+          "speculative/eagle_worker_common.py",
+          461,
+          "run_eagle_verify"
+        ],
+        "links": [
+          [
+            "基础章：候选为何能并行验证",
+            "foundations/speculation.html#why-known-input"
+          ]
+        ]
+      },
+      {
+        "id": "grammar",
+        "title": "为什么有了模型提示词，还需要语法约束状态？",
+        "why": "要求输出某种格式，并不等于模型每一步都只会选择合法 token。需要强制满足给定规则时，系统要根据当前已经生成的前缀限制下一步候选。",
+        "mechanism": "XGrammar 路径生成词表 mask，在采样前应用；选择 token 后推进 matcher（规则匹配器）。编译规则上下文可以复用，请求各自的匹配进度不能混用。",
+        "tradeoff": "额外规则处理带来开销，并可能限制可选表达。语法合法只说明符合该规则，不保证字段内容符合事实或业务含义。",
+        "source": [
+          "constrained/xgrammar_backend.py",
+          118,
+          "fill_vocab_mask / apply_vocab_mask"
+        ],
+        "example": "规则为 yes 或 no：R1 已输出 y，它后面只能沿相应合法路径推进；R2 尚未输出，不能继承 R1 的 matcher 进度。"
+      }
+    ],
+    "background": {
+      "title": "候选与可提交状态为什么要分开",
+      "text": "官方投机文档展示候选生成与验证，并说明扩大候选会增加资源成本。XGrammar 作者则从下游程序需要合法结构出发，在每轮采样前屏蔽不合法 token。两类机制都让引擎需要维护额外状态，不能只观察最终输出文字。",
+      "references": [
+        [
+          "SGLang 官方：Speculative Decoding",
+          "https://docs.sglang.io/docs/advanced_features/speculative_decoding"
+        ],
+        [
+          "XGrammar 作者：结构化生成（2024-11-22）",
+          "https://blog.mlc.ai/2024/11/22/achieving-efficient-flexible-portable-structured-generation-with-xgrammar"
+        ]
+      ],
+      "scope": "候选接受、KV 整理和 matcher 更新按本课固定路径说明；结构合法不代表内容正确。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/serving-operations/index.html": {
+    "problem": "服务管理要回答几个不同问题：能否接收连接、能否选中实例、请求是否进入计算、取消后是否已收尾。需要不同观测与控制，避免用一个健康状态替代全部判断。",
+    "topics": [
+      {
+        "id": "health",
+        "title": "为什么健康检查不能证明某条请求正在前进？",
+        "why": "探活检查的对象与具体业务请求可能不同。整体回程有活动时，一条因资源或其他原因等待的请求仍可能没有输出。",
+        "mechanism": "本页固定版本的生成探测路径会观察全局回程活动，因此“R2 活跃、R1 等待”可以同时发生；追踪 R1 仍需它自己的 rid、队列与执行证据。",
+        "tradeoff": "探测能较轻量地判断某类服务状态，但覆盖范围有限。不能把 200 当作每个请求、每个 GPU 或整个数据面的完好证明。",
+        "source": [
+          "entrypoints/http_server.py",
+          664,
+          "health_generate"
+        ]
+      },
+      {
+        "id": "drain",
+        "title": "为什么退出需要先停止新投递，再等待排空？",
+        "why": "如果旧请求尚未结束，新请求又持续到达，服务很难达到可退出状态；直接终止也可能截断响应和在途工作。",
+        "mechanism": "本页分别观察不再接纳、前端登记排空、发送 ShutdownReq 与 Scheduler 实际退出。客户端断连、等待超时和进程退出也各有自己的处理入口。",
+        "tradeoff": "等待排空有时间成本，也依赖上游是否停止投递。超时或已发退出消息，都不能单独证明执行进程已经消失或资源已释放。",
+        "source": [
+          "managers/tokenizer_manager.py",
+          3212,
+          "sigterm_watchdog"
+        ],
+        "links": [
+          [
+            "取消时对象由谁处理",
+            "sglang/request-runtime/index.html#reading-topic-6"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "服务可访问，还要观察请求是否推进",
+      "text": "官方可观测性入口区分指标、逐请求追踪和日志。观察服务总体状态后，还需要沿目标请求核对排队、计算和回包；本课进一步用健康检查与退出流程说明每种信号能证明什么。",
+      "references": [
+        [
+          "SGLang 官方：Observability",
+          "https://docs.sglang.io/docs/advanced_features/observability"
+        ]
+      ],
+      "scope": "健康接口与退出分支以固定源码为准，不从官方工具列表推出特定请求已完成。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/performance-engineering/index.html": {
+    "problem": "相同名字的指标可能在不同代码位置开始计时。先找到采样事件、计数对象和成功样本范围，才能判断“更快”来自执行改善，还是统计口径变化。",
+    "topics": [
+      {
+        "id": "measurement",
+        "title": "为什么先读 benchmark 计时点，再看指标数字？",
+        "why": "客户端等许可、请求在服务端排队和 GPU 执行是不同区间。某段等待如果发生在计时开始之前，即使用户多等了，工具显示的 TTFT 也可能不变。",
+        "mechanism": "本页 native /generate adapter 从发请求前开始计时，按收到的有内容数据包更新指标；服务端 time_stats 有另一组起止点。流式包合并还会影响逐 token 间隔的推算。",
+        "tradeoff": "客户端时间接近可见响应，但不能直接定位设备内部瓶颈；服务端 Trace 更细，却需关联请求和依赖。两者之差不能不加核对就命名为网络耗时。",
+        "source": [
+          "python/sglang/benchmark/serving.py",
+          701,
+          "adapter 的 st 计时点"
+        ],
+        "links": [
+          [
+            "基础章：延迟指标分别回答什么",
+            "foundations/metrics.html#understand"
+          ]
+        ]
+      },
+      {
+        "id": "samples",
+        "title": "为什么成功率和延迟分布必须一起看？",
+        "why": "如果较慢请求失败并退出成功样本，P95 可能下降，但服务并没有因此更可靠或处理更多有效输出。先明确谁进入统计，再解释曲线。",
+        "mechanism": "calculate_metrics 按成功状态筛选相应指标；本页通过 R4 成功／失败对照，保持其余样本不变，观察分布和输出量一起变化。",
+        "tradeoff": "筛选能明确指标含义，也可能隐藏失败体验。对照实验要固定负载、长度和统计边界，并同时报告错误与完成量。",
+        "source": [
+          "python/sglang/benchmark/serving.py",
+          1096,
+          "calculate_metrics"
+        ]
+      }
+    ],
+    "background": {
+      "title": "先固定观察条件，再比较快慢",
+      "text": "官方 Bench Serving 指南同时支持不同请求入口、流式模式、到达速率和并发上限。这些选项会改变观察到的等待与延迟，所以相同指标名还必须配合同一工作负载和计时边界。",
+      "references": [
+        [
+          "SGLang 官方：Bench Serving Guide",
+          "https://docs.sglang.io/docs/developer_guide/bench_serving"
+        ]
+      ],
+      "scope": "本课继续回查固定版本的计时点、成功样本筛选和输出字段；教学数字不是实测。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/pd-prefill-pp-loop/quick.html": {
+    "problem": "流水线的一次循环可能同时安排新批次、处理前轮结果和回收更早请求。入门时需要区分“循环轮次”“微批次身份”和“保存状态的槽位”，才不会把不同工作误认为同一条请求。",
+    "topics": [
+      {
+        "id": "identities",
+        "title": "为什么图里要同时标 L、M 和 s？",
+        "why": "Loop 是控制循环的一次推进，microbatch 是经过模型层的工作，slot 是临时保存相应状态的位置。它们的编号用途不同，不能凭数字相等推断对象相同。",
+        "mechanism": "本例 M1–M5 是五份微批次，s0–s2 是循环复用的三个槽位；L 表示各级 loop。选择 M 查看完整旅程，选择 L 查看那轮同时处理哪些对象。原图保留逐项对应和源码入口。",
+        "tradeoff": "槽位复用减少重复组织状态的需要，但也要求结果和通信对应到正确的旧工作。图中的 u 是假设时间，不是吞吐测量。",
+        "source": [
+          "managers/scheduler_pp_mixin.py",
+          171,
+          "event_loop_pp_disagg_prefill"
+        ],
+        "links": [
+          [
+            "需要逐项依赖时进入详细版",
+            "sglang/pd-prefill-pp-loop/index.html"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "微批次编号和循环槽位解决不同问题",
+      "text": "官方 PP 文档介绍微批次事件循环与异步 P2P，以交错推进计算和通信。于是“哪一份工作”和“当前检查哪个循环位置”需要分开记录，本图用 L、M、s 表达这些不同身份。",
+      "references": [
+        [
+          "SGLang 官方：Pipeline Parallelism for Long Context",
+          "https://docs.sglang.io/docs/advanced_features/pipeline_parallelism"
+        ]
+      ],
+      "scope": "L、M、s 是本课图例约定；具体 PP/PD 循环与槽位数量遵从该页的固定场景。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/pd-prefill-pp-loop/index.html": {
+    "problem": "总耗时不只来自计算量，还来自何时能获得输入和完成前置工作。时间轴把 CPU、GPU 与通信放到依赖关系中，用来解释为什么缩短某个操作未必缩短整个请求。",
+    "topics": [
+      {
+        "id": "dependencies",
+        "title": "为什么需要依赖时间轴，而不是把每一步耗时相加？",
+        "why": "不同工作可能重叠；同一工作又可能被上游激活、通信完成或状态共识阻塞。只加总各项时长，会把并行部分重复计算，也看不出等待原因。",
+        "mechanism": "本页沿同一源码顺序使用假设时间安排就绪事件。CPU 提交和 GPU 执行分轨表示，跨级箭头说明哪一步完成后另一操作才能推进。",
+        "tradeoff": "这种图适合做因果对照，不是硬件预测器。改变教学时长只能说明依赖会如何传播；真实重叠、带宽和设备调度需要 Trace 验证。",
+        "source": [
+          "managers/scheduler_pp_mixin.py",
+          705,
+          "_pp_commit_comm_work"
+        ],
+        "example": "把不在当前关键依赖链上的一次提交缩短，最终完成时刻可能不变；还需要观察后续是否仍在等待更慢的输入。",
+        "links": [
+          [
+            "逐项查看源码与模型边界",
+            "sglang/pd-prefill-pp-loop/notes.html"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "重叠执行需要看依赖，不只看时长",
+      "text": "官方 PP 文档将 GPU forward、CPU 结果处理与异步通信交错组织；NCCL 文档又区分提交和设备完成。阅读时间轴时，应找每个动作最早可以开始的条件，再判断哪些区间能够重叠。",
+      "references": [
+        [
+          "SGLang 官方：Pipeline Parallelism for Long Context",
+          "https://docs.sglang.io/docs/advanced_features/pipeline_parallelism"
+        ],
+        [
+          "NVIDIA：CUDA Stream Semantics",
+          "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/streams.html"
+        ]
+      ],
+      "scope": "这里用于解释依赖图的价值；图中时长是假设，未复现官方性能结果。",
+      "read_date": "2026-10-16"
+    }
+  },
+  "sglang/pd-prefill-pp-loop/notes.html": {
+    "problem": "源码说明已经逐项解释槽位、循环与共识。本页从“某步为何要等待”回查对应条件，保留完整推导；背景是异步工作和分布式观察可能在不同时间完成。",
+    "topics": [
+      {
+        "id": "agreements",
+        "title": "为什么 bootstrap、传输终态和缓存 ACK 要分别核对？",
+        "why": "它们确认不同的前提：建立交接关系、源传输进入终态、或缓存回载与本层读取满足条件。完成其中一项，并不能推出另外两项成立。",
+        "mechanism": "原文分别追踪 PD 名单汇合、UnifiedRadixCache + HiCache 的事件和 CUDA 流依赖。按当前配置找到实际生效的路径，再核对本地状态；不要把多个“共识”合并成一条万能屏障。",
+        "tradeoff": "分开检查增加阅读步骤，却能定位究竟是哪类依赖阻塞。这里的共识指参与者状态协作，不是宣称实现了通用容错共识协议；外部后端和特殊缓存保留各自边界。",
+        "source": [
+          "managers/scheduler_pp_mixin.py",
+          635,
+          "_pp_pd_get_prefill_transferred_ids"
+        ],
+        "links": [
+          [
+            "先建立整条微批次旅程",
+            "sglang/pd-prefill-pp-loop/quick.html"
+          ]
+        ]
+      }
+    ],
+    "background": {
+      "title": "不同完成信号回答不同问题",
+      "text": "官方 PP 和 PD 文档分别讨论层间推进与角色分离。组合后既要知道请求能否入场，也要知道数据传输与缓存操作是否完成；本课把这些问题拆成不同共识与 ACK 路径逐一核对。",
+      "references": [
+        [
+          "SGLang 官方：Pipeline Parallelism for Long Context",
+          "https://docs.sglang.io/docs/advanced_features/pipeline_parallelism"
+        ],
+        [
+          "SGLang 官方：Why and What is PD Disaggregation?",
+          "https://docs.sglang.io/docs/advanced_features/pd_disaggregation#why-and-what-is-pd-disaggregation"
+        ]
+      ],
+      "scope": "bootstrap、终态与 HiCache ACK 的确切集合和条件只由本课固定源码支持。",
+      "read_date": "2026-10-16"
+    }
+  }
+}

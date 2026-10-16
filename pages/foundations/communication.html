@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AllReduce、AllGather 与数据传输：结果何时可用？ · 推理基础</title><meta name="description" content="从两张卡各自持有一组数开始，区分求和、拼接和接收完成。"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/detail-scenes.js" defer></script><script src="../motion/detail-visuals.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script></head>
+<body data-page="foundations" data-lesson="communication"><a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><a class="site-brand" href="../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub ↗</a><button class="theme-toggle" type="button" aria-label="切换配色">配色：系统</button></div></header>
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="chapter-nav" data-chapter="foundations" open><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="communication.html" aria-current="page">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
+<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
+<a class="lesson-link" href="../sglang/model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
+<a class="lesson-link" href="../sglang/kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<details class="module-nav" data-module="parallelism">
+<summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#parallelism">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
+</div></details>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
+</div></details>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
+<a class="lesson-link" href="../sglang/pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
+<a class="lesson-link" href="../sglang/pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<details class="module-nav" data-module="advanced-generation">
+<summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#advanced-generation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
+</div></details>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
+</div></details>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识</a>
+</div></details>
+</nav></details>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content">
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">AllReduce、AllGather 与数据传输：结果何时可用？</span></nav>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 08 / 12</a><span class="lesson-count">通用原理</span></div><h1>AllReduce、AllGather 与数据传输：结果何时可用？</h1><p>从两张卡各自持有一组数开始，区分求和、拼接和接收完成。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
+<p class="foundation-prereqs">先看：<a href="parallel.html">TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a></p>
+<p class="foundation-intro">形状相同的两组数，可能是同一结果的不同贡献，也可能是不同位置的片段。先切换求和与拼接，看元素如何形成结果；下方再检查通知与载荷为何不能混为一谈。</p>
+<section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>切分计算后，某个结果往往依赖另一设备上的数据。通信既要搬运字节，也要保持结果的数学含义与依赖顺序；“已发出消息”还不足以让下一步安全读取。</p></section>
+<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>
+<div id="lesson-animation"></div>
+
+<section class="foundation-lab" data-foundation-lab="communication" data-full="true" data-title="AllReduce、AllGather 与数据传输：结果何时可用？"><h2>走一遍具体过程</h2><p>能解释不同通信操作的输入输出，以及“发出”不等于“可用”。</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>
+<section id="understand" class="concept-guide"><h2>理解设计：为什么需要这些机制？</h2><nav class="concept-nav" aria-label="按概念问题阅读"><a href="#why-meaning">为什么求和与拼接不能互换？</a><a href="#why-ready">异步传输为什么还要确认完成？</a><a href="#why-topology">通信操作和物理链路怎样区分？</a></nav><section id="why-meaning" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">01</span><h3>为什么求和与拼接不能互换？</h3></div><p>若两张卡分别计算同一输出的部分贡献，需要逐元素求和；若分别计算不同输出位置，才需要按布局拼接。AllReduce 让每个参与 rank 得到归约结果，AllGather 让每个参与 rank 收齐各 rank 的片段。Rank 是通信组内的参与者编号。</p><aside class="concept-example" aria-labelledby="example-meaning"><h4 id="example-meaning">相同输入形状，可以表达不同的含义</h4><ol><li>两个局部贡献 [1,2] 与 [10,20]：AllReduce 求和得到 [11,22]。</li><li>两个有序片段 [1,2] 与 [10,20]：AllGather 收集为 [1,2,10,20]。</li></ol><p class="concept-note">选择通信算子取决于计算的切分方式，不能按哪个操作名字更熟悉来选择。</p></aside><p class="concept-refs">依据：<a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html">集合通信的结果约定 · NVIDIA NCCL</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-ready" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">02</span><h3>异步传输为什么还要确认完成？</h3></div><p>异步提交允许程序在传输尚未结束时继续安排别的工作。因此接收了请求信息、获知目标地址，与载荷已经写好并可供消费者读取，是不同事件。接收方要满足相关传输、同步和身份匹配条件后，才能使用数据。</p><p>例如先收到“请求 R1 的 KV 将写入块 B”这条控制消息，只能知道归属和目标；块 B 仍可能在写入。具体由哪个事件确认完成、何时能回收，由实现协议决定。</p><ul class="concept-links"><li><a href="../sglang/communication/index.html">SGLang：数据面与同步边界 →</a></li></ul><p class="concept-refs">依据：<a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/streams.html">NCCL · 提交与设备执行完成</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-topology" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">03</span><h3>通信操作和物理链路怎样区分？</h3></div><p>AllReduce 等名称说明参与者最终应该得到什么结果；同机／跨机说明放置位置；实际链路和算法则决定怎么搬。相同的集合通信可以由不同互联和算法实现，不能从逻辑箭头推断固定网络路径。</p><p>集合通信还要求各参与者按匹配的调用约定协作。某个 rank 缺席或数据类型、数量不匹配，不能当作普通单机函数继续计算。</p><p class="concept-refs">依据：<a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html">集合通信的结果约定 · NVIDIA NCCL</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><aside class="concept-check"><h3>试着解释</h3><p>收到“数据将写入块 B”的通知，就能读取 B 吗？</p><details><summary>展开解释</summary><p>不能。还需确认载荷完成并满足消费者的同步与匹配条件；控制消息只说明归属和目标，不代表写入已经完成。</p></details></aside></section>
+<section id="lesson-glossary"><h2>术语速查</h2><dl class="foundation-terms" aria-label="这课用到的词"><div><dt>张量</dt><dd>按形状组织的一组数；图中的两元素数组就是最小例子。</dd></div><div><dt>All-reduce / All-gather</dt><dd>前者将参与者的对应元素归约并让各方获得结果；后者收齐各方分片。</dd></div><div><dt>发送完成与接收可用</dt><dd>不同接口有不同完成含义；还应检查接收侧数据、身份和依赖条件。</dd></div></dl></section>
+<section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2><div class="foundation-copy"><section id="concept-0"><h2>AllReduce / AllGather：求和与拼接的区别</h2><p>[1,2] 与 [10,20] 若是同一结果的局部贡献，求和得到 [11,22]；若是结果的不同片段，拼接得到 [1,2,10,20]。替换通信算子会改变结果，不只是改变速度。</p></section><section id="concept-1"><h2>控制面与数据面：通知到达和载荷可用</h2><p>通知可以描述“数据属于哪个请求、将写入哪里”，真正的数据还要经过搬运。图中通知先到时，接收区仍为空；只有数据和匹配信息都齐备，才标记可使用。</p></section><section id="concept-2"><h2>GPU 互联：同机与跨机的数据路径</h2><p>同机或跨机描述位置；点对点或集合通信描述参与方式；TCP、RDMA 等描述传输路径。不能仅凭图里写了 KV，就推断一定走 RDMA。实现课继续检查各自接口与回收条件。</p></section></div></section>
+<form class="fd-quiz" data-answer="1" data-feedback="切换模式对比 [11,22] 与 [1,2,10,20]，通信语义属于正确性的一部分。" hidden><fieldset><legend>若两组数是不同分片，使用求和来代替拼接，会得到相同结果吗？</legend><label><input type="radio" name="prediction" value="0"><span>会，都能把数据传到一起</span></label><label><input type="radio" name="prediction" value="1"><span>不会，数值与输出形状都变了</span></label></fieldset><button type="submit">检查判断</button><p class="fd-feedback" aria-live="polite"></p></form>
+<details class="foundation-fallback"><summary>自测与解释：若两组数是不同分片，使用求和来代替拼接，会得到相同结果吗？</summary><p>切换模式对比 [11,22] 与 [1,2,10,20]，通信语义属于正确性的一部分。</p></details>
+
+<a class="foundation-to-engine" href="../sglang/communication/index.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-16。用两个参与者解释语义，未模拟网络拓扑、带宽、协议或底层完成保证。消息与载荷先后是本课场景设定。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html">NVIDIA NCCL · Collective Operations</a></li></ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="parallel.html"><small>上一课</small><strong>TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</strong></a><a class="next" href="deployment.html"><small>下一课</small><strong>PD Disaggregation：Prefill 与 Decode 为什么分离？</strong></a></nav>
+</main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>

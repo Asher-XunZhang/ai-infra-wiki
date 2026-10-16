@@ -39,7 +39,7 @@ const M=require('../../pages/sglang/parallelism/model.js');
   assert.equal(await page.locator('animateMotion').count(),0);await page.emulateMedia({reducedMotion:'no-preference'});
   await choose('pp');await page.selectOption('#pp-count','1');await advance();
   assert.equal(await page.locator('.pipeline-cell.batch-1.now').count(),1);await advance();assert.equal(await page.locator('#parallel-next').isDisabled(),true);
-  assert.match(await page.locator('.activation-handoff').innerText(),/M1[\s\S]*激活输入/);
+  assert.match(await page.locator('.activation-handoff').innerText(),/MB1[\s\S]*激活输入/);
   await page.selectOption('#pp-count','3');await page.locator('[data-tick="2"]').first().focus();await page.keyboard.press('Enter');
   assert.equal(await page.locator('.pipeline-cell.now:not(.bubble)').count(),2);
   await choose('dp');await advance();await advance();await advance();

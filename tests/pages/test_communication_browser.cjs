@@ -5,7 +5,7 @@ const M=require('../../pages/sglang/communication/model.js');
  const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});
  try{
   const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/';await page.goto(base+'sglang/communication/');await page.waitForLoadState('load');
+  const base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/';await page.goto(base+'sglang/communication/');await page.waitForLoadState('load');await page.locator('.batch-extra>summary').click();
   const choose=async mode=>page.locator(`button[data-mode=${mode}]`).click();
   const next=async()=>page.locator('#comm-next').click();
   const end=async()=>{while(!await page.locator('#comm-next').isDisabled())await next();};
@@ -13,7 +13,7 @@ const M=require('../../pages/sglang/communication/model.js');
    await page.setViewportSize({width,height:1000});
    for(const theme of ['light','dark']){
     await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
-    for(const mode of ['message','collective','kv','gates']){
+    for(const mode of ['message','collective','gates']){
      await choose(mode);
      do{
       assert.equal(await page.locator('[data-settings]:visible').count(),1);
@@ -35,13 +35,7 @@ const M=require('../../pages/sglang/communication/model.js');
    const outputs=await page.locator('.comm-pair').nth(1).locator('.endpoint').evaluateAll(es=>es.map(e=>[...e.querySelectorAll('.chip')].map(c=>c.textContent)));
    assert.deepEqual(outputs,M.collective(kind).output.map(xs=>xs.map(String)));
   }
-  await choose('kv');await end();assert.match(await page.locator('.result-note').innerText(),/2 段/);
-  await page.locator('#kv-fragment').check();await end();assert.match(await page.locator('.result-note').innerText(),/3 段/);
-  assert.deepEqual(await page.locator('.registered').nth(1).locator('.chip').allTextContents(),['A','C','B']);
-  await page.locator('#comm-reset').click();await next();await next();await next();
-  const points=await page.locator('.comm-wire svg').evaluate(svg=>{svg.pauseAnimations();const circle=svg.querySelector('circle');return [.1,.8].map(t=>{svg.setCurrentTime(t);const m=circle.getCTM();return {x:m.e,y:m.f};});});
-  assert.ok(points[1].y>points[0].y,'KV travels down from source to destination');
-  await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>document.querySelectorAll('animateMotion').length===0);assert.equal(await page.locator('animateMotion').count(),0);await page.emulateMedia({reducedMotion:'no-preference'});
+ await require('./migrated_checks.cjs')(page,'communication');
   await choose('gates');for(const kind of ['normal','cache','corrupt','abort','timeout']){
    await page.selectOption('#gate-kind',kind);await end();
    if(['normal','cache'].includes(kind))assert.match(await page.locator('.request-track .parking').nth(1).innerText(),/R1/);

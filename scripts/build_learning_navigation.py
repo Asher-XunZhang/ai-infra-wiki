@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Render the shared learning framework into source HTML; --check detects drift."""
 import argparse
+import json
 import os
 import re
 from html import escape
@@ -8,6 +9,25 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGES = ROOT / 'pages'
+FOUNDATIONS = json.loads((PAGES / 'foundations/courses.json').read_text(encoding='utf-8'))
+FOUNDATION_BY_SLUG = {c['slug']: c for c in FOUNDATIONS}
+DESIGN_NOTES = json.loads((PAGES / 'sglang/design-notes.json').read_text(encoding='utf-8'))
+DESIGN_REVISION = '279339f113b79af84f27fd3ac92d0a13bd3f4cbd'
+BRIDGES = {'system-overview':'generation','request-runtime':'serving','model-execution':'hardware','kv-memory':'cache','scheduling':'batching','parallelism':'parallel','communication':'communication','disaggregation':'deployment','advanced-generation':'speculation','serving-operations':'serving','performance':'metrics','case-studies':'parallel'}
+
+IMPLEMENTATION_FOCUS = {'system-overview': '分清进程、组件职责与部署边界，再把问题定位到对应实现。',
+ 'request-runtime': '跟踪同一请求在 TokenizerManager、Scheduler 和 DetokenizerManager 之间的交接，以及完成与取消的责任方。',
+ 'model-execution': '跟踪模型调用、Worker / Runner 交接、图重放资格与真实计算行。',
+ 'kv-memory': '核对请求索引如何映射到物理 KV 页，以及共享保护、缓存保留和驱逐条件。',
+ 'scheduling': '区分候选排序、资源准入、分块预算和回撤后的状态恢复。',
+ 'parallelism': '把切分方式对应到 rank、进程组和模型实现，检查各模式的输入输出及组合约束。',
+ 'communication': '按实际接口区分控制消息、张量通信与 KV 搬运，追踪可用和释放条件。',
+ 'disaggregation': '追踪 bootstrap、接收匹配、回载等待与请求准入；分别核对 P 和 D 的资源生命周期。',
+ 'advanced-generation': '追踪具体生成路径的状态提交、回退与约束筛选，并对照各自源码入口。',
+ 'serving-operations': '核对启动、探活、路由、队列准入、取消和退出时各组件的责任。',
+ 'performance': '把观测区间映射到实际执行阶段，核对流式响应、压测统计和失败样本口径。',
+ 'case-studies': '沿固定版本的 PP loop，核对 batch、slot、通信共识与本地状态复查的依赖。'}
+
 STAGES = [
     ('foundations', '第一层 · 建立全局', '从请求认识系统'),
     ('instance', '第二层 · 理解单实例', '执行、缓存与调度'),
@@ -18,34 +38,112 @@ STAGES = [
 # A lesson has one primary module. Other modules may link to it as a related case.
 MODULES = [
     ('system-overview', '推理系统全景', 'foundations', False, [
-        ('sglang/inference-overview/journey.html', '一条请求怎样变成回答', 'SGLang · 入门'),
-        ('sglang/system-overview/index.html', '推理系统里，哪些边界不能混在一起？', 'SGLang · 系统边界')]),
+        ('sglang/inference-overview/journey.html', 'ScheduleBatch：Extend 与 Decode 怎样准备输入？', 'SGLang · 源码导读'),
+        ('sglang/system-overview/index.html', 'SGLang 进程架构：IPC、模型调用与部署边界', 'SGLang · 系统边界')]),
     ('request-runtime', '请求生命周期与运行时架构', 'foundations', False, [
-        ('sglang/request-runtime/index.html', '一条请求穿过哪些进程与对象', 'SGLang · 入门')]),
+        ('sglang/request-runtime/index.html', '请求生命周期：Req、TokenizerManager 与 Scheduler', 'SGLang · 入门')]),
     ('model-execution', '模型执行、硬件与算子', 'instance', False, [
-        ('sglang/inference-overview/transformer.html', 'P / D 在 Transformer 里做什么', 'SGLang · 入门'),
-        ('sglang/model-execution/index.html', '一批输入，怎样变成设备上的计算？', 'SGLang · 执行机制')]),
+        ('sglang/inference-overview/transformer.html', 'DeepSeek-V3：Embedding、Decoder Layer 与输出头', 'SGLang · 源码导读'),
+        ('sglang/model-execution/index.html', 'ModelRunner 与 CUDA Graph：输入怎样交给 GPU？', 'SGLang · 执行机制')]),
     ('kv-memory', 'KV Cache 与内存管理', 'instance', False, [
-        ('sglang/inference-overview/kv-cache.html', 'KV：模型留给下一轮的记忆', 'SGLang · 入门'),
-        ('sglang/kv-memory/index.html', 'KV 放在哪里，又在何时回收？', 'SGLang · 缓存机制')]),
+        ('sglang/inference-overview/kv-cache.html', 'RadixCache 与 Attention：前缀索引怎样连接 KV？', 'SGLang · 源码导读'),
+        ('sglang/kv-memory/index.html', 'KV Memory Pool：地址映射、分页与缓存回收', 'SGLang · 缓存机制')]),
     ('scheduling', '调度与批处理', 'instance', False, [
-        ('sglang/inference-overview/scheduling.html', '多请求怎样共享一次执行', 'SGLang · 入门'),
-        ('sglang/scheduling/index.html', '排到前面，就能开始计算吗？', 'SGLang · 调度机制')]),
+        ('sglang/inference-overview/scheduling.html', 'Scheduler：选批、Chunked Prefill 与 Decode 更新', 'SGLang · 源码导读'),
+        ('sglang/scheduling/index.html', 'Batch 调度：准入预算、Chunked Prefill 与 Retract', 'SGLang · 调度机制')]),
     ('parallelism', '并行与执行拓扑', 'distributed', False, [
-        ('sglang/parallelism/index.html', '多张卡，究竟切开了什么？', 'SGLang · 并行分工')]),
-    ('communication', '通信与传输', 'distributed', False, [('sglang/communication/index.html', '数据传过去，何时才算可用？', 'SGLang · 通信机制')]),
+        ('sglang/parallelism/index.html', 'TP / PP / DP / EP / CP：SGLang 并行分工', 'SGLang · 并行分工')]),
+    ('communication', '通信与传输', 'distributed', False, [('sglang/communication/index.html', 'IPC、Collective 与 KV Transfer：数据何时可用？', 'SGLang · 通信机制')]),
     ('disaggregation', '分离部署与分布式状态交接', 'distributed', False, [
-        ('sglang/inference-overview/deployment.html', '合并部署与 PD 分离', 'SGLang · 入门'),
-        ('sglang/pd-prefill-lifecycle/index.html', 'PD Prefill 请求生命周期', 'SGLang · PD＋PP 案例'),
-        ('sglang/pd-dataflow/index.html', '数据流、状态与队列', 'SGLang · PD＋PP 案例')]),
-    ('advanced-generation', '模型结构与高级生成', 'serving', False, [('sglang/advanced-generation/index.html', '生成一个 token，还会改变哪些状态？', 'SGLang · 高级生成')]),
-    ('serving-operations', '服务部署与运行治理', 'serving', False, [('sglang/serving-operations/index.html', '服务在线，请求就一定能完成吗？', 'SGLang · 服务治理')]),
-    ('performance', '性能分析与优化方法', 'practice', False, [('sglang/performance-engineering/index.html', '性能数字，究竟量到了哪一段？', 'SGLang · 性能分析')]),
+        ('sglang/inference-overview/deployment.html', 'PD Disaggregation：Bootstrap、KV 接收与准入', 'SGLang · 源码导读'),
+        ('sglang/pd-prefill-lifecycle/index.html', 'PD + PP：Prefill 请求生命周期与 KV 释放', 'SGLang · PD＋PP 案例'),
+        ('sglang/pd-dataflow/index.html', 'PD 数据流：激活、KV Transfer 与 Req 队列引用', 'SGLang · PD＋PP 案例')]),
+    ('advanced-generation', '模型结构与高级生成', 'serving', False, [('sglang/advanced-generation/index.html', 'Speculative Decoding 与约束生成：状态怎样提交？', 'SGLang · 高级生成')]),
+    ('serving-operations', '服务部署与运行治理', 'serving', False, [('sglang/serving-operations/index.html', '服务治理：Health Check、Timeout 与 Cancellation', 'SGLang · 服务治理')]),
+    ('performance', '性能分析与优化方法', 'practice', False, [('sglang/performance-engineering/index.html', 'TTFT、ITL、TPOT 与 P95：SGLang 性能观测', 'SGLang · 性能分析')]),
     ('case-studies', '综合案例与源码实践', 'practice', False, [
-        ('sglang/pd-prefill-pp-loop/quick.html', '机制验证练习与 PP loop', 'SGLang · 综合实践'),
-        ('sglang/pd-prefill-pp-loop/index.html', '依赖分析与耗时场景', 'SGLang · PD＋PP 案例'),
-        ('sglang/pd-prefill-pp-loop/notes.html', 'PP loop 源码阅读', 'SGLang · PD＋PP 案例')]),
+        ('sglang/pd-prefill-pp-loop/quick.html', 'PP Event Loop：追踪 Microbatch 的完整旅程', 'SGLang · 综合实践'),
+        ('sglang/pd-prefill-pp-loop/index.html', 'PP 依赖时间轴：计算、通信与流水线气泡', 'SGLang · PD＋PP 案例'),
+        ('sglang/pd-prefill-pp-loop/notes.html', 'PP Event Loop 源码：Batch、Slot 与通信共识', 'SGLang · PD＋PP 案例')]),
 ]
+
+# Reading order is independent of the stable module taxonomy. Links are rendered
+# into HTML so the Pages build can version them and no-JS readers can use them.
+READING_ROUTES = [
+    ('first', '从基础走向源码', '在已有原理之上，定位各机制的实现入口。', [
+        ('sglang/inference-overview/journey.html', 'SGLang 怎样准备两种生成批次？', '对应固定版本的实现入口。'),
+        ('sglang/inference-overview/transformer.html', 'SGLang 怎样调用 DeepSeek-V3 模型层？', '对应固定版本的实现入口。'),
+        ('sglang/inference-overview/kv-cache.html', 'SGLang 如何连接前缀索引与 KV 计算？', '对应固定版本的实现入口。'),
+        ('sglang/inference-overview/scheduling.html', 'SGLang 怎样选出并更新下一批？', '对应固定版本的实现入口。')]),
+    ('implementation', '已有基础，追踪实现', '从请求流转追到资源、调度和设备执行；各课保留自己的固定基线。', [
+        ('sglang/request-runtime/index.html', '请求经过哪些对象？', '追踪接入、执行、返回与释放。'),
+        ('sglang/kv-memory/index.html', 'KV 放哪，何时回收？', '区分地址映射、共享保护与物理空间。'),
+        ('sglang/scheduling/index.html', '谁能进入下一批？', '把候选顺序与准入条件分开。'),
+        ('sglang/model-execution/index.html', '工作怎样交给设备？', '连接调度、执行封装与设备计算。')]),
+    ('questions', '带着现象找原因', '选择与你当前现象有关的一课，按需回补先修知识。', [
+        ('sglang/performance-engineering/index.html', '首字为什么慢？', '先确定计时边界和等待发生在哪。'),
+        ('sglang/kv-memory/index.html', '显存为什么不够？', '检查空间占用与仍被引用的状态。'),
+        ('sglang/parallelism/index.html', '多卡为什么还在等？', '区分工作切分与前后级依赖。'),
+        ('sglang/serving-operations/index.html', '服务在线却没回答？', '分清健康、接纳和实际完成。')]),
+]
+
+
+LESSON_TITLES = {lesson[0]: lesson[1] for module in MODULES for lesson in module[4]}
+READING_ROUTES = [(key, title, intro, [(path, LESSON_TITLES.get(path, label), hint) for path, label, hint in lessons])
+                  for key, title, intro, lessons in READING_ROUTES]
+
+def route_href(page, target, route):
+    return href(page, target) + '?learn=' + route
+
+
+def learning_start(page):
+    parts = ['<!-- learning-start:start -->', '<section id="reading-routes" aria-label="两章学习入口">',
+        '<div class="chapter-choice"><a href="#chapter-foundations"><span>第一章</span><strong>推理基础</strong><p>从一句话怎样变成数字开始，逐步认识生成、缓存、调度与多卡协作。</p><span>先建立直觉，再进入实现</span></a>',
+        '<a href="#chapter-sglang"><span>第二章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十二模块 · 二十节实现课程</span></a></div></section>',
+        '<section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>',
+        '<p>前五课建立请求生成的主线；后七课解释硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">']
+    for i, c in enumerate(FOUNDATIONS, 1):
+        parts.append(f'<li><a href="{href(page, "foundations/"+c["slug"]+".html")}"><span class="lesson-no">{i:02}</span><span><strong>{escape(c["title"])}</strong><small>{escape(c["goal"])}</small></span></a></li>')
+    parts.append('</ol></section><!-- learning-start:end -->')
+    return '\n'.join(parts)
+
+
+def foundation_bridge(page, module):
+    slug = BRIDGES[module[0]]
+    if page.name == 'journey.html':
+        slug = 'generation'
+    elif page.name == 'transformer.html':
+        slug = 'attention'
+    c = FOUNDATION_BY_SLUG[slug]
+    guide_focus = {
+        'journey.html': '跟踪 ScheduleBatch 在 Extend 与 Decode 两条准备路径中怎样组织输入、切换模式和分配写入位置。',
+        'transformer.html': '沿 DeepSeek-V3 的 Embedding、层循环和输出头，核对 PP 首级、非首级与末级的责任。',
+        'kv-cache.html': '连接请求的前缀索引、本轮输入范围与 attention 调用，再进入物理页和回收实现。',
+        'scheduling.html': '找到选批、Prefill 组批和运行批次更新的入口，核对分块与内存回撤发生在哪里。',
+        'deployment.html': '分别沿 Prefill 与 Decode 的接口核对首 token、metadata、接收就绪和调度准入。',
+    }
+    focus = guide_focus.get(page.name, IMPLEMENTATION_FOCUS[module[0]])
+    return (f'<!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标">'
+        f'<h2>本课追踪什么实现</h2><p>{escape(focus)}</p>'
+        f'<a href="{href(page, "foundations/"+slug+".html")}">需要回顾原理：{escape(c["title"])}</a>'
+        '</section><!-- foundation-bridge:end -->')
+
+
+def reading_pagers(page):
+    parts = ['<!-- reading-pagers:start -->']
+    relative = str(page.relative_to(PAGES))
+    for rid, title, _, lessons in READING_ROUTES:
+        paths = [item[0] for item in lessons]
+        if relative not in paths:
+            continue
+        i = paths.index(relative)
+        previous = (f'<a href="{route_href(page, paths[i-1], rid)}"><small>这条路线 · 上一节</small><strong>← {lessons[i-1][1]}</strong></a>' if i else
+                    f'<a href="{href(page, anchor="reading-routes")}"><small>选择学习起点</small><strong>返回路线</strong></a>')
+        following = (f'<a class="next" href="{route_href(page, paths[i+1], rid)}"><small>这条路线 · 下一节</small><strong>{lessons[i+1][1]} →</strong></a>' if i+1 < len(paths) else
+                     f'<a class="next" href="{href(page, anchor="reading-routes")}"><small>已到这条路线末尾</small><strong>选择下一条学习路线 →</strong></a>')
+        parts.append(f'<nav class="reading-route-pager" data-reading-route="{rid}" data-route-title="{title}" data-route-position="{i+1} / {len(paths)}" aria-label="{title} · 继续学习" hidden>{previous}{following}</nav>')
+    parts.append('<!-- reading-pagers:end -->')
+    return '\n'.join(parts)
 
 
 def href(page, target='index.html', anchor=''):
@@ -62,6 +160,14 @@ def sidebar(page, active):
              '<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>',
              '<div class="sidebar-content">',
              f'<a class="overview-link" href="{href(page)}"' + (' aria-current="page"' if home else '') + '>学习首页 <span aria-hidden="true">↗</span></a>']
+    in_foundations = page.parent == PAGES / 'foundations'
+    lines.append('<details class="chapter-nav" data-chapter="foundations"' + (' open' if in_foundations or home else '') + '><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">')
+    for i, c in enumerate(FOUNDATIONS, 1):
+        target = 'foundations/' + c['slug'] + '.html'
+        selected = page == PAGES / target
+        lines.append(f'<a href="{href(page, target)}"' + (' aria-current="page"' if selected else '') + f'>{i:02} {escape(c["title"])}</a>')
+    lines.append('</nav></details>')
+    lines.append('<details class="chapter-nav" data-chapter="sglang"' + (' open' if active else '') + '><summary>第二章 · SGLang 实现剖析</summary>')
     for stage, label, title in STAGES:
         opened = active and active[2] == stage
         lines.append(f'<details class="topic-group" data-topic="framework-{stage}"' + (' open' if opened else '') + '>')
@@ -87,7 +193,8 @@ def sidebar(page, active):
             else:
                 lines.append(f'<a class="course-link" data-module="{mid}" href="{href(page, anchor=mid)}">{heading}</a>')
         lines.append('</nav></details>')
-    lines.extend(['<div class="sidebar-note"><span class="status-dot"></span> 一张框架，逐步深入<p>先理解单实例，再连接多卡多机；模型、服务与性能按目标选读。</p></div>',
+    lines.append('</details>')
+    lines.extend(['<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>',
                   '<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>',
                   '</div></details></aside>'])
     return '\n'.join(lines)
@@ -97,7 +204,7 @@ def breadcrumb(page, module, lesson):
     stage = next(s for s in STAGES if s[0] == module[2])
     n = MODULES.index(module) + 1
     return ('<!-- learning-context:start -->\n<nav class="learning-breadcrumb" aria-label="当前位置">'
-            f'<a href="{href(page, anchor="learning-path")}">学习框架</a><span aria-hidden="true">/</span>'
+            f'<a href="{href(page, anchor="learning-path")}">第二章 · SGLang 实现剖析</a><span aria-hidden="true">/</span>'
             f'<a href="{href(page, anchor="stage-" + stage[0])}">{stage[1]}</a><span aria-hidden="true">/</span>'
             f'<a href="{href(page, anchor=module[0])}">{n:02} {module[1]}</a>'
             f'<span aria-hidden="true">/</span><span aria-current="page">{escape(lesson[1])}</span>'
@@ -124,12 +231,66 @@ def pager(page, module, lesson):
     return '<nav class="lesson-pager" aria-label="框架内继续学习">' + previous + following + '</nav>'
 
 
+def implementation_design(page):
+    entry = DESIGN_NOTES[str(page.relative_to(PAGES))]
+    revision = entry.get('revision', DESIGN_REVISION)
+    body = []
+    background = entry['background']
+    references = ' · '.join(f'<a href="{escape(url, quote=True)}">{escape(title)} ↗</a>' for title, url in background['references'])
+    context = (f'<details class="design-background"><summary>{escape(background["title"])}</summary>'
+        f'<p>{escape(background["text"])}</p><p class="design-source">概念与设计说明：{references}</p>'
+        f'<p class="design-source">{escape(background["scope"])} 资料读取：{escape(background["read_date"])}。</p></details>')
+    navigation = ('<nav class="design-nav" aria-label="实现问题导航">' + ''.join(f'<a href="#design-{t["id"]}">{escape(t["title"])}</a>' for t in entry['topics']) + '</nav>') if len(entry['topics']) > 1 else ''
+    for t in entry['topics']:
+        file, line, label = t['source']
+        file = file if file.startswith('python/') else 'python/sglang/srt/' + file
+        source_url = f'https://github.com/sgl-project/sglang/blob/{revision}/{file}#L{line}'
+        example = f'<div class="design-example"><strong>用一个例子理解</strong><p>{escape(t["example"])}</p></div>' if t.get('example') else ''
+        links = ''.join(f'<li><a href="{href(page, target)}">{escape(title)} →</a></li>' for title, target in t.get('links', []))
+        body.append(f'<section class="design-question" id="design-{t["id"]}"><h3>{escape(t["title"])}</h3><p>{escape(t["why"])}</p><details><summary>展开机制与具体例子</summary><p>{escape(t["mechanism"])}</p>{example}</details><p class="design-tradeoff"><strong>取舍与条件：</strong>{escape(t["tradeoff"])}</p><p class="design-source"><a href="{source_url}">{escape(label)} · 本课实现核对 ↗</a></p>' + (f'<ul class="design-links">{links}</ul>' if links else '') + '</section>')
+    return ('<!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2>'
+        f'<p class="design-problem">{escape(entry["problem"])}</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a>'
+        + context + navigation + ''.join(body) + f'<p class="design-baseline">本课实现核对：SGLang 固定提交 {revision[:10]}，2026-10-16。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end -->')
+
+
+def lesson_reading_nav(source):
+    """Keep existing specialized navigators; index substantial prose only."""
+    source = re.sub(r'<!-- lesson-reading:start -->.*?<!-- lesson-reading:end -->', '', source, flags=re.S)
+    if 'class="life-nav"' in source or 'class="article-toc"' in source:
+        return source
+    links = []
+    def heading(match):
+        attrs, body = match.groups()
+        title = re.sub(r'<[^>]+>', '', body).strip()
+        if not title or title == '本课追踪什么实现':
+            return match[0]
+        existing = re.search(r'\bid="([^"]+)"', attrs)
+        anchor = existing[1] if existing else 'reading-topic-' + str(len(links)+1)
+        links.append((anchor, title))
+        return f'<h2{attrs if existing else attrs + chr(32) + "id=" + chr(34) + anchor + chr(34)}>{body}</h2>'
+    updated = re.sub(r'<h2([^>]*)>(.*?)</h2>', heading, source, flags=re.S)
+    if len(links) < 4:
+        return source
+    nav = '<!-- lesson-reading:start --><nav class="lesson-reading-nav" aria-label="本课阅读入口"><span>按问题阅读</span>' + ''.join(f'<a href="#{anchor}">{title}</a>' for anchor, title in links) + '</nav><!-- lesson-reading:end -->'
+    return re.sub(r'(<header class="lesson-header".*?</header>)', lambda m: m[0] + nav, updated, count=1, flags=re.S)
+
+
 def rendered(page, module=None, lesson=None):
     source = page.read_text(encoding='utf-8')
+    if 'motion/integration.js' not in source:
+        source = source.replace('<script ', f'<script src="{href(page, "motion/integration.js")}" defer></script><script ', 1)
     source, count = re.subn(r'<aside class="site-sidebar".*?</aside>', lambda _: sidebar(page, module), source, count=1, flags=re.S)
     if count != 1:
         raise ValueError(f'{page}: expected exactly one site sidebar')
+    if page.parent == PAGES / 'foundations':
+        return source
+    if not module:
+        source, count = re.subn(r'<!-- learning-start:start -->.*?<!-- learning-start:end -->', lambda _: learning_start(page), source, count=1, flags=re.S)
+        if count != 1:
+            raise ValueError(f'{page}: missing learning-start marker')
     if module:
+        source = re.sub(r'<h1[^>]*>.*?</h1>', lambda _: '<h1>' + escape(lesson[1]) + '</h1>', source, count=1, flags=re.S)
+        source = re.sub(r'<title>.*?</title>', lambda _: '<title>' + escape(lesson[1]) + ' · AI Infra Wiki</title>', source, count=1, flags=re.S)
         context = breadcrumb(page, module, lesson)
         if '<!-- learning-context:start -->' in source:
             source = re.sub(r'<!-- learning-context:start -->.*?<!-- learning-context:end -->\n?', lambda _: context, source, count=1, flags=re.S)
@@ -145,11 +306,33 @@ def rendered(page, module=None, lesson=None):
         source, count = re.subn(r'<nav class="lesson-pager".*?</nav>', lambda _: pager(page, module, lesson), source, count=1, flags=re.S)
         if count != 1:
             raise ValueError(f'{page}: missing lesson pager')
+        bridge = foundation_bridge(page, module)
+        if '<!-- foundation-bridge:start -->' in source:
+            source = re.sub(r'<!-- foundation-bridge:start -->.*?<!-- foundation-bridge:end -->', lambda _: bridge, source, count=1, flags=re.S)
+        else:
+            source = re.sub(r'(<header class="lesson-header".*?</header>)', lambda m: m[0] + bridge, source, count=1, flags=re.S)
+        design = implementation_design(page)
+        source = re.sub(r'<!-- implementation-design:start -->.*?<!-- implementation-design:end -->', '', source, flags=re.S)
+        source = source.replace('<!-- foundation-bridge:end -->', '<!-- foundation-bridge:end -->' + design, 1)
+        for asset in ['foundations/model.js', 'foundations/player.js']:
+            source = source.replace(f'<script src="{href(page, asset)}" defer></script>', '')
+        for asset, tag in [('foundations/foundations.css', 'style')]:
+            url = href(page, asset)
+            if url not in source:
+                element = f'<link rel="stylesheet" href="{url}">' if tag == 'style' else f'<script src="{url}" defer></script>'
+                source = source.replace('</head>', element + '</head>', 1)
+        source = lesson_reading_nav(source)
+        extra = reading_pagers(page)
+        if '<!-- reading-pagers:start -->' in source:
+            source = re.sub(r'<!-- reading-pagers:start -->.*?<!-- reading-pagers:end -->', lambda _: extra, source, count=1, flags=re.S)
+        else:
+            source = source.replace('<nav class="lesson-pager"', extra + '\n<nav class="lesson-pager"', 1)
     return source
 
 
 def build(check=False):
     targets = [(PAGES / 'index.html', None, None)]
+    targets += [(PAGES / ('foundations/' + c['slug'] + '.html'), None, None) for c in FOUNDATIONS]
     targets += [(PAGES / lesson[0], module, lesson) for module in MODULES for lesson in module[4]]
     assert len({p for p, _, _ in targets}) == len(targets), 'each course must have exactly one primary module'
     existing = {p for p in PAGES.rglob('*.html') if '<aside class="site-sidebar"' in p.read_text(encoding='utf-8')}
@@ -164,7 +347,7 @@ def build(check=False):
                 page.write_text(result, encoding='utf-8')
     if stale:
         raise SystemExit('Navigation is stale; run scripts/build_learning_navigation.py: ' + ', '.join(stale))
-    print(f'{"Checked" if check else "Generated"} shared framework navigation: {len(targets)} pages, 5 stages, 12 modules, {len(targets) - 1} courses.')
+    print(f'{"Checked" if check else "Generated"} shared framework navigation: {len(targets)} pages, 2 chapters, {len(FOUNDATIONS)} foundations, 12 SGLang modules, 20 implementation courses.')
 
 
 if __name__ == '__main__':

@@ -1,0 +1,157 @@
+/* Dedicated encodings: arithmetic, dependencies, input/output alignment and ownership.
+ * The timeline only reveals model facts. DOM objects survive reverse seeking. */
+(()=>{
+'use strict';
+const {board,phase,lerp,clamp}=window.TeachingDrawing,V=window.MechanismVisuals;
+V['f-hardware']=(svg,viewport,s)=>board(svg,viewport,'arithmetic',()=>850,H=>{
+ const {txt,rect,text,box,show,token,move,set}=H,d=s.data;
+ const source=rect(),sourceTitle=txt('存储里的原始输入与参数 · 读取后仍保留','teach-heading'),original=txt('x = [2,3]；W = [[1,2],[3,4]]','teach-number');
+ const rows=[0,1].map(i=>({bg:rect(),title:txt('权重第 '+(i+1)+' 行','teach-heading'),work:token('row-'+i,i?'2×3 + 3×4':'2×1 + 3×2',150,'teach-token teach-color-'+i),products:txt('','teach-number'),result:txt('','teach-heading'),parts:[rect('teach-value'),rect('teach-compute')]}));
+ const sumLegend=txt('色段长度表示两项贡献；合拢表示相加。','teach-small');
+ const output=token('output-vector','[8,18]',110,'teach-token teach-color-2'),outTitle=txt('形成输出向量 · 可供后续算子使用','teach-heading');
+ const heading=txt('只改变一项资源 · 理想下界','teach-heading'),tracks=[rect('teach-track'),rect('teach-track')],bars=[rect('teach-value'),rect('teach-compute')],labels=[txt('','teach-small'),txt('','teach-small')],bound=txt('','teach-heading'),boundary=txt('u = 教学单位；不等于动画秒数或实测耗时','teach-small');
+ return(p,m)=>{const W=m?360:720;
+  box(source,16,16,W-32,100);text(sourceTitle,28,44,m?'存储原件 · 读取后仍保留':'存储里的原始输入与参数 · 读取后仍保留');text(original,28,80);
+  rows.forEach((r,i)=>{const y=154+i*156;box(r.bg,16,y,W-32,136);text(r.title,28,y+28);move(r.work,lerp(40,34,phase(p,0)),lerp(68,y+42,phase(p,0)),phase(p,0));
+   text(r.products,m?34:242,m?y+106:y+64,p<2?'乘法进行中':i?'6 + 12':'2 + 6');show(r.products,phase(p,1));
+   text(r.result,m?225:500,m?y+106:y+64,p>=3?'= '+d.output[i]:'求和中');show(r.result,phase(p,2));
+   const values=i?[6,12]:[2,6],unit=m?10:14,x=34,ybar=y+114;box(r.parts[0],x,ybar,values[0]*unit*phase(p,1),12);box(r.parts[1],x+values[0]*unit+30*(1-phase(p,2)),ybar,values[1]*unit*phase(p,1),12);
+  });
+  text(sumLegend,18,472);show(sumLegend,phase(p,1));
+  text(outTitle,18,494);show(outTitle,phase(p,3));move(output,m?120:304,514,phase(p,3));
+  text(heading,18,600);[0,1].forEach(i=>{const y=646+i*62,base=i?3:8,target=i?d.compute:d.move;box(tracks[i],28,y,W-56,14);box(bars[i],28,y,(W-56)*lerp(base,target,phase(p,4))/8,14);text(labels[i],28,y-12,(i?'计算':'搬运')+'：原配 '+base+' u'+(p>=5?' → '+target+' u':p>4?' → 调整示意中':''));});
+  text(bound,18,786,p>=5?`理想下界 max(${d.move}, ${d.compute}) = ${d.bound} u`:'原配下界 max(8,3) = 8 u');text(boundary,18,822);
+ };
+});
+V['f-communication']=(svg,viewport,s)=>board(svg,viewport,'collective',()=>710,H=>{
+ const {txt,rect,text,box,show,token,move}=H,d=s.data,gather=s.kind==='gather';
+ const panels=[rect(),rect()],heads=[txt('Rank 0','teach-heading'),txt('Rank 1','teach-heading')];
+ const input=d.input.map((v,i)=>token('input-'+i,'['+v+']',108,'teach-token teach-color-'+i));
+ const copies=d.input.map((v,i)=>token('copy-'+i,'['+v+']',108,'teach-token teach-color-'+i));
+ const operation=txt('逻辑运算示意 · 不是一台中央设备','teach-heading'),math=[txt('','teach-number'),txt('','teach-number')],result=token('merged','['+d.result+']',150,'teach-token teach-color-2');
+ const dest=[0,1].map(i=>({label:txt('Rank '+i+' 收到结果副本','teach-small'),token:token('result-'+i,'['+d.result+']',150,'teach-token teach-color-2')}));
+ const note=txt('原输入保持可见；两份结果属于不同参与方。','teach-small');
+ return(p,m)=>{const W=m?360:720,x=i=>m?20+i*170:58+i*360;
+  panels.forEach((e,i)=>{box(e,x(i)-4,22,m?162:290,138);text(heads[i],x(i)+10,52);move(input[i],x(i)+10,80);const t=phase(p,0);move(copies[i],lerp(x(i)+10,x(i)+10,t),lerp(80,228,t),t);});
+  text(operation,18,290);if(m)operation.setAttribute('font-size','15');
+  text(math[0],28,328,gather?'按顺序保留四个位置：':'位置 0：1 + 10'+(p>=3?' = 11':''));text(math[1],28,364,gather?'[1,2] 接着 [10,20]':'位置 1：2 + 20'+(p>=3?' = 22':''));math.forEach(e=>show(e,phase(p,1)));
+  move(result,(W-150)/2,400,p>=3?1:0);
+  dest.forEach((r,i)=>{text(r.label,x(i),610);show(r.label,phase(p,3));move(r.token,lerp((W-150)/2,x(i),phase(p,3)),lerp(400,540,phase(p,3)),phase(p,3));});
+  text(note,18,668);if(m)note.setAttribute('font-size','12');
+ };
+});
+V['f-parallel']=(svg,viewport,s)=>board(svg,viewport,'pipeline-grid',()=>960,H=>{
+ const {txt,rect,path,wire,text,box,token,move}=H;
+ const heading=txt('列 = 教学时隙；行 = PP stage','teach-heading');
+ const heads=[1,2,3].map(i=>txt('时隙 '+i,'teach-small'));
+ const stages=[0,1].map(i=>({label:txt('PP','teach-heading'),index:txt('Stage '+i,'teach-small'),layers:txt(i?'L3–L4':'L1–L2','teach-small')}));
+ const cells=Array.from({length:6},()=>({bg:rect('teach-graph-slot'),fill:rect('teach-value'),label:txt('','teach-small')}));
+ const transfers=Array.from({length:s.data.n},()=>path()),crossing=txt('','teach-small');
+ const completed=txt('','teach-heading'),reason=txt('','teach-small');
+ const jobs=Array.from({length:s.data.n},(_,i)=>token('MB'+(i+1),'MB'+(i+1),56,'teach-token teach-color-'+i));
+ const paths=[txt('MB = microbatch（微批次）','teach-small'),txt('MB1 = {R1,R2}；MB2 = {R3,R4}','teach-small'),txt('同一微批次：Stage 0 → Stage 1 → 完成','teach-small'),txt('移动表示激活交接；填条表示阶段内计算。','teach-small')];
+ const grid=document.createElementNS('http://www.w3.org/2000/svg','g');
+ [...svg.children].filter(e=>e.tagName!=='defs').forEach(e=>grid.append(e));svg.append(grid);grid.setAttribute('transform','translate(0 240)');
+ const whole=txt('完整模型：L1 → L2 → L3 → L4','teach-heading');
+ const partition=[txt('Stage 0 · GPU 0','teach-small'),txt('Stage 1 · GPU 1','teach-small')];
+ const layerActors=[1,2,3,4].map(i=>token('pp-layer-'+i,'L'+i,54,'teach-token teach-color-'+(i<3?0:1)));
+ const explanation=txt('先按模型层切分，再让微批次依次经过各阶段。','teach-small');
+ return(raw,m)=>{const p=Math.max(0,raw-2),u=phase(raw,0),cw=m?84:190,start=m?92:108;
+  text(whole,18,28);partition.forEach((t,i)=>{text(t,m?18+i*180:80+i*350,87);t.setAttribute('opacity',u);});
+  layerActors.forEach((a,i)=>move(a,lerp(18+i*(m?84:174),(m?18:80)+Math.floor(i/2)*(m?180:350)+(i%2)*66,u),lerp(45,105,u)));
+  text(explanation,18,181,raw<1?'L1…L4 是模型层；顺序决定计算依赖。':raw<2?'MB1={R1,R2}；MB2={R3,R4} 是工作单元。':'下方每一行对应上方一个 PP stage。');
+  grid.setAttribute('opacity',phase(raw,1));
+  text(heading,18,30);heads.forEach((h,i)=>text(h,start+i*cw+4,68));stages.forEach((h,i)=>{const y=136+i*145;text(h.label,18,y);text(h.index,18,y+24);text(h.layers,18,y+46);});
+  cells.forEach((c,i)=>{const row=Math.floor(i/3),col=i%3,x=start+col*cw,y=88+row*145,job=col-row,used=job>=0&&job<s.data.n,t=row?clamp((phase(p,col)-.3)/.7):phase(p,col);box(c.bg,x,y,cw-10,112);box(c.fill,x+2,y+84,(cw-14)*(used?t:0),24);text(c.label,x+6,y+24,used?'MB'+(job+1):row===1&&col===0?'等激活':row===0?'无新任务':'无输入');});
+  transfers.forEach((line,i)=>wire(line,`M${start+i*cw+38} 202 L${start+(i+1)*cw+38} 230`));
+  text(crossing,18,396,svg.dataset.placement==='cross-host'?'激活交接：跨进程 · GPU 间 · 跨主机':'激活交接：跨进程 · GPU 间 · 同机');if(m)crossing.setAttribute('font-size','13');
+  jobs.forEach((j,i)=>{const progress=clamp(phase(p,i+1)/.3),x0=start+i*cw+8,x1=start+(i+1)*cw+8;move(j,lerp(x0,x1,progress),lerp(136,281,progress),p>=i?1:0);});
+  const done=Math.min(s.data.n,Math.max(0,Math.floor(p)-1));text(completed,18,440,'已完成两个 stage：'+(done?Array.from({length:done},(_,i)=>'MB'+(i+1)).join('、'):'暂无'));if(m)completed.setAttribute('font-size','16');text(reason,18,478,p<1?'Stage 1 等待 Stage 0 产生激活。':p<2?'激活抵达 Stage 1 后，它才能开始计算。':'时间格保留各 stage 的计算与空闲记录。');if(m)reason.setAttribute('font-size','13');paths.forEach((h,i)=>{text(h,18,540+i*36,i===1&&s.data.n===1?'本条件只送入 MB1 = {R1,R2}':undefined);if(m)h.setAttribute('font-size','13');});
+ };
+});
+function spec(svg,viewport,s){return board(svg,viewport,'verification',()=>820,H=>{
+ const {txt,rect,text,box,show,token,move}=H,d=s.data,inputs=[d.root,...d.draft];
+ const title=txt('每列：输入位置 → 预测下一个 token','teach-heading'),focus=rect('teach-focus'),commit=rect('teach-read'),keep=rect('teach-read');
+ const labels=['验证输入','目标预测','候选对照','正式输出','有效 KV'].map(x=>txt(x,'teach-heading'));
+ const input=inputs.map((x,i)=>token('verify-input-'+i,x,48,'teach-token teach-color-'+i%5));
+ const predictions=d.predictions.slice(0,5).map((x,i)=>token('prediction-'+i,x,48,'teach-token teach-color-2'));
+ const draft=d.draft.map((x,i)=>token('candidate-'+i,x,48,'teach-token teach-color-'+(i+1)%5));
+ const checks=Array.from({length:4},()=>txt('','teach-small'));
+ const output=d.output.map((x,i)=>token('committed-output-'+i,x,48,'teach-token teach-color-'+(i<d.accepted?(i+1)%5:2)));
+ const kv=d.validKV.map((x,i)=>token('valid-kv-'+i,x,48,'teach-token teach-color-'+i%5));
+ const why=txt('','teach-small'),offset=txt('','teach-small'),state=txt('','teach-heading');
+ return(p,m)=>{const W=m?360:720,start=m?22:70,gap=m?64:128,at=i=>start+i*gap;
+  text(title,18,28);labels.forEach((l,i)=>text(l,18,[64,190,320,506,660][i]));
+  input.forEach((t,i)=>move(t,at(i),86,i===0?1:phase(p,0)));predictions.forEach((t,i)=>move(t,at(i),218,phase(p,1)));
+  draft.forEach((t,i)=>{move(t,at(i),346,phase(p,0));t.g.classList.toggle('teach-empty',p>=3&&i>=d.accepted);}); // Prediction at input i compares to candidate i, not input i+1.
+  const checked=Math.floor(phase(p,2)*4+1e-8);box(focus,at(Math.min(d.accepted,Math.min(3,phase(p,2)*4)))-4,210,56,178);show(focus,p>=2&&p<3?1:0);
+  checks.forEach((e,i)=>{text(e,at(i),406,i>=checked?'待判断':i<d.accepted?'通过':i===d.accepted?'分歧':'不再接受');});
+  text(why,18,446,d.accepted===4?'全部通过：最后一列预测还能补出一个 token。':'分歧后的输入前缀不再有效，后面不能跳着接受。');show(why,p>=3?1:0);if(m)why.setAttribute('font-size','12');
+  output.forEach((t,i)=>{move(t,at(i),534,p>=4?1:0);});
+  kv.forEach((t,i)=>{move(t,at(i),688,p>=5?1:0);});
+  box(commit,at(0),580,(d.output.length*gap-16)*phase(p,3),8);box(keep,at(0),734,(d.validKV.length*gap-16)*phase(p,4),8);
+  text(offset,18,610,'输出末尾的补出 token 尚未输入；KV 从根位置开始。');if(m)offset.setAttribute('font-size','12');show(offset,p>=4?1:0);
+  text(state,18,780,p>=5?'有效历史 ≠ 刚刚发出的输出序列':'验证临时状态不等于已提交历史');
+ };
+});}
+V['f-speculation']=spec;V['advanced-generation']=spec;
+V.communication=(svg,viewport,s)=>board(svg,viewport,'page-copy',()=>770,H=>{
+ const {txt,rect,text,box,show,token,move,set}=H,d=s.data;
+ const heads=[txt('源端 · 原页保持不动','teach-heading'),txt('目标端 · 地址保持不动','teach-heading')],pairs=txt('映射说明源与目标的对应；写入状态单独标注。','teach-small');
+ const rows=d.src.map((page,i)=>({source:rect(),dest:rect('teach-memory-slot'),fill:rect('teach-memory-fill'),sl:txt('源页 '+page,'teach-small'),dl:txt('目标页 '+d.dst[i],'teach-small'),original:token('source-'+page,d.payload[i],48,'teach-token teach-color-'+i),copy:token('payload-'+i,d.payload[i],48,'teach-token teach-color-'+i),map:txt(page+' → '+d.dst[i],'teach-number'),status:txt('','teach-small')}));
+ const summary=txt('','teach-heading'),blocks=d.blocks.map(()=>txt('','teach-small')),boundary=txt('写完本图三个目标页 ≠ 整条 PD 请求已可运行。','teach-small');
+ return(p,m)=>{const W=m?360:720,sx=24,dx=m?230:520;
+  text(heads[0],18,30);text(heads[1],dx-4,30,m?'目标端 · 固定地址':'目标端 · 地址保持不动');if(m)heads.forEach(e=>e.setAttribute('font-size','14'));text(pairs,18,64);
+  rows.forEach((r,i)=>{const y=98+i*150,dy=98+[...d.dst].sort((a,b)=>a-b).indexOf(d.dst[i])*150,u=phase(p,i+1);box(r.source,sx,y,100,100);box(r.dest,dx,dy,100,100);box(r.fill,dx+2,dy+76,96*u,20);text(r.sl,sx+8,y+22);text(r.dl,dx+8,dy+22);move(r.original,sx+26,y+40);
+   text(r.map,sx,y+124);show(r.map,phase(p,0));const mid=W/2-24,px=u<.3?lerp(sx+26,mid,u/.3):u<.7?mid:lerp(mid,dx+26,(u-.7)/.3),py=u<.3?y+40:u<.7?lerp(y+40,dy+40,(u-.3)/.4):dy+40;move(r.copy,px,py,u>0?1:0);text(r.status,dx+5,dy+124,u===1?'已写入':u>0?'写入途中':'尚未写入');r.dest.dataset.written=String(u===1);});
+  text(summary,18,594,p>=5?`${d.blocks.length} 个连续块 · 总载荷 48 字节`:'哪些相邻映射可以合并？');blocks.forEach((e,i)=>{const b=d.blocks[i];text(e,18,630+i*26,`源 ${b.src} → 目标 ${b.dst}：${b.pages} 页 × ${d.bytesPerPage} 字节`);show(e,p>=5?1:0);});text(boundary,18,748);if(m)boundary.setAttribute('font-size','12');
+ };
+});
+V['request-runtime']=(svg,viewport,s)=>board(svg,viewport,'ownership',()=>750,H=>{
+ const {txt,rect,path,text,box,show,wire,token,move,set}=H,d=s.data;
+ const request=rect(),cache=rect(),reqTitle=txt('请求 R1 / 请求行','teach-heading'),cacheTitle=txt('前缀缓存管理','teach-heading'),reqState=txt('','teach-small'),cacheState=txt('','teach-small');
+ const memoryTitle=txt('固定的 KV 位置 · 不随归属变化搬动','teach-heading');
+ const cells=Array.from({length:6},(_,i)=>({t:token('physical-kv-'+i,i<4?'p'+(i+1):'y'+(i-3),44,'teach-token teach-color-'+i%5),label:txt('位置 '+i,'teach-small'),owner:path()}));
+ const cached=path(),requestLink=path(),bus=path(),last=token('last-output','y3',60,'teach-token teach-color-3'),lastLabel=txt('最后输出 · 尚未作为模型输入','teach-small'),note=txt('','teach-heading'),detail=txt('','teach-small');
+ return(p,m)=>{const W=m?360:720,rx=18,cx=m?190:400;
+  box(request,rx,24,m?152:280,126);box(cache,cx,24,m?152:300,126);text(reqTitle,rx+10,52);text(cacheTitle,cx+10,52);if(m){reqTitle.setAttribute('font-size','14');cacheTitle.setAttribute('font-size','14');}
+  text(reqState,rx+10,88,p>=3?'请求行已归还':p>=1?'已记录结束原因':'仍持有请求行');text(cacheState,cx+10,88,d.cache?(p>=2?'保留 KV，仍占内存':'尚未接管'):'本例关闭缓存');
+  text(memoryTitle,18,366);if(m)memoryTitle.setAttribute('font-size','15');
+  const step=m?53:110;cells.forEach((c,i)=>{const x=24+i*step;move(c.t,x,280);text(c.label,x,338);c.t.g.classList.toggle('teach-empty',p>=3&&!d.cache);wire(c.owner,`M${x+22} 242 V280`,d.cache?1:1-phase(p,2));});
+  wire(requestLink,`M${rx+76} 150 V190 H${W/2} V242`,1-phase(p,2));wire(cached,`M${cx+76} 150 V190 H${W/2} V242`,d.cache?phase(p,1):0);
+  set(bus,{d:`M46 242 H${46+5*step}`});show(bus,d.cache?1:1-phase(p,2));
+  text(lastLabel,18,402);move(last,28,424);
+  text(note,18,548,p>=3?(d.cache?'请求行空闲；KV 仍由缓存保留':'请求行与 KV 位置都可重新分配'):'结束原因不会自动归还资源');if(m)note.setAttribute('font-size','16');
+  text(detail,18,590,p>=3?(d.cache?'实框：六个 KV 位置仍被缓存占用。':'虚框：可再分配，不表示字节已被清零。'):'线表示持有关系；位置 0…5 始终不动。');
+ };
+});
+V['f-serving']=(svg,viewport,s)=>board(svg,viewport,'cancel',()=>730,H=>{
+ const {txt,rect,text,box,token,move,show}=H;
+ const panels=[rect(),rect(),rect()],heads=['客户端','后端操作','资源使用权'].map(x=>txt(x,'teach-heading')),states=[txt('','teach-small'),txt('','teach-small'),txt('','teach-small')];
+ const message=token('cancel-message','取消 R1',90,'teach-token teach-color-2');
+ const resource=[0,1,2,3].map(i=>token('resource-'+i,'位置 '+i,64,'teach-token teach-color-'+i));
+ const track=rect('teach-track'),work=rect('teach-compute'),note=txt('','teach-heading'),why=txt('先停止等待 ≠ 后端已停止 ≠ 资源已归还','teach-small');
+ return(p,m)=>{const W=m?360:720;[0,1,2].forEach(i=>{box(panels[i],16,24+i*190,W-32,146);text(heads[i],28,54+i*190);});
+  text(states[0],28,88,p>=1?'连接已断开；客户端不再等待':'连接中；等待 R1');text(states[1],28,278,p>=4?'相关在途使用已结束':p>=3?'取消已登记；等待安全边界':p>=2?'取消已到达，等待处理':'操作仍在执行');text(states[2],28,468,p>=5?'使用权已归还，可重新分配':'仍被 R1 持有');
+  move(message,m?226:540,lerp(98,306,phase(p,1)),p>=1?1:0);
+  box(track,28,330,m?180:450,12);box(work,28,330,(m?180:450)*(.35+.65*phase(p,3)),12);
+  resource.forEach((t,i)=>{move(t,28+i*(m?77:160),498);t.g.classList.toggle('teach-empty',p>=5);});
+  text(note,18,642,p>=5?'安全收尾后才腾出使用权':'操作进度条仅为教学呈现');text(why,18,684);if(m)why.setAttribute('font-size','12');
+ };
+});
+V['serving-operations']=(svg,viewport,s)=>board(svg,viewport,'queued-cancel',()=>800,H=>{
+ const {txt,rect,text,box,show,token,move}=H,d=s.data;
+ const panels=[rect(),rect()],titles=[txt('前端 TokenizerManager','teach-heading'),txt('后端 Scheduler','teach-heading')],states=[txt('','teach-small'),txt('','teach-small')];
+ const front=token('front-state','ReqState · R1',150,'teach-token teach-color-0'),req=token('scheduler-req','Req · R1',150,'teach-token teach-color-1');
+ const abort=token('abort-msg','AbortReq(R1)',130,'teach-token teach-color-2'),echo=token('echo-msg','取消处理回告',130,'teach-token teach-color-3');
+ const client=txt('','teach-small'),resource=txt('GPU KV：整个示例均未分配','teach-heading'),why=txt('同一 rid 关联两个对象；消息不是把对象搬过去。','teach-small'),result=txt('','teach-heading');
+ return(p,m)=>{const W=m?360:720,idx=Math.min(4,Math.floor(p)),state=d.states[idx];
+  panels.forEach((r,i)=>box(r,16,44+i*336,W-32,170));titles.forEach((h,i)=>text(h,28,74+i*336));
+  move(front,34,100);front.g.classList.toggle('teach-empty',!state.frontend);move(req,34,436);req.g.classList.toggle('teach-empty',!state.queued);
+  text(states[0],28,172,state.frontend?'本地状态仍在，等后端回告':'本地状态已清理');text(states[1],28,532,state.queued?'waiting_queue 仍引用 Req':'已移出等待队列，回告可发送');
+  move(abort,m?198:490,lerp(134,414,phase(p,2)),d.kind==='disconnect'?phase(p,1):0);move(echo,m?198:490,lerp(474,112,phase(p,3)),p>=3?1:0);
+  text(client,18,24,state.client==='断连'?'客户端已断连，不会再收到响应':'客户端连接仍在');text(why,18,606);if(m)why.setAttribute('font-size','12');text(resource,18,658);
+  text(result,18,720,p>=4?(d.kind==='waiting'?'前端收尾；本例返回 503':'前端收尾；不是客户端收包确认'):'取消已派发 ≠ 后端已处理');if(m)result.setAttribute('font-size','16');
+ };
+});
+})();

@@ -1,22 +1,37 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>并行与执行拓扑 · AI Infra Wiki</title><meta name="description" content="用权重分块、流水线、请求分配、专家路由和因果矩阵理解 SGLang 并行分工。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="../inference-overview/overview.css"><link rel="stylesheet" href="parallelism.css"><script src="../../site.js" defer></script><script src="model.js" defer></script><script src="parallelism.js" defer></script></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>TP / PP / DP / EP / CP：SGLang 并行分工 · AI Infra Wiki</title><meta name="description" content="用权重分块、流水线、请求分配、专家路由和因果矩阵理解 SGLang 并行分工。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="../inference-overview/overview.css"><link rel="stylesheet" href="parallelism.css"><script src="../../motion/integration.js" defer></script><script src="../../site.js" defer></script><script src="model.js" defer></script><script src="../../motion/boundaries.js" defer></script><script src="parallelism.js" defer></script><link rel="stylesheet" href="../../foundations/foundations.css"><link rel="stylesheet" href="../../motion/motion.css"><script src="../../vendor/gsap/gsap.min.js" defer></script><script src="../../motion/scenes.js" defer></script><script src="../../motion/player.js" defer></script></head>
 <body data-page="parallelism"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header><div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
 <details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
 <div class="sidebar-content">
 <a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="chapter-nav" data-chapter="foundations"><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="../../foundations/tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="../../foundations/generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="../../foundations/attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="../../foundations/cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="../../foundations/batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="../../foundations/hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="../../foundations/parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="../../foundations/communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="../../foundations/deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="../../foundations/speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="../../foundations/serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="../../foundations/metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="sglang" open><summary>第二章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
 <summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第一层 · 建立全局">
 <details class="module-nav" data-module="system-overview">
 <summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/journey.html">一条请求怎样变成回答</a>
-<a class="lesson-link" href="../system-overview/index.html">推理系统里，哪些边界不能混在一起？</a>
+<a class="lesson-link" href="../inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
+<a class="lesson-link" href="../system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
 </div></details>
 <details class="module-nav" data-module="request-runtime">
 <summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#request-runtime">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../request-runtime/index.html">一条请求穿过哪些进程与对象</a>
+<a class="lesson-link" href="../request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-instance">
@@ -25,20 +40,20 @@
 <details class="module-nav" data-module="model-execution">
 <summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/transformer.html">P / D 在 Transformer 里做什么</a>
-<a class="lesson-link" href="../model-execution/index.html">一批输入，怎样变成设备上的计算？</a>
+<a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
+<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
 </div></details>
 <details class="module-nav" data-module="kv-memory">
 <summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/kv-cache.html">KV：模型留给下一轮的记忆</a>
-<a class="lesson-link" href="../kv-memory/index.html">KV 放在哪里，又在何时回收？</a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
+<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
 </div></details>
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#scheduling">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/scheduling.html">多请求怎样共享一次执行</a>
-<a class="lesson-link" href="../scheduling/index.html">排到前面，就能开始计算吗？</a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-distributed" open>
@@ -47,19 +62,19 @@
 <details class="module-nav" data-module="parallelism" open>
 <summary class="module-heading" aria-current="location"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#parallelism">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="index.html" aria-current="page">多张卡，究竟切开了什么？</a>
+<a class="lesson-link" href="index.html" aria-current="page">TP / PP / DP / EP / CP：SGLang 并行分工</a>
 </div></details>
 <details class="module-nav" data-module="communication">
 <summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#communication">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../communication/index.html">数据传过去，何时才算可用？</a>
+<a class="lesson-link" href="../communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
 </div></details>
 <details class="module-nav" data-module="disaggregation">
 <summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/deployment.html">合并部署与 PD 分离</a>
-<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD Prefill 请求生命周期</a>
-<a class="lesson-link" href="../pd-dataflow/index.html">数据流、状态与队列</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
+<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-serving">
@@ -68,12 +83,12 @@
 <details class="module-nav" data-module="advanced-generation">
 <summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#advanced-generation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../advanced-generation/index.html">生成一个 token，还会改变哪些状态？</a>
+<a class="lesson-link" href="../advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
 </div></details>
 <details class="module-nav" data-module="serving-operations">
 <summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#serving-operations">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../serving-operations/index.html">服务在线，请求就一定能完成吗？</a>
+<a class="lesson-link" href="../serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-practice">
@@ -82,23 +97,24 @@
 <details class="module-nav" data-module="performance">
 <summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#performance">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../performance-engineering/index.html">性能数字，究竟量到了哪一段？</a>
+<a class="lesson-link" href="../performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
 </div></details>
 <details class="module-nav" data-module="case-studies">
 <summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">机制验证练习与 PP loop</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">依赖分析与耗时场景</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP loop 源码阅读</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识</a>
 </div></details>
 </nav></details>
-<div class="sidebar-note"><span class="status-dot"></span> 一张框架，逐步深入<p>先理解单实例，再连接多卡多机；模型、服务与性能按目标选读。</p></div>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside><div class="site-content"><main id="main-content" tabindex="-1"><!-- learning-context:start -->
-<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">学习框架</a><span aria-hidden="true">/</span><a href="../../#stage-distributed">第三层 · 扩展到多卡多机</a><span aria-hidden="true">/</span><a href="../../#parallelism">06 并行与执行拓扑</a><span aria-hidden="true">/</span><span aria-current="page">多张卡，究竟切开了什么？</span></nav>
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第二章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-distributed">第三层 · 扩展到多卡多机</a><span aria-hidden="true">/</span><a href="../../#parallelism">06 并行与执行拓扑</a><span aria-hidden="true">/</span><span aria-current="page">TP / PP / DP / EP / CP：SGLang 并行分工</span></nav>
 <!-- learning-context:end -->
-<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#parallelism">模块 06 / 并行与执行拓扑</a><span class="lesson-count">SGLang · 并行分工</span></div><h1>多张卡，究竟切开了什么？</h1><p>先认清切的是权重、层、请求、专家还是上下文，再看各张卡为什么必须交换数据。</p><div class="meta-tags"><span>TP / PP / DP / EP / CP</span><span>源码 279339f113</span><span>教学算例 · 非性能测量</span></div></header>
-<p class="big-idea">并行方式的区别首先是分工对象。两张卡可能合作算同一个输出，也可能分别服务不同请求。</p>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#parallelism">模块 06 / 并行与执行拓扑</a><span class="lesson-count">SGLang · 并行分工</span></div><h1>TP / PP / DP / EP / CP：SGLang 并行分工</h1><p>先认清切的是权重、层、请求、专家还是上下文，再看各张卡为什么必须交换数据。</p><div class="meta-tags"><span>TP / PP / DP / EP / CP</span><span>源码 279339f113</span><span>教学算例 · 非性能测量</span></div></header><!-- lesson-reading:start --><nav class="lesson-reading-nav" aria-label="本课阅读入口"><span>按问题阅读</span><a href="#implementation-why-title">从问题理解实现</a><a href="#reading-topic-1">SP、PCP 与 DCP 的原理入口</a><a href="#reading-topic-2">读图前：术语与编号</a><a href="#parallel-title">并行分工实验</a><a href="#reading-topic-4">先预测，再操作</a><a href="#reading-topic-5">固定源码与继续阅读</a></nav><!-- lesson-reading:end --><!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>把切分方式对应到 rank、进程组和模型实现，检查各模式的输入输出及组合约束。</p><a href="../../foundations/parallel.html">需要回顾原理：TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">基础章解释切什么；实现章还要回答谁与谁协作。相同进程可能在不同通信组里承担不同角色，必须结合模型层和组内布局解释 rank。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-background"><summary>按哪一层分工，就要找对应的协作组</summary><p>官方 DPA 指南区分整模型副本与 Attention 内的请求分工，并用 MLA 的重复 KV 占用说明 DPA 的价值。NCCL 文档定义了 communicator 中的 rank 与设备关系；这帮助理解同一进程为什么可以属于多个协作范围。</p><p class="design-source">概念与设计说明：<a href="https://docs.sglang.io/docs/advanced_features/dp_dpa_smg_guide">SGLang 官方：DP、DPA 与 Router ↗</a> · <a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/communicators.html">NVIDIA：Creating a Communicator ↗</a></p><p class="design-source">当前官方文档的参数命名可能不同；本课保留固定版本配置，不直接套用新版启动参数。 资料读取：2026-10-16。</p></details><nav class="design-nav" aria-label="实现问题导航"><a href="#design-groups">为什么配置里既有 rank，又有多个 process group？</a><a href="#design-layer-layout">为什么 Attention 的 DP 不等同于独立服务副本？</a></nav><section class="design-question" id="design-groups"><h3>为什么配置里既有 rank，又有多个 process group？</h3><p>TP、PP 等协作范围不同。如果不明确组成员，就无法知道一次求和、收集或激活交接应当等待哪些参与者。</p><details><summary>展开机制与具体例子</summary><p>本页 TP=2、PP=2 的教学拓扑把同级 rank 组成 TP 组，再沿相同 TP 坐标组成 PP 组。一个进程在模型并行世界与子组中可以有不同编号，须注明范围。</p></details><p class="design-tradeoff"><strong>取舍与条件：</strong>组划分组织协作，但不会消除通信成本；Attention DP、EP、CP 可能在既有世界内分组，不能把所有参数机械相乘得到卡数。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/distributed/parallel_state.py#L2507">initialize_model_parallel · 本课实现核对 ↗</a></p><ul class="design-links"><li><a href="../../foundations/parallel.html#parallel-overview">回看各并行策略的完整输入与分工 →</a></li></ul></section><section class="design-question" id="design-layer-layout"><h3>为什么 Attention 的 DP 不等同于独立服务副本？</h3><p>不同层的计算和权重组织不同，一种布局未必同时适合 Attention 与 MoE。层内按请求分组，和在服务入口复制整个模型，是不同层级的设计。</p><details><summary>展开机制与具体例子</summary><p>本页 Attention DP 示例仍在同一个模型并行世界中组织 Attention TP 子组，层间可能需要整理 token 布局。先确认当前是在讨论哪一层，再解释 DP 数值。</p></details><p class="design-tradeoff"><strong>取舍与条件：</strong>更适合某层的分组可能引入布局转换与通信；是否能与其他并行选项组合，必须核对当前固定版本的约束。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/runtime_context.py#L151">Attention 并行宽度派生 · 本课实现核对 ↗</a></p></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-10-16。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end --><section class="overview-section"><h2 id="reading-topic-1">SP、PCP 与 DCP 的原理入口</h2><p>先在<a href="../../foundations/parallel.html">基础课的并行策略导航</a>比较 SP 激活布局转换、PCP 长 prompt 分工、DCP 历史 KV 分片与结果合并，并阅读各自的收益和通信代价。本页按下方固定源码基线讲解已核对的实现路径；原理示例不代表该版本支持所有并行组合。</p></section><section class="overview-section"><h2 id="reading-topic-2">读图前：术语与编号</h2><dl class="foundation-terms"><div><dt>MB / microbatch · 微批次</dt><dd>一次经过流水线的工作单元，可包含多条请求。</dd></div><div><dt>PP stage / Activation · 阶段与激活</dt><dd>Stage 0 / Stage 1 负责 L1–L2 / L3–L4；微批次依次经过它们，交接中间特征张量（激活）。</dd></div><div><dt>Rank · 进程编号</dt><dd>编号必须结合通信组理解。单独 PP 算例中一个 stage 使用一张 GPU；组合拓扑中一个 stage 包含两个 TP rank。</dd></div></dl></section>
+
 <section class="parallel-lab" data-parallel-lab hidden aria-labelledby="parallel-title">
 <div class="mode-picker" role="group" aria-label="选择并行机制"><button type="button" data-mode="tp" aria-pressed="true">TP · 权重</button><button type="button" data-mode="pp" aria-pressed="false">PP · 层</button><button type="button" data-mode="dp" aria-pressed="false">DP · 请求</button><button type="button" data-mode="ep" aria-pressed="false">EP · 专家</button><button type="button" data-mode="cp" aria-pressed="false">CP · 上下文</button></div>
 <h2 id="parallel-title">并行分工实验</h2>
@@ -110,11 +126,14 @@
 <div class="parallel-controls"><button id="parallel-previous" type="button">上一步</button><button id="parallel-play" type="button" aria-pressed="false">播放</button><button id="parallel-next" type="button">下一步</button><button id="parallel-reset" type="button">重置</button><output id="parallel-status" aria-live="polite"></output></div>
 <div id="parallel-scene" class="parallel-scene"></div><p id="parallel-caption" class="parallel-caption"></p>
 <details class="parallel-details"><summary>为什么这样分工 · 源码与边界</summary><p id="parallel-why"></p><a id="parallel-source" href="#source-baseline">源码 ↗</a></details>
-<p class="parallel-footnote">颜色区分分工，动画只表达交接。小矩阵、标量专家和等长时隙都是教学假设；未运行 SGLang / GPU 实验。</p></section>
+<p class="parallel-footnote">颜色区分分工，动画只表达交接。小矩阵、标量专家和等长时隙都是教学假设；未运行 SGLang / GPU 实验。</p></section><p class="big-idea">并行方式的区别首先是分工对象。两张卡可能合作算同一个输出，也可能分别服务不同请求。</p>
 <noscript><p class="big-idea">交互实验需要 JavaScript。下方组合图、自测和完整学习笔记仍可阅读。</p></noscript>
-<details class="topology-detail"><summary>组合拓扑：同样四张卡，TP=2 / PP=2 怎样分组？</summary><div class="rank-grid" aria-label="两级流水线，每级有两个 TP rank"><div class="rank-group"><strong>stage 0 · L1–2</strong><div class="rank-pair"><span>rank 0</span><span>rank 1</span></div><small>同级 TP 组 [0,1]</small></div><div class="rank-group"><strong>stage 1 · L3–4</strong><div class="rank-pair"><span>rank 2</span><span>rank 3</span></div><small>同级 TP 组 [2,3]</small></div></div><p>跨级沿相同 TP 坐标组成 PP 组：<strong>0 → 2</strong>、<strong>1 → 3</strong>。每个 rank 只保存本级层的本地 TP 分片。rank 是进程身份，group 是参与一次通信的成员集合。</p><p>这个模型并行世界有 TP × PP = 4 个 rank。EP、Attention DP、CP 可以在已有 TP 世界内再分组，不能把所有参数再相乘成卡数。<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/distributed/parallel_state.py#L2507">核对分组实现 ↗</a></p></details>
+<details class="topology-detail"><summary>组合拓扑：同样四张卡，TP=2 / PP=2 怎样分组？</summary><div class="rank-grid" aria-label="两级流水线，每级有两个 TP rank"><div class="rank-group"><strong>stage 0 · L1–2</strong><div class="rank-pair"><span>rank 0</span><span>rank 1</span></div><small>同级 TP 组 [0,1]</small></div><div class="rank-group"><strong>stage 1 · L3–4</strong><div class="rank-pair"><span>rank 2</span><span>rank 3</span></div><small>同级 TP 组 [2,3]</small></div></div><p>跨级沿相同 TP 坐标组成 PP 组：<strong>0 → 2</strong>、<strong>1 → 3</strong>。每个 rank 只保存本级层的本地 TP 分片。图中 rank 0–3 使用该模型并行世界的编号；同一进程在各子通信组中还有组内 rank。group 是参与一次通信的成员集合。</p><p>这个模型并行世界有 TP × PP = 4 个 rank。EP、Attention DP、CP 可以在已有 TP 世界内再分组，不能把所有参数再相乘成卡数。<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/distributed/parallel_state.py#L2507">核对分组实现 ↗</a></p></details>
 <details class="topology-detail"><summary>DP Attention：名字带 DP，为什么不等于两个独立模型副本？</summary><p>以下只画 Attention 的分工：TP 世界共有 4 个 rank，Attention DP=2，CP=1，所以每组 Attention TP=2。</p><div class="rank-grid" aria-label="同一个 TP 世界中的两个 Attention TP 子组"><div class="rank-group"><strong>Attention 请求分组 A</strong><div class="rank-pair"><span>rank 0</span><span>rank 1</span></div><small>共同处理这组 token 的不同头 / 投影片</small></div><div class="rank-group"><strong>Attention 请求分组 B</strong><div class="rank-pair"><span>rank 2</span><span>rank 3</span></div><small>共同处理另一组 token 的不同头 / 投影片</small></div></div><p>四个 rank 仍属于同一个模型并行世界。Attention 与 MoE 可以使用不同分组，层间还要整理 token 布局；这张图不表示两套完整模型。<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/runtime_context.py#L151">核对派生宽度 ↗</a></p></details>
-<section class="overview-section"><h2>先预测，再操作</h2><details class="self-check"><summary>TP 两张卡都输出两个数，是否已经算完？</summary><p>切到 Row。局部贡献 [3,5] 与 [7,25] 的形状相同，但需要逐位置相加才能得到 [10,30]。看见 shape 一样不能代替检查元素语义。</p></details><details class="self-check"><summary>PP 有两张卡，为什么第一格仍有一张空闲？</summary><p>后级依赖前级的激活。切换 1 个与 3 个 microbatch，观察填充与排空：多批次可以重叠不同层的工作，但无法消除同一批次的先后依赖。</p></details><details class="self-check"><summary>普通 DP 和 EP 都在分任务，为什么不能互换？</summary><p>DP 在实例入口选择请求副本；EP 在 MoE 层处理 token 与专家的配对。一次请求可以产生很多 token，每个 token 又可以选择多个专家。</p></details><details class="self-check"><summary>上下文各切一半，工作量与 KV 占用一定各减半吗？</summary><p>CP 的连续对照仍是四个查询对四个查询，却有 10 / 26 对因果可见关系。Zigzag 将这一项变为 18 / 18；所选路径还会汇合当前 K/V，所以两种“减半”都不能只凭查询个数推断。</p></details></section>
-<section class="overview-section source-notes" id="source-baseline"><h2>固定源码与继续阅读</h2><p>源码分析基线：<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">公开上游 SGLang main · 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>，读取于 2026-09-23。只读固定 Git 对象；源码工作区原有未跟踪文件保留。未加载模型、启动通信或进行性能实测。已有资料继续保留各自源码版本。</p><ul><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/%E5%B9%B6%E8%A1%8C%E6%96%B9%E6%B3%95/SGLang%20%E5%B9%B6%E8%A1%8C%E5%88%86%E5%B7%A5%E4%B8%8E%E6%89%A7%E8%A1%8C%E6%8B%93%E6%89%91%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md">完整学习笔记：算例、进程组、组合边界与源码锚点</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/06-parallelism/02-TensorParallel与层内通信.md">TP：权重布局、局部结果与通信</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/06-parallelism/04-PipelineParallel与Microbatch.md">PP：microbatch、层划分与反馈回路</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/06-parallelism/05-MoE专家并行与负载均衡.md">EP：专家任务、dispatcher 与 EPLB</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/06-parallelism/06-ContextParallel与并行组合.md">CP：Zigzag Prefill、Decode CP 与组合条件</a></li></ul></section>
+<section class="overview-section"><h2 id="reading-topic-4">先预测，再操作</h2><details class="self-check"><summary>TP 两张卡都输出两个数，是否已经算完？</summary><p>切到 Row。局部贡献 [3,5] 与 [7,25] 的形状相同，但需要逐位置相加才能得到 [10,30]。看见 shape 一样不能代替检查元素语义。</p></details><details class="self-check"><summary>PP 有两张卡，为什么第一格仍有一张空闲？</summary><p>后级依赖前级的激活。切换 1 个与 3 个微批次（microbatch），观察填充与排空：多批次可以重叠不同层的工作，但无法消除同一批次的先后依赖。</p></details><details class="self-check"><summary>普通 DP 和 EP 都在分任务，为什么不能互换？</summary><p>DP 在实例入口选择请求副本；EP 在 MoE 层处理 token 与专家的配对。一次请求可以产生很多 token，每个 token 又可以选择多个专家。</p></details><details class="self-check"><summary>上下文各切一半，工作量与 KV 占用一定各减半吗？</summary><p>CP 的连续对照仍是四个查询对四个查询，却有 10 / 26 对因果可见关系。Zigzag 将这一项变为 18 / 18；所选路径还会汇合当前 K/V，所以两种“减半”都不能只凭查询个数推断。</p></details></section>
+<section class="overview-section source-notes" id="source-baseline"><h2 id="reading-topic-5">固定源码与继续阅读</h2><p>源码分析基线：<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">公开上游 SGLang main · 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>，读取于 2026-09-23。只读固定 Git 对象；源码工作区原有未跟踪文件保留。未加载模型、启动通信或进行性能实测。已有资料继续保留各自源码版本。</p><ul><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/%E5%B9%B6%E8%A1%8C%E6%96%B9%E6%B3%95/SGLang%20%E5%B9%B6%E8%A1%8C%E5%88%86%E5%B7%A5%E4%B8%8E%E6%89%A7%E8%A1%8C%E6%8B%93%E6%89%91%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md">完整学习笔记：算例、进程组、组合边界与源码锚点</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/06-parallelism/02-TensorParallel与层内通信.md">TP：权重布局、局部结果与通信</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/06-parallelism/04-PipelineParallel与Microbatch.md">PP：microbatch、层划分与反馈回路</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/06-parallelism/05-MoE专家并行与负载均衡.md">EP：专家任务、dispatcher 与 EPLB</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/06-parallelism/06-ContextParallel与并行组合.md">CP：Zigzag Prefill、Decode CP 与组合条件</a></li></ul></section>
+<!-- reading-pagers:start -->
+<nav class="reading-route-pager" data-reading-route="questions" data-route-title="带着现象找原因" data-route-position="3 / 4" aria-label="带着现象找原因 · 继续学习" hidden><a href="../kv-memory/index.html?learn=questions"><small>这条路线 · 上一节</small><strong>← KV Memory Pool：地址映射、分页与缓存回收</strong></a><a class="next" href="../serving-operations/index.html?learn=questions"><small>这条路线 · 下一节</small><strong>服务治理：Health Check、Timeout 与 Cancellation →</strong></a></nav>
+<!-- reading-pagers:end -->
 <nav class="lesson-pager" aria-label="框架内继续学习"><a href="../../#parallelism"><small>回到所属模块</small><strong>← 06 并行与执行拓扑</strong></a><a class="next" href="../communication/index.html"><small>下一模块 · 07</small><strong>通信与传输 →</strong><span>从本模块入门课程开始</span></a></nav>
 </main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

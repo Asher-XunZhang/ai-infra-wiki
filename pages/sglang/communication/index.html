@@ -1,22 +1,37 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>通信与传输 · AI Infra Wiki</title><meta name="description" content="用消息交接、collective 算例、KV 页映射和就绪门槛理解 SGLang 通信。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="../inference-overview/overview.css"><link rel="stylesheet" href="../parallelism/parallelism.css"><link rel="stylesheet" href="communication.css"><script src="../../site.js" defer></script><script src="model.js" defer></script><script src="communication.js" defer></script></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>IPC、Collective 与 KV Transfer：数据何时可用？ · AI Infra Wiki</title><meta name="description" content="用消息交接、collective 算例、KV 页映射和就绪门槛理解 SGLang 通信。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="../inference-overview/overview.css"><link rel="stylesheet" href="../parallelism/parallelism.css"><link rel="stylesheet" href="communication.css"><script src="../../motion/integration.js" defer></script><script src="../../site.js" defer></script><script src="model.js" defer></script><script src="communication.js" defer></script><link rel="stylesheet" href="../../foundations/foundations.css"><link rel="stylesheet" href="../../motion/motion.css"><script src="../../vendor/gsap/gsap.min.js" defer></script><script src="../../motion/scenes.js" defer></script><link rel="stylesheet" href="../../motion/teaching.css"><script src="../../motion/teaching-visuals.js" defer></script><script src="../../motion/detail-scenes.js" defer></script><script src="../../motion/detail-visuals.js" defer></script><script src="../../motion/boundaries.js" defer></script><script src="../../motion/player.js" defer></script></head>
 <body data-page="communication"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header><div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
 <details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
 <div class="sidebar-content">
 <a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="chapter-nav" data-chapter="foundations"><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="../../foundations/tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="../../foundations/generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="../../foundations/attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="../../foundations/cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="../../foundations/batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="../../foundations/hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="../../foundations/parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="../../foundations/communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="../../foundations/deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="../../foundations/speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="../../foundations/serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="../../foundations/metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="sglang" open><summary>第二章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
 <summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第一层 · 建立全局">
 <details class="module-nav" data-module="system-overview">
 <summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/journey.html">一条请求怎样变成回答</a>
-<a class="lesson-link" href="../system-overview/index.html">推理系统里，哪些边界不能混在一起？</a>
+<a class="lesson-link" href="../inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
+<a class="lesson-link" href="../system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
 </div></details>
 <details class="module-nav" data-module="request-runtime">
 <summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#request-runtime">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../request-runtime/index.html">一条请求穿过哪些进程与对象</a>
+<a class="lesson-link" href="../request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-instance">
@@ -25,20 +40,20 @@
 <details class="module-nav" data-module="model-execution">
 <summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/transformer.html">P / D 在 Transformer 里做什么</a>
-<a class="lesson-link" href="../model-execution/index.html">一批输入，怎样变成设备上的计算？</a>
+<a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
+<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
 </div></details>
 <details class="module-nav" data-module="kv-memory">
 <summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/kv-cache.html">KV：模型留给下一轮的记忆</a>
-<a class="lesson-link" href="../kv-memory/index.html">KV 放在哪里，又在何时回收？</a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
+<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
 </div></details>
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#scheduling">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/scheduling.html">多请求怎样共享一次执行</a>
-<a class="lesson-link" href="../scheduling/index.html">排到前面，就能开始计算吗？</a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-distributed" open>
@@ -47,19 +62,19 @@
 <details class="module-nav" data-module="parallelism">
 <summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#parallelism">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../parallelism/index.html">多张卡，究竟切开了什么？</a>
+<a class="lesson-link" href="../parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
 </div></details>
 <details class="module-nav" data-module="communication" open>
 <summary class="module-heading" aria-current="location"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#communication">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="index.html" aria-current="page">数据传过去，何时才算可用？</a>
+<a class="lesson-link" href="index.html" aria-current="page">IPC、Collective 与 KV Transfer：数据何时可用？</a>
 </div></details>
 <details class="module-nav" data-module="disaggregation">
 <summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/deployment.html">合并部署与 PD 分离</a>
-<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD Prefill 请求生命周期</a>
-<a class="lesson-link" href="../pd-dataflow/index.html">数据流、状态与队列</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
+<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-serving">
@@ -68,12 +83,12 @@
 <details class="module-nav" data-module="advanced-generation">
 <summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#advanced-generation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../advanced-generation/index.html">生成一个 token，还会改变哪些状态？</a>
+<a class="lesson-link" href="../advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
 </div></details>
 <details class="module-nav" data-module="serving-operations">
 <summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#serving-operations">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../serving-operations/index.html">服务在线，请求就一定能完成吗？</a>
+<a class="lesson-link" href="../serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-practice">
@@ -82,23 +97,24 @@
 <details class="module-nav" data-module="performance">
 <summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#performance">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../performance-engineering/index.html">性能数字，究竟量到了哪一段？</a>
+<a class="lesson-link" href="../performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
 </div></details>
 <details class="module-nav" data-module="case-studies">
 <summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">机制验证练习与 PP loop</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">依赖分析与耗时场景</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP loop 源码阅读</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识</a>
 </div></details>
 </nav></details>
-<div class="sidebar-note"><span class="status-dot"></span> 一张框架，逐步深入<p>先理解单实例，再连接多卡多机；模型、服务与性能按目标选读。</p></div>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside><div class="site-content"><main id="main-content" tabindex="-1"><!-- learning-context:start -->
-<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">学习框架</a><span aria-hidden="true">/</span><a href="../../#stage-distributed">第三层 · 扩展到多卡多机</a><span aria-hidden="true">/</span><a href="../../#communication">07 通信与传输</a><span aria-hidden="true">/</span><span aria-current="page">数据传过去，何时才算可用？</span></nav>
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第二章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-distributed">第三层 · 扩展到多卡多机</a><span aria-hidden="true">/</span><a href="../../#communication">07 通信与传输</a><span aria-hidden="true">/</span><span aria-current="page">IPC、Collective 与 KV Transfer：数据何时可用？</span></nav>
 <!-- learning-context:end -->
-<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#communication">模块 07 / 通信与传输</a><span class="lesson-count">SGLang · 通信机制</span></div><h1>数据传过去，何时才算可用？</h1><p>先看传的是消息、张量还是 KV，再区分发送、完成、就绪和回收。</p><div class="meta-tags"><span>IPC / collective / KV</span><span>源码 279339f113</span><span>教学算例 · 非性能测量</span></div></header>
-<p class="big-idea">“已发送”描述发送侧的动作；“可使用”需要接收侧满足自己的依赖。</p>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#communication">模块 07 / 通信与传输</a><span class="lesson-count">SGLang · 通信机制</span></div><h1>IPC、Collective 与 KV Transfer：数据何时可用？</h1><p>先看传的是消息、张量还是 KV，再区分发送、完成、就绪和回收。</p><div class="meta-tags"><span>IPC / collective / KV</span><span>源码 279339f113</span><span>教学算例 · 非性能测量</span></div></header><!-- lesson-reading:start --><nav class="lesson-reading-nav" aria-label="本课阅读入口"><span>按问题阅读</span><a href="#implementation-why-title">从问题理解实现</a><a href="#reading-topic-1">读图前：术语与编号</a><a href="#comm-title">通信实验</a><a href="#reading-topic-3">先预测，再操作</a><a href="#reading-topic-4">固定源码与继续阅读</a></nav><!-- lesson-reading:end --><!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>按实际接口区分控制消息、张量通信与 KV 搬运，追踪可用和释放条件。</p><a href="../../foundations/communication.html">需要回顾原理：AllReduce、AllGather 与数据传输：结果何时可用？</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">控制消息让组件知道“做什么”，张量和 KV 才携带实际计算数据。接口、参与者和载荷不同，它们的发送、完成和释放条件也不同。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-background"><summary>调用返回与数据可用有不同含义</summary><p>NVIDIA 对 NCCL 的说明明确区分提交到 CUDA stream 与设备异步执行完成。因此读通信图时，要先找载荷、参与者与完成语义，再判断下游能否读取；本课还分别展示 IPC 和 P/D 传输。</p><p class="design-source">概念与设计说明：<a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/streams.html">NVIDIA：CUDA Stream Semantics ↗</a> · <a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/communicators.html">NVIDIA：Creating a Communicator ↗</a></p><p class="design-source">NCCL 语义只解释对应通道；不能替代 Mooncake、NIXL 或 IPC 的完成约定。 资料读取：2026-10-16。</p></details><nav class="design-nav" aria-label="实现问题导航"><a href="#design-channels">为什么不能把所有箭头都理解为同一种通信？</a><a href="#design-ready">为什么收到 Success 还要检查身份和其他参与者？</a></nav><section class="design-question" id="design-channels"><h3>为什么不能把所有箭头都理解为同一种通信？</h3><p>进程间请求消息、PP 激活、组内集合通信和跨 P/D 的 KV 交接有不同对象与结果约定。只知道“跨 GPU”无法确定该调用哪个接口、等待什么完成条件。</p><details><summary>展开机制与具体例子</summary><p>本页分别从 IPC 派发、send_tensor_dict 和 KV backend 进入；元数据用于组织载荷身份与位置，注册 buffer 只是使传输引擎能访问内存，不代表请求已经准备好计算。</p></details><p class="design-tradeoff"><strong>取舍与条件：</strong>接口分工使边界清楚，也需要跨组件跟踪进度。具体 TCP / RDMA 路径不能从逻辑箭头推断；本课未验证底层网络行为。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/distributed/parallel_state.py#L1744">send_tensor_dict · 本课实现核对 ↗</a></p><ul class="design-links"><li><a href="../../foundations/communication.html#why-topology">先区分通信操作与物理链路 →</a></li></ul></section><section class="design-question" id="design-ready"><h3>为什么收到 Success 还要检查身份和其他参与者？</h3><p>多个源 rank 可能分别负责一部分数据，同一 rank 的重复通知不能补足缺失的另一个；迟到或不匹配的元数据也不能让当前请求继续。</p><details><summary>展开机制与具体例子</summary><p>接收路径按参与者和请求信息核对状态，必要时等待元数据或缓存回载，再提交到 Req。bootstrap_room 是本例交接匹配使用的标识之一，不是物理地址。</p></details><p class="design-tradeoff"><strong>取舍与条件：</strong>门控增加状态管理，却避免把局部进度当作全部数据可用。失败释放仍须核对在途操作的安全条件，不能仅凭超时就假设远端停止写入。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/decode.py#L2158">_commit_transfer_to_req · 本课实现核对 ↗</a></p></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-10-16。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end --><section class="overview-section"><h2 id="reading-topic-1">读图前：术语与编号</h2><p>Rank 是进程在某个通信组中的编号。AllReduce 对相同位置的元素进行规约（本例求和）并把结果提供给组内所有参与者；AllGather 按约定顺序收集各参与者的片段，本身不做求和。源页号与目标页号属于各自的地址空间，数字相同也不代表同一块内存。</p></section>
+
 <section class="parallel-lab comm-lab" data-comm-lab hidden aria-labelledby="comm-title">
 <div class="mode-picker" role="group" aria-label="选择通信机制"><button data-mode="message" aria-pressed="true" type="button">消息与张量</button><button data-mode="collective" aria-pressed="false" type="button">组内通信</button><button data-mode="kv" aria-pressed="false" type="button">KV 搬运</button><button data-mode="gates" aria-pressed="false" type="button">就绪与回收</button></div>
 <h2 id="comm-title">通信实验</h2>
@@ -108,10 +124,12 @@
 <div class="parallel-settings" data-settings="gates" hidden><label>交接场景<select id="gate-kind"><option value="normal">元数据晚于 KV</option><option value="cache">还需恢复 HiCache</option><option value="corrupt">元数据 room 不匹配</option><option value="abort">失败后收齐 drain ACK</option><option value="timeout">失败后等待 ACK 超时</option></select></label></div>
 <div class="parallel-controls"><button id="comm-previous" type="button">上一步</button><button id="comm-play" type="button" aria-pressed="false">播放</button><button id="comm-next" type="button">下一步</button><button id="comm-reset" type="button">重置</button><output id="comm-status" aria-live="polite"></output></div>
 <div id="comm-scene" class="comm-scene"></div><p id="comm-caption" class="parallel-caption"></p>
-<details class="parallel-details"><summary>为什么这样传 · 源码与边界</summary><p id="comm-why"></p><a id="comm-source" href="#source-baseline">源码 ↗</a></details><p class="parallel-footnote">图中的数值、页号与时间步用于说明机制；箭头不表示物理网络拓扑或实测耗时。</p></section>
+<details class="parallel-details"><summary>为什么这样传 · 源码与边界</summary><p id="comm-why"></p><a id="comm-source" href="#source-baseline">源码 ↗</a></details><p class="parallel-footnote">图中的数值、页号与时间步用于说明机制；箭头不表示物理网络拓扑或实测耗时。</p></section><p class="big-idea">“已发送”描述发送侧的动作；“可使用”需要接收侧满足自己的依赖。</p>
 <noscript><p class="big-idea">交互实验需要 JavaScript。可阅读下方静态关系图与完整学习笔记。</p></noscript>
 <details class="topology-detail comm-lab"><summary>从语义到传输：RDMA 在哪一层？</summary><div class="comm-static"><span>任务语义<br>消息 / 张量 / KV</span><b>→</b><span>接口与后端<br>socket / process group / KV backend</span><b>→</b><span>实际搬运路径<br>依配置与硬件选择</span></div><p>这些不是一一对应的三条专线。同机 / 跨机描述位置，点对点 / collective 描述参与方式，TCP / RDMA 描述传输路径；不能单凭 “KV” 或 “collective” 判断是否走 RDMA。</p><p>SGLang 的 Mooncake wrapper 将指针与长度注册给引擎，并传入 transport 配置；默认 RDMA 与 TCP 等路径由配置和底层实现决定。注册内存、分配请求页、远端写入、调度请求是不同职责。本课只核对 SGLang 接口，没有运行或验证 Mooncake 底层网络行为。<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/distributed/device_communicators/mooncake_transfer_engine.py#L110">核对 wrapper ↗</a></p></details>
-<section class="overview-section"><h2>先预测，再操作</h2><details class="self-check"><summary>为什么 All-reduce 和 All-gather 不能替换？</summary><p>前者合并同一结果的局部贡献，后者收齐不同分片。切换算子，观察输出是 [11,22] 还是 [1,2,10,20]；形状和元素含义都不同。</p></details><details class="self-check"><summary>P 的 page 7 必须写到 D 的 page 7 吗？</summary><p>不必。页号各属于本地池，由交接元数据给出对应关系。切换“打散目标页”，A/B/C 的逻辑顺序不变，但物理落点和连续传输段数改变。</p></details><details class="self-check"><summary>两个 Success 通知一定代表两个源端完成吗？</summary><p>不一定。源码按源端 rank 身份去重；同一个 rank 重复通知不能代替另一个 rank 完成。</p></details><details class="self-check"><summary>元数据非零后，请求一定能继续吗？</summary><p>还要参与 rank 就绪、可选缓存恢复，以及提交时的 room 一致性等检查。用“不匹配”场景观察请求被终止，无法进入可调度队列。</p></details></section>
-<section class="overview-section source-notes" id="source-baseline"><h2>固定源码与继续阅读</h2><p>源码分析基线：<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">公开上游 SGLang main · 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>，读取于 2026-09-23。只读固定 Git 对象，保留源码工作区原有未跟踪文件。未启动 SGLang、GPU 通信或 RDMA 实验。其他资料保留各自版本与范围。</p><ul><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/%E5%B9%B6%E8%A1%8C%E6%96%B9%E6%B3%95/SGLang%20%E9%80%9A%E4%BF%A1%E4%B8%8E%E4%BC%A0%E8%BE%93%E6%9C%BA%E5%88%B6%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md">完整学习笔记：通信语义、地址算例与完成边界</a></li><li><a href="../parallelism/">并行分工：先确认每个 rank 持有什么</a></li><li><a href="../pd-dataflow/">PD 数据流案例：连接请求状态与队列</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/07-disaggregation/04-KV传输接口与后端实现地图.md">KV 传输接口与后端实现地图（独立源码基线）</a></li></ul></section>
+<section class="overview-section"><h2 id="reading-topic-3">先预测，再操作</h2><details class="self-check"><summary>为什么 All-reduce 和 All-gather 不能替换？</summary><p>前者合并同一结果的局部贡献，后者收齐不同分片。切换算子，观察输出是 [11,22] 还是 [1,2,10,20]；形状和元素含义都不同。</p></details><details class="self-check"><summary>P 的 page 7 必须写到 D 的 page 7 吗？</summary><p>不必。页号各属于本地池，由交接元数据给出对应关系。切换“打散目标页”，A/B/C 的逻辑顺序不变，但物理落点和连续传输段数改变。</p></details><details class="self-check"><summary>两个 Success 通知一定代表两个源端完成吗？</summary><p>不一定。源码按源端 rank 身份去重；同一个 rank 重复通知不能代替另一个 rank 完成。</p></details><details class="self-check"><summary>元数据非零后，请求一定能继续吗？</summary><p>还要参与 rank 就绪、可选缓存恢复，以及提交时的 room 一致性等检查。用“不匹配”场景观察请求被终止，无法进入可调度队列。</p></details></section>
+<section class="overview-section source-notes" id="source-baseline"><h2 id="reading-topic-4">固定源码与继续阅读</h2><p>源码分析基线：<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">公开上游 SGLang main · 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>，读取于 2026-09-23。只读固定 Git 对象，保留源码工作区原有未跟踪文件。未启动 SGLang、GPU 通信或 RDMA 实验。其他资料保留各自版本与范围。</p><ul><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/%E5%B9%B6%E8%A1%8C%E6%96%B9%E6%B3%95/SGLang%20%E9%80%9A%E4%BF%A1%E4%B8%8E%E4%BC%A0%E8%BE%93%E6%9C%BA%E5%88%B6%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md">完整学习笔记：通信语义、地址算例与完成边界</a></li><li><a href="../parallelism/">并行分工：先确认每个 rank 持有什么</a></li><li><a href="../pd-dataflow/">PD 数据流案例：连接请求状态与队列</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/07-disaggregation/04-KV传输接口与后端实现地图.md">KV 传输接口与后端实现地图（独立源码基线）</a></li></ul></section>
+<!-- reading-pagers:start -->
+<!-- reading-pagers:end -->
 <nav class="lesson-pager" aria-label="框架内继续学习"><a href="../../#communication"><small>回到所属模块</small><strong>← 07 通信与传输</strong></a><a class="next" href="../inference-overview/deployment.html"><small>下一模块 · 08</small><strong>分离部署与分布式状态交接 →</strong><span>从本模块入门课程开始</span></a></nav>
 </main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

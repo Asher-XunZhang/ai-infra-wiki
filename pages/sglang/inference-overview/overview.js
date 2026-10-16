@@ -2,18 +2,19 @@
 (() => {
   'use strict';
   for(const root of document.querySelectorAll('[data-diagram]')) {
+    const setup=()=>{
     const a=window.LearningDiagram.create(root,{j:0,phase:'prefill',query:3,reuse:3,decode:1,chunk:4,round:0,q:20,d:20});
     const {s,$,esc,clamp,fmt,chip,node,path,button,select,slider,stepControls,stepBind,status,evidence,bind,controls,change,animationControls,animationBind,svgStart,tx,line}=a;
 function renderJourney(){
- const j=s.j,p=['p1','p2','p3','p4'],labels=['接入与分词','Prefill · 层 1','Prefill · 层 2','Prefill · 层 3','采样首字 y1','Decode · 只看一轮'];
+ const j=s.j,p=['p1','p2','p3','p4'],labels=['分词后的输入位置','Prefill · 层 1','Prefill · 层 2','Prefill · 层 3','采样首字 y1','Decode · 只看一轮'];
  controls(animationControls('j',6,'j'));animationBind('j',6,'j');
- let html=`<h3>${labels[j]}</h3><div class="wr-row">${(j===5?['y1']:p).map(x=>chip(x,j===0?'token ID':j===5?'上一轮输出':'同一轮处理','new')).join('')}</div><div class="wr-down">↓ ${j===0?'分词后排队，获准才执行':j===1?'Embedding：token ID → 输入向量':j<4?'接续上一层的隐藏状态':j===4?'取最后一个 prompt 位置的最终隐藏状态':'复用历史 KV，仍遍历完整模型'}</div>`;
+ let html=`<h3>${labels[j]}</h3><div class="wr-row">${(j===5?['y1']:p).map(x=>chip(x,j===0?'位置标签':j===5?'上一轮输出':'同一轮处理','new')).join('')}</div><div class="wr-down">↓ ${j===0?'分词后排队，获准才执行':j===1?'Embedding：token ID → 输入向量':j<4?'接续上一层的隐藏状态':j===4?'取最后一个 prompt 位置的最终隐藏状态':'复用历史 KV，仍遍历完整模型'}</div>`;
  html+=path([1,2,3].map(l=>node('层 '+l,j>=l?(j===5?'新增 y1 的 KV':'已写 p1…p4 的 KV'):'尚未计算',j===l||j===5?'active':'')));
  if(j>0&&j<4)html+=`<div class="wr-label">当前层 ${j} · 因果 Attention → MLP</div><div class="wr-node"><div>p1 读 p1；p2 读 p1…p2；p3 读 p1…p3；p4 读全部 4 个位置。</div><div class="wr-row" style="margin-top:10px">${p.map(x=>chip(x,'K'+j+' / V'+j,'new')).join('')}</div><small>本层保存自己的 K/V；隐藏状态送往下一层。这里按层分解一次 Prefill，并非 3 轮请求调度。</small></div>`;
  if(j===0)html+=node('待调度','此时还没有任何层的 KV，也没有输出 token。','wait');
  if(j===4)html+=path([node('输出头','最后位置 → 词表 logits','active'),node('采样','得到首 token y1','active'),node('返回首字','y1 此时尚无 KV')]);
  if(j===5)html+=`<div class="wr-label">每层：读历史 4 个位置，写入 y1 的 K/V</div><div class="wr-row">${p.map(x=>chip(x,'复用','read')).join('')}${chip('y1','本轮新写','new')}${chip('y2','新采样 · 无 KV','future')}</div><div class="wr-down">↶ 后续重复：上一输出 → 完整模型 → 下一输出；直到 EOS 或长度上限</div>`;
- $('wr-scene').innerHTML=html;status(j===0?'一条文本请求先变成 token IDs，再等待执行资源。':j<4?`Prefill 同时处理 4 个输入位置；当前完成第 ${j} 层，尚未采样首字。`:j===4?'Prefill 最终得到 y1；缓存中只有已处理的 p1…p4，尚无 y1。':'输入 y1 → 各层新增它的 KV → 采样 y2；相同机制不再逐轮重复展示。');
+ $('wr-scene').innerHTML=html;status(j===0?'分词方法见第一课。这里用 p1…p4 简记四个输入位置，等待资源后再执行。':j<4?`Prefill 同时处理 4 个输入位置；当前完成第 ${j} 层，尚未采样首字。`:j===4?'Prefill 最终得到 y1；缓存中只有已处理的 p1…p4，尚无 y1。':'输入 y1 → 各层新增它的 KV → 采样 y2；相同机制不再逐轮重复展示。');
  evidence('3 层、4 个输入位置的普通因果 Transformer 教学示意；不表示真实模型只有 3 层。一次 Prefill 的层内多位置计算，与逐层依赖同时成立。','pages/sglang/inference-overview/model.js');
 }
 
@@ -52,7 +53,7 @@ function renderScheduling(){
 
 function renderLatency(){
  controls(slider('l-q','排队 ms',s.q,0,100,10)+slider('l-d','Decode 每步 ms',s.d,10,60,10));for(const [id,key] of [['l-q','q'],['l-d','d']])bind(id,'input',e=>change(()=>s[key]=+e.target.value));
- const w=$('wr-scene').clientWidth,left=48,right=w-14,x=t=>left+t/360*(right-left);let svg=svgStart(w,204,'基线与调整后共用 0 到 360 毫秒时间轴');
+ const w=$('wr-scene').clientWidth;if(w<=0)return;const left=48,right=w-14,x=t=>left+t/360*(right-left);let svg=svgStart(w,204,'基线与调整后共用 0 到 360 毫秒时间轴');
  [0,120,240,360].forEach(t=>{svg+=line(x(t),28,x(t),168)+tx(x(t),19,t,t===360?'text-anchor="end"':'text-anchor="middle"');});svg+=tx(right,195,'时间 ms →','text-anchor="end"');
  [[20,20,'基线',62],[s.q,s.d,'当前',129]].forEach(([q,d,label,y])=>{svg+=tx(0,y+6,label);const parts=[[0,q,'var(--line)'],[q,q+60,'var(--green)']];parts.forEach(([a,b,c])=>{if(b>a)svg+=`<rect x="${x(a)}" y="${y-12}" width="${x(b)-x(a)}" height="22" fill="${c}" opacity=".45"/>`;});const tt=q+60;svg+=line(x(tt),y,x(tt+3*d),y,'var(--blue)','stroke-width="3"');for(let i=0;i<4;i++)svg+=`<circle cx="${x(tt+i*d)}" cy="${y}" r="5" fill="${i===0?'var(--amber)':'var(--blue)'}"/>`;svg+=tx(x(tt),y+29,`首字 ${tt} ms`);});
  $('wr-scene').innerHTML=svg+'</svg>'+`<div class="wr-chips"><span class="wr-chip">灰：排队</span><span class="wr-chip">绿：Prefill 60 ms</span><span class="wr-chip">● 首字 / 后续输出</span></div><div class="wr-output"><span>首字等待 ${s.q+60} ms</span><span>后续间隔 ${s.d} ms</span><span>完成 ${s.q+60+3*s.d} ms</span></div>`;
@@ -61,5 +62,10 @@ function renderLatency(){
 
     const renders={journey:renderJourney,transformer:renderTransformer,cache:renderCache,deployment:renderDeployment,scheduling:renderScheduling,latency:renderLatency};
     a.start(()=>{evidence(root.dataset.diagram==='scheduling'?'固定教学策略：A 每轮续写一次，B 共 8 个输入位置；真实顺序还取决于预算、准入与调度策略。':root.dataset.diagram==='latency'?'固定 Prefill=60 ms，4 个输出 token；忽略额外等待与重叠，不能用作性能预测。':'普通因果 Transformer 示意；省略多头、归一化、残差等细节。');renders[root.dataset.diagram]();});
+    root.closest('.foundation-extension')?.addEventListener('toggle',e=>{if(!e.target.open)a.stop();else a.render();});
+    };
+    const extension=root.closest('.foundation-extension');
+    if(extension&&location.hash==='#mechanism-extension')extension.open=true;
+    if(extension&&!extension.open){const open=()=>{if(extension.open){setup();extension.removeEventListener('toggle',open);}};extension.addEventListener('toggle',open);}else setup();
   }
 })();

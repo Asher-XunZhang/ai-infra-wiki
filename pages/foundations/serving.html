@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>请求路由与取消：服务在线为何还没收到回答？ · 推理基础</title><meta name="description" content="从用户发出一句话开始，逐步加入接收、等待、执行、返回和取消。"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/detail-scenes.js" defer></script><script src="../motion/detail-visuals.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script></head>
+<body data-page="foundations" data-lesson="serving"><a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><a class="site-brand" href="../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub ↗</a><button class="theme-toggle" type="button" aria-label="切换配色">配色：系统</button></div></header>
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="chapter-nav" data-chapter="foundations" open><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="serving.html" aria-current="page">11 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
+<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
+<a class="lesson-link" href="../sglang/model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
+<a class="lesson-link" href="../sglang/kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<details class="module-nav" data-module="parallelism">
+<summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#parallelism">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
+</div></details>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
+</div></details>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
+<a class="lesson-link" href="../sglang/pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
+<a class="lesson-link" href="../sglang/pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<details class="module-nav" data-module="advanced-generation">
+<summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#advanced-generation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
+</div></details>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
+</div></details>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识</a>
+</div></details>
+</nav></details>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content">
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">请求路由与取消：服务在线为何还没收到回答？</span></nav>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 11 / 12</a><span class="lesson-count">通用原理</span></div><h1>请求路由与取消：服务在线为何还没收到回答？</h1><p>从用户发出一句话开始，逐步加入接收、等待、执行、返回和取消。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
+<p class="foundation-prereqs">先看：<a href="generation.html">自回归生成：Prefill 与 Decode 怎样接续？</a> · <a href="batching.html">Batch 调度：动态组批、连续批处理与 Chunked Prefill</a></p>
+<p class="foundation-intro">先放大一次运行中取消：用户停止等待、后端收到取消、资源能够归还是三个边界。再到下方实验走完整接入路径，并观察双实例怎样选择请求的去向。</p>
+<section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>能够完成一次模型调用，只是在线服务的一部分。面对许多到达时刻和长度都不同的请求，还需要路由、排队、资源控制、输出传递与取消后的安全收尾。</p></section>
+<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>
+<div id="lesson-animation"></div>
+
+<section class="foundation-lab" data-foundation-lab="serving" data-full="true" data-title="请求路由与取消：服务在线为何还没收到回答？"><h2>走一遍具体过程</h2><p>能区分健康探测、接纳、执行、客户端可见和安全收尾。</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>
+<section id="understand" class="concept-guide"><h2>理解设计：为什么需要这些机制？</h2><nav class="concept-nav" aria-label="按概念问题阅读"><a href="#why-queue">为什么服务在线，请求还可能等很久？</a><a href="#why-cancel">用户停止等待，为什么服务还要继续收尾？</a></nav><section id="why-queue" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">01</span><h3>为什么服务在线，请求还可能等很久？</h3></div><p>接收请求的接口正常，说明入口能响应；执行资源可能仍被已有请求占满。路由负责选服务实例，实例内调度再决定何时进入批次，两处都可能产生等待。</p><p>突发流量超过持续处理能力时，队列会积累。限制并发、设置队列上限或拒绝超额请求，是防止无界等待的背压手段；不能只把“收到请求”记成“开始模型计算”。</p><aside class="concept-example" aria-labelledby="example-queue"><h4 id="example-queue">一条请求至少经过哪些不同状态？</h4><ol><li>已接收：服务记录了请求。</li><li>等待资源：还没进入本轮计算。</li><li>执行／传输中：模型或网络正在处理。</li><li>完成／取消收尾：确认后续不再使用相关资源，才能按规则释放。</li></ol><p class="concept-note">这是服务层状态区分，具体组件名和完成判据以实现课源码为准。</p></aside><ul class="concept-links"><li><a href="../sglang/request-runtime/index.html">SGLang：请求入口与运行时 →</a></li></ul><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-cancel" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">02</span><h3>用户停止等待，为什么服务还要继续收尾？</h3></div><p>取消通知表达“不再需要这个结果”，但正在执行的计算或传输不一定即时停止。系统仍需确认哪些操作还可能写入资源，避免把尚在使用的块重新分配给其他请求。</p><p>例如用户取消 R1 后，若某个传输仍在向 R1 的缓存块写入，立即把该块交给 R2 就可能破坏 R2 的数据。具体等待什么事件、哪些步骤可中断，需要追踪实现。</p><ul class="concept-links"><li><a href="communication.html#why-ready">控制消息和载荷完成的区别 →</a></li></ul><p class="concept-refs">依据：<a href="https://grpc.io/docs/guides/cancellation/">gRPC · 取消与应用处理的责任（通用例，不表示 SGLang 使用 gRPC）</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><aside class="concept-check"><h3>试着解释</h3><p>入口健康检查正常，是否说明新请求可以立即计算？</p><details><summary>展开解释</summary><p>不能。健康检查确认的是其定义的入口或组件状态，执行队列、KV 容量和计算资源仍可能繁忙。</p></details></aside></section>
+<section id="lesson-glossary"><h2>术语速查</h2><dl class="foundation-terms" aria-label="这课用到的词"><div><dt>网关</dt><dd>在服务入口选择请求去哪个实例；选中实例不等于实例已开始计算。</dd></div><div><dt>健康检查</dt><dd>按特定条件探测服务状态；它通常不能证明某一条具体请求已经完成。</dd></div><div><dt>超时与取消</dt><dd>超时是某方不再继续等；取消是需要传播并被处理的动作，不能假设后端瞬间停止。</dd></div></dl></section>
+<section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2><div class="foundation-copy"><section id="concept-0"><h2>请求生命周期：入口、执行与响应回程</h2><p>普通场景用同一个 R1 跟踪接入、排队、计算和回程。用户只在结果抵达时看到文字。图同时保留请求的位置与资源是否仍被持有，避免把返回响应等同于所有工作已经清理。</p></section><section id="concept-1"><h2>Request Routing：多实例怎样分担请求</h2><p>双实例场景先选择一个可用实例，再在它内部排队。另一个实例空闲或健康，不代表该请求被两边同时执行。真实路由还可能考虑模型、角色和缓存等条件。</p></section><section id="concept-2"><h2>Cancellation：取消通知与安全收尾</h2><p>用户断开连接时，执行中的工作可能尚未收到取消通知。示例先显示客户端停止等待，再显示后端收到取消，最后等在途操作安全结束后归还资源。实际路径以实现课的状态条件为准。</p></section></div></section>
+<form class="fd-quiz" data-answer="0" data-feedback="取消场景中，客户端先结束等待，后端随后接到通知并安全收尾。两条状态线不是同时完成。" hidden><fieldset><legend>客户端关闭页面，是否足以证明后端 GPU 已停止且缓存已回收？</legend><label><input type="radio" name="prediction" value="0"><span>不足以，还要处理取消和在途状态</span></label><label><input type="radio" name="prediction" value="1"><span>足以，连接断开就同步清空后端</span></label></fieldset><button type="submit">检查判断</button><p class="fd-feedback" aria-live="polite"></p></form>
+<details class="foundation-fallback"><summary>自测与解释：客户端关闭页面，是否足以证明后端 GPU 已停止且缓存已回收？</summary><p>取消场景中，客户端先结束等待，后端随后接到通知并安全收尾。两条状态线不是同时完成。</p></details>
+
+<a class="foundation-to-engine" href="../sglang/serving-operations/index.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-16。通用服务因果示意，不规定 HTTP 状态码或某个版本的探活行为。不同引擎的取消和退出细节见实现课。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="../sglang/request-runtime/index.html">仓内固定源码课程：请求生命周期</a></li><li><a href="../sglang/serving-operations/index.html">仓内固定源码课程：服务治理</a></li></ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="speculation.html"><small>上一课</small><strong>Speculative Decoding：草稿候选怎样验证和接受？</strong></a><a class="next" href="metrics.html"><small>下一课</small><strong>TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</strong></a></nav>
+</main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>

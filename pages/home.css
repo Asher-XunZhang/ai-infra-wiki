@@ -1,4 +1,26 @@
 /* The learning map shares the site's palette, cards and reading rhythm. */
+.home-hero{padding:0 0 12px;border-bottom:0}
+.home-hero h1{font-size:clamp(27px,2.6vw,38px);line-height:1.4;margin:0 0 10px}
+.home-hero .lead{margin:0;font-size:15px}
+.learning-start{padding:12px 0 24px;border-bottom:1px solid var(--border)}
+.learning-start>h2{font-size:19px;margin:0 0 12px}
+.entry-picker{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.entry-picker button{min-height:44px;font-size:14px}
+.entry-picker button[aria-pressed=true]{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+.entry-route>h3{margin:16px 0 8px;font-size:18px}
+.learning-start.is-interactive .entry-route>h3{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.entry-description{font-size:13px;color:var(--muted);margin:0 0 14px;max-width:780px}
+.entry-stops{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.entry-stops li{min-width:0}
+.entry-stops a{display:flex;flex-direction:column;height:100%;padding:14px 12px;border-top:3px solid var(--border);color:var(--fg);transition:background .15s,border-color .15s}
+.entry-stops a:hover{border-top-color:var(--accent);background:var(--accent-soft);text-decoration:none}
+.entry-stops small{font-size:12px;color:var(--muted)}
+.entry-stops strong{font-size:16px;line-height:1.55;font-weight:600;margin:7px 0}
+.entry-stops span{font-size:13px;color:var(--muted);line-height:1.65}
+.entry-catalog{display:inline-block;margin-top:16px;font-size:13px;padding:8px 0}
+@media(max-width:1100px){.entry-stops{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.home-hero h1{font-size:27px}.home-hero .lead{font-size:14px}.entry-picker{gap:7px}.entry-picker button{font-size:13px;padding:8px 10px}.entry-stops{gap:10px}.entry-stops a{padding:12px 7px}.entry-stops strong{font-size:15px}.entry-stops span{font-size:12px}.learning-start{padding-top:10px}}
+@media(prefers-reduced-motion:reduce){.entry-stops a{transition:none}}
 .home-route{display:flex;align-items:center;gap:12px 16px;flex-wrap:wrap;margin:30px 0 0;font-size:13px}
 .home-route>a{display:flex;align-items:center;gap:8px;color:var(--fg)}
 .home-route b{font:13px ui-monospace,monospace;color:var(--accent);padding:4px 7px;background:var(--accent-soft);border-radius:4px}

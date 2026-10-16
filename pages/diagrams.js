@@ -14,7 +14,7 @@
     function change(fn){stop();const focus=document.activeElement?.dataset.id;fn();render();if(focus&&$(focus)&&!$(focus).disabled)$(focus).focus({preventScroll:true});}
     function stepBind(prefix,key,total){bind(prefix+'-prev','click',()=>change(()=>s[key]=Math.max(0,s[key]-1)));bind(prefix+'-next','click',()=>change(()=>s[key]=Math.min(total-1,s[key]+1)));}
     function animationControls(key,total,prefix){return button(prefix+'-play',timer?'暂停':'▶ 播放')+stepControls(s[key],total,prefix);}
-    function animationBind(key,total,prefix){stepBind(prefix,key,total);bind(prefix+'-play','click',()=>{if(timer){stop();render();return;}if(s[key]>=total-1)s[key]=0;timer=setInterval(()=>{s[key]=Math.min(total-1,s[key]+1);if(s[key]>=total-1)stop();render();},2200);render();});}
+    function animationBind(key,total,prefix){stepBind(prefix,key,total);bind(prefix+'-play','click',()=>{if(timer){stop();render();return;}if(s[key]>=total-1)s[key]=0;timer=setInterval(()=>{if(document.hidden||(root.closest('details')&&!root.closest('details').open)){stop();return;}s[key]=Math.min(total-1,s[key]+1);if(s[key]>=total-1)stop();render();},2200);render();});}
     document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();render();}});window.addEventListener('pagehide',stop);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));

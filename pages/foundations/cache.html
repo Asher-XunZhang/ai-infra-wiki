@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>KV Cache 与前缀复用：为什么保存历史 K/V？ · 推理基础</title><meta name="description" content="先看哪里在重复算，再看缓存怎样节省这部分工作，以及怎样占用内存。"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-scenes.js" defer></script><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script><link rel="stylesheet" href="../sglang/inference-overview/overview.css"><link rel="stylesheet" href="../diagrams.css"><script src="../sglang/inference-overview/model.js" defer></script><script src="../diagrams.js" defer></script><script src="../sglang/inference-overview/overview.js" defer></script></head>
+<body data-page="foundations" data-lesson="cache"><a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><a class="site-brand" href="../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub ↗</a><button class="theme-toggle" type="button" aria-label="切换配色">配色：系统</button></div></header>
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="chapter-nav" data-chapter="foundations" open><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="cache.html" aria-current="page">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
+<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
+<a class="lesson-link" href="../sglang/model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
+<a class="lesson-link" href="../sglang/kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<details class="module-nav" data-module="parallelism">
+<summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#parallelism">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
+</div></details>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
+</div></details>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
+<a class="lesson-link" href="../sglang/pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
+<a class="lesson-link" href="../sglang/pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<details class="module-nav" data-module="advanced-generation">
+<summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#advanced-generation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
+</div></details>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
+</div></details>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识</a>
+</div></details>
+</nav></details>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content">
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">KV Cache 与前缀复用：为什么保存历史 K/V？</span></nav>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 04 / 12</a><span class="lesson-count">通用原理</span></div><h1>KV Cache 与前缀复用：为什么保存历史 K/V？</h1><p>先看哪里在重复算，再看缓存怎样节省这部分工作，以及怎样占用内存。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
+<p class="foundation-prereqs">先看：<a href="attention.html">Attention 与 Q/K/V：模型怎样参考上下文？</a></p>
+<p class="foundation-intro">第二轮续写时，前面的输入还在。对本课的因果 Transformer，历史位置在同一层的 K/V 可以继续使用。先切换“每轮重算”和“保存历史”，再观察缓存从空到写入；不要从“命中几个”开始猜。</p>
+<section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>续写时每轮只增加少量新内容，却反复需要相同历史。KV Cache 用额外存储换取少做历史计算；关键不只是“保存”，而是确认保存的中间结果在下一轮仍然有效。</p></section>
+<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>
+<div id="lesson-animation"></div>
+
+<section class="foundation-lab" data-foundation-lab="cache" data-full="true" data-title="KV Cache 与前缀复用：为什么保存历史 K/V？"><h2>走一遍具体过程</h2><p>能区分模型权重、历史 K/V、请求映射和可复用前缀。</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>
+<section id="understand" class="concept-guide"><h2>理解设计：为什么需要这些机制？</h2><nav class="concept-nav" aria-label="按概念问题阅读"><a href="#why-invariant">为什么旧 K/V 可以复用，新的 Query 还要重算？</a><a href="#why-tradeoff">缓存省掉什么，又增加了什么？</a><a href="#why-sharing">为什么还需要分页和前缀复用？</a></nav><section id="why-invariant" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">01</span><h3>为什么旧 K/V 可以复用，新的 Query 还要重算？</h3></div><p>在固定参数、固定前缀的因果 Transformer 中，旧位置不能读取未来 token。新增一个位置不会改变旧位置原先的各层表示，因此它们已经算出的 K/V 也不变，可以保存下来供新位置使用。</p><p>新位置的 Query 要与历史 K 匹配并加权组合历史 V。旧 Query 解决的是旧位置的问题，不能代替这个新查询；通常也无需重新生成旧位置的输出。</p><p class="concept-refs">依据：<a href="https://huggingface.co/docs/transformers/main/en/cache_explanation">因果模型的缓存复用 · Hugging Face</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-tradeoff" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">02</span><h3>缓存省掉什么，又增加了什么？</h3></div><p>缓存省掉重复计算历史 K/V 的工作，却仍需保存并读取历史信息。上下文增长、同时运行的请求增多，通常会增加缓存占用；即使完全命中历史，新的 Attention 和其他层计算仍然要执行。</p><p>模型权重是服务许多请求时共用的参数；KV 是由特定输入计算出的状态。二者都可能位于显存，但不能把“装得下权重”当成“还能接任意多长的请求”。</p><aside class="concept-example" aria-labelledby="example-tradeoff"><h4 id="example-tradeoff">用动画里的位置数对照</h4><ol><li>4 个输入位置，再续写两轮：不保留历史时，K/V 位置计算量为 4+5+6=15。</li><li>保留历史时，只需 4+1+1=6；同时需要存放已经得到的历史 K/V。</li></ol><p class="concept-note">这里只统计 K/V 对应的位置数，不是全部运算量，更不是 2.5 倍的实测加速。</p></aside><ul class="concept-links"><li><a href="hardware.html#understand">显存与带宽怎样影响执行 →</a></li></ul><p class="concept-refs">依据：<a href="https://huggingface.co/docs/transformers/main/en/cache_explanation">因果模型的缓存复用 · Hugging Face</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-sharing" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">03</span><h3>为什么还需要分页和前缀复用？</h3></div><p>请求长度事先不确定，为每条请求预留最大连续空间会浪费容量。分页管理把逻辑位置映射到可分配的物理块，让存储按需增长；分配地址与写入可用数据仍是两个动作。</p><p>多请求的相同前缀可能复用已经计算的状态，但相同单词出现在不同前文后面并不等价。需要匹配 token 前缀、模型与影响计算的配置，并满足具体引擎的隔离和缓存规则。共享块还有引用与驱逐策略，结束一条请求不一定立即回收它。</p><ul class="concept-links"><li><a href="../sglang/kv-memory/index.html">SGLang：地址映射、共享与回收 →</a></li></ul><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><aside class="concept-check"><h3>试着解释</h3><p>只改变 prompt 的第一个 token，后面的旧 KV 都能继续使用吗？</p><details><summary>展开解释</summary><p>不能仅凭后面的 token 相同就复用。因果模型的后续表示可能依赖改变了的前文；要重新核对仍然完全匹配的前缀及相关配置。</p></details></aside></section>
+<section id="lesson-glossary"><h2>术语速查</h2><dl class="foundation-terms" aria-label="这课用到的词"><div><dt>KV Cache</dt><dd>保存已经计算过的历史 K/V。当前 token 仍需计算 Q/K/V，并读取所需历史。</dd></div><div><dt>页与槽位</dt><dd>把池内存储按固定数量的位置分组便于管理；地址映射告诉请求的数据放在哪里。页不是一个汉字。</dd></div><div><dt>前缀复用</dt><dd>另一个请求在状态兼容、前缀 token 匹配时，可复用已有历史计算；不是复用一段现成回答。</dd></div></dl></section>
+<section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2><div class="foundation-copy"><section id="concept-0"><h2>KV Cache：省掉哪些历史计算</h2><p>四个输入位置后继续两轮，本课只统计新计算 K/V 的位置数：每轮重算是 4+5+6，保存历史是 4+1+1。这个比值不是推理加速比；注意力仍要访问历史，其他模型计算也没有消失。</p></section><section id="concept-1"><h2>KV Allocation：先分配位置，再写入数值</h2><p>分页场景从空池开始：先取得一页，再将两个位置的 K/V 写进去；写第三个位置时，再领下一页。图把位置分配与数据写入分开。真实实现中的页大小、对齐和池布局以各实现课为准。</p></section><section id="concept-2"><h2>Prefix Sharing：共享前缀与资源回收</h2><p>同一个共享前缀只占一份物理空间，两个请求分别持有它。R1 结束，R2 仍要读取；R2 结束后，缓存也可能先保留它，直到驱逐才归还池内位置。不能看到请求结束就断言显存立刻下降。</p></section></div></section>
+<form class="fd-quiz" data-answer="1" data-feedback="共享场景中，R1 的连线消失后，R2 的连线仍在；必须保留它仍持有的数据。" hidden><fieldset><legend>R1 结束，但 R2 仍引用共享前缀，此时能把那份 K/V 当作空闲空间覆盖吗？</legend><label><input type="radio" name="prediction" value="0"><span>能，R1 已经结束</span></label><label><input type="radio" name="prediction" value="1"><span>不能，R2 仍然需要它</span></label></fieldset><button type="submit">检查判断</button><p class="fd-feedback" aria-live="polite"></p></form>
+<details class="foundation-fallback"><summary>自测与解释：R1 结束，但 R2 仍引用共享前缀，此时能把那份 K/V 当作空闲空间覆盖吗？</summary><p>共享场景中，R1 的连线消失后，R2 的连线仍在；必须保留它仍持有的数据。</p></details>
+<details class="foundation-extension" id="mechanism-extension"><summary>选读 · 逐层 KV Cache 与 Prefix Reuse</summary><p>主线之外的完整机制对照图。沿用原课程的教学假设；不代表 SGLang 的运行轨迹。</p><section class="lab"><h2>Layer-wise KV Cache：同一 token 在不同层的状态</h2><div data-diagram="cache" aria-label="Layer-wise KV Cache：同一 token 在不同层的状态"></div><noscript>请启用 JavaScript 查看此图；机制说明见本展开区；源码对照见下方实现入口。</noscript></section><p class="big-idea">KV 缓存省去历史位置的重复计算；它不是已经写好的答案，也不是模型权重。</p><section class="overview-section"><h2>Layer-wise KV：每层分别保存历史状态</h2><p>每层根据自己的输入计算 K/V，后续 token 在这一层读取这一层的历史 KV。hidden states 是本轮逐层传递的中间结果，权重是模型参数，KV 则随上下文增长，三者的内容与生命周期都不同。</p><p>前缀复用要求 token 前缀匹配且状态兼容、可用；不是语义相似就能命中。下图假定请求有 8 个输入位置，匹配的前缀已经在可用的设备缓存中。</p></section><section class="overview-section"><h2>Decode Attention：长上下文怎样增加 KV 读取</h2><p>虽然普通 Decode 每轮只有一个新位置，它仍需在每一层使用历史 KV。对稠密 attention 而言，历史越长，访问的数据通常越多。“每轮输入一个 token”不等于“每轮工作量与上下文无关”。</p><p>请求结束后可以释放请求占有的资源，也可以把可复用前缀交由缓存管理器保留。缓存保留不意味着这条请求还在 Decode；未来复用也可能需要回载或重新准入。</p></section><details class="overview-selfcheck"><summary>自测 · 两个 prompt 意思一样，就能直接共用 KV 吗？</summary><p>不能这样推断。这里讨论的是匹配的 token 前缀和兼容的模型状态；措辞变化或前缀不同可能改变各层计算结果。</p></details><p><a href="../sglang/inference-overview/kv-cache.html">转到 SGLang：核对实现接口与固定源码 →</a></p></details>
+<a class="foundation-to-engine" href="../sglang/kv-memory/index.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-15。普通稠密因果 Attention 的简化模型。页大小为教学设定；没有模拟真实显存、分层回载或所有缓存兼容条件。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="https://huggingface.co/docs/transformers/main/en/cache_explanation">Hugging Face · How caching works</a></li><li><a href="../sglang/kv-memory/index.html">仓内资料：KV 管理</a></li></ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="attention.html"><small>上一课</small><strong>Attention 与 Q/K/V：模型怎样参考上下文？</strong></a><a class="next" href="batching.html"><small>下一课</small><strong>Batch 调度：动态组批、连续批处理与 Chunked Prefill</strong></a></nav>
+</main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>

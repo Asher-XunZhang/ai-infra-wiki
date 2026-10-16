@@ -13,6 +13,7 @@ from html import escape, unescape
 from pathlib import Path
 from urllib.parse import parse_qsl, quote, unquote, urlencode, urlsplit, urlunsplit
 from build_learning_navigation import build as check_learning_navigation
+from build_foundations import build as check_foundations
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "pages"
@@ -22,6 +23,7 @@ REFERENCE = re.compile(r"(?P<prefix>\b(?:src|href)\s*=\s*)(?P<quote>[\"'])(?P<ur
 
 def build():
     check_learning_navigation(check=True)
+    check_foundations(check=True)
     # This directory is reserved for generated deployment output.
     if OUTPUT.exists():
         shutil.rmtree(OUTPUT)

@@ -6,7 +6,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  try{
  const page=await browser.newPage({hasTouch:true}),base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/';
  for(const width of [1440,768,390,320])for(const slug of ['journey','transformer','kv-cache','deployment','scheduling']){
-   await page.setViewportSize({width,height:850});await page.goto(base+'sglang/inference-overview/'+slug+'.html');
+   await page.setViewportSize({width,height:850});await page.goto(base+'foundations/'+({journey:'generation',transformer:'attention','kv-cache':'cache',deployment:'deployment',scheduling:'batching'})[slug]+'.html');await page.locator('.foundation-extension>summary').click();if(slug!=='transformer')await page.locator('[data-diagram] .wr-scene').first().waitFor();else assert.equal(await page.locator('.foundation-extension table').count(),1);
    const bad=await page.locator('.lesson-diagram').evaluateAll(roots=>roots.flatMap(root=>{
      const box=root.getBoundingClientRect(),bad=[];
      for(const el of root.querySelectorAll('*')){if(!el.getClientRects().length||el.tagName==='OPTION')continue;const r=el.getBoundingClientRect();if(r.width&&(r.left<box.left-2||r.right>box.right+2))bad.push(el.tagName+':'+el.textContent.slice(0,30));if(el.tagName==='text'&&parseFloat(getComputedStyle(el).fontSize)<11)bad.push('small SVG label');}return bad;

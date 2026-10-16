@@ -40,6 +40,9 @@ const courses=[
   assert.match(await page.locator('#performance').innerText(),/已有课程[\s\S]*开始学习/);
   assert.match(await page.locator('#serving-operations').innerText(),/已有课程[\s\S]*开始学习/);
   assert.deepEqual(await page.locator('a[href^="#"]').evaluateAll(links=>links.filter(a=>!document.getElementById(a.hash.slice(1))).map(a=>a.hash)),[]);
+  assert.equal(await page.locator('.chapter-nav').count(),2);
+  assert.equal(await page.locator('.foundation-lessons a').count(),12);
+  await page.locator('[data-chapter=sglang]>summary').click();
   for(const group of await page.locator('.topic-group').all()){
    assert.equal(await group.evaluate(el=>el.open),false);
    const summary=group.locator(':scope > summary');await summary.click();
@@ -50,9 +53,9 @@ const courses=[
   await page.locator('.site-sidebar [data-module=communication] > summary').click();
   await page.locator('.site-sidebar [data-module=communication] .module-overview-link').click();
   await page.waitForURL(url=>url.hash==='#communication');assert.equal(await page.locator('#communication:target').count(),1);
-  const lessons=page.locator('#system-overview .module-lessons');
-  await lessons.locator('summary').focus();await page.keyboard.press('Enter');assert.equal(await lessons.locator('ol').isVisible(),true);
-  await page.keyboard.press('Space');assert.equal(await lessons.locator('ol').isVisible(),false);
+  const lessons=page.locator('#disaggregation .module-lessons');
+  await lessons.locator('summary').focus();await page.keyboard.press('Enter');assert.equal(await lessons.locator('ul').isVisible(),true);
+  await page.keyboard.press('Space');assert.equal(await lessons.locator('ul').isVisible(),false);
   for(const width of [1440,1024,900,768,390,320]){
    await page.setViewportSize({width,height:1000});
    for(const theme of ['light','dark']){
@@ -63,7 +66,7 @@ const courses=[
   await page.setViewportSize({width:1440,height:1000});
   await page.locator('.theme-toggle').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
   await page.locator('.theme-toggle').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
-  await page.getByRole('link',{name:/从推理全景开始/}).click();await page.waitForLoadState('load');
+  await page.goto(base+'sglang/inference-overview/journey.html');await page.waitForLoadState('load');
   assert.match(page.url(),/journey.html/);
   assert.deepEqual(await signature(),expectedModules,'entering a lesson retains the entire framework');
   await page.locator('[data-module=kv-memory] > summary').click();
@@ -80,6 +83,9 @@ const courses=[
   for(const [route,module,stage] of courses){
    await page.goto(base+route);await page.waitForLoadState('load');
    assert.equal(await page.locator('.topic-group').count(),5,route);
+   assert.equal(await page.locator('[data-foundation-lab]').count(),0,route+' must not replay foundations');
+   assert.equal(await page.locator('script[src*="foundations/player"]').count(),0,route);
+   if(route.includes('inference-overview/')){assert.equal(await page.locator('.implementation-map li').count(),3);assert.equal(await page.locator('[data-diagram]').count(),0);}
    assert.deepEqual(await signature(),expectedModules,route);
    assert.equal(await page.locator('.site-sidebar .lesson-link').count(),courses.length,route);
    assert.equal(await page.locator('.site-sidebar [aria-current=page]').count(),1,route);
@@ -114,7 +120,29 @@ const courses=[
   }
   await page.goto(base+'sglang/inference-overview/index.html?v=old');await page.waitForURL('**/journey.html*');
   assert.equal(await page.locator('.topic-group').count(),5,'legacy URL also enters the new shell');
+  // Old bookmarked route URLs still keep their original sequence.
+  await page.goto(base+'sglang/inference-overview/journey.html?learn=first&v=legacy-review');
+  const firstRoute=['journey.html','transformer.html','kv-cache.html','scheduling.html'];
+  for(let i=0;i<firstRoute.length;i++){
+   assert.equal(new URL(page.url()).pathname.endsWith(firstRoute[i]),true);
+   assert.equal(new URL(page.url()).searchParams.get('learn'),'first');
+   assert.ok(new URL(page.url()).searchParams.get('v'),'generated route links carry the release version');
+   assert.equal(await page.locator('.lesson-pager').isVisible(),false);
+   assert.equal(await page.locator('.reading-route-pager:visible').count(),1);
+   assert.match(await page.locator('.active-reading-route').innerText(),new RegExp(`${i+1} / 4`));
+   assert.deepEqual(await signature(),expectedModules);
+   if(i<firstRoute.length-1){await page.locator('.reading-route-pager:visible .next').click();await page.waitForLoadState('load');}
+  }
+  await page.locator('.reading-route-pager:visible .next').click();await page.waitForLoadState('load');
+  assert.equal(new URL(page.url()).hash,'#reading-routes');
+  await page.goto(base+'sglang/inference-overview/journey.html?learn=unknown');
+  assert.equal(await page.locator('.lesson-pager').isVisible(),true,'unknown route keeps the canonical pager');
+  assert.equal(await page.locator('.reading-route-pager:visible').count(),0);
   const staticPage=await browser.newPage({javaScriptEnabled:false,viewport:{width:1440,height:1000}});
+  await staticPage.goto(base);
+  assert.equal(await staticPage.locator('.chapter-choice a:visible').count(),2,'chapter links remain readable without JavaScript');
+  assert.equal(await staticPage.locator('.foundation-lessons a').count(),12);
+  assert.equal(await staticPage.locator('.module-card').count(),12);
   await staticPage.goto(base+'sglang/inference-overview/kv-cache.html');
   assert.equal(await staticPage.locator('[data-module=kv-memory] .lesson-link[aria-current=page]').isVisible(),true,'navigation is in HTML, not swapped after load');
   await staticPage.close();

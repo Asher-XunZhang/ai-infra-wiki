@@ -1,8 +1,8 @@
 (()=>{'use strict';const M=window.ExecutionModel,$=s=>document.querySelector(s),lab=$('[data-execution-lab]');if(!M||!lab)return;
-let mode='chain',step=0,timer=null;const scene=$('#exec-scene'),media=matchMedia('(prefers-reduced-motion: reduce)'),val=id=>$(id).value;
+let mode=window.LessonIntegration.prepare(lab,'model-execution','chain'),step=0,timer=null;const scene=$('#exec-scene'),media=matchMedia('(prefers-reduced-motion: reduce)'),val=id=>$(id).value;
 const sourceUrl=key=>{const [file,line]=M.sources[key];return `https://github.com/sgl-project/sglang/blob/${M.revision}/${file}#L${line}`;};
 const chips=(xs,cls='')=>`<div class="exec-chips">${xs.map(x=>`<span class="exec-chip ${x===null?'pad':cls}">${x===null?'补齐':x}</span>`).join('')}</div>`;
-const wire=()=>`<svg class="exec-wire" viewBox="0 0 40 110" aria-hidden="true"><path d="M20 4V104m-5-8 5 8 5-8"/><circle cx="20" cy="${media.matches?54:0}" r="4">${media.matches?'':'<animateMotion dur="1.4s" repeatCount="indefinite" path="M0 8V93"/>'}</circle></svg>`;
+const wire=()=>`<svg class="exec-wire" viewBox="0 0 40 110" aria-label="调用方向：向下" role="img"><path d="M20 4V104m-5-8 5 8 5-8"/></svg>`;
 function last(){return mode==='chain'?7:mode==='graph'?4:3;}
 function stop(){clearInterval(timer);timer=null;$('#exec-play').textContent='播放';$('#exec-play').setAttribute('aria-pressed','false');}
 function payload(type){
@@ -10,15 +10,15 @@ function payload(type){
  if(type==='forward')return '<div class="exec-rows"><div class="exec-row"><b>R1</b>'+chips(['41'])+'<span>p3 → 槽 11</span></div><div class="exec-row"><b>R2</b>'+chips(['52'],'blue')+'<span>p2 → 槽 13</span></div></div><small>token ID ≠ 位置 ≠ KV 槽位</small>';
  if(type==='indices')return '<div class="exec-rows"><div class="exec-row"><b>R1</b><span class="exec-index">2 · 7 · 9 · 11</span></div><div class="exec-row"><b>R2</b><span class="exec-index">4 · 8 · 13</span></div></div><small>分界 [0, 4, 7] · 先备地址，后写本轮值</small>';
  if(type==='hidden')return chips(['41','52'])+'<small>进入模型后：Embedding → hidden states</small>';
- if(type==='qkv')return chips(['Q','K','V'])+'<small>每层：新 K/V → 槽 11、13</small>';
- if(type==='kernel')return '<div class="exec-route"><span>Q + KV 索引</span><strong>→</strong><span>读取 K/V</span></div>'+chips(['Q','K buffer','V buffer'])+'<small>算子随后写入 Attention 输出</small>';
+ if(type==='qkv')return chips(['查询 Q','压缩 KV','位置部分'])+'<small>MLA 状态 → 槽 11、13 · 不存完整逐头 K/V</small>';
+ if(type==='kernel')return '<div class="exec-route"><span>Q + KV 索引</span><strong>→</strong><span>读取 MLA 缓存</span></div>'+chips(['查询 Q','压缩缓存视图'])+'<small>算子随后写入 Attention 输出</small>';
  if(type==='logits')return '<div class="exec-logits">'+[['a',1],['b',4],['c',2]].map(([name,n])=>`<div class="exec-score ${n===4?'best':''}"><span>${name}</span><i style="width:${n*25}%"></i><span>${n}</span></div>`).join('')+'</div><small>只展示 R1 的 3 个候选分数 · 教学数值</small>';
  return chips(['R1 → b','R2 → a'])+'<small>贪心示例 · R2 的分数省略</small>';
 }
 function render(){let html='',caption='',why='',source='worker';
  if(mode==='chain'){
  const f=M.trace[step];html=`<h3>${f.action}</h3><div class="exec-focus"><div class="exec-actor">${f.from}</div><div class="exec-handoff">${wire()}<div class="exec-payload">${payload(f.data)}</div></div><div class="exec-actor destination">${f.to}</div></div><p class="exec-note">当前交接 / 共 8 步 · 箭头表示调用或数据依赖</p>`;caption=f.caption;source=f.source;
- why='普通单 rank、无 overlap、无投机、非 prefill-only 的 Decode 主线，选 Triton 后端讲解。Worker、Runner、模型和 backend 是职责/对象，不是四个网络服务。元数据按本轮条件准备；Attention kernel 返回中间张量，模型仍需完成其余计算。图仅画当前交接，R1/R2、槽位和分数为教学值；不声称执行了实际 GPU 运算。';
+ why='DeepSeek-V3、单 rank、无 overlap、无投机、无 TBO 的 Decode 主线，选 Triton 后端的 MLA 分支讲解。MLA 用压缩表示保存历史，位置相关部分单独参与计算；MoE 按路由选择专家，本图不展开专家内部计算。Worker、Runner、模型和 backend 是职责/对象，不是四个网络服务。元数据按本轮条件准备；Attention kernel 返回中间张量，模型仍需完成其余计算。图仅画当前交接，R1/R2、槽位和分数为教学值；不声称执行了实际 GPU 运算。';
  }else if(mode==='graph'){
  const d=M.graph(Number(val('#graph-count')),val('#graph-condition'),step),ready=step>=1;
  html=`<h3>本轮 ${d.real.length} 条真实请求</h3>${chips(d.real)}<p class="exec-gate">${ready?d.reason:'先由 Scheduler 选定本轮请求'}</p><div class="exec-branch"><div class="${ready&&d.eligible?'chosen':''}">CUDA Graph<small>复用已捕获的执行</small></div><div class="${ready&&!d.eligible?'chosen':''}">Eager<small>按本轮路径执行</small></div></div><div class="exec-buffer ${step<2?'exec-muted':''}"><small>${step<2?'等待路径选择':d.eligible?'静态输入 / 图桶 '+d.bucket:'本例真实输入 · 无图桶补齐'}</small>${chips(d.slots)}${step===3?'<p class="exec-equation">'+(d.eligible?'Replay':'Eager forward')+' → 模型计算 → logits</p>':''}</div><div class="exec-output ${step<4?'exec-muted':''}"><small>${step===4?(d.eligible?'裁回真实请求的输出行':'返回真实请求的输出行'):'等待模型输出'}</small>${chips(step===4?d.outputs:[])}</div>`;

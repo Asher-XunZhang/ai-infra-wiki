@@ -1,0 +1,4 @@
+interface:
+  display_name: "SGLang 交互教学"
+  short_description: "面向初学者设计有源码依据、可操作和可验证的 SGLang 机制学习页面"
+  default_prompt: "使用 $sglang-interactive-learning，梳理本仓 Pages 学习路线并改进面向初学者的交互可视化。"

@@ -237,3 +237,7 @@ ai-infra-wiki/
 <a href="#start">回到入口 ↑</a>
 
 </div>
+
+## 维护工具
+
+页面与资料维护使用的规则见 [Skills 清单与定制文件](skills/README.md)。

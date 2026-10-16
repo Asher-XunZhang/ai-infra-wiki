@@ -47,4 +47,6 @@ done
 
 非默认安装可设置 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`；Prefill 生命周期检查使用 `PREFILL_PLAYWRIGHT_MODULE`。服务地址覆盖参数仍按各测试文件提供的环境变量使用。
 
-CI 保留原有模型、PP 生成与源码基线检查，并增加通用文档检查。浏览器测试仍为本地运行入口；迁移目录不代表此前未进入 CI 的浏览器测试已经自动执行。具体复核范围见 [课程维护表](../pages/COURSE_COVERAGE.md)。
+CI 保留原有模型、PP 生成与源码基线检查，并增加通用文档检查。浏览器测试仍为本地运行入口；迁移目录不代表此前未进入 CI 的浏览器测试已经自动执行。基础章节另有 `test_foundations.cjs` 与 `test_foundations_browser.cjs`，检查十二课的机制不变量、场景切换与完整阅读路径。具体复核范围见 [课程维护表](../pages/COURSE_COVERAGE.md)。
+
+并行基础的 `test_parallel_teaching.cjs` 核对 TP 重构、PCP 因果配对与 DCP 的稳定归一化合并；`test_detail_mechanisms_browser.cjs` 覆盖各并行场景的中间态。删除旧播放器后，相关专题浏览器测试通过 `migrated_checks.cjs` 继续检查迁入主动画的原有分支，不因入口整合而删掉这些机制断言。

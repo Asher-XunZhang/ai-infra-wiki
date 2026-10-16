@@ -7,6 +7,7 @@
   'use strict';
   const commit = '882577451e764a515df2a386a055012e8f075a16';
   const sources = {
+    loop: ['managers/scheduler_pp_mixin.py', 198, 'def event_loop_pp_disagg_prefill'],
     bootstrap: ['managers/scheduler_pp_mixin.py', 625, 'def _pp_pd_get_bootstrapped_ids'],
     admission: ['disaggregation/prefill.py', 450, 'def pop_bootstrapped'],
     metadata: ['disaggregation/prefill.py', 395, 'def finalize_bootstrap'],

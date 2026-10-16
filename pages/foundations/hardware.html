@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>GPU 计算与访存：算力、带宽和 CUDA Graph · 推理基础</title><meta name="description" content="先算一个小矩阵，再区分参数存储、数据搬运、设备运算和执行提交。"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/detail-scenes.js" defer></script><script src="../motion/detail-visuals.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script></head>
+<body data-page="foundations" data-lesson="hardware"><a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><a class="site-brand" href="../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub ↗</a><button class="theme-toggle" type="button" aria-label="切换配色">配色：系统</button></div></header>
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="chapter-nav" data-chapter="foundations" open><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="hardware.html" aria-current="page">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
+<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
+<a class="lesson-link" href="../sglang/model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
+<a class="lesson-link" href="../sglang/kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<details class="module-nav" data-module="parallelism">
+<summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#parallelism">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
+</div></details>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
+</div></details>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
+<a class="lesson-link" href="../sglang/pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
+<a class="lesson-link" href="../sglang/pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<details class="module-nav" data-module="advanced-generation">
+<summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#advanced-generation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
+</div></details>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
+</div></details>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识</a>
+</div></details>
+</nav></details>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content">
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">GPU 计算与访存：算力、带宽和 CUDA Graph</span></nav>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 06 / 12</a><span class="lesson-count">通用原理</span></div><h1>GPU 计算与访存：算力、带宽和 CUDA Graph</h1><p>先算一个小矩阵，再区分参数存储、数据搬运、设备运算和执行提交。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
+<p class="foundation-prereqs">先看：<a href="attention.html">Attention 与 Q/K/V：模型怎样参考上下文？</a> · <a href="batching.html">Batch 调度：动态组批、连续批处理与 Chunked Prefill</a></p>
+<p class="foundation-intro">模型权重是一组数，GPU 要拿到这些数和输入，才能执行乘加。我们用一个两行矩阵把运算展开，再用相同工作量比较带宽和算力变化。</p>
+<section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>神经网络计算既要做乘加，也要把权重和激活送到运算单元。算力、数据搬运和 CPU 提交都可能成为限制；先找受限制的环节，才能判断应该优化什么。</p></section>
+<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>
+<div id="lesson-animation"></div>
+
+<section class="foundation-lab" data-foundation-lab="hardware" data-full="true" data-title="GPU 计算与访存：算力、带宽和 CUDA Graph"><h2>走一遍具体过程</h2><p>能说明算力、带宽与执行提交分别影响哪一段。</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>
+<section id="understand" class="concept-guide"><h2>理解设计：为什么需要这些机制？</h2><nav class="concept-nav" aria-label="按概念问题阅读"><a href="#why-parallel-math">为什么很多模型运算适合 GPU？</a><a href="#why-intensity">算力很强，为什么仍可能在等数据？</a><a href="#why-launch">CUDA Graph 解决的是另一种什么等待？</a></nav><section id="why-parallel-math" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">01</span><h3>为什么很多模型运算适合 GPU？</h3></div><p>一个矩阵乘法包含许多结构相近的乘加，GPU 能同时安排大量这类工作。权重是训练好的参数，激活是当前输入在计算过程中产生的中间数值；两者到达计算位置后，运算才能进行。</p><p>小任务、数据准备、同步或频繁提交可能让设备无法持续处理足够工作。因此“在 GPU 上跑”不等于“算力已经充分使用”。</p><p class="concept-refs">依据：<a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-gpu-background/index.html">GPU 计算与带宽 · NVIDIA</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-intensity" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">02</span><h3>算力很强，为什么仍可能在等数据？</h3></div><p>Arithmetic Intensity（算术强度）描述每搬运一定字节的数据，执行了多少运算。复用已经读取的权重、合适地组织批量，可能让同一份数据参与更多计算；仅增加计算单元，无法缩短必须的数据读取下界。</p><aside class="concept-example" aria-labelledby="example-intensity"><h4 id="example-intensity">把数据复用和执行速度分开看</h4><ol><li>假设一份权重 W 读取一次后可供 4 个输入使用，它每次读取承担的计算量多于只服务 1 个输入。</li><li>实际还需读取激活、写出结果，且缓存和算子实现决定能否达到这种复用。</li></ol><p class="concept-note">这是复用关系示意，没有将请求数直接换算为加速倍数。</p></aside><p class="concept-refs">依据：<a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-gpu-background/index.html">GPU 计算与带宽 · NVIDIA</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-launch" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">03</span><h3>CUDA Graph 解决的是另一种什么等待？</h3></div><p>CPU 需要把设备操作提交给 GPU。对重复出现且满足约束的执行结构，CUDA Graph 可以预先组织操作图，再重放它，减少反复逐项提交的开销。</p><p>重放仍会执行本次输入对应的运算；它不是缓存上一次答案。形状、地址和执行结构的要求由具体实现决定，图桶补齐也可能多做一些工作。</p><ul class="concept-links"><li><a href="../sglang/model-execution/index.html">SGLang：执行与图桶 →</a></li></ul><p class="concept-refs">依据：<a href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html">NVIDIA · CUDA Graphs</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><aside class="concept-check"><h3>试着解释</h3><p>如果数据搬运已经占主导，只把算力翻倍会怎样？</p><details><summary>展开解释</summary><p>计算部分可能缩短，但搬运数据的下界并未改变。应先确认瓶颈，再考虑复用数据、减少搬运或改进带宽。</p></details></aside></section>
+<section id="lesson-glossary"><h2>术语速查</h2><dl class="foundation-terms" aria-label="这课用到的词"><div><dt>权重与激活</dt><dd>权重是模型参数；激活是本轮计算产生的中间结果。读取权重不是读取已经写好的回答。</dd></div><div><dt>算子 / kernel</dt><dd>算子描述要做的运算，kernel 是设备上执行它的一种实现；一个 kernel 通常不等于整个模型。</dd></div><div><dt>算力 / 带宽</dt><dd>前者约束单位时间能做多少计算，后者约束能搬多少数据；两种资源不能互相替代。</dd></div></dl></section>
+<section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2><div class="foundation-copy"><section id="concept-0"><h2>矩阵乘加：一行输出怎样算出来</h2><p>输入 [2,3] 与权重两行 [1,2]、[3,4] 计算，得到 [8,18]。图逐行展开 2×1+3×2 与 2×3+3×4。真实模型的维度更大，原理上的乘加关系相同。</p></section><section id="concept-1"><h2>Compute-bound / Memory-bound：算力与访存瓶颈</h2><p>后半段用教学工作量给出搬运 8 u、计算 3 u 的两个资源下界。即使算力翻倍，搬运的下界仍是 8 u。这里的 max 是理想下界，不保证实际能完全重叠；真实延迟还含调度、提交、同步等成本。</p></section><section id="concept-2"><h2>CUDA Graph：减少哪些执行提交开销</h2><p>程序需要把一组设备操作提交出去。CUDA Graph 可以捕获并重放满足条件的操作图，以减少相关提交开销；它不会把模型计算凭空删除。第二章会用真实请求和补齐行区分图桶容量与请求数量。</p></section></div></section>
+<form class="fd-quiz" data-answer="1" data-feedback="计算项变成 1.5 u，但搬运项仍是 8 u。应先找到限制来自哪种资源。" hidden><fieldset><legend>搬运下界为 8 u、计算下界为 3 u，只把算力翻倍，二者最大值变成多少？</legend><label><input type="radio" name="prediction" value="0"><span>4 u</span></label><label><input type="radio" name="prediction" value="1"><span>仍是 8 u</span></label></fieldset><button type="submit">检查判断</button><p class="fd-feedback" aria-live="polite"></p></form>
+<details class="foundation-fallback"><summary>自测与解释：搬运下界为 8 u、计算下界为 3 u，只把算力翻倍，二者最大值变成多少？</summary><p>计算项变成 1.5 u，但搬运项仍是 8 u。应先找到限制来自哪种资源。</p></details>
+
+<a class="foundation-to-engine" href="../sglang/model-execution/index.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-16。矩阵是可手算的示例。资源条采用教学时间单位 u，表示理想下界，未测量硬件或 CUDA Graph 的实际收益。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="https://docs.nvidia.com/deeplearning/performance/dl-performance-gpu-background/index.html">NVIDIA · GPU Performance Background</a></li></ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="batching.html"><small>上一课</small><strong>Batch 调度：动态组批、连续批处理与 Chunked Prefill</strong></a><a class="next" href="parallel.html"><small>下一课</small><strong>TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</strong></a></nav>
+</main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>

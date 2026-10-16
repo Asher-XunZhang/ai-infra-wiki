@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Attention 与 Q/K/V：模型怎样参考上下文？ · 推理基础</title><meta name="description" content="从一行向量开始：提出查询、比较相关程度、汇合信息，再继续处理。"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-scenes.js" defer></script><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script><link rel="stylesheet" href="../sglang/inference-overview/overview.css"><link rel="stylesheet" href="../diagrams.css"><script src="../sglang/inference-overview/model.js" defer></script><script src="../diagrams.js" defer></script><script src="../sglang/inference-overview/overview.js" defer></script></head>
+<body data-page="foundations" data-lesson="attention"><a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><a class="site-brand" href="../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub ↗</a><button class="theme-toggle" type="button" aria-label="切换配色">配色：系统</button></div></header>
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="chapter-nav" data-chapter="foundations" open><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="attention.html" aria-current="page">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
+<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
+<a class="lesson-link" href="../sglang/model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
+<a class="lesson-link" href="../sglang/kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<details class="module-nav" data-module="parallelism">
+<summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#parallelism">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
+</div></details>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
+</div></details>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
+<a class="lesson-link" href="../sglang/pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
+<a class="lesson-link" href="../sglang/pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<details class="module-nav" data-module="advanced-generation">
+<summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#advanced-generation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
+</div></details>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
+</div></details>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识</a>
+</div></details>
+</nav></details>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content">
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">Attention 与 Q/K/V：模型怎样参考上下文？</span></nav>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 03 / 12</a><span class="lesson-count">通用原理</span></div><h1>Attention 与 Q/K/V：模型怎样参考上下文？</h1><p>从一行向量开始：提出查询、比较相关程度、汇合信息，再继续处理。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
+<p class="foundation-prereqs">先看：<a href="tokens.html">Tokenization 与 Embedding：文字怎样变成模型输入？</a> · <a href="generation.html">自回归生成：Prefill 与 Decode 怎样接续？</a></p>
+<p class="foundation-intro">知道了向量，下一步才是看模型怎样用上下文。下面每个位置用两个数表示。点击推进，看当前查询如何给允许读取的位置打分，再按权重混合它们携带的数值。</p>
+<section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>“苹果”出现在“吃苹果”和“苹果发布新电脑”里，初始 token 表示本身不足以区分语境。Attention 让当前位置根据当前需要，从允许读取的上下文中组合信息。它计算的是向量关系，不是人工编写的关键词规则。</p></section>
+<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>
+<div id="lesson-animation"></div>
+
+<section class="foundation-lab" data-foundation-lab="attention" data-full="true" data-title="Attention 与 Q/K/V：模型怎样参考上下文？"><h2>走一遍具体过程</h2><p>能说明 Q、K、V 各自参与哪一步，以及未来位置为什么被挡住。</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>
+<section id="understand" class="concept-guide"><h2>理解设计：为什么需要这些机制？</h2><nav class="concept-nav" aria-label="按概念问题阅读"><a href="#why-context">为什么不能只看当前 token，或者平均所有位置？</a><a href="#why-qkv">为什么要把 Query、Key、Value 分开？</a><a href="#why-structure">遮罩、位置和前馈层为什么仍然需要？</a></nav><section id="why-context" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">01</span><h3>为什么不能只看当前 token，或者平均所有位置？</h3></div><p>只看当前 token 无法处理指代、语序和远处条件；把所有位置等权平均又容易淹没真正相关的信息。Attention（注意力）让不同位置对当前结果产生不同贡献，并随输入内容改变这些贡献。</p><p>以 Transformer 为例，每一层都可以更新这种上下文表示。一个 attention head（注意力头）只提供一组投影与加权路径，多头可学习不同的组合方式；不能事先把某个头固定解释成语法或事实检查器。</p><p class="concept-refs">依据：<a href="https://arxiv.org/abs/1706.03762">Vaswani 等（2017）· Attention Is All You Need</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-qkv" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">02</span><h3>为什么要把 Query、Key、Value 分开？</h3></div><p>Query（查询，Q）表示当前用于匹配的特征，Key（键，K）表示其他位置用于被匹配的特征，Value（值，V）是匹配后要汇入结果的内容。它们通常由输入经过不同的可训练投影得到：判断相关性的特征，与最终携带的信息不必相同。</p><p>点积得到匹配分数，缩放后用 Softmax 形成权重，再对 V 加权求和。模型不会因此把被关注的词从原位置取走；输出是多个数值向量的组合。</p><aside class="concept-example" aria-labelledby="example-qkv"><h4 id="example-qkv">权重怎样真正影响结果</h4><ol><li>假设两个可见位置的 Value 分别为 2 和 8。</li><li>当前 Query 对应的归一化权重若为 0.75、0.25，输出就是 0.75×2 + 0.25×8 = 3.5。</li><li>换一个 Query，权重若变为 0.25、0.75，输出就变为 6.5。</li></ol><p class="concept-note">这是独立的一维手算例；主动画使用二维向量展开分数与权重的来源。</p></aside><p class="concept-refs">依据：<a href="https://d2l.ai/chapter_attention-mechanisms-and-transformers/attention-scoring-functions.html">动手学深度学习 · 注意力评分与加权</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-structure" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">03</span><h3>遮罩、位置和前馈层为什么仍然需要？</h3></div><p>Causal Mask（因果遮罩）排除未来位置，使训练时的并行计算遵守生成时的可见范围。位置机制则向模型提供顺序信息；否则只按内容匹配不能充分表达“谁在前、谁在后”。不同模型可使用不同位置方案。</p><p>Attention 负责跨位置组合信息，逐位置的前馈网络负责进一步变换特征，残差连接使层能够在已有表示上添加更新。2017 年 Transformer 用注意力组织序列交互，减少了对循环网络逐位置递推的依赖；这不意味着生成时未知的未来 token 也可以直接并行确定。</p><ul class="concept-links"><li><a href="generation.html#why-next-token">回看训练与生成的差别 →</a></li></ul><p class="concept-refs">依据：<a href="https://arxiv.org/abs/1706.03762">Vaswani 等（2017）· Attention Is All You Need</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><aside class="concept-check"><h3>试着解释</h3><p>如果把所有位置的权重固定成相同值，失去了什么能力？</p><details><summary>展开解释</summary><p>仍然能混合 Value，但失去了随当前 Query 和上下文改变各位置贡献的能力。需要相关信息时，它可能被无关内容的平均贡献淹没。</p></details></aside></section>
+<section id="lesson-glossary"><h2>术语速查</h2><dl class="foundation-terms" aria-label="这课用到的词"><div><dt>Q / K / V</dt><dd>Q 是当前查询，K 用来与查询比较，V 是被混合的信息；都是计算得到的数值，不是三份原文。</dd></div><div><dt>Attention</dt><dd>根据 Q 与 K 算出权重，再对 V 加权汇合。这里的权重是一次计算的结果，不等同模型训练参数。</dd></div><div><dt>MLP 与模型层</dt><dd>MLP 对每个位置的表示继续做变换。一个模型层还包含残差、归一化等部件，多层逐层接续。</dd></div></dl></section>
+<section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2><div class="foundation-copy"><section id="concept-0"><h2>Q/K/V 与 Softmax：从分数到加权结果</h2><p>算例使用 Q=K=输入向量、V=输入向量的两倍，以免同时引入大矩阵；真实模型用训练得到的投影产生 Q/K/V。动画逐项显示分数、归一化权重和加权和，不把“读取历史”画成直接拿走某个词。</p></section><section id="concept-1"><h2>Causal Mask：同时计算时如何遮住未来</h2><p>因果模型在某个位置上的预测只能依赖该位置及之前的内容。整段输入可以并行组织计算，但对应的注意力关系仍受遮罩限制。选择第二个位置，后两个位置不会参与它的加权和。</p></section><section id="concept-2"><h2>Transformer Layer：一层计算与一次生成的区别</h2><p>一次 Prefill 或 Decode 都要走完模型需要的各层。图最后用 2→3→2 的小型 MLP 展示数值变换；它不是完整 Transformer 的全部运算。下一课只跟踪其中值得保存的历史 K/V。</p></section></div></section>
+<form class="fd-quiz" data-answer="0" data-feedback="切到第二个位置，后两个权重为 0；批量组织计算不取消因果关系。" hidden><fieldset><legend>观察第二个位置时，后两个位置虽然已经输入，能参加它的注意力汇合吗？</legend><label><input type="radio" name="prediction" value="0"><span>不能，因果遮罩排除后续位置</span></label><label><input type="radio" name="prediction" value="1"><span>能，Prefill 可以看见所有未来位置</span></label></fieldset><button type="submit">检查判断</button><p class="fd-feedback" aria-live="polite"></p></form>
+<details class="foundation-fallback"><summary>自测与解释：观察第二个位置时，后两个位置虽然已经输入，能参加它的注意力汇合吗？</summary><p>切到第二个位置，后两个权重为 0；批量组织计算不取消因果关系。</p></details>
+<details class="foundation-extension" id="mechanism-extension"><summary>选读 · 完整模型层与 Prefill / Decode 输入范围</summary><p>主线之外的完整机制对照图。沿用原课程的教学假设；不代表 SGLang 的运行轨迹。</p><section class="overview-section"><h2>完整模型层：Attention 之后还有什么？</h2><p>本例采用 Pre-Norm 结构：输入 → 归一化 → Self-Attention → 残差相加 → 归一化 → MLP → 残差相加 → 下一层。上方动画放大了 Attention 与手算 MLP；这里补齐完整模型层的结构。</p><table><thead><tr><th>阶段</th><th>新输入位置</th><th>每个新 Query 可读取的范围</th></tr></thead><tbody><tr><td>Prefill</td><td>p1…p4，一次处理多个位置</td><td>pᵢ 只能读取 p1…pᵢ 的 K/V</td></tr><tr><td>Decode</td><td>y1，一个新位置</td><td>已有 prompt 与本位置的 K/V</td></tr></tbody></table></section><p class="big-idea">P 和 D 都走完整的模型层。P 处理一段新位置，D 通常每条请求处理一个新位置。</p><section class="overview-section"><h2>Decoder-only Transformer：Prefill / Decode 的计算路径</h2><p>这里以 简化的 <strong>decoder-only Transformer</strong> 为例。这是通用教学图，不是 DeepSeek-V3 的完整结构；V3 的 MLA 压缩缓存与 MoE 专家选择见第二章。图中的一层包含自注意力（Self-Attention）、前馈网络（MLP），以及归一化和残差连接；这样的层重复很多次。Prefill 与 Decode 都经过这些部分，再由输出头和采样步骤选出新 token。</p><p>区别在“这一次送进来多少新位置、能读取哪些历史 KV”，而不在“走模型的哪半边”。如果使用 PP，模型层会分到多个 stage，但一次 P 或 D 前向仍需走过整条流水线。</p></section><section class="overview-section"><h2>Causal Mask：批量计算中的可见范围</h2><p>Prefill 可以在一轮前向中处理多个输入位置，因果遮罩仍规定位置 p2 只能看 p1、p2。Decode 的 y1 已有全部 prompt 作为历史，因此能读这些位置的 KV，也会为自身计算并写入 KV。</p><p>“P 常更偏计算、D 常更偏访存”是理解负载的出发点，不是硬件定律。批量大小、上下文长度、模型结构和 kernel 都可能改变瓶颈。</p></section><details class="overview-selfcheck"><summary>自测 · Decode 是否跳过 MLP，只从 KV 中取答案？</summary><p>不会。KV 复用历史 attention 的 K/V；当前新位置仍要经过 attention、MLP 等完整模型计算，才得到下一 token 的分数。</p></details><p><a href="../sglang/inference-overview/transformer.html">转到 SGLang：核对实现接口与固定源码 →</a></p></details>
+<a class="foundation-to-engine" href="../sglang/inference-overview/transformer.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-15。单头、二维向量的手算演示，省略位置编码、归一化、完整残差和真实权重。数值用于解释乘加与遮罩，不解释模型的语义理解能力。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="https://arxiv.org/abs/1706.03762">Vaswani 等 · Attention Is All You Need</a></li></ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="generation.html"><small>上一课</small><strong>自回归生成：Prefill 与 Decode 怎样接续？</strong></a><a class="next" href="cache.html"><small>下一课</small><strong>KV Cache 与前缀复用：为什么保存历史 K/V？</strong></a></nav>
+</main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>

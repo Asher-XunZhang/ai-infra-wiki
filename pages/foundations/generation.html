@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>自回归生成：Prefill 与 Decode 怎样接续？ · 推理基础</title><meta name="description" content="先处理输入，再给下一片段打分；把选出的片段接回去，才能继续下一轮。"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-scenes.js" defer></script><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script><link rel="stylesheet" href="../sglang/inference-overview/overview.css"><link rel="stylesheet" href="../diagrams.css"><script src="../sglang/inference-overview/model.js" defer></script><script src="../diagrams.js" defer></script><script src="../sglang/inference-overview/overview.js" defer></script></head>
+<body data-page="foundations" data-lesson="generation"><a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><a class="site-brand" href="../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub ↗</a><button class="theme-toggle" type="button" aria-label="切换配色">配色：系统</button></div></header>
+<div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../">学习首页 <span aria-hidden="true">↗</span></a>
+<details class="chapter-nav" data-chapter="foundations" open><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="generation.html" aria-current="page">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
+<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
+<a class="lesson-link" href="../sglang/model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
+<a class="lesson-link" href="../sglang/kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<details class="module-nav" data-module="parallelism">
+<summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#parallelism">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
+</div></details>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
+</div></details>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
+<a class="lesson-link" href="../sglang/pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
+<a class="lesson-link" href="../sglang/pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<details class="module-nav" data-module="advanced-generation">
+<summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#advanced-generation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
+</div></details>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
+</div></details>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
+<a class="lesson-link" href="../sglang/pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识</a>
+</div></details>
+</nav></details>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content">
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">自回归生成：Prefill 与 Decode 怎样接续？</span></nav>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 02 / 12</a><span class="lesson-count">通用原理</span></div><h1>自回归生成：Prefill 与 Decode 怎样接续？</h1><p>先处理输入，再给下一片段打分；把选出的片段接回去，才能继续下一轮。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
+<p class="foundation-prereqs">先看：<a href="tokens.html">Tokenization 与 Embedding：文字怎样变成模型输入？</a></p>
+<p class="foundation-intro">输入准备好了，模型也不会一次交出整篇回答。一次选择一个 token、再把它送回继续生成，这叫自回归。每一轮回答一个小问题：在当前已有内容后面，下一个 token 选什么？下面用一组明确标为教学假设的候选，走完两次续写。</p>
+<section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>语言模型学到的是：给定已有内容，下一个单位有哪些可能。自回归生成把这个局部问题反复求解；Prefill 和 Decode 则是推理系统执行这条依赖链时的两种工作形态。</p></section>
+<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>
+<div id="lesson-animation"></div>
+
+<section class="foundation-lab" data-foundation-lab="generation" data-full="true" data-title="自回归生成：Prefill 与 Decode 怎样接续？"><h2>走一遍具体过程</h2><p>能区分输入处理、候选打分、选择、可见文字和停止。</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>
+<section id="understand" class="concept-guide"><h2>理解设计：为什么需要这些机制？</h2><nav class="concept-nav" aria-label="按概念问题阅读"><a href="#why-next-token">为什么一次预测一个 token，也能形成一段话？</a><a href="#why-phases">Prefill 为什么能处理多位置，Decode 为什么逐轮推进？</a><a href="#why-selection">分数、概率、采样分别有什么用？</a></nav><section id="why-next-token" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">01</span><h3>为什么一次预测一个 token，也能形成一段话？</h3></div><p>一段序列的概率可以分解为一连串条件概率：先预测第一个输出，再在它和原输入的条件下预测第二个，依次继续。模型每步给词表里的候选打分，解码规则再选择一个 token。选中的结果会改变后续条件，所以不能预先独立选出整段回答。</p><p>训练时可以拿到完整样本，把每个位置后面的真实 token 作为目标；因果遮罩保证预测时看不到目标之后的内容。推理时未来输出尚未选定，只能沿已经作出的选择推进。</p><aside class="concept-example" aria-labelledby="example-next-token"><h4 id="example-next-token">同一问题可以走向不同的后续</h4><ol><li>已有输入：“我想”。第一步若选“学习”，下一步是在“我想学习”之后预测。</li><li>若第一步选“吃”，后续就要根据“我想吃”重算，不能沿用前一路径的候选分数。</li></ol><p class="concept-note">这是依赖关系示意，未运行模型，也没有声称这些候选的真实概率。</p></aside><p class="concept-refs">依据：<a href="https://huggingface.co/docs/transformers/v4.57.1/llm_tutorial">自回归生成与解码策略 · Hugging Face</a> · <a href="https://arxiv.org/abs/1706.03762">Vaswani 等（2017）· Attention Is All You Need</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-phases" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">02</span><h3>Prefill 为什么能处理多位置，Decode 为什么逐轮推进？</h3></div><p>Prompt（输入提示文本）里的 token 都已经确定，Prefill（预填充）可以一次组织这些位置的计算，并建立后续需要的缓存；各位置仍只能读取因果遮罩允许的内容。最后一个输入位置的输出用于选择第一个生成 token。</p><p>随后把刚选出的 token 作为新输入，就进入 Decode（解码）的下一轮。新 token 经过模型各层，更新缓存并产生下一个候选。单条普通自回归请求每轮推进一个新位置，多条请求仍可放在同一批中计算。</p><ul class="concept-links"><li><a href="cache.html#understand">缓存如何避免重算历史 →</a></li><li><a href="batching.html#understand">多请求怎样一起计算 →</a></li></ul><p class="concept-refs">依据：<a href="https://huggingface.co/docs/transformers/main/en/cache_explanation">因果模型的缓存复用 · Hugging Face</a> · <a href="https://huggingface.co/docs/transformers/v4.57.1/llm_tutorial">自回归生成与解码策略 · Hugging Face</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-selection" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">03</span><h3>分数、概率、采样分别有什么用？</h3></div><p>Logits 是模型对候选的原始分数。Softmax 将它们转为总和为 1 的概率；贪心解码选最高分项，随机采样则依据经过温度、候选过滤等规则处理后的分布抽取。温度调节分布的尖锐程度，不是事实正确率的旋钮。</p><p>直到选择结束标记、达到长度限制或被取消，生成才停止。概率是在当前上下文和模型下对续写的偏好，不代表回答已经过事实核验。</p><p class="concept-refs">依据：<a href="https://huggingface.co/docs/transformers/v4.57.1/llm_tutorial">自回归生成与解码策略 · Hugging Face</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><aside class="concept-check"><h3>试着解释</h3><p>为什么已知 prompt 可以多位置计算，未知回答却通常逐步选择？</p><details><summary>展开解释</summary><p>Prompt 的所有输入位置已确定，可以在因果遮罩下组织计算。回答的下一位置取决于本轮选了什么；选择变化，后续条件也变化。</p></details></aside></section>
+<section id="lesson-glossary"><h2>术语速查</h2><dl class="foundation-terms" aria-label="这课用到的词"><div><dt>模型权重</dt><dd>训练得到、推理时用于计算的一组参数；普通生成不会每输出一个字就训练一遍。</dd></div><div><dt>logits / 采样</dt><dd>logits 是候选的原始分数。选择策略可以取最高分，也可以根据分布抽样；分数不是事实正确率。</dd></div><div><dt>Prefill / Decode</dt><dd>先处理一段输入并获得首个输出，称为 Prefill；随后用新位置与历史状态继续生成，称为 Decode。</dd></div><div><dt>历史计算记录</dt><dd>模型处理输入后，可以留下供下一轮使用的数值记录。第 3、4 课再拆开其中的 K/V 与缓存，本课先观察“已经处理”和“刚选出”是两件事。</dd></div></dl></section>
+<section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2><div class="foundation-copy"><section id="concept-0"><h2>Model 与 Inference Engine：模型和引擎的分工</h2><p>模型根据输入和已有状态做计算，产生候选分数；推理引擎组织请求、安排计算、管理缓存并把结果返回。SGLang 是第二章要拆解的引擎之一，不是这些 token 的词表，也不是模型权重本身。</p></section><section id="concept-1"><h2>Autoregressive Generation：输出为何成为下一轮输入</h2><p>下一片段取决于已经选择了什么。第一轮选了“学习”，第二轮的上下文就包含它；换成另一个候选，后面的分数也应重新计算。图里把输出片段移回输入区，表示这个依赖。</p></section><section id="concept-2"><h2>Detokenization：输出 ID 怎样成为可见文字</h2><p>编号还要经过反分词、响应处理和网络，才能在客户端显示。一次网络消息可能带多个 token。停止可以由结束标记、长度限制或外部取消触发；它不意味着所有缓存已经安全释放。</p></section></div></section>
+<form class="fd-quiz" data-answer="1" data-feedback="采样选的是下一片段；它在下一轮送回模型后，才会产生作为输入位置的 K/V。" hidden><fieldset><legend>刚采样出的第一个输出，是否已经作为输入算过自己的 K/V？</legend><label><input type="radio" name="prediction" value="0"><span>已经，因为文字出现了</span></label><label><input type="radio" name="prediction" value="1"><span>还没有，要等它进入下一轮计算</span></label></fieldset><button type="submit">检查判断</button><p class="fd-feedback" aria-live="polite"></p></form>
+<details class="foundation-fallback"><summary>自测与解释：刚采样出的第一个输出，是否已经作为输入算过自己的 K/V？</summary><p>采样选的是下一片段；它在下一轮送回模型后，才会产生作为输入位置的 K/V。</p></details>
+<details class="foundation-extension" id="mechanism-extension"><summary>选读 · 逐层前向：三层模型的 Prefill / Decode 与 KV 写入</summary><p>主线之外的完整机制对照图。沿用原课程的教学假设；不代表 SGLang 的运行轨迹。</p><section class="lab"><h2>逐层观察：同一次前向怎样经过三个模型层</h2><div data-diagram="journey" aria-label="逐层观察：同一次前向怎样经过三个模型层"></div><noscript>请启用 JavaScript 查看此图；机制说明见本展开区；源码对照见下方实现入口。</noscript></section><p class="big-idea">Prefill 读入上下文并给出第一个输出；Decode 把刚生成的 token 送回模型，一步步接着写。</p><section class="overview-section"><h2>先认清三样东西</h2><p><strong>Token</strong> 是模型处理的编号单位，不一定是一个汉字或一个词；<strong>logits</strong> 是模型给候选 token 的分数；<strong>KV Cache</strong> 保存已经处理过的位置在各层 attention 中的键和值。把它理解为“下一轮可用的历史记忆”即可。</p><p>下面用 p1…p4 表示输入，用 y1、y2 表示输出；它们是位置标签，不是实际分词结果或模型预测。模型压缩为 3 层，逐层展示同一次 Prefill，再看一轮 Decode；后续重复用循环概括。</p></section><section class="overview-section"><h2>“算出来”与“看见了”是两个时刻</h2><p>模型前向和采样发生在后端；输出还要经过结果处理、反分词、流式响应和网络。第一个 token 已采样，并不表示客户端已经收到。PD 分离还可能带来额外的交接等待。</p><p>停止也不等于立即抹掉所有 KV。请求自己的资源需要收尾；如果启用前缀缓存，符合条件的 KV 可以由缓存系统保留，以便未来复用。</p></section><details class="overview-selfcheck"><summary>自测 · 为什么有 5 个输出时，缓存里只出现 y1…y4？</summary><p>y5 刚被采样出来，还没有作为输入经过下一轮前向。不要把“已输出 token 数”直接当成“已写入 KV 的输出位置数”。</p></details><p><a href="../sglang/inference-overview/journey.html">转到 SGLang：核对实现接口与固定源码 →</a></p></details>
+<a class="foundation-to-engine" href="../sglang/inference-overview/journey.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-15。候选、分数、词表和输出均为手工教学值；不是 Qwen 或 SGLang 的实际预测。抽样模式固定展示一次可能结果，不模拟完整概率算法。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="https://huggingface.co/docs/transformers/main/en/llm_tutorial">Hugging Face · Text generation</a></li></ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="tokens.html"><small>上一课</small><strong>Tokenization 与 Embedding：文字怎样变成模型输入？</strong></a><a class="next" href="attention.html"><small>下一课</small><strong>Attention 与 Q/K/V：模型怎样参考上下文？</strong></a></nav>
+</main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>

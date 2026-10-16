@@ -1,0 +1,72 @@
+/* Numeric, spatial and temporal encodings share a palette, not a diagram shape. */
+.teaching-viewport{background:#f3f6f8}
+.teaching-viewport svg{min-width:0!important;font-family:system-ui,sans-serif}
+.teaching-viewport::after{display:none!important}
+.teach-panel{fill:#fff;stroke:#cbd8df;stroke-width:1}
+.teach-text{fill:#203c4b;font-size:15px}
+.teach-heading{fill:#163c48;font-size:17px;font-weight:700}
+.teach-small{fill:#4b6472;font-size:12px}
+.teach-number{fill:#1e4558;font-size:15px;font-variant-numeric:tabular-nums}
+.teach-badge{fill:#9c5019;font-size:14px;font-weight:700}
+.teach-token{--ink:#277f7a;--tint:#e3f1ed}
+.teach-color-0{--ink:#277f7a;--tint:#e3f1ed}
+.teach-color-1{--ink:#4d6cba;--tint:#e6edfc}
+.teach-color-2{--ink:#b77626;--tint:#fff0d9}
+.teach-color-3{--ink:#8c61b1;--tint:#f0e7fa}
+.teach-color-4{--ink:#ac596e;--tint:#fae5eb}
+.teach-token>rect{fill:var(--tint);stroke:var(--ink);stroke-width:1.2}
+.teach-token>text{fill:#203d48;font-size:14px;font-weight:600}
+.teach-row{fill:var(--tint,#eaf1f5);stroke:#c6d4de}
+.teach-empty>rect{fill:none;stroke:#9bb0bd;stroke-dasharray:4 3}
+.teach-empty>text{fill:#647c8a;font-size:12px}
+.teach-track{fill:#e2eaf0;stroke:none}
+.teach-value{fill:var(--ink,#39798e);stroke:none}
+.teach-mask{fill:#e4e8ec;stroke:#c1cbd3;stroke-dasharray:4 3}
+.teach-contribution{fill:var(--tint,#e3eeed);stroke:var(--ink,#277f7a);stroke-width:1}
+.teach-compute{fill:#c1893a;stroke:none}
+.teach-read{fill:#2a8478;stroke:none}
+.teach-link{stroke:#7893a4;stroke-width:2;fill:none}
+.teach-write-cover{fill:#fff;stroke:none}
+.teach-gate{fill:#edf1f5;stroke:#aabcc8}
+.teach-gate.is-ready{fill:#e1f0e9;stroke:#4c8e74}
+[data-theme=dark] .teaching-viewport{background:#142330}
+[data-theme=dark] .teach-panel{fill:#1d3140;stroke:#476171}
+[data-theme=dark] .teach-heading,[data-theme=dark] .teach-text,[data-theme=dark] .teach-number{fill:#deebf3}
+[data-theme=dark] .teach-small{fill:#b9cddc}
+[data-theme=dark] .teach-row{fill:#243c4d;stroke:#4a6274}
+[data-theme=dark] .teach-track,[data-theme=dark] .teach-mask{fill:#2b3d4b;stroke:#526c7d}
+[data-theme=dark] .teach-value{fill:var(--ink,#79b8c4)}
+[data-theme=dark] .teach-contribution{fill:var(--tint,#e3eeed)}
+[data-theme=dark] .teach-contribution-number{fill:#1e3b48}
+[data-theme=dark] .teach-write-cover{fill:#1d3140}
+[data-theme=dark] .teach-gate{fill:#2a3c4c;stroke:#667e90}
+[data-theme=dark] .teach-gate.is-ready{fill:#224b40;stroke:#79b89b}
+@media(max-width:650px){.teaching-viewport .teach-heading{font-size:15px}.teaching-viewport .teach-small{font-size:12px}}
+.teach-graph-slot{fill:#eef3f7;stroke:#8ca9ba;stroke-dasharray:5 4}
+.teach-focus{fill:#fff1d6;stroke:#c28a3a;stroke-width:2}
+.teach-memory-slot{fill:#fff;stroke:#a5bac9;stroke-dasharray:4 3}
+.teach-memory-slot.is-reserved{stroke:#b7832e;stroke-width:2}
+.teach-memory-slot.is-written{stroke:#348572;stroke-dasharray:none}
+.teach-memory-fill{fill:#cae4db;stroke:none}
+.teach-map{fill:none;stroke:#8b64b6;stroke-width:2.5}
+.teach-check{fill:#fff6e6;stroke:#bd9555}
+.teach-plan{fill:#f7fbfa;stroke:#278374;stroke-dasharray:5 4}
+.teaching-viewport [role=button]{cursor:pointer;outline:none}.teaching-viewport [role=button]:focus>rect{stroke:#e58a30;stroke-width:3}
+[data-theme=dark] .teach-graph-slot{fill:#243b4b;stroke:#7e9aaa}
+[data-theme=dark] .teach-memory-slot{fill:#1d3140;stroke:#7893a4}
+[data-theme=dark] .teach-memory-fill{fill:#2b6657}
+[data-theme=dark] .teach-check{fill:#493a23;stroke:#c59a4c}
+[data-theme=dark] .teach-plan{fill:#1e3e36;stroke:#6cb59d}
+.teach-panel.is-reference{stroke:#2d8a7a;stroke-width:2;fill:#e3f0eb}
+.teach-held{fill:#e2ebfa;stroke:#5f7cb5}.teach-held.is-free{fill:#e1f0e8;stroke:#4b8e6b}
+[data-theme=dark] .teach-panel.is-reference{fill:#22473d;stroke:#78b6a3}
+[data-theme=dark] .teach-held{fill:#2a3b5a;stroke:#89a4d1}[data-theme=dark] .teach-held.is-free{fill:#23483b;stroke:#82b59a}
+@media(min-width:651px){.teaching-viewport svg{max-height:840px}.teaching-viewport svg[data-teaching-kind=execution]{max-height:950px}}
+
+[data-theme=dark] svg[data-teaching-kind=dynamic-batching] .teach-badge{fill:#edb974}
+/* Active operands keep their value and position while the dot product is explained. */
+.tp-active{stroke:#b66b13!important;stroke-width:3!important}
+/* A chunk plan uses discrete positions; the lower bar is execution progress. */
+.teach-slot{fill:none;stroke:#a5b9c5;stroke-dasharray:4 3}
+.teach-progress{fill:#2a8478;stroke:none}
+.mechanism-film[data-motion=scheduling] svg[data-teaching-kind=chunk-prefill]{max-height:none;max-width:900px;margin:auto}

@@ -38,3 +38,40 @@
 .learning-breadcrumb a:hover{color:var(--accent)}
 .learning-breadcrumb [aria-current]{color:var(--fg)}
 @media(max-width:900px){.module-heading{padding:9px 12px}.module-lessons-nav{margin-left:24px}.module-lessons-nav a{padding:9px 8px}.learning-breadcrumb{font-size:11px;gap:4px 7px;margin-bottom:18px}}
+
+/* Classroom entry: preserve the full lesson while bringing its first figure up. */
+.site-content:has(.lesson-header){padding-top:20px}
+main>.learning-breadcrumb{margin-bottom:10px;font-size:11px;line-height:1.65}
+main>.lesson-header{margin-bottom:16px}
+main>.lesson-header h1{font-size:clamp(26px,2.5vw,36px);line-height:1.4;margin:7px 0 8px}
+main>.lesson-header>p{margin:6px 0;font-size:14px;line-height:1.65}
+main>.lesson-header .meta-tags{margin-top:9px;gap:6px}
+main>.lesson-header .meta-tags>span,main>.lesson-header .meta-tags>a{font-size:11px;padding:3px 7px}
+main>.lesson-header .active-reading-route{font-size:12px;margin:0 0 6px;color:var(--accent)}
+main>.lab,main>.parallel-lab,main>.runtime-lab{margin:16px 0;padding:18px}
+main>.lab h2,main>.parallel-lab h2,main>.runtime-lab h2{font-size:20px;margin-top:0;margin-bottom:10px}
+main>.parallel-lab .mode-picker{margin-bottom:14px}
+main>.parallel-lab .parallel-settings{margin-bottom:12px}
+main>.parallel-lab .parallel-scene{margin-top:18px}
+main>.big-idea{margin:18px 0;padding:14px 18px;font-size:16px}
+.reading-route-pager{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:36px}
+.reading-route-pager>a{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);padding:18px 0}
+.reading-route-pager small{font-size:12px;color:var(--muted)}
+.reading-route-pager strong{font-size:16px;font-weight:550}
+.reading-route-pager .next{text-align:right}
+@media(max-width:600px){
+ .site-content:has(.lesson-header){padding-top:16px}
+ main>.lesson-header h1{font-size:26px}
+ main>.lesson-header>p{font-size:13px}
+ main>.lab,main>.parallel-lab,main>.runtime-lab{padding:14px;margin:14px 0}
+ main>.lab h2,main>.parallel-lab h2,main>.runtime-lab h2{font-size:19px}
+ main>.big-idea{padding:12px 14px;font-size:15px}
+ .reading-route-pager{gap:14px}
+ .reading-route-pager strong{font-size:14px}
+}
+.lesson-reading-nav{display:flex;flex-wrap:wrap;gap:8px 20px;margin:22px 0 30px;padding:16px 0;border-block:1px solid var(--border);font-size:14px}
+.lesson-reading-nav>a{padding:4px 0;max-width:100%;overflow-wrap:anywhere}
+.lesson-reading-nav>span{width:100%;font-size:12px;color:var(--muted)}
+.life-implementation{margin:18px 0;padding:12px 16px;border:1px solid var(--border);border-radius:8px}
+.life-implementation>summary{cursor:pointer;color:var(--accent);font-size:14px}
+[id^=reading-topic-],[id^=concept-]{scroll-margin-top:90px}

@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 const M=window.KVMemoryModel,$=s=>document.querySelector(s),lab=$('[data-memory-lab]');if(!lab)return;lab.hidden=false;
-let mode='extend',step=0,timer=null;const last={extend:4,prefix:3,sharing:6};
+let mode=window.LessonIntegration.prepare(lab,'kv-memory','extend'),step=0,timer=null;const last={extend:4,prefix:3,sharing:6};
 const labels={extend:['已有 6 个 KV 位置','分配器预留本轮写位置','模型续写原来的尾页','模型写入新页','按逻辑位置找到 KV'],prefix:['缓存与新请求','比较 token 前缀','按整页和身份判定','复用已有 KV 地址'],sharing:['前缀留在缓存','R1 命中并持有','R2 共享同一前缀','R1 结束','尝试驱逐共享页','R2 结束','驱逐缓存页']};
 function cells(values){return '<div class="memory-cells">'+values.map(c=>`<div class="memory-cell ${c.state||''} ${c.focus?'focus':''}" ${c.slot!==undefined?`data-slot="${c.slot}"`:''}>${c.label??(c.p<0?'·':'p'+c.p)}${c.slot!==undefined?`<small>槽 ${c.slot}</small>`:''}</div>`).join('')+'</div>';}
 function drawExtend(){const d=M.extend(Number($('#extend-length').value),step),selected=d.focused===null?(step===0?'尾页还留着 2 个位置':step===1?'本轮先用尾页 2 个位置':'原来的尾页已写满'):`逻辑 p${d.focused} → 物理槽 ${d.mapping[d.focused]}`;
