@@ -8,13 +8,13 @@
 function renderJourney(){
  const j=s.j,p=['p1','p2','p3','p4'],labels=['分词后的输入位置','Prefill · 层 1','Prefill · 层 2','Prefill · 层 3','采样首字 y1','Decode · 只看一轮'];
  controls(animationControls('j',6,'j'));animationBind('j',6,'j');
- let html=`<h3>${labels[j]}</h3><div class="wr-row">${(j===5?['y1']:p).map(x=>chip(x,j===0?'位置标签':j===5?'上一轮输出':'同一轮处理','new')).join('')}</div><div class="wr-down">↓ ${j===0?'分词后排队，获准才执行':j===1?'Embedding：token ID → 输入向量':j<4?'接续上一层的隐藏状态':j===4?'取最后一个 prompt 位置的最终隐藏状态':'复用历史 KV，仍遍历完整模型'}</div>`;
+ let html=`<h3>${labels[j]}</h3><div class="wr-row">${(j===5?['y1']:p).map(x=>chip(x,j===0?'位置标签':j===5?'上一轮输出':'同一轮处理','new')).join('')}</div><div class="wr-down">↓ ${j===0?'按输入位置排列 token ID':j===1?'Embedding：token ID → 输入向量':j<4?'接续上一层的隐藏状态':j===4?'取最后一个 prompt 位置的最终隐藏状态':'复用历史 KV，仍遍历完整模型'}</div>`;
  html+=path([1,2,3].map(l=>node('层 '+l,j>=l?(j===5?'新增 y1 的 KV':'已写 p1…p4 的 KV'):'尚未计算',j===l||j===5?'active':'')));
  if(j>0&&j<4)html+=`<div class="wr-label">当前层 ${j} · 因果 Attention → MLP</div><div class="wr-node"><div>p1 读 p1；p2 读 p1…p2；p3 读 p1…p3；p4 读全部 4 个位置。</div><div class="wr-row" style="margin-top:10px">${p.map(x=>chip(x,'K'+j+' / V'+j,'new')).join('')}</div><small>本层保存自己的 K/V；隐藏状态送往下一层。这里按层分解一次 Prefill，并非 3 轮请求调度。</small></div>`;
- if(j===0)html+=node('待调度','此时还没有任何层的 KV，也没有输出 token。','wait');
- if(j===4)html+=path([node('输出头','最后位置 → 词表 logits','active'),node('采样','得到首 token y1','active'),node('返回首字','y1 此时尚无 KV')]);
+ if(j===0)html+=node('输入已准备','此时还没有任何层的 KV，也没有输出 token。');
+ if(j===4)html+=path([node('输出头','最后位置 → 词表 logits','active'),node('采样','得到首 token y1','active'),node('得到首 token','y1 此时尚无 KV')]);
  if(j===5)html+=`<div class="wr-label">每层：读历史 4 个位置，写入 y1 的 K/V</div><div class="wr-row">${p.map(x=>chip(x,'复用','read')).join('')}${chip('y1','本轮新写','new')}${chip('y2','新采样 · 无 KV','future')}</div><div class="wr-down">↶ 后续重复：上一输出 → 完整模型 → 下一输出；直到 EOS 或长度上限</div>`;
- $('wr-scene').innerHTML=html;status(j===0?'分词方法见第一课。这里用 p1…p4 简记四个输入位置，等待资源后再执行。':j<4?`Prefill 同时处理 4 个输入位置；当前完成第 ${j} 层，尚未采样首字。`:j===4?'Prefill 最终得到 y1；缓存中只有已处理的 p1…p4，尚无 y1。':'输入 y1 → 各层新增它的 KV → 采样 y2；相同机制不再逐轮重复展示。');
+ $('wr-scene').innerHTML=html;status(j===0?'分词方法见第一课。p1…p4 是四个输入位置；下面只观察一次前向的逐层计算。':j<4?`Prefill 同时处理 4 个输入位置；当前完成第 ${j} 层，尚未采样首字。`:j===4?'Prefill 最终得到 y1；缓存中只有已处理的 p1…p4，尚无 y1。':'输入 y1 → 各层新增它的 KV → 采样 y2；相同机制不再逐轮重复展示。');
  evidence('3 层、4 个输入位置的普通因果 Transformer 教学示意；不表示真实模型只有 3 层。一次 Prefill 的层内多位置计算，与逐层依赖同时成立。','pages/sglang/inference-overview/model.js');
 }
 
@@ -37,8 +37,8 @@ function renderCache(){
 
 function renderDeployment(){
  controls('');
- $('wr-scene').innerHTML=`<div class="wr-grid"><div class="wr-node"><h3>合并部署 · 一个实例</h3>${path([node('Prefill','完整模型前向 → y1'),node('Decode','输入 y1 → y2 → …')])}<div class="wr-down">↓ 写 KV　　↑ 读 KV</div>${node('本地 KV','留在同一实例内接续','active')}</div><div class="wr-node"><h3>PD 分离 · 两个角色</h3>${node('实例 P','完整模型前向 → y1','active')}<div class="wr-down">↓ KV + 首 token / 配对信息</div>${node('实例 D','完整模型前向 → y2 → …','active')}<div class="wr-note">P 与 D 分工于阶段；各角色覆盖完整模型计算。</div></div></div><div class="wr-label">D 执行前，三个条件要同时满足</div><div class="wr-three">${node('KV 可用','数据已经可读')}${node('配对正确','请求与 metadata 对得上')}${node('可执行','准入与执行资源允许')}</div>`;
- status('KV 到达只是一个条件；角色分离会增加交接步骤，也让 P、D 能分别配置资源。');
+ $('wr-scene').innerHTML=`<div class="wr-grid"><div class="wr-node"><h3>合并部署 · 一个实例</h3>${path([node('Prefill','完整模型前向 → y1'),node('Decode','输入 y1 → y2 → …')])}<div class="wr-down">↓ 写 KV　　↑ 读 KV</div>${node('本地 KV','留在同一实例内接续','active')}</div><div class="wr-node"><h3>PD 分离 · 两个角色</h3>${node('实例 P','完整模型前向 → y1','active')}<div class="wr-down">↓ 历史 KV + 首 token</div>${node('实例 D','完整模型前向 → y2 → …','active')}<div class="wr-note">P 与 D 分工于阶段；各角色覆盖完整模型计算。</div></div></div><p class="wr-note">这里比较角色分工与 KV 的位置；具体的交接和执行条件见本页的 SGLang 实现入口。</p>`;
+ status('合并部署在原实例复用 KV；分离部署需要交接 KV，也让 P、D 能分别配置资源。');
  evidence('架构与准入条件概览；省略每个角色内部的 TP / PP 切分与具体传输协议。','pages/sglang/inference-overview/deployment-scene.js');
 }
 

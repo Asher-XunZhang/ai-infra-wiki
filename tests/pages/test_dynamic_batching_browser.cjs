@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const {scenarios}=require('../../pages/motion/dynamic-batching.js');
 const output=process.env.MOTION_SCREENSHOT_DIR;
-(async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});try{
+(async()=>{const server=await chromium.launchServer({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})}),owned=server.process();console.log(JSON.stringify({session:'test_dynamic_batching_browser',controller:process.pid,browser:owned.pid,profile:owned.spawnargs.find(a=>a.startsWith('--user-data-dir='))}));const browser=await chromium.connect(server.wsEndpoint());try{
  const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto((process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/')+'foundations/batching.html');
  const film=page.locator('.mechanism-film'),choice=film.locator('select[aria-label="连续演示条件"]'),svg=film.locator('svg'),range=film.locator('.motion-scrub input');
@@ -42,4 +42,4 @@ const output=process.env.MOTION_SCREENSHOT_DIR;
  await page.emulateMedia({reducedMotion:'reduce'});await require('./choose_motion_scene.cjs')(page,Number('2'));await film.locator('[data-motion-action=next]').focus();await page.keyboard.press('Enter');assert.equal(await film.getAttribute('data-position'),'1.0000');
  const plain=await browser.newPage({javaScriptEnabled:false});await plain.goto((process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/')+'foundations/batching.html');await plain.locator('#read-assemble summary').click();assert.match(await plain.locator('.foundation-copy').innerText(),/AB 在 t=3/);await plain.close();assert.deepEqual(errors,[]);
  console.log('PASS: dynamic snapshots, in-flight identity, reversible geometry, pause, renderer switching, 5 modes × 4 widths × 2 themes, keyboard/reduced-motion and no-JS.');
-}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});
+}finally{await browser.close();await server.close();try{process.kill(owned.pid,0);throw Error('owned browser remains');}catch(e){if(e.code!=='ESRCH')throw e;}}})().catch(e=>{console.error(e);process.exit(1);});

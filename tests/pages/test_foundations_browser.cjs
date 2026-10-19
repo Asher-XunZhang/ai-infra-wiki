@@ -4,7 +4,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const M=require('../../pages/foundations/model.js');
 const courses=require('../../pages/foundations/courses.json');
 (async()=>{
- const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});
+ const server=await chromium.launchServer({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})}),owned=server.process();console.log(JSON.stringify({session:'test_foundations_browser',controller:process.pid,browser:owned.pid,profile:owned.spawnargs.find(a=>a.startsWith('--user-data-dir='))}));const browser=await chromium.connect(server.wsEndpoint());
  try{
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.status()>=400)errors.push(r.status()+' '+r.url());});
@@ -77,7 +77,8 @@ const courses=require('../../pages/foundations/courses.json');
   const staticPage=await browser.newPage({javaScriptEnabled:false});
   for(const c of courses){
    await staticPage.goto(base+'foundations/'+c.slug+'.html');
-   assert.equal(await staticPage.locator('.foundation-copy section').count(),c.sections.length);
+   const copy=staticPage.locator('.foundation-copy');
+   for(const [title,body]of c.sections){assert.equal(await copy.getByRole('heading',{name:title,exact:true,includeHidden:true}).count(),1,c.slug+' heading retained');assert.ok((await copy.textContent()).includes(body),c.slug+' body retained');}
    assert.equal(await staticPage.locator('.fd-quiz').isVisible(),false);
    await staticPage.locator('.foundation-fallback summary').click();assert.ok((await staticPage.locator('.foundation-fallback p').innerText()).length>20);
    assert.equal(await staticPage.locator('.foundation-nav a').count(),12);
@@ -85,5 +86,5 @@ const courses=require('../../pages/foundations/courses.json');
   }
   await staticPage.close();assert.deepEqual(errors,[]);
   console.log('PASS: 12 foundation lessons; every scenario/step at 1440/390/320px, light/dark, quiz feedback, real tokenizer IDs, keyboard, playback, reduced motion, URL restore, supplement pause and no-JS content.');
- }finally{await browser.close();}
+ }finally{await browser.close();await server.close();try{process.kill(owned.pid,0);throw Error('owned browser remains');}catch(e){if(e.code!=='ESRCH')throw e;}}
 })().catch(e=>{console.error(e);process.exit(1);});

@@ -68,7 +68,7 @@
     }
     function schedule(){
       clearTimeout(timer);if(!playing)return;
-      timer=setTimeout(()=>{if(cursor+1===items[occurrence].frames.length){pause();return;}cursor++;render();schedule();},1800);
+      timer=setTimeout(()=>{if(cursor+1===items[occurrence].frames.length){pause();return;}cursor++;render();schedule();},900/window.LearningPlayback.rate);
     }
     function play(restart=false){
       if(!current())return;

@@ -1,8 +1,8 @@
 # SGLang 系统边界与学习地图学习文档
 
-先沿一条请求找到组件，再区分图中的框究竟是职责、进程、设备资源，还是模型副本。本篇连接 Pages 的十二模块；各深入资料保留自己的固定源码基线。
+先用一张代码框架图找到主要模块，再沿请求辨认职责、进程、设备资源与模型副本。本篇连接 Pages 的十二模块；各深入资料保留自己的固定源码基线。
 
-[交互课程：推理系统里，哪些边界不能混在一起？](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/system-overview/) · [本领域路线](README.md)
+[交互课程：SGLang 代码架构与模块协作](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/system-overview/) · [本领域路线](README.md)
 
 ## 0. 源码基线与范围
 
@@ -12,15 +12,79 @@
 | --- | --- |
 | 公开仓库 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
 | 分支与 commit | 公开上游 `main` 快照：[279339f113b79af84f27fd3ac92d0a13bd3f4cbd](https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd) |
-| 读取时间 | 2026-09-23 |
-| 工作区状态 | 只读本地 Git 固定对象；当前检出分支与本文快照分开，原有未跟踪文件保留。 |
+| 读取时间 | 初读 2026-09-23；代码框架复核 2026-10-19 |
+| 工作区状态 | 复核时源码检出目录干净；只读固定 Git 对象，当前检出版本与本文快照分开，不修改源码。 |
 | 操作边界 | 静态源码分析、教学模型和页面验证；未运行模型、GPU、网络或性能实验。 |
 | 教学设定 | 两个输入位置 p0/p1、一个首输出 y1；拓扑图用三层代表权重。不是实际 tokenization、模型预测或部署配置。 |
 | 不展开 | 多 tokenizer、Ray、Rust runtime、全部并行组合、特殊模型、错误恢复及完整协议。 |
 
-先修：[一条请求怎样产生 token](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html)。
+先修：[自回归生成、Prefill 与 Decode](https://asher-xunzhang.github.io/ai-infra-wiki/foundations/generation.html)。
 
-## 1. 服务路径：先数进程，再追踪载荷
+
+## 1. 先看代码框架：模块怎样共同完成生成
+
+在线服务要同时接住新请求、安排有限的计算资源、保存历史状态并持续返回文字。仅看模型 `forward` 无法解释这些工作；先认识模块之间的协作，再进入具体函数。
+
+下面聚焦 `python/sglang/srt/`，即 SGLang Runtime（推理运行时）。箭头表达依赖和载荷；本图采用单 tokenizer、单卡、同机的普通 Python 文本服务。GPU 是设备资源，Worker 与 Runner 是调度进程内对象。
+
+```mermaid
+flowchart TB
+    C[客户端]
+    subgraph Front[入口进程]
+        A[API 接入：entrypoints]
+        T[分词与请求管理：TokenizerManager]
+        A -->|文本与生成配置| T
+        T -->|文字结果| A
+    end
+    subgraph Back[Scheduler 进程]
+        S[调度与结果处理：Scheduler / ScheduleBatch]
+        E[执行封装与采样：TpModelWorker / ModelRunner]
+        K[KV 管理：前缀索引 / 地址池 / 分配器]
+        M[模型与算子：models / layers / backend]
+        G[GPU 设备资源：权重 / 激活 / KV]
+        S -->|本轮 batch| E
+        E -->|本轮结果| S
+        S <-->|匹配与空间管理| K
+        E <-->|模型调用与分数| M
+        K -->|管理 KV 位置| G
+        M <-->|设备计算与访存| G
+    end
+    subgraph Output[反分词进程]
+        D[DetokenizerManager]
+    end
+    C -->|HTTP 请求| A
+    A -->|HTTP 响应| C
+    T -->|IPC：token ID / 配置 / rid| S
+    S -->|IPC：输出 token ID / rid| D
+    D -->|IPC：文字 / 结束信息 / rid| T
+```
+
+**读图：** `rid` 是请求标识，用于关联不同进程里的请求状态；IPC 是进程间通信。跨进程传递的是消息，进程内箭头表示调用、返回或资源管理。Scheduler 消费本轮结果后继续选批，未结束的请求可在后续轮次继续执行。图中没有模拟耗时，也不要求实际网络回程与下一轮计算完全串行。
+
+| 模块 | 固定版本中的代码入口 | 负责什么 |
+| --- | --- | --- |
+| API 接入 | [`python/sglang/srt/entrypoints/http_server.py`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/entrypoints/http_server.py#L911) | 把客户端协议接到引擎，并把生成结果返回连接。 |
+| 分词与请求管理 | [`python/sglang/srt/managers/tokenizer_manager.py`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/tokenizer_manager.py#L1592) | 模型需要 token ID；返回结果还要找到原来的请求连接。 |
+| 调度与结果处理 | [`python/sglang/srt/managers/scheduler.py`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L1907) | 请求不断到来，计算与 KV 容量有限，需要决定本轮接纳谁、执行多少。 |
+| 执行封装与采样 | [`python/sglang/srt/managers/tp_worker.py`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/tp_worker.py#L593) | 调度描述本轮做什么；执行层要把它变成模型可用的张量、位置和执行方式。 |
+| KV 管理 | [`python/sglang/srt/managers/scheduler.py`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L615) | 复用已有历史，并让新 token 有可写位置；请求结束后还要按共享关系回收。 |
+| 模型与算子 | [`python/sglang/srt/models/deepseek_v2.py`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L3165) | 执行层需要调用具体的模型结构与适合当前设备的运算实现。 |
+| 输出反分词 | [`python/sglang/srt/managers/detokenizer_manager.py`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/detokenizer_manager.py#L443) | 模型选择的是 token ID，客户端需要文字及结束信息。 |
+
+DeepSeek-V3 的模型例子对应 `models/deepseek_v2.py::DeepseekV3ForCausalLM`。`models/`、`layers/`、`model_executor/`、`mem_cache/` 位于 `srt/` 内；`python/sglang/kernels/` 是其同级算子目录，不能误写成 `srt/kernels/`。底层计算实现还可能来自外部后端。
+
+### 主图之外的目录怎样衔接
+
+- `srt/distributed/`：多 rank 的进程组与通信，衔接并行和通信课程。
+- `sgl-model-gateway/` 与 `srt/disaggregation/`：分别处理实例外网关和 P/D 分离的状态交接，不是普通单实例请求必经的两跳。
+- `srt/speculative/`、`srt/constrained/`、`srt/observability/`：分别进入投机、约束生成和观测专题。
+- `python/sglang/lang/` 是语言前端；`python/sglang/multimodal_gen/` 是另一类生成路径。本图没有把它们混入普通文本请求链。
+
+这些目录归属已按本文固定提交核对。第二章主体使用 `279339f113`；[PD 数据流专题](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-dataflow/) 单独固定在 `882577451e`，不把它的细节当成本图版本的实现。
+
+**表达参考：** Ziyi Xu，[Mini-SGLang: Efficient Inference Engine in a Nutshell](https://www.lmsys.org/blog/2025-12-17-minisgl/)，LMSYS，2025-12-17；读取于 2026-10-19。参考其架构图中请求闭环与执行侧缓存相邻的组织方式，上图为按完整 SGLang 固定源码重新组织的代码框架，不直接采用 Mini-SGLang 的类名或进程划分。
+
+## 2. 服务路径：先数进程，再追踪载荷
 
 ```mermaid
 flowchart TB
@@ -37,9 +101,9 @@ flowchart TB
 
 请求经历的载荷也在变化：原始输入、内部请求、模型执行输入、输出 ID、文本结果和网络块不能互换。一个流式块可能携带多个 token 的结果；不能从网络块数倒推出模型 forward 次数。
 
-交互中先改变“已采样”，最后才改变“客户端可见”。这是因果边界示意，假设连接正常；不要求后续计算必须等前一段文字完全返回后才继续。
+交互总览将模型计算结果与客户端响应画在不同边界。沿“结果返回”视角可以观察中间还经过哪些模块；后续计算不必等待前一段文字完全返回后才继续。
 
-## 2. 实例内部：职责协作与设备资源
+## 3. 实例内部：职责协作与设备资源
 
 ```mermaid
 flowchart TB
@@ -59,7 +123,7 @@ Scheduler 先选出本轮工作，准备输入与地址。缓存索引回答能�
 
 Worker、Runner、模型层、Attention backend 和 kernel 之间还有更细的调用关系，见[执行分层与硬件机制](SGLang 执行分层与硬件机制学习文档.md)。本图不把它们都铺在主画面上。
 
-## 3. 两张卡，不一定是两个完整副本
+## 4. 两张卡，不一定是两个完整副本
 
 页面分别展示三种独立拓扑：
 
@@ -69,7 +133,7 @@ Worker、Runner、模型层、Attention backend 和 kernel 之间还有更细的
 
 这三个维度不能只用“卡数”概括。并行还包括 PP、EP、CP，它们切分的对象不同；详细数学与通信关系见[并行课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/parallelism/)。多 rank 情况下也要重新核对 Scheduler 参与者和进程外框，不能照搬单卡进程图。
 
-## 4. 用边界选择学习模块
+## 5. 用边界选择学习模块
 
 | 当前问题 | 对应模块 | 要追踪的证据 |
 | --- | --- | --- |
@@ -81,7 +145,7 @@ Worker、Runner、模型层、Attention backend 和 kernel 之间还有更细的
 
 这些链接组织阅读关系，不合并所有页面的源码版本，也不保证所有特性可以任意同时启用。
 
-## 5. 固定源码入口
+## 6. 固定源码入口
 
 以下路径相对于公开 SGLang 仓库，均固定到本文 commit。
 
@@ -101,7 +165,7 @@ Worker、Runner、模型层、Attention backend 和 kernel 之间还有更细的
 | DP 启动与轮询分派 | [`launch_dp_schedulers`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/data_parallel_controller.py#L371)、[`round_robin_scheduler`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/data_parallel_controller.py#L767) |
 | D 侧提交交接状态 | [`_commit_transfer_to_req`](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/decode.py#L2158) |
 
-## 6. 自测与下一步
+## 7. 自测与下一步
 
 面对一个框，先回答它是职责、进程、资源还是副本；面对一根箭头，先回答它是调用、消息、张量还是状态交接。若请求没继续推进，再找最后一个已经满足的条件，而不是只看一个利用率数字。
 

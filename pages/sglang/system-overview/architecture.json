@@ -1,0 +1,490 @@
+{
+  "revision": "279339f113b79af84f27fd3ac92d0a13bd3f4cbd",
+  "reviewed": "2026-10-19",
+  "startup": [
+    "python/sglang/srt/entrypoints/engine.py",
+    222,
+    "class Engine"
+  ],
+  "nodes": [
+    {
+      "id": "api",
+      "box": [
+        40,
+        190,
+        210,
+        80
+      ],
+      "title": "API 接入",
+      "name": "HTTP / OpenAI API",
+      "directory": "entrypoints/",
+      "why": "把客户端协议接到引擎，并把生成结果返回连接。",
+      "action": "HTTP handler 调用 TokenizerManager；原生 /generate 与 OpenAI 兼容入口在接入层适配。本图从已送达实例的文本请求开始。",
+      "sources": [
+        [
+          "python/sglang/srt/entrypoints/http_server.py",
+          911,
+          "async def generate_request"
+        ],
+        [
+          "python/sglang/srt/entrypoints/http_server.py",
+          1741,
+          "async def openai_v1_chat_completions"
+        ]
+      ],
+      "course": [
+        "服务入口与治理",
+        "../serving-operations/"
+      ],
+      "phase": [
+        "input",
+        "output"
+      ]
+    },
+    {
+      "id": "tokenizer",
+      "box": [
+        40,
+        390,
+        210,
+        100
+      ],
+      "title": "分词与请求管理",
+      "name": "TokenizerManager",
+      "directory": "managers/tokenizer_manager.py",
+      "why": "模型需要 token ID；返回结果还要找到原来的请求连接。",
+      "action": "将输入组织成 TokenizedGenerateReqInput，带上 rid（请求标识）、token ID 和生成配置派发；保存前端等待状态，接收文字结果后返回对应请求。",
+      "sources": [
+        [
+          "python/sglang/srt/managers/tokenizer_manager.py",
+          1592,
+          "async def _send_one_request"
+        ],
+        [
+          "python/sglang/srt/managers/tokenizer_manager.py",
+          2255,
+          "async def _handle_batch_output"
+        ]
+      ],
+      "course": [
+        "请求生命周期",
+        "../request-runtime/"
+      ],
+      "phase": [
+        "input",
+        "output"
+      ]
+    },
+    {
+      "id": "scheduler",
+      "box": [
+        420,
+        190,
+        460,
+        100
+      ],
+      "title": "调度与结果处理",
+      "name": "Scheduler · ScheduleBatch",
+      "directory": "managers/ · scheduler_components/",
+      "why": "请求不断到来，计算与 KV 容量有限，需要决定本轮接纳谁、执行多少。",
+      "action": "普通 event_loop_normal 接收请求、获取下一批、执行并消费结果。ScheduleBatch 描述当前批次；结果处理更新请求进度与结束状态，再发出输出 token ID。未结束的请求继续参与后续调度。",
+      "sources": [
+        [
+          "python/sglang/srt/managers/scheduler.py",
+          1907,
+          "def event_loop_normal"
+        ],
+        [
+          "python/sglang/srt/managers/schedule_batch.py",
+          2678,
+          "def prepare_for_extend"
+        ],
+        [
+          "python/sglang/srt/managers/scheduler_components/batch_result_processor.py",
+          257,
+          "def process_batch_result_prefill"
+        ]
+      ],
+      "course": [
+        "选批与准入",
+        "../scheduling/"
+      ],
+      "phase": [
+        "input",
+        "compute",
+        "output"
+      ]
+    },
+    {
+      "id": "execution",
+      "box": [
+        420,
+        390,
+        205,
+        100
+      ],
+      "title": "执行封装与采样",
+      "name": "TpModelWorker / ModelRunner",
+      "directory": "managers/ · model_executor/",
+      "why": "调度描述本轮做什么；执行层要把它变成模型可用的张量、位置和执行方式。",
+      "action": "TpModelWorker 将 ScheduleBatch 转成 ForwardBatch，调用 ModelRunner.forward；普通生成路径再调用 sample 选择下一 token。ModelRunner 组织模型加载、Attention backend 和执行路径。两者是本图调度进程内的对象。",
+      "sources": [
+        [
+          "python/sglang/srt/managers/tp_worker.py",
+          593,
+          "def forward_batch_generation"
+        ],
+        [
+          "python/sglang/srt/managers/tp_worker.py",
+          608,
+          "forward_batch = ForwardBatch.init_new"
+        ],
+        [
+          "python/sglang/srt/model_executor/model_runner.py",
+          1636,
+          "def forward"
+        ],
+        [
+          "python/sglang/srt/managers/tp_worker.py",
+          672,
+          "batch_result.next_token_ids = self.model_runner.sample"
+        ]
+      ],
+      "course": [
+        "模型执行与 CUDA Graph",
+        "../model-execution/"
+      ],
+      "phase": [
+        "compute"
+      ]
+    },
+    {
+      "id": "cache",
+      "box": [
+        675,
+        390,
+        205,
+        100
+      ],
+      "title": "KV 管理",
+      "name": "前缀缓存 · 地址池 · 分配器",
+      "directory": "mem_cache/",
+      "why": "复用已有历史，并让新 token 有可写位置；请求结束后还要按共享关系回收。",
+      "action": "以 RadixCache 为例，索引匹配可复用前缀；请求到位置的映射与分配器管理写入位置。实际各层 K/V 值存于设备 buffer，由模型计算路径读写。前缀树不是存放全部 KV 张量的独立服务器。",
+      "sources": [
+        [
+          "python/sglang/srt/managers/scheduler.py",
+          615,
+          "self.req_to_token_pool = result.req_to_token_pool"
+        ],
+        [
+          "python/sglang/srt/mem_cache/radix_cache.py",
+          397,
+          "def match_prefix"
+        ],
+        [
+          "python/sglang/srt/mem_cache/memory_pool.py",
+          2526,
+          "def set_kv_buffer"
+        ]
+      ],
+      "course": [
+        "KV 地址、分页与回收",
+        "../kv-memory/"
+      ],
+      "phase": [
+        "compute"
+      ]
+    },
+    {
+      "id": "model",
+      "box": [
+        420,
+        570,
+        205,
+        100
+      ],
+      "title": "模型与算子",
+      "name": "模型层 → Attention backend",
+      "directory": "models/ · layers/",
+      "why": "执行层需要调用具体的模型结构与适合当前设备的运算实现。",
+      "action": "DeepSeek-V3 用例由 models/deepseek_v2.py 中的 DeepseekV3ForCausalLM 接入。模型层调用 Attention、线性层等，后端再选择具体 kernel（设备计算函数）；层的实现与运行的设备不是两个服务。kernels/ 位于 python/sglang/ 下。",
+      "sources": [
+        [
+          "python/sglang/srt/models/deepseek_v2.py",
+          3165,
+          "class DeepseekV3ForCausalLM"
+        ],
+        [
+          "python/sglang/srt/layers/radix_attention.py",
+          157,
+          "def forward"
+        ],
+        [
+          "python/sglang/srt/model_executor/model_runner.py",
+          1013,
+          "def init_attention_backends"
+        ]
+      ],
+      "course": [
+        "DeepSeek-V3 模型实现",
+        "../inference-overview/transformer.html"
+      ],
+      "phase": [
+        "compute"
+      ]
+    },
+    {
+      "id": "detokenizer",
+      "box": [
+        1035,
+        390,
+        145,
+        100
+      ],
+      "title": "输出反分词",
+      "name": "DetokenizerManager",
+      "directory": "managers/",
+      "why": "模型选择的是 token ID，客户端需要文字及结束信息。",
+      "action": "DetokenizerManager 接收 BatchTokenIDOutput，结合各请求的增量解码状态生成 BatchStrOutput，发送回 TokenizerManager。这里处理输出；输入分词在入口进程完成。",
+      "sources": [
+        [
+          "python/sglang/srt/managers/detokenizer_manager.py",
+          443,
+          "def handle_batch_token_id_out"
+        ],
+        [
+          "python/sglang/srt/managers/detokenizer_manager.py",
+          122,
+          "def init_ipc_channels"
+        ]
+      ],
+      "course": [
+        "IPC 与结果传递",
+        "../communication/"
+      ],
+      "phase": [
+        "output"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "client-api",
+      "path": "M90 80 V190",
+      "label": [
+        100,
+        133
+      ],
+      "lines": [
+        "HTTP 请求"
+      ],
+      "phase": [
+        "input"
+      ]
+    },
+    {
+      "id": "api-client",
+      "path": "M210 190 V80",
+      "label": [
+        220,
+        110
+      ],
+      "lines": [
+        "响应"
+      ],
+      "phase": [
+        "output"
+      ]
+    },
+    {
+      "id": "api-tokenizer",
+      "path": "M80 270 V390",
+      "label": [
+        76,
+        322
+      ],
+      "lines": [
+        "文本 / 配置"
+      ],
+      "phase": [
+        "input"
+      ]
+    },
+    {
+      "id": "tokenizer-api",
+      "path": "M210 390 V270",
+      "label": [
+        209,
+        352
+      ],
+      "lines": [
+        "文字结果"
+      ],
+      "phase": [
+        "output"
+      ]
+    },
+    {
+      "id": "tokenizer-scheduler",
+      "path": "M250 425 H330 V240 H420",
+      "label": [
+        333,
+        338
+      ],
+      "lines": [
+        "token ID / 配置",
+        "rid · IPC"
+      ],
+      "phase": [
+        "input"
+      ]
+    },
+    {
+      "id": "scheduler-execution",
+      "path": "M470 290 V390",
+      "label": [
+        458,
+        338
+      ],
+      "lines": [
+        "本轮 batch"
+      ],
+      "phase": [
+        "compute"
+      ]
+    },
+    {
+      "id": "execution-scheduler",
+      "path": "M580 390 V290",
+      "label": [
+        584,
+        365
+      ],
+      "lines": [
+        "本轮结果"
+      ],
+      "phase": [
+        "compute"
+      ]
+    },
+    {
+      "id": "scheduler-cache",
+      "path": "M750 290 V390",
+      "label": [
+        773,
+        329
+      ],
+      "lines": [
+        "前缀匹配",
+        "分配 / 回收"
+      ],
+      "phase": [
+        "compute"
+      ],
+      "both": true
+    },
+    {
+      "id": "execution-model",
+      "path": "M500 490 V570",
+      "label": [
+        502,
+        531
+      ],
+      "lines": [
+        "调用 / 分数"
+      ],
+      "phase": [
+        "compute"
+      ],
+      "both": true
+    },
+    {
+      "id": "cache-gpu",
+      "path": "M790 490 V570",
+      "label": [
+        790,
+        531
+      ],
+      "lines": [
+        "管理 KV 位置"
+      ],
+      "phase": [
+        "compute"
+      ]
+    },
+    {
+      "id": "model-gpu",
+      "path": "M520 670 V695 H777 V670",
+      "label": [
+        650,
+        717
+      ],
+      "lines": [
+        "设备计算 / 访存"
+      ],
+      "phase": [
+        "compute"
+      ],
+      "both": true
+    },
+    {
+      "id": "scheduler-detokenizer",
+      "path": "M880 240 H1107 V390",
+      "label": [
+        1010,
+        224
+      ],
+      "lines": [
+        "输出 token ID",
+        "rid · IPC"
+      ],
+      "phase": [
+        "output"
+      ]
+    },
+    {
+      "id": "detokenizer-tokenizer",
+      "path": "M1107 490 V760 H145 V490",
+      "label": [
+        685,
+        754
+      ],
+      "lines": [
+        "文字片段 / 结束信息 / rid · IPC 返回 TokenizerManager"
+      ],
+      "phase": [
+        "output"
+      ]
+    }
+  ],
+  "extensions": [
+    {
+      "title": "多卡协作",
+      "paths": [
+        "python/sglang/srt/distributed/"
+      ],
+      "text": "进程组与 collective（集合通信）连接多个 rank；TP、PP、DP、EP 的分工进入并行课。",
+      "link": "../parallelism/"
+    },
+    {
+      "title": "跨实例与 P/D 分离",
+      "paths": [
+        "sgl-model-gateway/",
+        "python/sglang/srt/disaggregation/"
+      ],
+      "text": "网关选择实例；P/D 分离路径组织 KV 与请求状态交接。它们是扩展路径，不是本图每条请求必经的跳数。",
+      "link": "../inference-overview/deployment.html"
+    },
+    {
+      "title": "高级生成与观测",
+      "paths": [
+        "python/sglang/srt/speculative/",
+        "python/sglang/srt/constrained/",
+        "python/sglang/srt/observability/"
+      ],
+      "text": "投机、约束生成改变生成规则；观测记录运行阶段与指标。按主题进入对应课。",
+      "link": "../advanced-generation/"
+    }
+  ]
+}

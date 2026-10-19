@@ -13,6 +13,7 @@ const entries={
  'f-attention':entry([row('允许读取的 K / V','读取、点积、加权求和','当前查询的输出','单设备计算示例')],'图中的贡献汇合表示数值运算。多设备下的上下文切分与数据交换在 CP 专题展开。',['hardware','parallel']),
  'f-cache':entry([row('本设备历史 KV','读取已有 K/V','本轮 Attention','设备内存读取')],'左右两栏是同一任务的两种做法，没有互相传输。跨设备 KV 交接另见 P/D 课程。',['memory','deployment']),
  'f-hardware':entry([row('GPU 显存中的输入 / 权重','通过存储层级读取','同一 GPU 的计算单元','设备内部访存')],'本图省略缓存与寄存器层级；读取副本属于同一设备的计算供数。',['hardware']),
+ 'f-chunk':entry([row('B 的长输入','按轮次分块处理','当前输入块','单实例调度示例')],'A 的 Decode 位置与 B 的当前输入块同批执行。',['execution','system']),
  'f-batching':entry([row('调度器等待集合','选入、退出、补入','本轮 batch 成员','调度状态更新')],'图中位置表示逻辑成员关系。组批之后，执行层还要准备输入与地址并提交设备工作。',['execution','system']),
  'f-communication':entry([row('进程 P0 / Rank 0 · GPU 0','张量片段或局部贡献','进程 P1 / Rank 1 · GPU 1','跨进程、GPU 间 collective','both')],'两方共同参与 AllReduce / AllGather；图中运算区是逻辑示意。设备可同机或跨机，实际链路由拓扑和通信后端决定。',['transport','parallel']),
  'f-deployment':entry([row('Prefill 进程 / GPU','数据面：KV 载荷','Decode 进程 / GPU','跨进程、GPU 间传输'),row('P 侧控制组件','控制面：身份、地址、就绪信息','D 侧控制组件','控制消息')],'P / D 可部署在同一主机或不同主机。数据与控制分别推进，实际传输协议取决于所选后端。',['transport']),
@@ -48,7 +49,8 @@ function context(key,placement='same-host'){
 function mount(viewport,key,onChange){
  if(!context(key))return {update(){}};
  const box=document.createElement('section');box.className='motion-handoff';box.setAttribute('aria-label','交接边界与载荷');box.dataset.boundaryPanel=key;
- const title=document.createElement('strong');title.textContent='读图：交接跨越什么边界';box.append(title);
+ const compact=Boolean(document.body.dataset.lesson);if(compact)box.classList.add('is-compact');
+ const title=document.createElement('strong');title.textContent='读图：交接跨越什么边界';if(!compact)box.append(title);
  let placement='same-host';
  if(key==='f-parallel'||key==='parallel-pp'){
   const label=document.createElement('label');label.textContent='部署示例 ';const select=document.createElement('select');select.setAttribute('aria-label','PP 部署位置');
@@ -57,8 +59,8 @@ function mount(viewport,key,onChange){
  }
  const diagram=document.createElement('div'),note=document.createElement('p'),nav=document.createElement('nav');nav.setAttribute('aria-label','交接机制详解');box.append(diagram,note,nav);viewport.prepend(box);
  function render(){const c=context(key,placement);box.dataset.placement=placement;diagram.replaceChildren();
-  for(const r of c.rows){const line=document.createElement('div');line.className='handoff-line';for(const[type,value]of [['endpoint',r.from],['edge',r.payload],['endpoint',r.to]]){const e=document.createElement('div');e.className='handoff-'+type+(type==='edge'&&r.direction==='both'?' handoff-both':'');e.textContent=value;if(type==='edge'){const b=document.createElement('small');b.textContent=r.boundary;e.append(b);}line.append(e);}diagram.append(line);}
-  note.textContent=c.note+(key==='f-parallel'||key==='parallel-pp'?' 切换只改变部署示意；下方时隙不计真实通信耗时。':'');nav.replaceChildren();for(const k of c.more){const a=document.createElement('a');a.textContent=links[k][0]+' ↗';a.href=new URL(links[k][1],base).href;nav.append(a);}
+  if(compact){const line=document.createElement('p');line.className='handoff-caption';const basic={'f-tokens':'文字 → token ID → Embedding 向量：同一输入的三种表示。','f-generation':'选中的 token ID → 下一轮模型输入；反馈在模型侧完成。','f-attention':'Q 与 K 比较，权重乘 V；本例在一个设备内计算。','f-cache':'左右是两种计算方式的对照，不互相传输数据。','f-chunk':'B 的长输入分块续算；A 的 Decode 与当前输入块同批执行。','f-batching':'请求进入或退出 batch：本例表示调度成员变化。','f-hardware':'分开观察矩阵乘加、算力与带宽约束、CPU 提交与 GPU 执行。','f-deployment':'P 进程 / GPU → D 进程 / GPU：传递历史 KV 与输入 ID；可同机或跨机。','f-speculation':'草稿 token → 目标模型验证 → 接受前缀；图中表示计算依赖。','f-serving':'客户端 → 服务端：取消请求；已提交工作结束后才释放资源。'};line.textContent=basic[key]||c.rows.map(r=>r.from.replace(/\n/g,' · ')+' → '+r.to.replace(/\n/g,' · ')+'：'+r.payload+'（'+r.boundary+'）').join('；');diagram.append(line);}else for(const r of c.rows){const line=document.createElement('div');line.className='handoff-line';for(const[type,value]of [['endpoint',r.from],['edge',r.payload],['endpoint',r.to]]){const e=document.createElement('div');e.className='handoff-'+type+(type==='edge'&&r.direction==='both'?' handoff-both':'');e.textContent=value;if(type==='edge'){const b=document.createElement('small');b.textContent=r.boundary;e.append(b);}line.append(e);}diagram.append(line);}
+  note.hidden=compact;note.textContent=c.note+(key==='f-parallel'||key==='parallel-pp'?' 切换只改变部署示意；下方时隙不计真实通信耗时。':'');nav.replaceChildren();for(const k of c.more){const a=document.createElement('a');a.textContent=links[k][0]+' ↗';a.href=new URL(links[k][1],base).href;nav.append(a);}
  }
  render();return {update(){render();}};
 }

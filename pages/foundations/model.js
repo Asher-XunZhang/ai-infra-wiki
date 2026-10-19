@@ -28,6 +28,14 @@ const variantSteps={
 };
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const softmax=xs=>{const max=Math.max(...xs);const es=xs.map(x=>Math.exp(x-max));const sum=es.reduce((a,b)=>a+b,0);return es.map(x=>x/sum);};
+// A reproducible draw makes the selection rule inspectable, not a mysterious
+// hand-picked answer. The half-open intervals partition [0, 1).
+function chooseToken(scores,draw=null){
+ let total=0;const intervals=scores.map(({word,p})=>{const start=total;total+=p;return {word,p,start,end:total};});
+ intervals[intervals.length-1].end=1; // Anchor the exclusive upper bound despite FP rounding.
+ const selected=draw===null?intervals.reduce((a,b)=>b.p>a.p?b:a):intervals.find(x=>draw>=x.start&&draw<x.end);
+ return {intervals,draw,selected:selected.word};
+}
 function attention(variant){
  const inputs=[[1,0],[0,1],[1,1],[2,0]],query=variant===0?1:3,Q=inputs[query],keys=inputs,values=inputs.map(v=>v.map(x=>2*x));
  const scores=keys.map((k,i)=>i<=query?k.reduce((s,x,j)=>s+x*Q[j],0)/Math.sqrt(2):-Infinity);
@@ -51,7 +59,11 @@ function snapshot(key,variant=0,step=0){
  if(!Number.isInteger(variant)||variant<0||variant>=def.options.length||!Number.isInteger(step)||step<0||step>=def.steps.length)throw Error('Invalid teaching state');
  const d={key,variant,step,title:(variantSteps[key]?.[variant]||def.steps)[step],last:def.steps.length-1};
  if(key==='tokens')return {...d,...examples[variant],count:examples[variant].ids.length};
- if(key==='generation'){const first=variant===0?'学习':'休息',second=variant===0?'。':'一下';return {...d,first,second,scores:[{word:'学习',p:.6},{word:'休息',p:.3},{word:'。',p:.1}],selected:step>=2?first:null,visible:step>=6?first+second:step>=3?first:'',kv:step>=5?['输入1','输入2',first]:step>=1?['输入1','输入2']:[],newInput:step>=4?first:null};}
+ if(key==='generation'){
+  const scores=[{word:'学习',p:.6},{word:'休息',p:.3},{word:'。',p:.1}],choice=chooseToken(scores,variant===0?null:.75),first=choice.selected;
+  const nextScores=[{word:first==='学习'?'。':'一下',p:.8},{word:'其他',p:.2}],nextChoice=chooseToken(nextScores,variant===0?null:.25),second=nextChoice.selected;
+  return {...d,first,second,scores,nextScores,choice,nextChoice,selected:step>=2?first:null,visible:step>=6?first+second:step>=3?first:'',kv:step>=5?['输入1','输入2',first]:step>=1?['输入1','输入2']:[],newInput:step>=4?first:null};
+ }
  if(key==='attention')return {...d,...attention(variant)};
  if(key==='cache'){
   const round=clamp(step-1,0,2),history=4+round;
@@ -70,6 +82,6 @@ function snapshot(key,variant=0,step=0){
  if(key==='metrics'){const samples=Array.from({length:20},(_,i)=>(i+1)*10),success=variant===3?samples.slice(0,18):samples;return {...d,arrivals:variant===1?[100,180,180]:[100,140,180],ttft:100,tpot:40,samples,success,p95:success[Math.ceil(.95*success.length)-1],failed:20-success.length,window:10,completions:[2,4,7,9],outputCounts:[2,3,1,4],completed:Math.min(step,4),outputTotal:[0,2,5,6,10][step],qps:.4,outputTPS:1};}
  return d;
 }
-const api={definitions,snapshot,attention,schedule,examples,tokenSource};
+const api={definitions,snapshot,attention,schedule,chooseToken,examples,tokenSource};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.FoundationModel=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

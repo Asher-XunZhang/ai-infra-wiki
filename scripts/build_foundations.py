@@ -70,6 +70,8 @@ def render(c, i):
     terms = ''.join(f'<div><dt>{escape(a)}</dt><dd>{escape(b)}</dd></div>' for a, b in c['terms'])
     sections = ''.join(f'<section id="concept-{n}"><h2>{escape(a)}</h2><p>{escape(b)}</p></section>' for n, (a, b) in enumerate(c['sections']))
     terms_html = f'<dl class="foundation-terms" aria-label="这课用到的词">{terms}</dl>'
+    if c['slug'] == 'communication':
+        terms_html = f'<details class="parallel-glossary"><summary>展开：Rank、Root、Count、RMA 与 Stream</summary>{terms_html}</details>'
     reading_entry = ''
     if len(c['sections']) >= 4 and not c.get('reading_groups'):
         reading_entry = '<nav class="parallel-reading-nav" aria-label="本课阅读入口">' + ''.join(f'<a href="#concept-{n}">{escape(a.split("：")[0])}</a>' for n, (a, b) in enumerate(c['sections'])) + '</nav>'
@@ -83,16 +85,23 @@ def render(c, i):
     animation_anchor = '<div id="parallel-animation"></div>' if c.get('reading_groups') else ''
     learning_entry = '<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>'
     sources = ''.join(f'<li><a href="{escape(url, quote=True)}">{escape(name)}</a></li>' for name, url in c['sources'])
+    visual_refs = ''
+    if c.get('visual_references'):
+        visual_refs = '<details class="concept-background"><summary>画法参考与演示范围</summary><ul>' + ''.join(f'<li><a href="{escape(url, quote=True)}">{escape(name)}</a>：{escape(note)}</li>' for name, url, note in c['visual_references']) + '</ul><p>本课数值、交互模型与图形独立实现；输入输出和完成条件按上方官方文档复核。参考资料读取：2026-10-19。</p></details>'
     choices = ''.join(f'<label><input type="radio" name="prediction" value="{n}"><span>{escape(value)}</span></label>' for n, value in enumerate(c['choices']))
     previous = '<a href="../#chapter-foundations"><small>第一章目录</small><strong>回到推理基础</strong></a>' if i == 0 else f'<a href="{FOUNDATIONS[i-1]["slug"]}.html"><small>上一课</small><strong>{escape(FOUNDATIONS[i-1]["title"])}</strong></a>'
     following = '<a class="next" href="../#chapter-sglang"><small>进入第二章</small><strong>SGLang 实现剖析</strong></a>' if i == len(FOUNDATIONS)-1 else f'<a class="next" href="{FOUNDATIONS[i+1]["slug"]}.html"><small>下一课</small><strong>{escape(FOUNDATIONS[i+1]["title"])}</strong></a>'
     extension = EXTENSIONS.get(c['slug'])
     extension_assets = extension_html = ''
-    mechanism_assets = '<script src="../motion/batching.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/dynamic-batching.js" defer></script>' if c['slug'] == 'batching' else ''
+    mechanism_assets = '<script src="../motion/batching.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/dynamic-batching.js" defer></script><script src="../motion/batching-chunk.js" defer></script>' if c['slug'] == 'batching' else ''
     if c['slug'] in {'tokens', 'generation', 'attention', 'cache', 'deployment'}:
         mechanism_assets += '<link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-scenes.js" defer></script><script src="../motion/teaching-visuals.js" defer></script>'
     if c['slug'] in {'hardware', 'parallel', 'communication', 'speculation', 'serving'}:
         mechanism_assets += '<link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/detail-scenes.js" defer></script><script src="../motion/detail-visuals.js" defer></script>'
+    if c['slug'] == 'metrics':
+        mechanism_assets += '<link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/metrics.js" defer></script>'
+    if c['slug'] == 'communication':
+        mechanism_assets += '<link rel="stylesheet" href="../motion/communication.css"><script src="communication-model.js" defer></script><script src="../motion/communication-visuals.js" defer></script>'
     if c['slug'] == 'parallel':
         mechanism_assets += '<script src="parallel-model.js" defer></script><script src="../motion/parallel-scenes.js" defer></script><script src="../motion/parallel-tensor.js" defer></script><script src="../motion/parallel-routing.js" defer></script><script src="../motion/parallel-visuals.js" defer></script>'
     if extension:
@@ -121,7 +130,7 @@ def render(c, i):
 <details class="foundation-fallback"><summary>自测与解释：{escape(c['question'])}</summary><p>{escape(c['feedback'])}</p></details>
 {extension_html}
 <a class="foundation-to-engine" href="../{c['implementation']}"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
-<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：{escape(c.get("reviewed", "2026-10-15"))}。{escape(c['scope'])}</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources">{sources}</ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：{escape(c.get("reviewed", "2026-10-15"))}。{escape(c['scope'])}</p><p>概念动机、取舍与背景整理：{escape(c.get("reviewed", "2026-10-16"))}。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources">{sources}</ul>{visual_refs}<p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
 <nav class="lesson-pager" aria-label="推理基础内继续学习">{previous}{following}</nav>
 </main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>
 '''

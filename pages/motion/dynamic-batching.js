@@ -28,9 +28,11 @@ function simulate(delay, arrivals=[{id:'A',at:0},{id:'B',at:2},{id:'C',at:4}], c
 }
 const definitions=[{delay:5,name:'动态组批 · 最多等 5',default:true},{delay:3,name:'动态组批 · 最多等 3'},{delay:0,name:'动态组批 · 不额外等待'}];
 const scenarios=definitions.map(d=>({...d,kind:'dynamic-batching',group:'① 执行前：什么时候发出一批？',title:'Dynamic Batching（动态组批）：凑满，还是等到期？',intro:`用三条图片分类请求拆开组批过程：A、B、C 各带一张同规格图片，分别在 0、2、4 到达。每批最多 3 条，最多额外等 ${d.delay} 个教学时间单位。先猜第一批会有哪些成员，再播放。`,boundary:'这里采用无状态、单次调用的请求组批例子。请求彼此兼容，执行端在每次决策时可接收；不模拟执行时长。t 是假设的到达时间，不是毫秒、播放秒数或生成轮次。参考 Triton 的动态组批规则，不代表 SGLang 的默认策略。',frames:simulate(d.delay)}));
+// Waiting is visible without making every clock update a full teaching pause.
+scenarios.forEach(s=>{s.stepDurations=s.frames.slice(1).map(f=>({clock:.65,arrival:.8,dispatch:1.2,summary:.7})[f.event]||.9);});
 if(typeof module==='object'&&module.exports){module.exports={simulate,scenarios};return;}
 const old=root.MechanismScenes['f-batching'];old.forEach(s=>{s.group='② 多轮生成：什么时候换成员？';});old.push(...scenarios);
-root.DynamicBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,viewport,'dynamic-batching',()=>750,H=>{
+root.DynamicBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,viewport,'dynamic-batching',()=>482+s.frames.at(-1).batches.length*92,H=>{
  const {txt,rect,text,box,show,token,move,set}=H;
  const heading=txt('① 执行前 · 一张卡 = 一条图片请求','teach-heading');
  const ruler=rect('teach-track'),elapsed=rect('teach-value'),deadlineLine=rect('teach-compute'),clock=txt('','teach-number');
@@ -42,7 +44,7 @@ root.DynamicBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,view
  const slots=[0,1,2].map(()=>rect('teach-memory-slot'));
  const count=txt('','teach-small'),reason=txt('','teach-badge');
  const outTitle=txt('发往执行端','teach-heading'),outNote=txt('≠ 执行完成','teach-small');
- const rows=[0,1,2].map(()=>({bg:rect(),label:txt('','teach-small'),time:txt('','teach-small'),why:txt('','teach-small'),wait:[0,1,2].map(()=>txt('','teach-small'))}));
+ const rows=s.frames.at(-1).batches.map(()=>({bg:rect(),label:txt('','teach-small'),time:txt('','teach-small'),why:txt('','teach-small'),wait:[0,1,2].map(()=>txt('','teach-small'))}));
  const note=txt('A / B / C 列保持身份；空列表示未在这一批。','teach-small');
  const cards=['A','B','C'].map((id,i)=>token(id,id+' · 图片',78,'teach-token teach-color-'+i));
  return(p,m)=>{
@@ -62,7 +64,7 @@ root.DynamicBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,view
    text(r.label,28,y+18,`第 ${i+1} 批`);text(r.time,28,y+38,batch?`t=${batch.time}`:outgoing&&planned?'发出途中':'尚未发出');text(r.why,28,y+58,batch?batch.reason:'');
    r.wait.forEach((e,j)=>{const k=batch?.ids.indexOf('ABC'[j])??-1;text(e,x(j),y+76,k>=0?`等了 ${batch.waits[k]}`:'');});show(r.bg,batch||planned?1:.35);
   });
-  text(note,18,724);
+  text(note,18,456+rows.length*92);
   function pos(f,i){const id='ABC'[i],row=f.batches.findIndex(z=>z.ids.includes(id));return row>=0?{y:450+92*row,o:1}:f.queue.includes(id)?{y:298,o:1}:{y:222,o:.3};}
   cards.forEach((c,i)=>{const from=pos(a,i),to=pos(b,i);set(c.r,{width:m?64:78});set(c.t,{x:m?32:39,'font-size':m?12:14});move(c,x(i),from.y+(to.y-from.y)*u,from.o+(to.o-from.o)*u);c.g.setAttribute('aria-label',`请求 ${'ABC'[i]}，${raw&&from.y!==to.y?'移动中':a.queue.includes('ABC'[i])?'等待组批':a.arrived.includes('ABC'[i])?'已发出':'尚未到达'}`);});
   svg.dataset.clock=time.toFixed(3);svg.dataset.dispatched=a.batches.length;

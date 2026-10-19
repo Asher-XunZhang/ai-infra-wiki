@@ -9,7 +9,7 @@
  const layers=()=>'<div class="layer-stack" aria-label="全部四层">'+[1,2,3,4].map(i=>`<i>L${i}</i>`).join('')+'</div>';
  function packet(path,x,y,animate=true){
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  return `<circle class="travel" r="4" cx="${reduced||!animate?x:0}" cy="${reduced||!animate?y:0}">${reduced||!animate?'':`<animateMotion dur=".8s" path="${path}" fill="freeze"/>`}</circle>`;
+  return `<circle class="travel" r="4" cx="${reduced||!animate?x:0}" cy="${reduced||!animate?y:0}">${reduced||!animate?'':`<animateMotion dur="${.4/window.LearningPlayback.rate}s" path="${path}" fill="freeze"/>`}</circle>`;
  }
  function bridge(text,starts=[125,375]){
   const paths=starts.map((x,i)=>`M${x} 2 V16 L${240+i*20} 48`);
@@ -63,7 +63,7 @@
   return {html,phase:['分配查询位置','比较因果依赖','本层汇合 K/V'][step],source:step===2?'cpkv':'zigzag',caption:step===0?(zigzag?'首尾配对：rank 0 负责 0、1、6、7；rank 1 负责 2、3、4、5。':'连续切分对照：前四个与后四个查询分给不同 rank。'):step===1?`因果可见关系共有 36 对。当前分工为 ${d.loads[0]} / ${d.loads[1]} 对，${zigzag?'首尾配对平衡这项工作量。':'靠后查询能看到更多历史，工作量更大。'}`:'在所选 Zigzag Prefill 路径中，局部 K/V 会汇合并恢复顺序；切分查询不等于 KV 永久只存半份。',why:'只解释无前缀、8 个位置、CP=2 的 Zigzag Prefill 思路。连续切分是教学对照，非本页声称的源码执行路径；Q–K 配对数不是 kernel 耗时。Decode CP、稀疏 Attention、滑窗、padding、模型与 backend 的准入条件需另读对应源码，不能直接套用这幅三角图。'};
  }
  function maximum(){return mode==='tp'?2:mode==='pp'?Number($('pp-count').value)+1:mode==='dp'||mode==='ep'?3:$('cp-layout').value==='zigzag'?2:1;}
- function stop(){clearInterval(timer);timer=null;$('parallel-play').textContent='播放';$('parallel-play').setAttribute('aria-pressed','false');}
+ function stop(){window.LearningPlayback.stop(timer);timer=null;$('parallel-play').textContent='播放';$('parallel-play').setAttribute('aria-pressed','false');}
  function render(){
   const f=({tp,pp,dp,ep,cp}[mode])(),max=maximum();
   if(lastBoundary!==mode){handoffHost.replaceChildren();window.HandoffBoundaries?.mount(handoffHost,'parallel-'+mode);lastBoundary=mode;}
@@ -80,7 +80,7 @@
  $('parallel-next').addEventListener('click',()=>{stop();step=Math.min(maximum(),step+1);render();});
  $('parallel-previous').addEventListener('click',()=>{stop();step=Math.max(0,step-1);render();});
  $('parallel-reset').addEventListener('click',reset);
- $('parallel-play').addEventListener('click',()=>{if(timer){stop();return;}if(step===maximum()){step=0;render();}$('parallel-play').textContent='暂停';$('parallel-play').setAttribute('aria-pressed','true');timer=setInterval(()=>{step++;render();},2000);});
+ $('parallel-play').addEventListener('click',()=>{if(timer){stop();return;}if(step===maximum()){step=0;render();}$('parallel-play').textContent='暂停';$('parallel-play').setAttribute('aria-pressed','true');timer=window.LearningPlayback.repeat(()=>{step++;render();},2000);});
  $('parallel-scene').addEventListener('click',e=>{const b=e.target.closest('[data-tick]');if(b){stop();step=Number(b.dataset.tick);render();}});
  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);
  host.hidden=false;reset();

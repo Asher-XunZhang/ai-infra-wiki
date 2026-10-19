@@ -14,7 +14,7 @@
 <a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
 <a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
 <a href="parallel.html" aria-current="page">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
-<a href="communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="communication.html">08 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
 <a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
 <a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
 <a href="serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
@@ -27,8 +27,7 @@
 <details class="module-nav" data-module="system-overview">
 <summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../#system-overview">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
-<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
+<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 代码架构：模块划分与协作全景</a>
 </div></details>
 <details class="module-nav" data-module="request-runtime">
 <summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -54,6 +53,7 @@
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
 <a class="lesson-link" href="../sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
 <a class="lesson-link" href="../sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
 </div></details>
@@ -129,6 +129,6 @@
 <details class="foundation-fallback"><summary>自测与解释：PP Stage 1 还没拿到 MB1 的激活，能先把 MB1 算完吗？</summary><p>空闲只说明资源可用，不说明依赖已满足；加入 MB2 能交错不同微批次，不能绕过 MB1 对 Stage 0 的依赖。</p></details>
 
 <a class="foundation-to-engine" href="../sglang/parallelism/index.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
-<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-16。两卡、两级、等长教学时隙。TP 对照局部贡献求和与输出分片拼接；普通 DP 与 Attention DP 分开。没有真实通信或加速比。 SP 采用 Megatron 经典定义；PCP/DCP 是通用机制示意，不宣称本仓固定 SGLang 基线支持所有配置。AllGather、分片与 LSE 算例省略实现优化；收益与代价为条件分析，未进行性能测量。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="../sglang/parallelism/index.html">仓内固定源码课程：并行与执行拓扑</a></li><li><a href="communication.html">通信原理与数据就绪</a></li><li><a href="https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/features/context_parallel.html">NVIDIA Megatron Core：CP 与经典 SP 的区别</a></li><li><a href="https://docs.nvidia.com/nemo/megatron-bridge/latest/parallelisms.html">NVIDIA Megatron Bridge：并行方法与 SP 布局</a></li><li><a href="https://docs.vllm.ai/en/v0.11.2/serving/context_parallel_deployment/">vLLM v0.11.2：PCP 与 DCP 分工及实现边界</a></li><li><a href="https://arxiv.org/abs/2411.01783">CP 长上下文推理论文：pass-KV / pass-Q</a></li><li><a href="https://research.nvidia.com/labs/adlr/MegatronLM/">NVIDIA Megatron-LM：矩阵并行的原始分解</a></li><li><a href="https://huggingface.co/transformers/v4.12.0/parallelism.html">Hugging Face：模型并行教学图（历史训练教程，仅参考分解表达）</a></li></ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
-<nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="hardware.html"><small>上一课</small><strong>GPU 计算与访存：算力、带宽和 CUDA Graph</strong></a><a class="next" href="communication.html"><small>下一课</small><strong>AllReduce、AllGather 与数据传输：结果何时可用？</strong></a></nav>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-16。两卡、两级、等长教学时隙。TP 对照局部贡献求和与输出分片拼接；普通 DP 与 Attention DP 分开。没有真实通信或加速比。 SP 采用 Megatron 经典定义；PCP/DCP 是通用机制示意，不宣称本仓固定 SGLang 基线支持所有配置。AllGather、分片与 LSE 算例省略实现优化；收益与代价为条件分析，未进行性能测量。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="../sglang/parallelism/index.html">仓内固定源码课程：并行与执行拓扑</a></li><li><a href="communication.html">通信原理与数据就绪</a></li><li><a href="https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/features/context_parallel.html">NVIDIA Megatron Core：CP 与经典 SP 的区别</a></li><li><a href="https://docs.nvidia.com/nemo/megatron-bridge/latest/parallelisms.html">NVIDIA Megatron Bridge：并行方法与 SP 布局</a></li><li><a href="https://docs.vllm.ai/en/v0.11.2/serving/context_parallel_deployment/">vLLM v0.11.2：PCP 与 DCP 分工及实现边界</a></li><li><a href="https://arxiv.org/abs/2411.01783">CP 长上下文推理论文：pass-KV / pass-Q</a></li><li><a href="https://research.nvidia.com/labs/adlr/MegatronLM/">NVIDIA Megatron-LM：矩阵并行的原始分解</a></li><li><a href="https://huggingface.co/transformers/v4.12.0/parallelism.html">Hugging Face：模型并行教学图（历史训练教程，仅参考分解表达）</a></li></ul><details class="concept-background"><summary>画法参考与演示范围</summary><ul><li><a href="https://huggingface.co/spaces/nanotron/ultrascale-playbook">Hugging Face · Ultra-Scale Playbook</a>：实际查看 TP/SP 图，借鉴张量区域与序列区域分开表达。保留完整矩阵、分片来源与结果；不引入训练反向过程。</li><li><a href="https://docs.nvidia.com/nemo/megatron-bridge/latest/parallelisms.html">NVIDIA · Expert Parallelism</a>：参考 Router 到选定专家的主线；普通场景聚焦一个 token 的分发、专家计算、返回与加权合并，负载场景再展示其他 token。</li><li><a href="https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/features/context_parallel.html">NVIDIA · Context Parallel 图</a>：参考上下文分片与 Attention 交接范围。PCP 两个 rank 同期展开因果计算，保留 DCP 合并所需的局部输出与归一化权重。</li></ul><p>本课数值、交互模型与图形独立实现；输入输出和完成条件按上方官方文档复核。参考资料读取：2026-10-19。</p></details><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="hardware.html"><small>上一课</small><strong>GPU 计算与访存：算力、带宽和 CUDA Graph</strong></a><a class="next" href="communication.html"><small>下一课</small><strong>通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</strong></a></nav>
 </main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>

@@ -3,7 +3,7 @@ let mode='clock',step=0,timer=null;const scene=$('#perf-scene'),fmt=n=>Number.is
 const stat=(label,n,unit='ms',empty='待观测')=>`<div class="perf-stat">${label}<strong>${n===null?empty:fmt(n)+' '+unit}</strong></div>`;
 const url=key=>{const [file,line]=M.sources[key];return `https://github.com/sgl-project/sglang/blob/${M.revision}/${file}#L${line}`;};
 function last(){return mode==='clock'?7:mode==='packet'?M.packets(value('#packet-kind')).chunks.length+1:mode==='experiment'?3:2;}
-function stop(){clearInterval(timer);timer=null;$('#perf-play').textContent='播放';$('#perf-play').setAttribute('aria-pressed','false');}
+function stop(){window.LearningPlayback.stop(timer);timer=null;$('#perf-play').textContent='播放';$('#perf-play').setAttribute('aria-pressed','false');}
 function render(){
  let html='',caption='',why='',source='metrics';
  if(mode==='clock'){
@@ -32,5 +32,5 @@ function render(){
 }
 function reset(){stop();step=0;render();}
 lab.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;lab.querySelectorAll('[data-mode]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));lab.querySelectorAll('[data-settings]').forEach(x=>x.hidden=x.dataset.settings!==mode);$('.parallel-details').open=false;reset();}));
-lab.querySelectorAll('select').forEach(s=>s.addEventListener('change',reset));$('#perf-next').addEventListener('click',()=>{stop();step=Math.min(last(),step+1);render();});$('#perf-previous').addEventListener('click',()=>{stop();step=Math.max(0,step-1);render();});$('#perf-reset').addEventListener('click',reset);$('#perf-play').addEventListener('click',()=>{if(timer)return stop();if(step===last())step=0;$('#perf-play').textContent='暂停';$('#perf-play').setAttribute('aria-pressed','true');render();timer=setInterval(()=>{step++;render();},2400);});document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});lab.hidden=false;render();
+lab.querySelectorAll('select').forEach(s=>s.addEventListener('change',reset));$('#perf-next').addEventListener('click',()=>{stop();step=Math.min(last(),step+1);render();});$('#perf-previous').addEventListener('click',()=>{stop();step=Math.max(0,step-1);render();});$('#perf-reset').addEventListener('click',reset);$('#perf-play').addEventListener('click',()=>{if(timer)return stop();if(step===last())step=0;$('#perf-play').textContent='暂停';$('#perf-play').setAttribute('aria-pressed','true');render();timer=window.LearningPlayback.repeat(()=>{step++;render();},2400);});document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});lab.hidden=false;render();
 })();

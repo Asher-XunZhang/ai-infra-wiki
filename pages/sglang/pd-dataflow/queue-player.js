@@ -6,7 +6,7 @@
   const labels={bootstrap:'bootstrap 列表',waiting:'waiting_queue',inflight:'inflight 列表',batch:'batch.reqs',chunk:'chunked_req',exit:'教学出口'};
   $('q-scenario').innerHTML=Q.scenarios.map(s=>`<option value="${s.id}">${s.label}</option>`).join('');
   $('q-nodes').innerHTML=Q.nodes.map(n=>`<button type="button" data-q-node="${n.id}" class="q-node ${['batch','chunk'].includes(n.id)?'q-reference':''}"><code>${n.name}</code><span class="q-slot" id="q-slot-${n.id}"></span><span class="q-count" id="q-count-${n.id}"></span></button>`).join('');
-  function pause(){clearInterval(timer);timer=null;$('q-play').textContent='播放入队 / 出队';$('q-play').setAttribute('aria-pressed','false');}
+  function pause(){window.LearningPlayback.stop(timer);timer=null;$('q-play').textContent='播放入队 / 出队';$('q-play').setAttribute('aria-pressed','false');}
   function stopMotion(){for(const motion of $('q-reference-lines').getAnimations({subtree:true}))motion.cancel();}
   function load(id,rank){pause();stopMotion();model=Q.create(id,rank);index=0;$('q-scenario').value=model.id;$('q-rank').value=model.rank;$('q-steps').innerHTML=model.frames.map((f,i)=>`<option value="${i}">${i+1} · ${esc(f.title)}</option>`).join('');render(false);}
   function detail(){const n=Q.nodes.find(x=>x.id===selected);$('q-node-title').textContent=n.name;$('q-node-detail').textContent=n.note;$('q-node-source').href=Q.sourceUrl(n.source);$('q-nodes').querySelectorAll('[data-q-node]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.qNode===selected)));}
@@ -15,7 +15,7 @@
     svg.setAttribute('viewBox',`0 0 ${board.width} ${board.height}`);svg.replaceChildren();
     for(const n of Q.nodes){if(!state[n.id]||n.id==='exit')continue;const box=$(`q-slot-${n.id}`).closest('button').getBoundingClientRect(),x=box.right-board.left,y=box.top+box.height/2-board.top,tx=obj.left-board.left,ty=obj.top+obj.height/2-board.top;
       const p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',`M ${x} ${y} C ${tx-16} ${y},${tx-16} ${ty},${tx-3} ${ty}`);p.dataset.reference=n.id;svg.append(p);
-      if(animate&&state[n.id]!==f.before[n.id]&&!matchMedia('(prefers-reduced-motion: reduce)').matches){const len=p.getTotalLength();p.animate([{strokeDasharray:len,strokeDashoffset:len},{strokeDasharray:len,strokeDashoffset:0}],{duration:800,easing:'ease-out'});}
+      if(animate&&state[n.id]!==f.before[n.id]&&!matchMedia('(prefers-reduced-motion: reduce)').matches){const len=p.getTotalLength();p.animate([{strokeDasharray:len,strokeDashoffset:len},{strokeDasharray:len,strokeDashoffset:0}],{duration:400/window.LearningPlayback.rate,easing:'ease-out'});}
     }
   }
   function render(animate=true){
@@ -34,7 +34,7 @@
   function go(i){pause();index=Math.max(0,Math.min(model.frames.length-1,i));render();}
   $('q-prev').onclick=()=>go(index-1);$('q-next').onclick=()=>go(index+1);$('q-restart').onclick=()=>go(0);$('q-replay').onclick=()=>{pause();render();};
   $('q-steps').onchange=e=>go(Number(e.target.value));$('q-progress').oninput=e=>go(Number(e.target.value));
-  $('q-play').onclick=()=>{if(timer){pause();return;}if(index===model.frames.length-1){index=0;render();}$('q-play').textContent='暂停';$('q-play').setAttribute('aria-pressed','true');timer=setInterval(()=>{index++;render();if(index===model.frames.length-1)pause();},3600);};
+  $('q-play').onclick=()=>{if(timer){pause();return;}if(index===model.frames.length-1){index=0;render();}$('q-play').textContent='暂停';$('q-play').setAttribute('aria-pressed','true');timer=window.LearningPlayback.repeat(()=>{index++;render();if(index===model.frames.length-1)pause();},3600);};
   $('q-scenario').onchange=e=>{$('q-follow').checked=false;load(e.target.value,$('q-rank').value);};
   $('q-rank').onchange=e=>load(model.id,e.target.value);
   $('q-follow').onchange=e=>{if(e.target.checked)load($('scenario').value,$('q-rank').value);};

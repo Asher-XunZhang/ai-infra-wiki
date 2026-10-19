@@ -59,6 +59,7 @@ jobs:
           node tests/pages/test_scheduling.cjs
           node tests/pages/test_system_overview.cjs
           node tests/pages/test_foundations.cjs
+          node tests/pages/test_communication_teaching.cjs
           node tests/pages/test_mechanism_motion.cjs
           node tests/pages/test_detail_mechanisms.cjs
           node tests/pages/test_dynamic_batching.cjs

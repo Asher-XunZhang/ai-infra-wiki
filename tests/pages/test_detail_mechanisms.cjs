@@ -11,4 +11,19 @@ for(const s of lessons.communication){const d=s.data;assert.equal(d.blocks.reduc
 for(const s of lessons['request-runtime']){assert.equal(s.data.kv,6);assert.equal(s.data.released.slot,false);assert.equal(s.data.released.cached,s.data.cache?6:0);assert.equal(s.data.released.kv,0);}
 for(const s of lessons['serving-operations']){assert.equal(s.data.states[2].queued,true);assert.equal(s.data.states[3].frontend,true);assert.equal(s.data.states[4].frontend,false);}
 for(const s of lessons['f-hardware'])assert.deepEqual(s.data.weights.map(r=>r.reduce((n,v,i)=>n+v*s.data.input[i],0)),s.data.output);
+for(const s of lessons['f-hardware'].filter(s=>s.kind==='hardware-roofline')){
+ assert.equal(s.data.work[0]/s.data.rates[0],s.data.move);
+ assert.equal(s.data.work[1]/s.data.rates[1],s.data.compute);
+ assert.equal(Math.max(s.data.move,s.data.compute),s.data.bound);
+}
+for(const s of lessons['f-hardware'].filter(s=>s.kind==='hardware-graph')){
+ const d=s.data.schedule;
+ for(let i=0;i<3;i++){
+  assert(d.gpu[i].start>=d.cpu[i].end,'kernel must be submitted before execution');
+  assert.equal(d.gpu[i].end-d.gpu[i].start,d.graphGPU[i].end-d.graphGPU[i].start,'graph does not shorten kernel arithmetic');
+  if(i)assert(d.gpu[i].start>=d.gpu[i-1].end&&d.graphGPU[i].start>=d.graphGPU[i-1].end,'both retain dependency order');
+ }
+ assert(d.cpu[1].start<d.gpu[0].end,'ordinary asynchronous launches overlap GPU work');
+ assert.equal(d.duration-d.graphGPU[2].end,d.kernelDuration===1?2:0,'launch-bound benefit and covered-launch counterexample');
+}
 console.log('PASS 9 detailed lessons: model parity, first mismatch, output/KV offset, page coverage and lifecycle boundaries.');

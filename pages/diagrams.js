@@ -8,13 +8,13 @@
     let render=()=>{},timer=null;
     const status=t=>$('wr-status').textContent=t;
     const evidence=t=>{$('wr-evidence').textContent=t;};
-    function stop(){clearInterval(timer);timer=null;}
+    function stop(){window.LearningPlayback.stop(timer);timer=null;}
     function controls(html){const active=document.activeElement;if(active?.type==='range'&&$('wr-controls').contains(active)&&html.includes('data-id="'+active.dataset.id+'"')){const strong=active.closest('label')?.querySelector('strong');if(strong)strong.textContent=active.value;}else $('wr-controls').innerHTML=html;}
     function bind(id,event,fn){const el=$(id);if(el)el['on'+event]=fn;}
     function change(fn){stop();const focus=document.activeElement?.dataset.id;fn();render();if(focus&&$(focus)&&!$(focus).disabled)$(focus).focus({preventScroll:true});}
     function stepBind(prefix,key,total){bind(prefix+'-prev','click',()=>change(()=>s[key]=Math.max(0,s[key]-1)));bind(prefix+'-next','click',()=>change(()=>s[key]=Math.min(total-1,s[key]+1)));}
     function animationControls(key,total,prefix){return button(prefix+'-play',timer?'暂停':'▶ 播放')+stepControls(s[key],total,prefix);}
-    function animationBind(key,total,prefix){stepBind(prefix,key,total);bind(prefix+'-play','click',()=>{if(timer){stop();render();return;}if(s[key]>=total-1)s[key]=0;timer=setInterval(()=>{if(document.hidden||(root.closest('details')&&!root.closest('details').open)){stop();return;}s[key]=Math.min(total-1,s[key]+1);if(s[key]>=total-1)stop();render();},2200);render();});}
+    function animationBind(key,total,prefix){window.LearningPlayback.mount(root.querySelector('#'+prefix+'-play')?.parentElement);stepBind(prefix,key,total);bind(prefix+'-play','click',()=>{if(timer){stop();render();return;}if(s[key]>=total-1)s[key]=0;timer=window.LearningPlayback.repeat(()=>{if(document.hidden||(root.closest('details')&&!root.closest('details').open)){stop();return;}s[key]=Math.min(total-1,s[key]+1);if(s[key]>=total-1)stop();render();},2200);render();});}
     document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();render();}});window.addEventListener('pagehide',stop);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));

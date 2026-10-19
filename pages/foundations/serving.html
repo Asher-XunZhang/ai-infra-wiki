@@ -14,7 +14,7 @@
 <a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
 <a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
 <a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
-<a href="communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="communication.html">08 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
 <a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
 <a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
 <a href="serving.html" aria-current="page">11 请求路由与取消：服务在线为何还没收到回答？</a>
@@ -27,8 +27,7 @@
 <details class="module-nav" data-module="system-overview">
 <summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../#system-overview">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
-<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
+<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 代码架构：模块划分与协作全景</a>
 </div></details>
 <details class="module-nav" data-module="request-runtime">
 <summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -54,6 +53,7 @@
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
 <a class="lesson-link" href="../sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
 <a class="lesson-link" href="../sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
 </div></details>
@@ -129,6 +129,6 @@
 <details class="foundation-fallback"><summary>自测与解释：客户端关闭页面，是否足以证明后端 GPU 已停止且缓存已回收？</summary><p>取消场景中，客户端先结束等待，后端随后接到通知并安全收尾。两条状态线不是同时完成。</p></details>
 
 <a class="foundation-to-engine" href="../sglang/serving-operations/index.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
-<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-16。通用服务因果示意，不规定 HTTP 状态码或某个版本的探活行为。不同引擎的取消和退出细节见实现课。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="../sglang/request-runtime/index.html">仓内固定源码课程：请求生命周期</a></li><li><a href="../sglang/serving-operations/index.html">仓内固定源码课程：服务治理</a></li></ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-16。通用服务因果示意，不规定 HTTP 状态码或某个版本的探活行为。不同引擎的取消和退出细节见实现课。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="../sglang/request-runtime/index.html">仓内固定源码课程：请求生命周期</a></li><li><a href="../sglang/serving-operations/index.html">仓内固定源码课程：服务治理</a></li></ul><details class="concept-background"><summary>画法参考与演示范围</summary><ul><li><a href="https://docs.ray.io/en/latest/serve/architecture.html">Ray Serve · Architecture</a>：参考接收、排队和执行的职责划分；主图聚焦取消送达与在途工作结束，用一项资源说明何时可归还，正常回程与路由作为独立实验保留。</li></ul><p>本课数值、交互模型与图形独立实现；输入输出和完成条件按上方官方文档复核。参考资料读取：2026-10-19。</p></details><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
 <nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="speculation.html"><small>上一课</small><strong>Speculative Decoding：草稿候选怎样验证和接受？</strong></a><a class="next" href="metrics.html"><small>下一课</small><strong>TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</strong></a></nav>
 </main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>

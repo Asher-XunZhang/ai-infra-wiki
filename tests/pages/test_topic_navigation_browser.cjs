@@ -12,7 +12,7 @@ const courses=[
  ['sglang/communication/index.html','communication','distributed'],
  ['sglang/parallelism/index.html','parallelism','distributed'],
  ['sglang/request-runtime/index.html','request-runtime','foundations'],
- ['sglang/inference-overview/journey.html','system-overview','foundations'],
+ ['sglang/inference-overview/journey.html','scheduling','instance'],
  ['sglang/inference-overview/transformer.html','model-execution','instance'],
  ['sglang/inference-overview/kv-cache.html','kv-memory','instance'],
  ['sglang/inference-overview/scheduling.html','scheduling','instance'],
@@ -24,7 +24,9 @@ const courses=[
  ['sglang/pd-prefill-pp-loop/notes.html','case-studies','practice'],
 ];
 (async()=>{
- const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});
+ const server=await chromium.launchServer({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})}),owned=server.process();
+ console.log(JSON.stringify({session:'architecture-navigation-review',controller:process.pid,browser:owned.pid,profile:owned.spawnargs.find(a=>a.startsWith('--user-data-dir='))}));
+ const browser=await chromium.connect(server.wsEndpoint());
  try{
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
@@ -79,7 +81,7 @@ const courses=[
   await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
   assert.match(page.url(),/kv-memory\/index.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/04 KV Cache/);
   await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
-  assert.match(page.url(),/scheduling.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 调度/);
+  assert.match(page.url(),/journey.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 调度/);
   for(const [route,module,stage] of courses){
    await page.goto(base+route);await page.waitForLoadState('load');
    assert.equal(await page.locator('.topic-group').count(),5,route);
@@ -129,7 +131,7 @@ const courses=[
    assert.ok(new URL(page.url()).searchParams.get('v'),'generated route links carry the release version');
    assert.equal(await page.locator('.lesson-pager').isVisible(),false);
    assert.equal(await page.locator('.reading-route-pager:visible').count(),1);
-   assert.match(await page.locator('.active-reading-route').innerText(),new RegExp(`${i+1} / 4`));
+   assert.match(await page.locator('.active-reading-route').innerText(),new RegExp(`${i+2} / 5`));
    assert.deepEqual(await signature(),expectedModules);
    if(i<firstRoute.length-1){await page.locator('.reading-route-pager:visible .next').click();await page.waitForLoadState('load');}
   }
@@ -147,5 +149,5 @@ const courses=[
   assert.equal(await staticPage.locator('[data-module=kv-memory] .lesson-link[aria-current=page]').isVisible(),true,'navigation is in HTML, not swapped after load');
   await staticPage.close();
   assert.deepEqual(errors,[]);console.log('PASS: one framework on home and all lessons; canonical module/current state, nested keyboard navigation, cross-module pager, breadcrumbs, placeholder anchors, desktop/mobile and no-JS navigation.');
- }finally{await browser.close();}
+ }finally{await browser.close();await server.close();try{process.kill(owned.pid,0);throw Error('owned browser remains');}catch(e){if(e.code!=='ESRCH')throw e;}}
 })().catch(e=>{console.error(e);process.exit(1);});

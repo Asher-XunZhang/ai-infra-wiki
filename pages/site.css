@@ -75,3 +75,8 @@ main>.big-idea{margin:18px 0;padding:14px 18px;font-size:16px}
 .life-implementation{margin:18px 0;padding:12px 16px;border:1px solid var(--border);border-radius:8px}
 .life-implementation>summary{cursor:pointer;color:var(--accent);font-size:14px}
 [id^=reading-topic-],[id^=concept-]{scroll-margin-top:90px}
+
+/* Playback rate is separate from the full-width teaching progress scrubber. */
+.animation-speed{display:inline-flex!important;align-items:center;gap:.6rem;white-space:nowrap}.animation-speed input[type=range]{width:7rem;min-width:4rem;max-width:28vw;padding:0;accent-color:var(--accent,#176477)}.animation-speed output{min-width:2.8em;font-variant-numeric:tabular-nums}.motion-controls .animation-speed{padding:.4rem 0}.motion-handoff.is-compact{padding:.75rem 1rem}.motion-handoff.is-compact p{margin:.3rem 0;font-size:.9rem}.motion-handoff.is-compact nav{margin-top:.3rem;gap:.8rem}.motion-handoff.is-compact nav a{font-size:.85rem}
+
+.concept-links{display:flex;gap:.7rem 1.2rem;flex-wrap:wrap}.concept-links a{font-size:.95rem}

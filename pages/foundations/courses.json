@@ -56,7 +56,14 @@
         "https://docs.pytorch.org/docs/stable/generated/torch.nn.Embedding.html"
       ]
     ],
-    "implementation": "sglang/request-runtime/index.html"
+    "implementation": "sglang/request-runtime/index.html",
+    "visual_references": [
+      [
+        "The Illustrated GPT-2 · Token Embeddings",
+        "https://jalammar.github.io/illustrated-gpt2/",
+        "参考一词条一行的 Embedding 矩阵图；相同 ID 查同一行，再按输入位置排列。中文切分与 ID 继续使用本课固定 tokenizer。"
+      ]
+    ]
   },
   {
     "slug": "generation",
@@ -106,14 +113,26 @@
     ],
     "answer": 1,
     "feedback": "采样选的是下一片段；它在下一轮送回模型后，才会产生作为输入位置的 K/V。",
-    "scope": "候选、分数、词表和输出均为手工教学值；不是 Qwen 或 SGLang 的实际预测。抽样模式固定展示一次可能结果，不模拟完整概率算法。",
+    "scope": "候选、概率、词表和输出均为手工教学值，不是模型实测预测。抽样通过 0–1 概率区间演示，固定抽样数 0.75、0.25 以便回看；不展开温度或概率截断。",
     "sources": [
       [
         "Hugging Face · Text generation",
         "https://huggingface.co/docs/transformers/main/en/llm_tutorial"
       ]
     ],
-    "implementation": "sglang/inference-overview/journey.html"
+    "implementation": "sglang/inference-overview/journey.html",
+    "visual_references": [
+      [
+        "The Illustrated GPT-2 · 自回归动图",
+        "https://jalammar.github.io/illustrated-gpt2/",
+        "参考输出保留、同一 token 反馈到输入的连续过程；本课被选 token 从对应候选行出发，候选与输出保持身份颜色。"
+      ],
+      [
+        "Hugging Face · How to generate text",
+        "https://huggingface.co/blog/how-to-generate",
+        "参考候选概率与选中结果并列的教学图；本课再用概率区间和固定抽样数解释为何选中该候选。"
+      ]
+    ]
   },
   {
     "slug": "attention",
@@ -160,14 +179,31 @@
     ],
     "answer": 0,
     "feedback": "切到第二个位置，后两个权重为 0；批量组织计算不取消因果关系。",
-    "scope": "单头、二维向量的手算演示，省略位置编码、归一化、完整残差和真实权重。数值用于解释乘加与遮罩，不解释模型的语义理解能力。",
+    "scope": "单头、二维向量的手算演示，保留 Attention 的 softmax 归一化，省略位置编码、模型层的 LayerNorm、完整残差和真实权重。数值用于解释乘加与遮罩，不解释模型的语义理解能力。",
     "sources": [
       [
         "Vaswani 等 · Attention Is All You Need",
         "https://arxiv.org/abs/1706.03762"
       ]
     ],
-    "implementation": "sglang/inference-overview/transformer.html"
+    "implementation": "sglang/inference-overview/transformer.html",
+    "visual_references": [
+      [
+        "Hugging Face · Continuous batching 中的 Attention 图",
+        "https://huggingface.co/blog/continuous_batching",
+        "参考 Query 行与历史 K/V 列的对应和因果遮罩；保留分数、softmax 和加权数值，不把 MLP 当作 Attention 的内部步骤。"
+      ],
+      [
+        "The Illustrated GPT-2 · Value × Score 与求和",
+        "https://jalammar.github.io/illustrated-gpt2/",
+        "参考逐行缩放 V、再分维度求和的图；本课保留乘法算式与同来源色的贡献条，弱化被遮罩的未来位置。"
+      ],
+      [
+        "The Illustrated Transformer · 分数到权重",
+        "https://jalammar.github.io/illustrated-transformer/",
+        "参考 Q/K/V、点积与 softmax 一一对应的图；本课补上取指数、汇总分母和除法的手算过程，保留加权求和。"
+      ]
+    ]
   },
   {
     "slug": "cache",
@@ -224,7 +260,19 @@
         "../sglang/kv-memory/index.html"
       ]
     ],
-    "implementation": "sglang/kv-memory/index.html"
+    "implementation": "sglang/kv-memory/index.html",
+    "visual_references": [
+      [
+        "Hugging Face · KV cache 图",
+        "https://huggingface.co/blog/continuous_batching",
+        "参考旧历史与新位置用不同颜色区分；保留逐轮重算／复用对照，计数只代表 K/V 投影的位置数。"
+      ],
+      [
+        "The Illustrated GPT-2 · KV 复用图",
+        "https://jalammar.github.io/illustrated-gpt2/",
+        "参考当前 token 计算与已保存历史的对照；位置颜色固定，新算与复用用独立标记表达。"
+      ]
+    ]
   },
   {
     "slug": "batching",
@@ -380,6 +428,13 @@
           6
         ]
       }
+    ],
+    "visual_references": [
+      [
+        "Hugging Face · Continuous batching / Chunked prefill 图",
+        "https://huggingface.co/blog/continuous_batching",
+        "参考固定请求行、成员变化与输入按块续算的图解。三个问题分开演示：执行前凑批、生成轮次换成员、每轮处理一块输入；轮次不当作真实耗时。"
+      ]
     ]
   },
   {
@@ -409,33 +464,59 @@
     "sections": [
       [
         "矩阵乘加：一行输出怎样算出来",
-        "输入 [2,3] 与权重两行 [1,2]、[3,4] 计算，得到 [8,18]。图逐行展开 2×1+3×2 与 2×3+3×4。真实模型的维度更大，原理上的乘加关系相同。"
+        "输入 [2,3] 与权重两行 [1,2]、[3,4] 计算，得到 [8,18]。两行分别计算 2×1+3×2 与 2×3+3×4。真实模型的维度更大，原理上的乘加关系相同。"
       ],
       [
         "Compute-bound / Memory-bound：算力与访存瓶颈",
-        "后半段用教学工作量给出搬运 8 u、计算 3 u 的两个资源下界。即使算力翻倍，搬运的下界仍是 8 u。这里的 max 是理想下界，不保证实际能完全重叠；真实延迟还含调度、提交、同步等成本。"
+        "同一任务要搬 8 份等量数据、做 6 份等量计算。若带宽为每秒 1 份数据，搬运至少用 8 秒；若算力为每秒 2 份计算，计算至少用 3 秒。动画把格子按每秒容量重新分组，展示工作量 ÷ 速率 = 时间。算力翻倍后计算项为 1.5 秒，数据搬运仍至少 8 秒；带宽翻倍则把搬运项降为 4 秒。这是一个 Memory-bound（受带宽限制）的教学例子；计算项更长时才是 Compute-bound（受算力限制）。整体耗时至少达到两项中较大者，是否接近下界还取决于重叠、依赖与额外成本。"
       ],
       [
         "CUDA Graph：减少哪些执行提交开销",
-        "程序需要把一组设备操作提交出去。CUDA Graph 可以捕获并重放满足条件的操作图，以减少相关提交开销；它不会把模型计算凭空删除。第二章会用真实请求和补齐行区分图桶容量与请求数量。"
+        "先看同一组 A → B → C：普通方式由 CPU 逐项提交；CUDA Graph 先记录操作和依赖、实例化成可重放的图，之后每轮提交整张图。上下时间线保持每个 kernel 的计算时长相同，让读者看到短 kernel 场景减少的是等待提交的空档。切换较长 kernel 后，普通方式也能提前提交后续工作，两条 GPU 时间线同时结束。两种情况都保留 CPU 与 GPU 的重叠，且图重放仍按新输入重新计算。首次准备有成本，需要通过重复执行摊薄。"
       ]
     ],
-    "question": "搬运下界为 8 u、计算下界为 3 u，只把算力翻倍，二者最大值变成多少？",
+    "question": "8 份数据每秒搬 1 份，6 份计算每秒做 2 份。只把算力翻倍，整体的资源时间下界是多少？",
     "choices": [
-      "4 u",
-      "仍是 8 u"
+      "4 秒",
+      "仍是 8 秒"
     ],
     "answer": 1,
-    "feedback": "计算项变成 1.5 u，但搬运项仍是 8 u。应先找到限制来自哪种资源。",
-    "scope": "矩阵是可手算的示例。资源条采用教学时间单位 u，表示理想下界，未测量硬件或 CUDA Graph 的实际收益。",
+    "feedback": "计算下界变成 6÷4=1.5 秒，但搬运仍至少需要 8÷1=8 秒。因此整体至少 8 秒。",
+    "scope": "工作量、速率和时间都是教学设定。资源图分别估算两项下界；CUDA Graph 时间线单独展示 CPU 提交成为限制的情况及较长 kernel 的对照，未测量真实硬件收益。",
     "sources": [
       [
         "NVIDIA · GPU Performance Background",
         "https://docs.nvidia.com/deeplearning/performance/dl-performance-gpu-background/index.html"
+      ],
+      [
+        "PyTorch · Accelerating PyTorch with CUDA Graphs",
+        "https://pytorch.org/blog/accelerating-pytorch-with-cuda-graphs/"
       ]
     ],
     "implementation": "sglang/model-execution/index.html",
-    "reviewed": "2026-10-16"
+    "reviewed": "2026-10-19",
+    "visual_references": [
+      [
+        "3Blue1Brown · Dot products / Numerical Method",
+        "https://www.3blue1brown.com/lessons/dot-products/",
+        "参考对应坐标配对、乘积展开与求和的静态图；两行独立计算。资源时间下界放到另一个独立动画。"
+      ],
+      [
+        "NVIDIA · GPU Performance Background",
+        "https://docs.nvidia.com/deeplearning/performance/dl-performance-gpu-background/index.html",
+        "参考计算与内存两类资源的解释。用等量工作格按每秒容量分组，先展示工作量与速率，再读出时间下界；不是实测执行流水线。"
+      ],
+      [
+        "PyTorch · CUDA Graphs Figure 1",
+        "https://pytorch.org/blog/accelerating-pytorch-with-cuda-graphs/",
+        "参考 CPU 提交／GPU 执行共用时间轴的静态对照图，重绘为可暂停的连续动画。保留相同 kernel 的颜色与计算时长，突出逐项提交造成的间隙；补充较长 kernel 场景说明收益条件。"
+      ],
+      [
+        "NVIDIA · Getting Started with CUDA Graphs",
+        "https://developer.nvidia.com/blog/cuda-graphs/",
+        "核对普通异步提交允许 CPU 与 GPU 重叠，以及首次建图、实例化与重复执行的区别。动画把准备成本单列，不在每个 kernel 后插入同步。"
+      ]
+    ]
   },
   {
     "slug": "parallel",
@@ -768,61 +849,165 @@
           11
         ]
       }
+    ],
+    "visual_references": [
+      [
+        "Hugging Face · Ultra-Scale Playbook",
+        "https://huggingface.co/spaces/nanotron/ultrascale-playbook",
+        "实际查看 TP/SP 图，借鉴张量区域与序列区域分开表达。保留完整矩阵、分片来源与结果；不引入训练反向过程。"
+      ],
+      [
+        "NVIDIA · Expert Parallelism",
+        "https://docs.nvidia.com/nemo/megatron-bridge/latest/parallelisms.html",
+        "参考 Router 到选定专家的主线；普通场景聚焦一个 token 的分发、专家计算、返回与加权合并，负载场景再展示其他 token。"
+      ],
+      [
+        "NVIDIA · Context Parallel 图",
+        "https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/features/context_parallel.html",
+        "参考上下文分片与 Attention 交接范围。PCP 两个 rank 同期展开因果计算，保留 DCP 合并所需的局部输出与归一化权重。"
+      ]
     ]
   },
   {
     "slug": "communication",
-    "title": "AllReduce、AllGather 与数据传输：结果何时可用？",
-    "lead": "从两张卡各自持有一组数开始，区分求和、拼接和接收完成。",
-    "goal": "能解释不同通信操作的输入输出，以及“发出”不等于“可用”。",
+    "title": "通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步",
+    "lead": "从数据属于谁、如何组织、交给谁、何时可用四个问题，理解集合通信、点对点、单边访问与同步。",
+    "goal": "能够根据所需输出选择通信语义，并说明参与者、载荷、顺序与完成条件。",
     "prerequisites": [
       "parallel"
     ],
-    "intro": "形状相同的两组数，可能是同一结果的不同贡献，也可能是不同位置的片段。先切换求和与拼接，看元素如何形成结果；下方再检查通知与载荷为何不能混为一谈。",
+    "intro": "先选择通信操作，再改变 root、片段长度或完成条件。普通搬运跟踪数据块，归约对齐数值，屏障与异步完成观察事件先后。初读建议按 Broadcast → Scatter → Gather → AllGather → Reduce → AllReduce → ReduceScatter 的顺序，再探索交换与同步；Scan 和单边访问可作为进阶阅读。",
     "terms": [
       [
-        "张量",
-        "按形状组织的一组数；图中的两元素数组就是最小例子。"
+        "Rank / Communicator",
+        "Rank 是通信组内参与进程的编号；communicator 提供组与通信上下文。本例用 P0、P1、P2 标识进程，rank 取 0、1、2。"
       ],
       [
-        "All-reduce / All-gather",
-        "前者将参与者的对应元素归约并让各方获得结果；后者收齐各方分片。"
+        "Root（根参与者）",
+        "集合操作指定的源或结果接收者。★ 表示本例 root；它是组内 rank，不必为 0，也不是固定服务器。"
       ],
       [
-        "发送完成与接收可用",
-        "不同接口有不同完成含义；还应检查接收侧数据、身份和依赖条件。"
+        "Collective（集合通信）",
+        "通信组成员共同遵守的输入输出约定。All 表示全组相关的结果语义，不表示某种物理全连接网络。"
+      ],
+      [
+        "Reduction（归约）",
+        "按指定运算合并对应位置，如 SUM 求和、MAX 取最大。Gather 的拼接不做这种算术。"
+      ],
+      [
+        "Count / Displacement",
+        "count 表示元素数量；displacement 指定片段在缓冲区中的位置。v 变体允许按参与者指定不同数量，图中采用连续紧凑布局。"
+      ],
+      [
+        "Send / Recv",
+        "发送与接收。点对点通信由源和目标配对；MPI 还使用 tag（消息标签）和通信上下文匹配。"
+      ],
+      [
+        "RMA / Window",
+        "Remote Memory Access，远端内存访问。window（窗口）是进程允许远端访问的内存区域；单边操作仍需建立窗口、权限和合法同步。"
+      ],
+      [
+        "Stream / Event",
+        "GPU stream 是有序执行队列；event 是用于记录完成、建立依赖的事件。同设备不同 stream 不自动按 CPU 调用次序建立消费依赖。"
       ]
     ],
     "sections": [
       [
-        "AllReduce / AllGather：求和与拼接的区别",
-        "[1,2] 与 [10,20] 若是同一结果的局部贡献，求和得到 [11,22]；若是结果的不同片段，拼接得到 [1,2,10,20]。替换通信算子会改变结果，不只是改变速度。"
+        "Broadcast / Scatter：复制同一份，还是分发不同片段？",
+        "三个 rank 需要同一份 [7,8] 时用 Broadcast；三个 rank 分别负责 [1]、[2]、[3] 时用 Scatter。切换 root 可以看到源改变，结果约定不变。分发不能代替广播，否则每方只得到部分数据。"
       ],
       [
-        "控制面与数据面：通知到达和载荷可用",
-        "通知可以描述“数据属于哪个请求、将写入哪里”，真正的数据还要经过搬运。图中通知先到时，接收区仍为空；只有数据和匹配信息都齐备，才标记可使用。"
+        "Gather / AllGather：完整结果需要留在哪里？",
+        "Gather 将各方片段收给 root；AllGather 让每方都收齐。后者增加结果副本和接收存储，只有后续每方都需要全部数据时才有意义。Gatherv / AllGatherv 在片段不等长时还需各方约定数量与放置位置。"
       ],
       [
-        "GPU 互联：同机与跨机的数据路径",
-        "同机或跨机描述位置；点对点或集合通信描述参与方式；TCP、RDMA 等描述传输路径。不能仅凭图里写了 KV，就推断一定走 RDMA。实现课继续检查各自接口与回收条件。"
+        "Reduce / AllReduce / ReduceScatter：归约后谁需要结果？",
+        "本例输入 [1,2,3]、[10,20,30]、[100,200,300]，SUM 得 [111,222,333]。Reduce 仅交给 root；AllReduce 每方一份；ReduceScatter 分别交出 [111]、[222]、[333]。后续只处理局部分片时，不必让每方都保留完整向量。"
+      ],
+      [
+        "AllToAll / AllToAllv：按目标重新组织数据",
+        "i→j 表示源 rank i 发往目标 rank j 的块，b 表示同一对的第二个元素。每个目标从不同来源收集自己的块；同 rank 的对角线块属于本地数据。AllToAllv 允许某一对为零个、另一对为多个；发送数量必须与对端接收约定相容。MoE 专家派发可产生这种不均匀交换需求，但实际引擎未必调用同名 API。"
+      ],
+      [
+        "Send/Recv 与邻域交换：哪些参与者需要互相交接？",
+        "PP 相邻阶段只需要交接相应激活，可用点对点表达；邻域集合通信则按预先定义的图交换。本例线形邻接 0↔1↔2，不把 0 和 2 当直接邻居。逻辑邻居不一定在物理机器上相邻。"
+      ],
+      [
+        "Scan / Exscan：前缀累计量有什么用？",
+        "局部数量为 2、3、4 时，Scan 得到截至自身的累计量 2、5、9。Exscan 得到此前各 rank 的累计量：Rank 1 为 2、Rank 2 为 5；MPI 不定义 Rank 0 的接收结果。应用可单独将 Rank 0 的存储起点设为 0，用这些起点安排变长结果。"
+      ],
+      [
+        "Put / Get / 原子更新：指定远端位置的访问",
+        "Put 将本地载荷写到远端窗口；Get 从远端窗口取回本地。Accumulate 将数值按运算合入目标；CAS 比较旧值和期望值，匹配才替换，并返回旧值。本例只操作一个整数，不能理解为任意多个地址构成一个事务。"
+      ],
+      [
+        "Barrier / Completion：会合、传输完成与可用",
+        "屏障让先到者等同组成员进入；它不自动完成其他独立传输。异步提交返回、发送缓冲区可复用、接收内容完整、消费侧依赖满足也不是同一个条件。读图时要指出具体哪个事件保护下一次读取。"
       ]
     ],
-    "question": "若两组数是不同分片，使用求和来代替拼接，会得到相同结果吗？",
+    "question": "相同三组输入归约后，只有一个参与者需要完整结果，应该选哪一种语义？",
     "choices": [
-      "会，都能把数据传到一起",
-      "不会，数值与输出形状都变了"
+      "Reduce：结果交给 root",
+      "AllGather：把所有原始元素拼起来",
+      "Barrier：等全组到达即可得到结果"
     ],
-    "answer": 1,
-    "feedback": "切换模式对比 [11,22] 与 [1,2,10,20]，通信语义属于正确性的一部分。",
-    "scope": "用两个参与者解释语义，未模拟网络拓扑、带宽、协议或底层完成保证。消息与载荷先后是本课场景设定。",
+    "answer": 0,
+    "feedback": "Reduce 对应“归约且只交给 root”。AllGather 保留各方元素，不执行归约；Barrier 只有会合条件，不产生用户张量结果。",
+    "scope": "覆盖主要通信语义族：分发／收集、归约／前缀扫描、全交换／邻域交换、点对点、单边读写／原子更新、屏障与异步完成。包含 17 个机制入口、29 个教学场景；不是所有库 API、数据类型、算法和拓扑的逐项模拟。NCCL 文档读取时为 2.32.3，MPI 使用 4.1；它们不表示 SGLang 固定源码基线具备所有接口。",
     "sources": [
       [
-        "NVIDIA NCCL · Collective Operations",
+        "NCCL 2.32.3 · 集合通信",
         "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html"
+      ],
+      [
+        "NCCL · 点对点、分组与单边接口",
+        "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.html"
+      ],
+      [
+        "NCCL · CUDA stream 语义",
+        "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/streams.html"
+      ],
+      [
+        "MPI 4.1 · 集合通信与扩展语义",
+        "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node113.htm"
+      ],
+      [
+        "MPI 4.1 · 点对点完成",
+        "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node74.htm"
+      ],
+      [
+        "MPI 4.1 · 单边访问",
+        "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node306.htm"
+      ],
+      [
+        "MPI 4.1 · 邻域集合通信",
+        "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node232.htm"
       ]
     ],
     "implementation": "sglang/communication/index.html",
-    "reviewed": "2026-10-16"
+    "reviewed": "2026-10-19",
+    "visual_references": [
+      [
+        "MPI Tutorial · Scatter / Gather / AllGather",
+        "https://mpitutorial.com/tutorials/mpi-scatter-gather-and-allgather/",
+        "参考固定参与者位置、彩色数据块和操作前后布局的对照。"
+      ],
+      [
+        "Roman Vorushin · TPU/GPU collective primitives",
+        "https://vorushin.github.io/blog/tpu-gpu-collective-primitives",
+        "参考跟踪矩阵分片身份与展示 AllToAll 重新分片的方式；不将文章的特定拓扑性能结论泛化。"
+      ],
+      [
+        "GPU Collective Communication Visualizer",
+        "https://hyojun.me/gpu-comm-visualizer/",
+        "参考固定设备、分块身份和单步回看的交互组织；本课展示结果语义，不指定 ring 或 tree 算法。"
+      ],
+      [
+        "NVIDIA · Collective Operations",
+        "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html",
+        "参考固定 rank 的前后状态图；保留复制、分发、收集、归约的直接行为和结果归属。独立交付同期播放，归约计算留出观察时间。"
+      ]
+    ]
   },
   {
     "slug": "deployment",
@@ -876,7 +1061,19 @@
         "../sglang/inference-overview/deployment.html"
       ]
     ],
-    "implementation": "sglang/inference-overview/deployment.html"
+    "implementation": "sglang/inference-overview/deployment.html",
+    "visual_references": [
+      [
+        "vLLM · Disaggregated Serving Guide",
+        "https://blog.vllm.ai/2026/09/29/disaggregated-serving-guide.html",
+        "参考 Prefill / Decode 分离与 KV 交接图；只取本课的 P/D 分工，不引入文中其他服务层。通知、队列与回收细节链接实现课。"
+      ],
+      [
+        "NVIDIA Dynamo · 分离部署对照图",
+        "https://developer.nvidia.com/blog/?p=95274",
+        "参考完整模型的 P / D 角色与 KV 交接关系；本课保留同一请求的历史 KV、首个 token 和后续生成，弱化协议与路由细节。"
+      ]
+    ]
   },
   {
     "slug": "speculation",
@@ -909,7 +1106,7 @@
       ],
       [
         "Root / Bonus Token：正式输出与有效 KV 的偏移",
-        "验证输入包含上一轮已输出的根 token。新补出的 token 尚未作为输入计算，因此输出列表和有效 KV 列表即使长度相同，成员也不一定一样。图中正式输出为“我、想、吃”，有效 KV 对应“根、我、想”；第二章继续核对 EAGLE 的实现边界。"
+        "验证输入包含上一轮已输出的根 token。新补出的 token 尚未作为输入计算，因此输出列表和有效 KV 列表即使长度相同，成员也不一定一样。本例正式输出为“我、想、吃”，若继续跟踪 KV，它对应“根、我、想”；主图先看接受和输出，第二章再展开 KV 提交与 EAGLE 的实现边界。"
       ],
       [
         "Acceptance Rate 与开销：何时可能获得收益",
@@ -931,7 +1128,24 @@
       ]
     ],
     "implementation": "sglang/advanced-generation/index.html",
-    "reviewed": "2026-10-16"
+    "reviewed": "2026-10-16",
+    "visual_references": [
+      [
+        "Hugging Face · Assisted Generation",
+        "https://huggingface.co/blog/assisted-generation",
+        "参考助手提出候选、目标模型验证的动态呈现。主图聚焦候选与接受前缀；精确 KV 提交成员另见实现课。"
+      ],
+      [
+        "Hugging Face · Dynamic Speculation",
+        "https://huggingface.co/blog/dynamic_speculation_lookahead",
+        "参考草稿自回归与目标并行验证的图解。聚焦候选、一次验证、连续接受前缀与正式输出；拒绝尾部和补出 token 保留，KV 对齐留在实现课。"
+      ],
+      [
+        "Hugging Face · Assisted Generation",
+        "https://huggingface.co/blog/assisted-generation",
+        "依据作者对 next-token 位置错位与连续前缀验证的说明，图中核对已有前缀、目标预测和草稿候选；仅演示贪心验证，不把这个规则泛化为概率采样验证。"
+      ]
+    ]
   },
   {
     "slug": "serving",
@@ -990,7 +1204,14 @@
       ]
     ],
     "implementation": "sglang/serving-operations/index.html",
-    "reviewed": "2026-10-16"
+    "reviewed": "2026-10-16",
+    "visual_references": [
+      [
+        "Ray Serve · Architecture",
+        "https://docs.ray.io/en/latest/serve/architecture.html",
+        "参考接收、排队和执行的职责划分；主图聚焦取消送达与在途工作结束，用一项资源说明何时可归还，正常回程与路由作为独立实验保留。"
+      ]
+    ]
   },
   {
     "slug": "metrics",
@@ -1051,6 +1272,13 @@
         "../sglang/performance-engineering/index.html"
       ]
     ],
-    "implementation": "sglang/performance-engineering/index.html"
+    "implementation": "sglang/performance-engineering/index.html",
+    "visual_references": [
+      [
+        "NVIDIA · LLM throughput and latency",
+        "https://developer.nvidia.com/blog/optimizing-inference-efficiency-for-llms-at-scale-with-nvidia-nim-microservices/",
+        "参考 Figure 2 的客户端请求、首输出与后续输出时间边界；本课使用可回看的连续时钟，P95 用样本排序，吞吐用共同统计窗口，三种问题分开演示。"
+      ]
+    ]
   }
 ]

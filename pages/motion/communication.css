@@ -1,0 +1,14 @@
+.comm-strategies{display:grid!important;gap:.5rem!important;grid-template-columns:1fr!important;margin-block:1rem 1.5rem}
+.comm-operation-group{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border,#dce4df);padding:.6rem 0}
+.comm-operation-group>strong{min-width:7em;color:var(--muted);font-size:.85rem}
+.comm-operation-group>button{flex:0 1 auto!important;min-width:0!important;padding:.5rem .75rem!important;font-size:.88rem}
+.comm-context p{font-size:.9rem;line-height:1.7}.comm-context label{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.75rem}.comm-context select{max-width:100%;padding:.4rem}.comm-context .comm-payload{color:var(--text);font-weight:600}
+[data-motion='f-communication'] .motion-heading h2{font-size:1.6rem}
+[data-motion='f-communication'] .teach-token>text{font-size:12px}
+@media(max-width:600px){.comm-operation-group>strong{flex-basis:100%}.comm-operation-group>button{font-size:.8rem;padding:.5rem!important}[data-motion='f-communication'] .motion-heading h2{font-size:1.3rem}}
+[data-motion='f-communication'] .teaching-viewport svg{max-height:none;max-width:820px;margin-inline:auto}
+[data-motion='f-communication'] .comm-control-link{stroke-dasharray:5 4!important;stroke-dashoffset:0!important}
+
+[data-motion="f-communication"] .comm-direct-link{stroke-width:1.2}
+
+.teach-token rect.comm-matrix-active{stroke:var(--accent,#176477);stroke-width:3;stroke-dasharray:3 2}

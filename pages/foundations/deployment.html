@@ -14,7 +14,7 @@
 <a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
 <a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
 <a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
-<a href="communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="communication.html">08 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
 <a href="deployment.html" aria-current="page">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
 <a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
 <a href="serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
@@ -27,8 +27,7 @@
 <details class="module-nav" data-module="system-overview">
 <summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../#system-overview">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
-<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
+<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 代码架构：模块划分与协作全景</a>
 </div></details>
 <details class="module-nav" data-module="request-runtime">
 <summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -54,6 +53,7 @@
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
 <a class="lesson-link" href="../sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
 <a class="lesson-link" href="../sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
 </div></details>
@@ -115,7 +115,7 @@
 </div></details></aside><div class="site-content"><main id="main-content">
 <nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">PD Disaggregation：Prefill 与 Decode 为什么分离？</span></nav>
 <header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 09 / 12</a><span class="lesson-count">通用原理</span></div><h1>PD Disaggregation：Prefill 与 Decode 为什么分离？</h1><p>先观察共享资源，再拆成两个服务角色，并把新增的交接过程走完。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
-<p class="foundation-prereqs">先看：<a href="batching.html">Batch 调度：动态组批、连续批处理与 Chunked Prefill</a> · <a href="communication.html">AllReduce、AllGather 与数据传输：结果何时可用？</a></p>
+<p class="foundation-prereqs">先看：<a href="batching.html">Batch 调度：动态组批、连续批处理与 Chunked Prefill</a> · <a href="communication.html">通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a></p>
 <p class="foundation-intro">读长输入与逐步续写有不同的工作形态。在合并部署中，它们共享实例资源；分开角色可以分别安排资源，但一条请求必须把已算出的状态交给下一侧。先看这笔交换。</p>
 <section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>长输入需要处理许多已知位置，续写则不断处理少量新位置。两种工作共用资源时可能互相影响；PD 分离尝试让它们独立配置和调度，同时引入状态交接成本。</p></section>
 <nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>
@@ -129,6 +129,6 @@
 <details class="foundation-fallback"><summary>自测与解释：P 已发出 KV，但 D 还没有收到完整数据，此时 D 能开始依赖这些 KV 的计算吗？</summary><p>数据移动到接收区并满足条件之前，D 保持等待；发送方和接收方有不同状态。</p></details>
 <details class="foundation-extension" id="mechanism-extension"><summary>选读 · PD Disaggregation：合并部署与角色分离</summary><p>主线之外的完整机制对照图。沿用原课程的教学假设；不代表 SGLang 的运行轨迹。</p><section class="lab"><h2>图解 · 合并部署与 PD 分离</h2><div data-diagram="deployment" aria-label="图解 · 合并部署与 PD 分离"></div><noscript>请启用 JavaScript 查看此图；机制说明见本展开区；源码对照见下方实现入口。</noscript></section><p class="big-idea">合并部署在同一服务组接着算；PD 分离把续写交给另一服务组，因此要交接 KV 与请求状态。</p><section class="overview-section"><h2>PD / PP：服务角色与模型层的分工</h2><p>“同一个实例”可以由多张 GPU 组成。合并部署中，它承担 Prefill 和 Decode。PD 分离中，P 服务组和 D 服务组各自具备执行完整模型的能力，内部还可以分别使用 TP、PP 等并行方式。</p><p>直觉上像两组工人处理同一份工作：P 负责读完上下文并准备起笔，D 接过记忆继续写。交接的是当前请求的状态；模型权重在服务启动时就已加载。</p></section><section class="overview-section"><h2>PD Disaggregation：排队、状态与交接成本</h2><details class="overview-selfcheck" id="deployment-comparison"><summary>展开排队、状态与成本的差异</summary><div class="table-wrap"><table class="overview-table"><thead><tr><th>观察点</th><th>合并部署</th><th>PD 分离</th></tr></thead><tbody><tr><td>排队与调度</td><td>P、D 工作共享实例资源，可能相互影响</td><td>两侧分别排队和扩容，还要协调交接</td></tr><tr><td>KV 的位置</td><td>本实例保存，后续原地使用</td><td>需要让 D 获得可用的对应状态</td></tr><tr><td>第一个输出</td><td>Prefill 后采样，再进入结果处理</td><td>通常由 P 采样，并随交接状态让 D 继续；可见时机取决于响应路径</td></tr><tr><td>执行门槛</td><td>仍有 KV 容量、准入和批次约束</td><td>还要处理接收状态、元数据、缓存回载等条件</td></tr><tr><td>资源收尾</td><td>本地请求与缓存生命周期管理</td><td>P 的发送和 D 的接收分别有完成与释放边界</td></tr><tr><td>成本与收益</td><td>省去跨角色交接，部署较直接</td><td>可隔离负载并独立配比资源，但增加传输、协调与双侧容量成本</td></tr></tbody></table></div><p>PD 分离并不保证每条请求都更快。输入很短、交接很慢或某侧排队很长时，额外成本可能超过收益。需要在实际流量和硬件上测量。</p></details></section><details class="overview-selfcheck"><summary>自测 · 把 P 部署在前 16 层、D 部署在后 16 层，是 PD 分离吗？</summary><p>这是按层拆分的直觉，更接近 PP。PD 分离按 Prefill / Decode 的执行阶段分工；每个角色的服务组都要覆盖完整模型层。</p></details><p><a href="../sglang/inference-overview/deployment.html">转到 SGLang：核对实现接口与固定源码 →</a></p></details>
 <a class="foundation-to-engine" href="../sglang/inference-overview/deployment.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
-<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-15。双角色因果示意，不计算吞吐、延迟或部署收益，不穷举 PD 协议。真实接收与释放约束见固定源码课程。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="../sglang/inference-overview/deployment.html">仓内固定源码课程：合并部署与 PD 分离</a></li></ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
-<nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="communication.html"><small>上一课</small><strong>AllReduce、AllGather 与数据传输：结果何时可用？</strong></a><a class="next" href="speculation.html"><small>下一课</small><strong>Speculative Decoding：草稿候选怎样验证和接受？</strong></a></nav>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-15。双角色因果示意，不计算吞吐、延迟或部署收益，不穷举 PD 协议。真实接收与释放约束见固定源码课程。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="../sglang/inference-overview/deployment.html">仓内固定源码课程：合并部署与 PD 分离</a></li></ul><details class="concept-background"><summary>画法参考与演示范围</summary><ul><li><a href="https://blog.vllm.ai/2026/09/29/disaggregated-serving-guide.html">vLLM · Disaggregated Serving Guide</a>：参考 Prefill / Decode 分离与 KV 交接图；只取本课的 P/D 分工，不引入文中其他服务层。通知、队列与回收细节链接实现课。</li><li><a href="https://developer.nvidia.com/blog/?p=95274">NVIDIA Dynamo · 分离部署对照图</a>：参考完整模型的 P / D 角色与 KV 交接关系；本课保留同一请求的历史 KV、首个 token 和后续生成，弱化协议与路由细节。</li></ul><p>本课数值、交互模型与图形独立实现；输入输出和完成条件按上方官方文档复核。参考资料读取：2026-10-19。</p></details><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="communication.html"><small>上一课</small><strong>通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</strong></a><a class="next" href="speculation.html"><small>下一课</small><strong>Speculative Decoding：草稿候选怎样验证和接受？</strong></a></nav>
 </main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>

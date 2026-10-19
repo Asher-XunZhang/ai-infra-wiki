@@ -30,6 +30,7 @@ const primaryViews={
  'performance':['请求时间轴与执行条带','以共同时间轴对照等待、执行和到达，再计算相应指标。']
 };
 function mount(host,key){
+ const stepDuration=key==='f-communication'?2:1.3;
  const integration=window.LessonIntegration;
  if(integration?.originalOnly.includes(key)){if(key==='system-overview')window.HandoffBoundaries?.mount(host,key);return;}
  const noLegacy=key.startsWith('f-')&&integration?.foundation[key.slice(2)]?.length===0;
@@ -41,19 +42,22 @@ function mount(host,key){
  const controls=node('div','motion-controls');
  const button=(text,action)=>{const e=node('button','',text);e.type='button';e.dataset.motionAction=action;controls.append(e);return e;};
  const prev=button('上一步','previous'),play=button('播放过程','play'),next=button('下一步','next'),reset=button('重置','reset');play.setAttribute('aria-pressed','false');
- const speedLabel=node('label','','速度 '),speed=node('select');speed.setAttribute('aria-label','演示速度');for(const n of [.5,1,1.5,2]){const o=node('option','',n+'×');o.value=n;o.selected=n===1;speed.append(o);}speedLabel.append(speed);controls.append(speedLabel);
+ const speedLabel=node('label','animation-speed','速度 '),speed=node('input'),speedValue=node('output','','1×');speed.type='range';speed.min=.25;speed.max=3;speed.step=.25;speed.value=1;speed.setAttribute('aria-label','演示速度');speed.setAttribute('aria-valuetext','1 倍');speedLabel.append(speed,speedValue);controls.append(speedLabel);
  const selectLabel=node('label','','条件 '),select=node('select');select.setAttribute('aria-label','连续演示条件');const groups=new Map();choices.forEach((c,i)=>{const o=node('option','',c.name);o.value=i;if(c.group){if(!groups.has(c.group)){const g=node('optgroup');g.label=c.group;groups.set(c.group,g);select.append(g);}groups.get(c.group).append(o);}else select.append(o);});selectLabel.append(select);if(choices.length>1)controls.append(selectLabel);
  const familyConfig={
+  'f-communication':{label:'通信操作',names:Object.fromEntries((window.CommunicationTeaching?.definitions||[]).map(d=>[d.id,d.id==='Completion'?'完成与可用':d.id==='Neighbor'?'邻域交换':d.id==='Atomic'?'原子更新':d.id==='SendRecv'?'Send / Recv':d.id])),family:c=>c.op},
   'f-parallel':{label:'并行策略',names:{TP:'张量',PP:'流水线',DP:'数据',EP:'专家',SP:'序列',PCP:'Prefill 上下文',DCP:'Decode 上下文'},family:c=>c.kind==='pipeline'?'PP':c.kind.replace('parallel-','').toUpperCase()},
-  'f-batching':{label:'批处理机制',names:{dynamic:'① 动态组批',fixed:'② 固定批次',continuous:'② 连续批处理'},family:c=>c.kind==='dynamic-batching'?'dynamic':choices.indexOf(c)===1?'fixed':'continuous'},
+  'f-metrics':{label:'测量问题',names:{latency:'首个输出与后续间隔',distribution:'P95 与成功率',throughput:'统计窗口与吞吐'},family:c=>c.family},
+  'f-hardware':{label:'学习重点',names:{dot:'矩阵乘加',roofline:'算力与带宽',graph:'CUDA Graph'},family:c=>c.kind.replace('hardware-','')},
+  'f-batching':{label:'批处理机制',names:{dynamic:'① 动态组批',fixed:'② 固定批次',continuous:'② 连续批处理',chunk:'③ Chunked Prefill'},family:c=>c.kind==='chunk-batching'?'chunk':c.kind==='dynamic-batching'?'dynamic':choices.indexOf(c)===1?'fixed':'continuous'},
   scheduling:{label:'调度机制',names:{admission:'准入检查',chunk:'分块续算'},family:c=>c.kind==='chunk'?'chunk':'admission'}
  }[key];
  const families=familyConfig?Object.keys(familyConfig.names):null,familyOf=c=>familyConfig.family(c),familyButtons=[];
  const policyLabel=node('label','','排序策略 '),policy=node('select');policy.setAttribute('aria-label','准入排序策略');
  if(key==='scheduling'){for(const [value,label]of [['fcfs','FCFS · 先来先检查'],['lpm','LPM · 长匹配前缀优先']]){const o=node('option','',label);o.value=value;policy.append(o);}policyLabel.append(policy);controls.insertBefore(policyLabel,selectLabel);policy.addEventListener('change',()=>{const old=choices[Number(select.value)];load(choices.findIndex(c=>c.kind==='admission'&&c.policy===policy.value&&c.scenario===old.scenario));save();});}
- if(families){const nav=node('nav','parallel-strategies');nav.setAttribute('aria-label',familyConfig.label);for(const family of families){const b=node('button','',key==='f-parallel'?family:familyConfig.names[family]);b.type='button';b.dataset.lessonFamily=family;if(key==='f-parallel'){b.dataset.parallelFamily=family;b.append(node('small','',familyConfig.names[family]));}b.addEventListener('click',()=>{load(choices.findIndex(c=>familyOf(c)===family));save();});nav.append(b);familyButtons.push(b);}head.insertBefore(nav,title);selectLabel.firstChild.textContent='场景 ';}
+ if(families){const nav=node('nav','parallel-strategies');nav.setAttribute('aria-label',familyConfig.label);for(const family of families){const b=node('button','',key==='f-parallel'?family:familyConfig.names[family]);b.type='button';b.dataset.lessonFamily=family;if(key==='f-parallel'){b.dataset.parallelFamily=family;b.append(node('small','',familyConfig.names[family]));}b.addEventListener('click',()=>{load(choices.findIndex(c=>familyOf(c)===family));save();});if(key==='f-communication'){nav.classList.add('comm-strategies');const def=window.CommunicationTeaching.definitions.find(d=>d.id===family);let group=nav.querySelector('[data-comm-group="'+def.group+'"]');if(!group){group=node('div','comm-operation-group');group.dataset.commGroup=def.group;group.append(node('strong','',window.CommunicationTeaching.groups[def.group]));nav.append(group);}group.append(b);}else nav.append(b);familyButtons.push(b);}head.insertBefore(nav,title);selectLabel.firstChild.textContent='场景 ';}
  function syncFamily(index){if(!families)return;const current=choices[index],family=familyOf(current);select.replaceChildren();choices.forEach((c,i)=>{if(familyOf(c)!==family||(current.policy&&c.policy!==current.policy))return;const option=node('option','',c.scenarioLabel||c.name.split(' · ').slice(1).join(' · ')||c.name);option.value=i;select.append(option);});select.value=String(index);familyButtons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lessonFamily===family)));selectLabel.hidden=select.options.length===1;if(key==='scheduling'){policyLabel.hidden=family!=='admission';if(current.policy)policy.value=current.policy;}}
- if(key==='f-batching'){const guide=node('p','batch-comparison','先看 ① 执行前怎样凑批，再比较 ② 生成轮次之间是否换成员。动态组批的等待窗口与生成轮次使用不同刻度。');head.append(guide);}
+ if(key==='f-batching'){const guide=node('p','batch-comparison','先看 ① 执行前怎样凑批，再比较 ② 生成轮次之间是否换成员。再看 ③ 一条长输入怎样分块、与 Decode 交错。等待窗口与生成轮次使用不同刻度。');head.append(guide);}
  section.append(controls);
  const viewport=node('div','motion-viewport');viewport.tabIndex=0;viewport.setAttribute('aria-label','过程画布，窄屏可横向滚动');
  const svg=svgNode('svg',{viewBox:'0 0 900 432',role:'img'});viewport.append(svg);section.append(viewport);
@@ -79,7 +83,7 @@ function mount(host,key){
   host.before(extra);extra.append(host);experimentLabel.remove();
   extra.addEventListener('toggle',()=>{if(!extra.open)host.querySelectorAll('button[aria-pressed="true"]').forEach(b=>{if(b.textContent.includes('暂停'))b.click();});});
  }
- let scenario,clock,tl,driver=null,actors=[],trails=[],links=[],lastPhase=-1,playing=false,visual=null;
+ let scenario,clock,tl,stepTimes=[],driver=null,actors=[],trails=[],links=[],lastPhase=-1,playing=false,visual=null;
  function controlsState(){play.textContent=playing?'暂停':'播放过程';play.setAttribute('aria-pressed',String(playing));section.dataset.playing=String(playing);}
  function save(){const url=new URL(location.href);url.searchParams.set('mv',select.value);url.searchParams.set('ms',clock.p.toFixed(3));history.replaceState(null,'',url);}
  function pause(){driver?.kill();driver=null;tl?.pause();playing=false;controlsState();}
@@ -109,11 +113,13 @@ function mount(host,key){
   pause();tl?.kill();visual?.destroy();visual=null;scenario=choices[index];clock={p:0};lastPhase=-1;title.textContent=scenario.title;intro.textContent=scenario.intro;boundary.textContent=scenario.boundary;range.max=scenario.frames.length-1;
   continuation.replaceChildren();continuation.hidden=true;
   if(key==='f-tokens'){continuation.hidden=false;continuation.append(node('h3','','Detokenization：同一串 ID 也能还原文字'),node('p','',`本例把 [${scenario.data.ids.join(', ')}] 交给同一个 tokenizer 解码，会还原为“${scenario.data.text}”。这里还原的是输入；生成新回答还需要下一课的模型计算与输出选择。`));}
-  if(key==='f-attention'){const d=scenario.data,fmt=v=>'['+v.map(n=>n.toFixed(2)).join(', ')+']';continuation.hidden=false;continuation.append(node('h3','','MLP 接续：Attention 的结果还要继续变换'),node('p','',`本例用 h=[a,b,max(0,a−b)]，再输出 [h₀+h₂,h₁+h₂]：${fmt(d.mixed)} → ${fmt(d.hidden)} → ${fmt(d.output)}。这是 2→3→2 维的手算例子，省略残差与归一化；切换查询位置会同步更新这些数值。`));}
+  if(key==='f-attention'){const d=scenario.data,fmt=v=>'['+v.map(n=>n.toFixed(2)).join(', ')+']';continuation.hidden=false;const mlp=node('details');mlp.append(node('summary','','接下来：MLP 怎样使用 Attention 输出'),node('p','',`本例用 h=[a,b,max(0,a−b)]，再输出 [h₀+h₂,h₁+h₂]：${fmt(d.mixed)} → ${fmt(d.hidden)} → ${fmt(d.output)}。这是 2→3→2 维的手算例子，省略残差与归一化；切换查询位置会同步更新这些数值。`));continuation.append(mlp);}
+  if(key==='f-parallel'&&scenario.kind==='parallel-tp'){continuation.hidden=false;const nav=node('nav','concept-links');nav.setAttribute('aria-label','单独查看通信操作');for(const [label,index]of [['Broadcast：复制输入',29],['Scatter：分发输入列',30],['AllGather：收齐输出列',31],['AllReduce：贡献求和',32]]){const a=node('a','',label+' ↗');a.href='communication.html?mv='+index+'#mechanism-process';nav.append(a);}continuation.append(nav,node('p','','图中的输入复制与切分说明数据布局；实际 TP 输入可能已在各 rank，或沿用前一层的分片，无需每层都重新广播、分发。'));}
   viewport.querySelector('.motion-handoff')?.remove();svg.dataset.placement='same-host';
   handoff=window.HandoffBoundaries?.mount(viewport,scenario.boundaryKey||key,placement=>{svg.dataset.placement=placement;paint();});
   svg.replaceChildren();viewport.classList.remove('batch-viewport','teaching-viewport');delete svg.dataset.teachingKind;actors=[];trails=[];links=[];evidence.href=scenario.evidence||(key.startsWith('f-')?'#evidence':'#source-baseline');
   if(scenario.kind==='dynamic-batching'){visual=window.DynamicBatchingVisual(svg,viewport,scenario);}
+  else if(scenario.kind==='chunk-batching'){visual=window.ChunkBatchingVisual(svg,viewport,scenario);}
   else if(dedicated){visual=dedicated(svg,viewport,scenario);}
   else if(key==='f-batching'&&window.BatchingVisual){visual=window.BatchingVisual(svg,viewport,scenario);}
   else {
@@ -125,23 +131,31 @@ function mount(host,key){
    g.append(svgNode('rect',{width:204,height:66,rx:10}),label,note);for(let j=0;j<9;j++){const r=svgNode('rect',{x:12+j*20,y:53,width:0,height:5,rx:1,class:'motion-growth'});g.append(r);bars.push(r);}svg.append(g);actors.push({g,label,note,bars});
   });
   }
-  tl=gsap.timeline({paused:true,onUpdate:paint,onComplete(){playing=false;controlsState();save();},defaults:{duration:2.6,ease:'none'}});
-  for(let i=1;i<scenario.frames.length;i++)tl.to(clock,{p:i}).addLabel(`step-${i}`);
+  tl=gsap.timeline({paused:true,onUpdate:paint,onComplete(){playing=false;controlsState();save();},defaults:{duration:stepDuration,ease:'none'}});
+  stepTimes=[0];
+  for(let i=1;i<scenario.frames.length;i++){const requested=scenario.stepDurations?.[i-1],duration=Number.isFinite(requested)&&requested>0?requested:stepDuration;stepTimes.push(stepTimes[i-1]+duration);tl.to(clock,{p:i,duration}).addLabel(`step-${i}`);}
+  section.dataset.stepDurations=JSON.stringify(stepTimes.slice(1).map((t,i)=>Number((t-stepTimes[i]).toFixed(3))));
   if(oldBoundary===scenario.boundaryKey&&oldPlacement){const placement=viewport.querySelector('[aria-label="PP 部署位置"]');if(placement){placement.value=oldPlacement;placement.dispatchEvent(new Event("change"));}}
   paint();
  }
- function go(target){pause();const dest=Math.max(0,Math.min(scenario.frames.length-1,target));if(reduced.matches){tl.time(dest*2.6);paint();save();return;}
-  if(Math.abs(dest-clock.p)<.0001)return;playing=true;controlsState();driver=tl.tweenTo(dest*2.6,{duration:Math.abs(dest-clock.p)*2.6/Number(speed.value),ease:'none',onComplete(){driver=null;playing=false;controlsState();paint();save();}});
+ // URL and scrubber positions remain logical steps; playback time may differ
+ // by concept. A seek into a step must invert the exact same duration mapping.
+ function timeAt(position){
+  const p=Math.max(0,Math.min(scenario.frames.length-1,position)),i=Math.floor(p);
+  return stepTimes[i]+(i<stepTimes.length-1?(stepTimes[i+1]-stepTimes[i])*(p-i):0);
+ }
+ function go(target){pause();const dest=Math.max(0,Math.min(scenario.frames.length-1,target));if(reduced.matches){tl.time(timeAt(dest));paint();save();return;}
+  if(Math.abs(dest-clock.p)<.0001)return;playing=true;controlsState();driver=tl.tweenTo(timeAt(dest),{duration:Math.abs(timeAt(dest)-timeAt(clock.p)),ease:'none',onComplete(){driver=null;playing=false;controlsState();paint();save();}}).timeScale(Number(speed.value));
  }
  play.addEventListener('click',()=>{if(playing){pause();save();return;}if(reduced.matches){go(Math.floor(clock.p+.0001)+1);return;}if(clock.p>=scenario.frames.length-1-.0001)tl.time(0);playing=true;controlsState();tl.timeScale(Number(speed.value)).play();});
  prev.addEventListener('click',()=>go(Math.ceil(clock.p-.0001)-1));next.addEventListener('click',()=>go(Math.floor(clock.p+.0001)+1));reset.addEventListener('click',()=>{pause();tl.time(0);paint();save();});
- range.addEventListener('input',()=>{pause();const value=Number(range.value);tl.time((reduced.matches?Math.round(value):value)*2.6);paint();save();});
- select.addEventListener('change',()=>{load(Number(select.value));save();});speed.addEventListener('change',()=>{if(driver)pause();else tl.timeScale(Number(speed.value));});
- reduced.addEventListener('change',()=>{pause();if(reduced.matches){tl.time(Math.round(clock.p)*2.6);paint();}});
+ range.addEventListener('input',()=>{pause();const value=Number(range.value);tl.time(timeAt(reduced.matches?Math.round(value):value));paint();save();});
+ select.addEventListener('change',()=>{load(Number(select.value));save();});speed.addEventListener('input',()=>{const rate=Number(speed.value);speedValue.textContent=rate+'×';speed.setAttribute('aria-valuetext',rate+' 倍');if(driver)driver.timeScale(rate);else tl.timeScale(rate);});
+ reduced.addEventListener('change',()=>{pause();if(reduced.matches){tl.time(timeAt(Math.round(clock.p)));paint();}});
  section.addEventListener('keydown',e=>{if(e.target.matches('input,select,button,a'))return;if(e.key===' '){e.preventDefault();play.click();}if(e.key==='ArrowRight'){e.preventDefault();next.click();}if(e.key==='ArrowLeft'){e.preventDefault();prev.click();}});
  const observer=new IntersectionObserver(entries=>{if(!entries[0].isIntersecting)pause();},{threshold:0});observer.observe(section);
  supplement?.addEventListener('toggle',()=>{if(!supplement.open)pause();});
- active.add({pause});const params=new URL(location.href).searchParams,requested=Number(params.get('mv'));const initial=params.has('mv')&&Number.isInteger(requested)&&requested>=0&&requested<choices.length?requested:Math.max(0,choices.findIndex(s=>s.default));select.value=String(initial);load(initial);const saved=Number(params.get('ms'));if(Number.isFinite(saved)&&saved>0){tl.time(Math.min(saved,scenario.frames.length-1)*2.6);paint();}
+ active.add({pause});const params=new URL(location.href).searchParams,requested=Number(params.get('mv'));const legacyMetric=key==='f-metrics'&&!params.has('mv')?Number(params.get('fv')):NaN;const initial=Number.isInteger(legacyMetric)&&legacyMetric>=0&&legacyMetric<choices.length?legacyMetric:params.has('mv')&&Number.isInteger(requested)&&requested>=0&&requested<choices.length?requested:Math.max(0,choices.findIndex(s=>s.default));select.value=String(initial);load(initial);const saved=Number(params.get('ms')??(key==='f-metrics'?params.get('fs'):null));if(Number.isFinite(saved)&&saved>0){tl.time(timeAt(Math.min(saved,scenario.frames.length-1)));paint();}
  if(noLegacy){host.remove();experimentLabel.remove();}
 
 }

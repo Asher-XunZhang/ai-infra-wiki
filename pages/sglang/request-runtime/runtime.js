@@ -7,7 +7,7 @@
  let frames,index=0,timer=null,overview=false;
  const column=142,top=56,pitch=64;
  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- function stop(pauseMotion=true){clearInterval(timer);timer=null;get('play').textContent='播放';get('play').setAttribute('aria-pressed','false');if(pauseMotion)get('sequence-svg')?.pauseAnimations();}
+ function stop(pauseMotion=true){window.LearningPlayback.stop(timer);timer=null;get('play').textContent='播放';get('play').setAttribute('aria-pressed','false');if(pauseMotion)get('sequence-svg')?.pauseAnimations();}
  function arrow(x1,y1,x2,y2,label,kind,active,pending,hop=0){
   const self=y1===y2;
   const d=self?`M ${x1} ${y1} h 58 v 22 h -58`:`M ${x1} ${y1} L ${x2} ${y2}`;
@@ -15,7 +15,7 @@
   const labelX=self?x1+29:x1+8;
   return `<path class="seq-arrow ${kind} ${active?'is-current':''} ${pending?'is-pending':''}" d="${d}" marker-end="url(#arrow-${kind})"/>
    <text class="seq-message" x="${labelX}" y="${labelY}"${self?' text-anchor="middle"':''}>${esc(label)}</text>
-   ${active?`<circle class="seq-packet ${kind}" visibility="${reduced.matches?'visible':'hidden'}" r="5" cx="${reduced.matches?x1:0}" cy="${reduced.matches?y1:0}">${!reduced.matches?`<set attributeName="visibility" to="visible" begin="${hop*.55}s"/><animateMotion begin="${hop*.55}s" dur=".55s" path="${d}" fill="freeze"/>`:''}</circle>`:''}`;
+   ${active?`<circle class="seq-packet ${kind}" visibility="${reduced.matches?'visible':'hidden'}" r="5" cx="${reduced.matches?x1:0}" cy="${reduced.matches?y1:0}">${!reduced.matches?`<set attributeName="visibility" to="visible" begin="${hop*.275/window.LearningPlayback.rate}s"/><animateMotion begin="${hop*.275/window.LearningPlayback.rate}s" dur="${.275/window.LearningPlayback.rate}s" path="${d}" fill="freeze"/>`:''}</circle>`:''}`;
  }
  function draw(){
   const viewport=Math.max(180,get('sequence-scroll').clientWidth),width=overview?frames.length*column+24:viewport;
@@ -100,7 +100,7 @@
  let observedWidth=0;new ResizeObserver(entries=>{const w=entries[0].contentRect.width;if(w!==observedWidth){observedWidth=w;if(frames)draw();}}).observe(get('sequence-scroll'));
  function selectEvent(e){const target=e.target.closest('[data-step]');if(!target)return;if(e.type==='keydown'&&!['Enter',' '].includes(e.key))return;e.preventDefault();stop();index=Number(target.dataset.step);render();}
  get('sequence-scroll').addEventListener('click',selectEvent);get('sequence-scroll').addEventListener('keydown',selectEvent);
- get('play').addEventListener('click',()=>{if(timer){stop();return;}if(index===frames.length-1){index=0;render();}get('sequence-svg')?.unpauseAnimations();get('play').textContent='暂停';get('play').setAttribute('aria-pressed','true');timer=setInterval(()=>{index++;render();},2200);});
+ get('play').addEventListener('click',()=>{if(timer){stop();return;}if(index===frames.length-1){index=0;render();}get('sequence-svg')?.unpauseAnimations();get('play').textContent='暂停';get('play').setAttribute('aria-pressed','true');timer=window.LearningPlayback.repeat(()=>{index++;render();},2200);});
  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);
  host.hidden=false;rebuild();
 })();

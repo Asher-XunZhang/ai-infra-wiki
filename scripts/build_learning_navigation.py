@@ -12,6 +12,8 @@ PAGES = ROOT / 'pages'
 FOUNDATIONS = json.loads((PAGES / 'foundations/courses.json').read_text(encoding='utf-8'))
 FOUNDATION_BY_SLUG = {c['slug']: c for c in FOUNDATIONS}
 DESIGN_NOTES = json.loads((PAGES / 'sglang/design-notes.json').read_text(encoding='utf-8'))
+from system_architecture import render_architecture
+
 DESIGN_REVISION = '279339f113b79af84f27fd3ac92d0a13bd3f4cbd'
 BRIDGES = {'system-overview':'generation','request-runtime':'serving','model-execution':'hardware','kv-memory':'cache','scheduling':'batching','parallelism':'parallel','communication':'communication','disaggregation':'deployment','advanced-generation':'speculation','serving-operations':'serving','performance':'metrics','case-studies':'parallel'}
 
@@ -38,8 +40,7 @@ STAGES = [
 # A lesson has one primary module. Other modules may link to it as a related case.
 MODULES = [
     ('system-overview', '推理系统全景', 'foundations', False, [
-        ('sglang/inference-overview/journey.html', 'ScheduleBatch：Extend 与 Decode 怎样准备输入？', 'SGLang · 源码导读'),
-        ('sglang/system-overview/index.html', 'SGLang 进程架构：IPC、模型调用与部署边界', 'SGLang · 系统边界')]),
+        ('sglang/system-overview/index.html', 'SGLang 代码架构：模块划分与协作全景', 'SGLang · 架构入口')]),
     ('request-runtime', '请求生命周期与运行时架构', 'foundations', False, [
         ('sglang/request-runtime/index.html', '请求生命周期：Req、TokenizerManager 与 Scheduler', 'SGLang · 入门')]),
     ('model-execution', '模型执行、硬件与算子', 'instance', False, [
@@ -49,6 +50,7 @@ MODULES = [
         ('sglang/inference-overview/kv-cache.html', 'RadixCache 与 Attention：前缀索引怎样连接 KV？', 'SGLang · 源码导读'),
         ('sglang/kv-memory/index.html', 'KV Memory Pool：地址映射、分页与缓存回收', 'SGLang · 缓存机制')]),
     ('scheduling', '调度与批处理', 'instance', False, [
+        ('sglang/inference-overview/journey.html', 'ScheduleBatch：Extend 与 Decode 怎样准备输入？', 'SGLang · 源码导读'),
         ('sglang/inference-overview/scheduling.html', 'Scheduler：选批、Chunked Prefill 与 Decode 更新', 'SGLang · 源码导读'),
         ('sglang/scheduling/index.html', 'Batch 调度：准入预算、Chunked Prefill 与 Retract', 'SGLang · 调度机制')]),
     ('parallelism', '并行与执行拓扑', 'distributed', False, [
@@ -71,6 +73,7 @@ MODULES = [
 # into HTML so the Pages build can version them and no-JS readers can use them.
 READING_ROUTES = [
     ('first', '从基础走向源码', '在已有原理之上，定位各机制的实现入口。', [
+        ('sglang/system-overview/index.html', '先建立代码框架', '从完整架构找到各模块及其协作。'),
         ('sglang/inference-overview/journey.html', 'SGLang 怎样准备两种生成批次？', '对应固定版本的实现入口。'),
         ('sglang/inference-overview/transformer.html', 'SGLang 怎样调用 DeepSeek-V3 模型层？', '对应固定版本的实现入口。'),
         ('sglang/inference-overview/kv-cache.html', 'SGLang 如何连接前缀索引与 KV 计算？', '对应固定版本的实现入口。'),
@@ -321,6 +324,9 @@ def rendered(page, module=None, lesson=None):
             if url not in source:
                 element = f'<link rel="stylesheet" href="{url}">' if tag == 'style' else f'<script src="{url}" defer></script>'
                 source = source.replace('</head>', element + '</head>', 1)
+        if page.relative_to(PAGES).as_posix() == 'sglang/system-overview/index.html':
+            source = re.sub(r'<!-- system-architecture:start -->.*?<!-- system-architecture:end -->', '', source, flags=re.S)
+            source = source.replace('<!-- foundation-bridge:start -->', render_architecture() + '<!-- foundation-bridge:start -->', 1)
         source = lesson_reading_nav(source)
         extra = reading_pagers(page)
         if '<!-- reading-pagers:start -->' in source:

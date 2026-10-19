@@ -8,7 +8,7 @@
   const defaults={control:['PP0 → PP1 → PP2','PP2 → PP0 → PP1 → PP2'],activation:['PP0 → PP1 → PP2','hidden_states / residual'],output:['PP2 → PP0 → PP1 → PP2','batch 对应的结果'],kv:['各 PP → Decode','本级层的 KV；最终块携带 metadata']};
   let model, index=0, rank=0, timer=null;
   $('scenario').innerHTML=M.scenarios.map(s=>`<option value="${s.id}">${s.label}</option>`).join('');
-  function pause(){clearInterval(timer);timer=null;$('play').textContent='播放';$('play').setAttribute('aria-pressed','false');}
+  function pause(){window.LearningPlayback.stop(timer);timer=null;$('play').textContent='播放';$('play').setAttribute('aria-pressed','false');}
   function writeUrl(){const url=new URL(location.href);url.searchParams.set('scenario',model.id);url.searchParams.set('step',model.frames[index].key);url.searchParams.set('rank',rank);history.replaceState(null,'',url);}
   function load(id,step){pause();model=M.create(id);index=Math.max(0,model.frames.findIndex(f=>f.key===step));$('scenario').value=model.id;$('scenario-description').textContent=M.scenarios.find(s=>s.id===model.id).description;
     $('milestone').innerHTML=model.frames.map((f,i)=>`<option value="${i}">${String(i+1).padStart(2,'0')} · ${escape(f.title)}</option>`).join('');$('progress').max=model.frames.length-1;render();}
@@ -39,7 +39,7 @@
   $('rank').onchange=e=>{rank=Number(e.target.value);render();};
   $('state-path').onclick=e=>{const b=e.target.closest('[data-state]');if(!b)return;const key=b.dataset.state;const candidates=model.frames.map((f,i)=>({q:f.after.ranks[rank].queue,p:f.before.ranks[rank].queue,i})).filter(x=>x.q===key&&(x.p!==key||x.i===0));const next=candidates.find(x=>x.i>index)||candidates[0];if(next){go(next.i);$('state-path').querySelector(`[data-state="${key}"]`).focus({preventScroll:true});}};
   $('rank-cards').onclick=e=>{const b=e.target.closest('[data-rank]');if(b){rank=Number(b.dataset.rank);render();$('rank-cards').querySelector(`[data-rank="${rank}"]`).focus({preventScroll:true});}};
-  $('play').onclick=()=>{if(timer){pause();return;}if(index===model.frames.length-1){index=0;render();}$('play').textContent='暂停';$('play').setAttribute('aria-pressed','true');timer=setInterval(()=>{index++;render();if(index===model.frames.length-1)pause();},2400);};
+  $('play').onclick=()=>{if(timer){pause();return;}if(index===model.frames.length-1){index=0;render();}$('play').textContent='暂停';$('play').setAttribute('aria-pressed','true');timer=window.LearningPlayback.repeat(()=>{index++;render();if(index===model.frames.length-1)pause();},2400);};
   $('share').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);$('announcement').textContent='已复制当前状态链接';$('share').textContent='已复制';}catch{$('announcement').textContent='复制不可用，请复制浏览器地址栏中的当前链接';$('share').textContent='请复制地址栏链接';}};
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});window.addEventListener('pagehide',pause);
   function restore(){const p=new URL(location.href).searchParams;rank=Math.max(0,Math.min(2,Number(p.get('rank'))||0));rank=Math.floor(rank);load(p.get('scenario'),p.get('step'));}

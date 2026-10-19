@@ -499,13 +499,22 @@
         "id": "launch",
         "title": "CUDA Graph 解决的是另一种什么等待？",
         "paragraphs": [
-          "CPU 需要把设备操作提交给 GPU。对重复出现且满足约束的执行结构，CUDA Graph 可以预先组织操作图，再重放它，减少反复逐项提交的开销。",
-          "重放仍会执行本次输入对应的运算；它不是缓存上一次答案。形状、地址和执行结构的要求由具体实现决定，图桶补齐也可能多做一些工作。"
+          "CPU 需要把设备操作提交给 GPU。如果每个 kernel 很短，GPU 算完上一个时，CPU 可能还没准备好下一个，时间线上就出现空档。CUDA Graph 将满足条件的操作及依赖先组织成可执行图，重复运行时用一次图提交减少这类开销。",
+          "普通异步提交也允许 CPU 在 GPU 计算时准备后续操作。若计算足够长，后续提交可以被覆盖，减少 CPU 工作不一定明显缩短总耗时。真实系统还可能存在 GPU 侧的提交与调度成本；本课时间线先聚焦 CPU 提交造成的等待。",
+          "捕获记录工作而不执行被捕获的 GPU 运算，实例化后才可重放；这些准备需要成本。重放仍对本轮输入重新计算，且须满足实现的形状、地址及执行结构要求。第二章再展开图桶和补齐行。"
         ],
         "refs": [
           [
             "NVIDIA · CUDA Graphs",
             "https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html"
+          ],
+          [
+            "PyTorch · CUDA Graphs 图解与 API 说明",
+            "https://pytorch.org/blog/accelerating-pytorch-with-cuda-graphs/"
+          ],
+          [
+            "NVIDIA · 提交开销的 CPU 与 GPU 侧区别",
+            "https://developer.nvidia.com/blog/optimizing-llama-cpp-ai-inference-with-cuda-graphs/"
           ]
         ],
         "links": [
@@ -569,35 +578,331 @@
     }
   },
   "communication": {
-    "problem": "切分计算后，某个结果往往依赖另一设备上的数据。通信既要搬运字节，也要保持结果的数学含义与依赖顺序；“已发出消息”还不足以让下一步安全读取。",
+    "problem": "不同进程的内存彼此独立。下一步计算需要别处的数据时，应拿到同一份副本、某个片段、求和结果，还是仅等待一个条件？选错语义会得到错误的数值、布局或执行顺序。",
     "topics": [
       {
         "id": "meaning",
-        "title": "为什么求和与拼接不能互换？",
+        "title": "先问四件事：谁有数据、怎样合并、结果给谁、何时可用？",
         "paragraphs": [
-          "若两张卡分别计算同一输出的部分贡献，需要逐元素求和；若分别计算不同输出位置，才需要按布局拼接。AllReduce 让每个参与 rank 得到归约结果，AllGather 让每个参与 rank 收齐各 rank 的片段。Rank 是通信组内的参与者编号。"
+          "并行计算使不同进程各自持有一部分数据或计算贡献。通信语义给出大家共同遵守的结果约定，避免每段计算自行猜测该发什么、接到哪里。先决定正确结果，再选择实现该结果的算法与接口。",
+          "早期消息传递以进程之间的收发为基础；MPI 将常见协作模式标准化。NCCL 面向 GPU 提供通信实现。它们有重叠的操作，但接口范围、内存模型与完成方式不能直接等同。"
         ],
-        "example": {
-          "title": "相同输入形状，可以表达不同的含义",
-          "steps": [
-            "两个局部贡献 [1,2] 与 [10,20]：AllReduce 求和得到 [11,22]。",
-            "两个有序片段 [1,2] 与 [10,20]：AllGather 收集为 [1,2,10,20]。"
-          ],
-          "note": "选择通信算子取决于计算的切分方式，不能按哪个操作名字更熟悉来选择。"
-        },
         "refs": [
           [
-            "集合通信的结果约定 · NVIDIA NCCL",
-            "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html"
+            "MPI 4.1 · 标准范围与背景",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/mpi41-report.htm"
           ]
-        ]
+        ],
+        "table": {
+          "caption": "先问四件事：谁有数据、怎样合并、结果给谁、何时可用？",
+          "headers": [
+            "操作／问题",
+            "输入与结果",
+            "用途或条件"
+          ],
+          "rows": [
+            [
+              "分发与收集",
+              "复制一份或按顺序收齐片段",
+              "Broadcast、Scatter、Gather、AllGather"
+            ],
+            [
+              "归约与扫描",
+              "合并对应位置或 rank 前缀",
+              "Reduce、AllReduce、ReduceScatter、Scan、Exscan"
+            ],
+            [
+              "交换与点对点",
+              "按目标重排或指定伙伴交接",
+              "AllToAll、邻域交换、Send/Recv"
+            ],
+            [
+              "单边访问",
+              "发起方指定远端窗口位置",
+              "Put、Get、Accumulate、CAS"
+            ],
+            [
+              "同步与完成",
+              "限定什么时候允许继续",
+              "Barrier、完成事件、消费者依赖"
+            ]
+          ]
+        }
+      },
+      {
+        "id": "distribution",
+        "title": "复制、分片、收齐：为什么有四种不同操作？",
+        "paragraphs": [
+          "完整输入可能只在一个进程，计算后的片段又可能散在各处。需要的是相同副本、不同片段、单方完整结果还是全组完整结果，决定了分发与收集的方向。"
+        ],
+        "refs": [
+          [
+            "NCCL · 分发与收集",
+            "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html"
+          ],
+          [
+            "MPI · AllGatherv",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node126.htm"
+          ]
+        ],
+        "table": {
+          "caption": "复制、分片、收齐：为什么有四种不同操作？",
+          "headers": [
+            "操作／问题",
+            "输入与结果",
+            "用途或条件"
+          ],
+          "rows": [
+            [
+              "Broadcast",
+              "root [7,8] → 每方 [7,8]",
+              "所有人需要同一份"
+            ],
+            [
+              "Scatter",
+              "root [1,2,3] → [1] / [2] / [3]",
+              "各自处理不同段"
+            ],
+            [
+              "Gather",
+              "[1] / [2] / [3] → root [1,2,3]",
+              "只有 root 需要完整结果"
+            ],
+            [
+              "AllGather",
+              "[1] / [2] / [3] → 每方 [1,2,3]",
+              "每方都需要全部片段"
+            ]
+          ]
+        },
+        "detail": {
+          "title": "继续了解：不等长片段与存储代价",
+          "paragraphs": [
+            "v 表示数量可以随来源或目标变化；如 [1]、[2,3]、[4]，不能假定每方贡献同样长度。count 与 displacement 共同确定数量和位置，图中选择紧凑排列；真实接口允许其他合法布局。",
+            "AllGather 的全量副本需要接收空间。若下游只在 root 使用结果，Gather 更符合所需布局；这不是无条件的速度比较。"
+          ]
+        }
+      },
+      {
+        "id": "reduction",
+        "title": "相加与拼接不能互换，归约结果也不总要复制给全组",
+        "paragraphs": [
+          "TP 的部分计算可能产生同一输出的不同贡献。归约按相同下标合并数值；SUM、MAX 等运算有不同数学含义。结果还要按后续计算的位置分配。"
+        ],
+        "refs": [
+          [
+            "NCCL · 归约契约",
+            "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html"
+          ],
+          [
+            "MPI · 归约运算",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node131.htm"
+          ]
+        ],
+        "table": {
+          "caption": "相加与拼接不能互换，归约结果也不总要复制给全组",
+          "headers": [
+            "操作／问题",
+            "输入与结果",
+            "用途或条件"
+          ],
+          "rows": [
+            [
+              "SUM 示例",
+              "[1,2,3] + [10,20,30] + [100,200,300]",
+              "结果 [111,222,333]"
+            ],
+            [
+              "Reduce",
+              "上述完整结果只给 root",
+              "其他 rank 的输入仍在"
+            ],
+            [
+              "AllReduce",
+              "每方获得上述完整结果",
+              "每方后续都要使用"
+            ],
+            [
+              "ReduceScatter",
+              "Rank 0 / 1 / 2 获得 111 / 222 / 333",
+              "后续继续分片计算"
+            ]
+          ]
+        },
+        "detail": {
+          "title": "继续了解：结果等价不等于执行过程相同",
+          "paragraphs": [
+            "在相同运算与布局下，Reduce 后 Broadcast 的结果可等价于 AllReduce；ReduceScatter 后 AllGather 也能形成 AllReduce 结果。动画只解释输入输出，不声称库内部必按这个拆法实现。",
+            "浮点相加的顺序会影响舍入，树形和环形算法可能给出略有差别的数值；本课整数算例只用于看清语义。"
+          ]
+        }
+      },
+      {
+        "id": "exchange",
+        "title": "AllToAll 和 AllGather 为什么容易混淆？",
+        "paragraphs": [
+          "AllGather 将每个来源的同一段数据交给每个目标；AllToAll 中，一个来源给不同目标的块可以不同。用“来源为行、目标为列”的矩阵，才能看清数据重排。"
+        ],
+        "refs": [
+          [
+            "MPI · AllToAll / AllToAllv",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node128.htm"
+          ],
+          [
+            "MPI · 邻域通信",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node232.htm"
+          ],
+          [
+            "NCCL · 点对点与分组",
+            "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.html"
+          ]
+        ],
+        "table": {
+          "caption": "AllToAll 和 AllGather 为什么容易混淆？",
+          "headers": [
+            "操作／问题",
+            "输入与结果",
+            "用途或条件"
+          ],
+          "rows": [
+            [
+              "AllToAll",
+              "源 i 的第 j 块 → 目标 j",
+              "输出按来源组织；对角线为本地"
+            ],
+            [
+              "AllToAllv",
+              "每对来源／目标数量可不同，也可为 0",
+              "双方数量与类型约定匹配"
+            ],
+            [
+              "邻域交换",
+              "仅沿通信拓扑定义的邻居边",
+              "不与全部 rank 直接交换"
+            ],
+            [
+              "Send / Recv",
+              "源与目标配对交接",
+              "不要求无关 rank 提交收发"
+            ]
+          ]
+        },
+        "detail": {
+          "title": "继续了解：匹配与进度",
+          "paragraphs": [
+            "MPI 使用通信上下文、源和 tag 等匹配消息；NCCL 点对点接口有自己的 peer、数量、类型和调用顺序要求。需要并发推进的 NCCL Send/Recv 通常成组提交，避免互相等候。",
+            "不等长只是语义需求，实际引擎可用专用 dispatcher、点对点或库接口实现。不要从 AllToAllv 名字直接推出某个 SGLang 版本采用了同名函数。"
+          ]
+        }
+      },
+      {
+        "id": "scan",
+        "title": "Scan / Exscan：为什么有人只需要前缀和？",
+        "paragraphs": [
+          "当各 rank 产出长度不同时，要把结果放入一个连续区间，就需要知道自己之前总共有多少元素。全组总量不能直接告诉每个 rank 的起点。"
+        ],
+        "refs": [
+          [
+            "MPI · Inclusive Scan",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node142.htm"
+          ],
+          [
+            "MPI · Exclusive Scan",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node143.htm"
+          ]
+        ],
+        "table": {
+          "caption": "Scan / Exscan：为什么有人只需要前缀和？",
+          "headers": [
+            "操作／问题",
+            "输入与结果",
+            "用途或条件"
+          ],
+          "rows": [
+            [
+              "局部数量",
+              "Rank 0 = 2，Rank 1 = 3，Rank 2 = 4",
+              "总量 9"
+            ],
+            [
+              "Scan · 含自身",
+              "2、5、9",
+              "各自结束位置"
+            ],
+            [
+              "Exscan · 不含自身",
+              "未定义、2、5",
+              "应用另将 Rank 0 起点置 0"
+            ]
+          ]
+        }
+      },
+      {
+        "id": "rma",
+        "title": "单边访问为什么仍需要窗口与同步？",
+        "paragraphs": [
+          "已知远端位置时，发起者可以描述完整的一次读写，无需目标为每笔数据调用匹配 Recv。这把逐消息接收安排转成预先建立的窗口、访问权限和完成协议；单边不意味着远端完全没有准备或协调。"
+        ],
+        "refs": [
+          [
+            "MPI · Put",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node317.htm"
+          ],
+          [
+            "MPI · Get",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node318.htm"
+          ],
+          [
+            "Open MPI · Accumulate",
+            "https://docs.open-mpi.org/en/main/man-openmpi/man3/MPI_Accumulate.3.html"
+          ],
+          [
+            "Open MPI · Compare and Swap",
+            "https://docs.open-mpi.org/en/main/man-openmpi/man3/MPI_Compare_and_swap.3.html"
+          ]
+        ],
+        "table": {
+          "caption": "单边访问为什么仍需要窗口与同步？",
+          "headers": [
+            "操作／问题",
+            "输入与结果",
+            "用途或条件"
+          ],
+          "rows": [
+            [
+              "Put",
+              "本地 [7,8] → 远端窗口",
+              "发起者是数据源"
+            ],
+            [
+              "Get",
+              "远端窗口 [7,8] → 本地",
+              "发起者是接收方"
+            ],
+            [
+              "Accumulate",
+              "远端 5 加上本地 2 → 7",
+              "按指定运算合入目标"
+            ],
+            [
+              "CAS",
+              "远端值等于期望值才写入新值；返回旧值",
+              "比较与交换不可被拆成普通读写"
+            ]
+          ]
+        },
+        "detail": {
+          "title": "继续了解：完成层次",
+          "paragraphs": [
+            "以合法 passive-target 访问期中的 MPI 为例，Win_flush_local 确认发起侧完成，Win_flush 还确认相应目标侧完成。目标 CPU 的本地访问仍需遵守窗口内存模型和同步协议。不要将这种约定直接搬到任意 RDMA、GPU 或 NCCL 接口。"
+          ]
+        }
       },
       {
         "id": "ready",
         "title": "异步传输为什么还要确认完成？",
         "paragraphs": [
-          "异步提交允许程序在传输尚未结束时继续安排别的工作。因此接收了请求信息、获知目标地址，与载荷已经写好并可供消费者读取，是不同事件。接收方要满足相关传输、同步和身份匹配条件后，才能使用数据。",
-          "例如先收到“请求 R1 的 KV 将写入块 B”这条控制消息，只能知道归属和目标；块 B 仍可能在写入。具体由哪个事件确认完成、何时能回收，由实现协议决定。"
+          "异步机制让提交线程继续工作，传输或计算稍后完成。因此要分别询问：调用是否返回、发送缓冲区是否可改、目标数据是否完整、消费者能否按正确顺序读取。不同接口的“完成”回答不同问题。"
         ],
         "links": [
           [
@@ -609,22 +914,94 @@
           [
             "NCCL · 提交与设备执行完成",
             "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/streams.html"
+          ],
+          [
+            "MPI · 发送与接收完成",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node74.htm"
+          ],
+          [
+            "MPI · Barrier",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node119.htm"
+          ],
+          [
+            "MPI · Flush 与 Sync",
+            "https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report/node331.htm"
           ]
-        ]
+        ],
+        "table": {
+          "caption": "完成事件的保证范围",
+          "headers": [
+            "事件",
+            "能说明什么",
+            "仍不能推出什么"
+          ],
+          "rows": [
+            [
+              "NCCL 调用正常返回（普通入队语义）",
+              "工作已排入指定 CUDA stream",
+              "GPU 操作已经完成"
+            ],
+            [
+              "MPI 普通发送完成",
+              "发送方可复用发送缓冲区",
+              "接收方已经处理消息"
+            ],
+            [
+              "MPI 接收完成",
+              "接收缓冲区含有消息，可按契约访问",
+              "匹配发送也已完成"
+            ],
+            [
+              "Barrier 返回",
+              "同组成员已进入该次屏障",
+              "无关传输或 GPU 工作已完成"
+            ],
+            [
+              "控制通知到达",
+              "已知请求归属或目标地址",
+              "KV 载荷已写完"
+            ]
+          ]
+        },
+        "detail": {
+          "title": "继续了解：消费者的执行依赖",
+          "paragraphs": [
+            "本课 NCCL 场景选择不同 GPU stream：通信 stream 记录事件，消费者 stream 等待相应事件后才读取。同一 stream 中的后续工作按该 stream 的顺序约束；主机要确认完成可使用相应事件或同步接口。",
+            "本课 KV 场景保留通知先到的例子：传输确认、请求匹配与消费侧依赖都满足后才使用。具体控制消息、可见性和生命周期约定见 SGLang 实现课。"
+          ]
+        }
       },
       {
         "id": "topology",
-        "title": "通信操作和物理链路怎样区分？",
+        "title": "哪些交接能并发，哪些必须等待？",
         "paragraphs": [
-          "AllReduce 等名称说明参与者最终应该得到什么结果；同机／跨机说明放置位置；实际链路和算法则决定怎么搬。相同的集合通信可以由不同互联和算法实现，不能从逻辑箭头推断固定网络路径。",
-          "集合通信还要求各参与者按匹配的调用约定协作。某个 rank 缺席或数据类型、数量不匹配，不能当作普通单机函数继续计算。"
+          "语义说明最终结果；算法说明如何组织传输，例如 ring、tree；部署说明同机或跨机；互联与后端决定实际链路。数据直接在参与者之间交付；归约算式用于说明数值如何合并，不代表中央服务器，也不规定 NCCL 选择哪种算法。",
+          "不同通信对的独立交接可以重叠推进。例如 Scatter 中 root 发给 Rank 1 和 Rank 2 的分片，不要求前一份到达后才开始下一份。动画直接呈现数据从来源到目标的并发移动；实际算法不保证各份数据同时开始或完成。",
+          "真正的依赖仍需要保留：转发某个数据块要先收到该块，归约要取得所需贡献，消费者要等待相关结果可用。Ring 或 tree 算法可能划分多个阶段，同一阶段也可包含多条并行传输；归约与传输还可按块重叠。本课的算式演示只分解结果含义，不复现具体算法的时间安排。",
+          "同一 communicator 的集合调用需要遵守匹配与顺序约定。等长操作与 v 变体的数量要求不同；某个 rank 缺席或约定不匹配，不能当成一个可继续使用的正常结果。完成某次集合操作也不普遍等同于全组 Barrier。"
         ],
         "refs": [
           [
             "集合通信的结果约定 · NVIDIA NCCL",
             "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html"
+          ],
+          [
+            "NCCL：点对点通信与并发推进",
+            "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.html"
+          ],
+          [
+            "NCCL：分组与调用顺序",
+            "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/groups.html"
           ]
-        ]
+        ],
+        "detail": {
+          "title": "接口边界：本课覆盖到哪里",
+          "paragraphs": [
+            "NCCL 文档说明：同组内面向不同 peer 的点对点调用可以独立推进，需要并发推进的收发应合并提交；面向同一 peer 的调用仍按顺序执行。各 rank 对集合调用遵守一致的调用顺序，与内部载荷是否并发，是两个不同层次的要求。",
+            "本课为常见通信语义族提供演示，不枚举所有库函数、数据类型与拓扑。非阻塞、持久化调用与普通调用往往共享结果语义，但启动和完成协议不同；本课用完成时间线解释其共同问题，不声称复现各 API 的完整状态机。",
+            "MPI 的 v/w 变体、inter-communicator、派生数据类型与任意邻接图还有更多约定；本例限单组、整数、紧凑缓冲区。NCCL 与 MPI 的接口不是一一对应。实际 SGLang 调用以实现课固定提交为准。"
+          ]
+        }
       }
     ],
     "check": {

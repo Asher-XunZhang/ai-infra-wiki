@@ -14,7 +14,7 @@
 <a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
 <a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
 <a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
-<a href="communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="communication.html">08 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
 <a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
 <a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
 <a href="serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
@@ -27,8 +27,7 @@
 <details class="module-nav" data-module="system-overview">
 <summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../#system-overview">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
-<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
+<a class="lesson-link" href="../sglang/system-overview/index.html">SGLang 代码架构：模块划分与协作全景</a>
 </div></details>
 <details class="module-nav" data-module="request-runtime">
 <summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -54,6 +53,7 @@
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
 <a class="lesson-link" href="../sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
 <a class="lesson-link" href="../sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
 </div></details>
@@ -129,6 +129,6 @@
 <details class="foundation-fallback"><summary>自测与解释：R1 结束，但 R2 仍引用共享前缀，此时能把那份 K/V 当作空闲空间覆盖吗？</summary><p>共享场景中，R1 的连线消失后，R2 的连线仍在；必须保留它仍持有的数据。</p></details>
 <details class="foundation-extension" id="mechanism-extension"><summary>选读 · 逐层 KV Cache 与 Prefix Reuse</summary><p>主线之外的完整机制对照图。沿用原课程的教学假设；不代表 SGLang 的运行轨迹。</p><section class="lab"><h2>Layer-wise KV Cache：同一 token 在不同层的状态</h2><div data-diagram="cache" aria-label="Layer-wise KV Cache：同一 token 在不同层的状态"></div><noscript>请启用 JavaScript 查看此图；机制说明见本展开区；源码对照见下方实现入口。</noscript></section><p class="big-idea">KV 缓存省去历史位置的重复计算；它不是已经写好的答案，也不是模型权重。</p><section class="overview-section"><h2>Layer-wise KV：每层分别保存历史状态</h2><p>每层根据自己的输入计算 K/V，后续 token 在这一层读取这一层的历史 KV。hidden states 是本轮逐层传递的中间结果，权重是模型参数，KV 则随上下文增长，三者的内容与生命周期都不同。</p><p>前缀复用要求 token 前缀匹配且状态兼容、可用；不是语义相似就能命中。下图假定请求有 8 个输入位置，匹配的前缀已经在可用的设备缓存中。</p></section><section class="overview-section"><h2>Decode Attention：长上下文怎样增加 KV 读取</h2><p>虽然普通 Decode 每轮只有一个新位置，它仍需在每一层使用历史 KV。对稠密 attention 而言，历史越长，访问的数据通常越多。“每轮输入一个 token”不等于“每轮工作量与上下文无关”。</p><p>请求结束后可以释放请求占有的资源，也可以把可复用前缀交由缓存管理器保留。缓存保留不意味着这条请求还在 Decode；未来复用也可能需要回载或重新准入。</p></section><details class="overview-selfcheck"><summary>自测 · 两个 prompt 意思一样，就能直接共用 KV 吗？</summary><p>不能这样推断。这里讨论的是匹配的 token 前缀和兼容的模型状态；措辞变化或前缀不同可能改变各层计算结果。</p></details><p><a href="../sglang/inference-overview/kv-cache.html">转到 SGLang：核对实现接口与固定源码 →</a></p></details>
 <a class="foundation-to-engine" href="../sglang/kv-memory/index.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
-<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-15。普通稠密因果 Attention 的简化模型。页大小为教学设定；没有模拟真实显存、分层回载或所有缓存兼容条件。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="https://huggingface.co/docs/transformers/main/en/cache_explanation">Hugging Face · How caching works</a></li><li><a href="../sglang/kv-memory/index.html">仓内资料：KV 管理</a></li></ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-15。普通稠密因果 Attention 的简化模型。页大小为教学设定；没有模拟真实显存、分层回载或所有缓存兼容条件。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="https://huggingface.co/docs/transformers/main/en/cache_explanation">Hugging Face · How caching works</a></li><li><a href="../sglang/kv-memory/index.html">仓内资料：KV 管理</a></li></ul><details class="concept-background"><summary>画法参考与演示范围</summary><ul><li><a href="https://huggingface.co/blog/continuous_batching">Hugging Face · KV cache 图</a>：参考旧历史与新位置用不同颜色区分；保留逐轮重算／复用对照，计数只代表 K/V 投影的位置数。</li><li><a href="https://jalammar.github.io/illustrated-gpt2/">The Illustrated GPT-2 · KV 复用图</a>：参考当前 token 计算与已保存历史的对照；位置颜色固定，新算与复用用独立标记表达。</li></ul><p>本课数值、交互模型与图形独立实现；输入输出和完成条件按上方官方文档复核。参考资料读取：2026-10-19。</p></details><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
 <nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="attention.html"><small>上一课</small><strong>Attention 与 Q/K/V：模型怎样参考上下文？</strong></a><a class="next" href="batching.html"><small>下一课</small><strong>Batch 调度：动态组批、连续批处理与 Chunked Prefill</strong></a></nav>
 </main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>

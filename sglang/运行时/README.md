@@ -15,7 +15,7 @@
 
 ## 系统地图
 
-[系统边界与学习地图](<SGLang 系统边界与学习地图学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/system-overview/)：先区分进程、职责、设备资源和模型副本，再沿问题进入请求、执行、缓存与调度。先修为一次 Prefill / Decode 的输入输出关系。
+[系统边界与学习地图](<SGLang 系统边界与学习地图学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/system-overview/)：先用完整代码框架定位接入、调度、执行、KV 与输出，再区分进程、设备资源和模型副本；各模块可进入固定源码及详细课程。先修为一次 Prefill / Decode 的输入输出关系。
 
 ## 阅读顺序
 

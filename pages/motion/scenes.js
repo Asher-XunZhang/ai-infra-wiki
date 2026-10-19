@@ -71,7 +71,8 @@ for(const continuous of [true,false]){
  s.frame('B 生成最后一个位置','B 第三次参与 Decode；本轮结束后，累计新增三个输出。',{B:{count:3,note:'已达到结束条件'}})
  .frame('B 退出','B 也离开执行区。',{B:pos(2,1)});
  if(!continuous)s.frame('现在才接纳 C','旧批次全部结束，C 才能进入空闲位置。',{C:pos(1,0)}).frame('C 生成输出','C 新增一个输出并达到结束条件。',{C:{count:1,note:'已达到结束条件'}}).frame('C 退出','相同请求全部完成；这里只数教学轮次，不据此推算真实吞吐。',{C:pos(2,2)});
- s.done();
+ const scene=s.done();
+ scene.stepDurations=scene.frames.slice(1).map((f,i)=>i===0?1.3:f.title.includes('退出')?.75:f.title.includes('生成')||f.title.includes('执行')?1.4:1.05);
 }
 {
  const s=make('f-hardware','搬运与乘加','GPU 访存与乘加：数据到齐后怎样计算？','一次很小的矩阵乘法：x=[2,3]，W 的两行为 [1,2]、[3,4]。',[['显存','保存输入与权重'],['计算单元','就绪后执行乘加'],['结果','写回结果供下一步使用']],base+' 这是数据依赖示意，省略缓存层级、访存合并与计算搬运重叠。');

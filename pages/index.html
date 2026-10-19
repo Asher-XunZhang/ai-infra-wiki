@@ -29,7 +29,7 @@
 <a href="foundations/batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
 <a href="foundations/hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
 <a href="foundations/parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
-<a href="foundations/communication.html">08 AllReduce、AllGather 与数据传输：结果何时可用？</a>
+<a href="foundations/communication.html">08 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
 <a href="foundations/deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
 <a href="foundations/speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
 <a href="foundations/serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
@@ -42,8 +42,7 @@
 <details class="module-nav" data-module="system-overview">
 <summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#system-overview">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
-<a class="lesson-link" href="sglang/system-overview/index.html">SGLang 进程架构：IPC、模型调用与部署边界</a>
+<a class="lesson-link" href="sglang/system-overview/index.html">SGLang 代码架构：模块划分与协作全景</a>
 </div></details>
 <details class="module-nav" data-module="request-runtime">
 <summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -69,6 +68,7 @@
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
 <a class="lesson-link" href="sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
 <a class="lesson-link" href="sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
 </div></details>
@@ -147,7 +147,7 @@
 <li><a href="foundations/batching.html"><span class="lesson-no">05</span><span><strong>Batch 调度：动态组批、连续批处理与 Chunked Prefill</strong><small>能区分等候组批与轮次间补位，并解释等待上限、整批结束和空位各自控制什么。</small></span></a></li>
 <li><a href="foundations/hardware.html"><span class="lesson-no">06</span><span><strong>GPU 计算与访存：算力、带宽和 CUDA Graph</strong><small>能说明算力、带宽与执行提交分别影响哪一段。</small></span></a></li>
 <li><a href="foundations/parallel.html"><span class="lesson-no">07</span><span><strong>TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</strong><small>能区分七类并行的切分对象、通信载荷与适用场景，并解释 PCP / DCP 的成本。</small></span></a></li>
-<li><a href="foundations/communication.html"><span class="lesson-no">08</span><span><strong>AllReduce、AllGather 与数据传输：结果何时可用？</strong><small>能解释不同通信操作的输入输出，以及“发出”不等于“可用”。</small></span></a></li>
+<li><a href="foundations/communication.html"><span class="lesson-no">08</span><span><strong>通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</strong><small>能够根据所需输出选择通信语义，并说明参与者、载荷、顺序与完成条件。</small></span></a></li>
 <li><a href="foundations/deployment.html"><span class="lesson-no">09</span><span><strong>PD Disaggregation：Prefill 与 Decode 为什么分离？</strong><small>能区分 PD 角色分离与 PP 模型切层，并指出交接成本。</small></span></a></li>
 <li><a href="foundations/speculation.html"><span class="lesson-no">10</span><span><strong>Speculative Decoding：草稿候选怎样验证和接受？</strong><small>能解释连续接受前缀，以及错误候选之后的状态为何不能直接保留。</small></span></a></li>
 <li><a href="foundations/serving.html"><span class="lesson-no">11</span><span><strong>请求路由与取消：服务在线为何还没收到回答？</strong><small>能区分健康探测、接纳、执行、客户端可见和安全收尾。</small></span></a></li>
@@ -164,10 +164,10 @@
           <div class="module-grid module-grid-two">
             <article id="system-overview" class="lesson-card module-card" data-coverage="available">
               <div class="card-top"><span class="card-number">01</span><span class="module-status available">已有课程</span></div>
-              <h4 id="overview-topic-title">推理系统全景</h4><p class="module-question">SGLang 的批次与系统边界怎样对应？</p>
-              <p>从 ScheduleBatch 的输入准备进入实现，再区分进程、职责和多卡部署边界。</p>
+              <h4 id="overview-topic-title">推理系统全景</h4><p class="module-question">代码有哪些大模块，它们怎样协作？</p>
+              <p>先看完整代码架构，再沿请求、执行和资源管理找到对应课程。</p>
               <p class="module-prerequisite">先修：第一章的 token、生成与模型计算</p>
-              <div class="module-entry"><a href="sglang/inference-overview/journey.html">开始学习 · ScheduleBatch：Extend 与 Decode 怎样准备输入？ →</a><a href="sglang/system-overview/">SGLang 进程架构：IPC、模型调用与部署边界 →</a></div>
+              <div class="module-entry"><a href="sglang/system-overview/index.html">开始学习 · SGLang 代码架构：模块划分与协作全景 →</a></div>
             </article>
             <article id="request-runtime" class="lesson-card module-card" data-coverage="available">
               <div class="card-top"><span class="card-number">02</span><span class="module-status available">已有课程</span></div>
@@ -195,7 +195,7 @@
             <article id="scheduling" class="lesson-card module-card" data-coverage="available">
               <div class="card-top"><span class="card-number">05</span><span class="module-status available">已有课程</span></div>
               <h4>调度与批处理</h4><p class="module-question">谁决定这一轮算什么、算多少？</p><p>队列策略、准入预算、batching、chunk、抢占、公平性与 overlap。</p><p class="module-prerequisite">先修：请求、模型执行与 KV 基础</p>
-              <div class="module-entry"><a href="sglang/inference-overview/scheduling.html">开始学习 · Scheduler：选批、Chunked Prefill 与 Decode 更新 →</a><p class="module-related">继续观察排序与准入、长短请求、容量回撤；Overlap 与 PP 按需深入。</p><a href="sglang/scheduling/">Batch 调度：准入预算、Chunked Prefill 与 Retract →</a></div>
+              <div class="module-entry"><a href="sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？ →</a><a href="sglang/inference-overview/scheduling.html">开始学习 · Scheduler：选批、Chunked Prefill 与 Decode 更新 →</a><p class="module-related">继续观察排序与准入、长短请求、容量回撤；Overlap 与 PP 按需深入。</p><a href="sglang/scheduling/">Batch 调度：准入预算、Chunked Prefill 与 Retract →</a></div>
             </article>
           </div>
         </section>

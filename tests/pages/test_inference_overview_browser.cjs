@@ -14,7 +14,7 @@ const fs=require('node:fs'),path=require('node:path');
  const id=x=>page.locator(`[data-id="${x}"]`),root=m=>page.locator(`[data-diagram="${m}"]`);
  const range=async(k,v)=>id(k).evaluate((e,v)=>{e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},v);
  const text=m=>root(m).innerText();
- await page.goto(base);await page.locator('#system-overview .module-entry a').first().click();await page.waitForURL('**/journey.html*');
+ await page.goto(base);await page.locator('#system-overview .module-entry a').first().click();await page.waitForURL('**/system-overview/index.html*');
  await go('journey');assert.match(await text('journey'),/没有任何层的 KV/);
  for(let layer=1;layer<=3;layer++){await id('j-next').click();assert.match(await text('journey'),new RegExp(`当前完成第 ${layer} 层，尚未采样`));assert.equal(await root('journey').locator('.wr-node.active').count(),1);}
  await id('j-next').click();assert.match(await text('journey'),/缓存中只有已处理的 p1…p4，尚无 y1/);

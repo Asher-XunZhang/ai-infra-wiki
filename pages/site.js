@@ -1,3 +1,17 @@
+/* Legacy lesson playback shares a live speed slider. New 1× uses half the old
+ * interval. Only teaching timers use this API; UI/debounce timers are unchanged. */
+(()=>{'use strict';let rate=1;const timers=new Set(),sliders=new Set();
+ function mount(container){for(const c of sliders)if(!c.input.isConnected)sliders.delete(c);if(!container||container.closest('.motion-controls')||container.querySelector('.animation-speed'))return;
+  const label=document.createElement('label'),input=document.createElement('input'),out=document.createElement('output');label.className='animation-speed';label.append('速度 ');input.type='range';input.min=.25;input.max=3;input.step=.25;input.value=rate;input.setAttribute('aria-label','动画速度');out.textContent=rate+'×';label.append(input,out);container.append(label);sliders.add({input,out});
+  input.addEventListener('input',()=>{rate=Number(input.value);for(const c of sliders){c.input.value=rate;c.out.textContent=rate+'×';c.input.setAttribute('aria-valuetext',rate+' 倍');}for(const t of timers)t.reschedule();});
+ }
+ function repeat(callback,oldMilliseconds){const t={id:null,stopped:false,reschedule(){clearInterval(t.id);t.id=setInterval(callback,oldMilliseconds/2/rate);}};t.reschedule();timers.add(t);return t;}
+ function stop(t){if(!t)return;if(typeof t==='object'){clearInterval(t.id);t.stopped=true;timers.delete(t);}else clearInterval(t);}
+ function scan(){document.querySelectorAll('button[id$="-play"],button#play,button[data-action="play"]').forEach(b=>mount(b.parentElement));}
+ window.LearningPlayback={mount,repeat,stop,get rate(){return rate;}};
+ if(document.readyState!=='complete')document.addEventListener('DOMContentLoaded',scan);else scan();
+ window.addEventListener('pagehide',()=>{for(const t of timers)stop(t);});
+})();
 (() => {
   'use strict';
   const root = document.documentElement;

@@ -49,4 +49,8 @@ done
 
 CI 保留原有模型、PP 生成与源码基线检查，并增加通用文档检查。浏览器测试仍为本地运行入口；迁移目录不代表此前未进入 CI 的浏览器测试已经自动执行。基础章节另有 `test_foundations.cjs` 与 `test_foundations_browser.cjs`，检查十二课的机制不变量、场景切换与完整阅读路径。具体复核范围见 [课程维护表](../pages/COURSE_COVERAGE.md)。
 
+`pages/test_concept_focus_browser.cjs` 检查 Chunked Prefill 的分轮累计、CUDA Graph 的提交与计算依赖、性能指标的样本和窗口边界，以及按概念设置不同时长后的拖动、回看、途中调速和旧链接恢复。它使用与其他 Pages 浏览器检查相同的 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL`，结束时关闭并核对自有浏览器进程。
+
 并行基础的 `test_parallel_teaching.cjs` 核对 TP 重构、PCP 因果配对与 DCP 的稳定归一化合并；`test_detail_mechanisms_browser.cjs` 覆盖各并行场景的中间态。删除旧播放器后，相关专题浏览器测试通过 `migrated_checks.cjs` 继续检查迁入主动画的原有分支，不因入口整合而删掉这些机制断言。
+
+通信基础的 `test_communication_teaching.cjs` 与 `test_communication_teaching_browser.cjs` 覆盖集合通信、点对点、单边访问及完成条件；浏览器测试记录独立进程与 profile，并在退出时清理。原 `test_communication*.cjs` 仍检查 SGLang 实现课程，不与基础语义混用。

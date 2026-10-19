@@ -69,4 +69,8 @@
 /* A chunk plan uses discrete positions; the lower bar is execution progress. */
 .teach-slot{fill:none;stroke:#a5b9c5;stroke-dasharray:4 3}
 .teach-progress{fill:#2a8478;stroke:none}
+.hardware-event-label{fill:#4b6472;font-size:12px}
+.hardware-event-label.is-filled{fill:#fff}
+[data-theme=dark] .hardware-event-label{fill:#b9cddc}
+[data-theme=dark] .hardware-event-label.is-filled{fill:#fff}
 .mechanism-film[data-motion=scheduling] svg[data-teaching-kind=chunk-prefill]{max-height:none;max-width:900px;margin:auto}

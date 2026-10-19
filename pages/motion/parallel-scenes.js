@@ -8,9 +8,9 @@ const tp=['row','column'].map(kind=>make(kind==='row'?'TP · 切输入维：局�
  ['先算一个输出格','Y 的左上角取 X 第一行与 W 第一列：1×2 + 2×1 = 4。其余格采用相同规则；矩阵乘法不是对应位置相乘。'],
  ['标出切分轴',kind==='row'?'沿相乘的输入特征维切：X 切列、W 切对应行。同色部分必须成对交给同一 rank。':'沿输出特征维切：W 切列，X 在两卡各保留完整副本。两卡各自负责不同的输出列。'],
  ['把对应分块放到两张卡',kind==='row'?'Rank 0 接 X 第 1 列与 W 第 1 行；Rank 1 接 X 第 2 列与 W 第 2 行。上方淡色矩阵只作原问题参照。':'两卡使用相同 X；Rank 0 持有 W 第 1 列，Rank 1 持有 W 第 2 列。复制的是输入激活，权重按列分片。'],
- ['各卡计算局部矩阵',kind==='row'?'两份局部乘积均为 2×2；同一坐标是同一输出格的部分贡献。图逐格揭示结果，真实 GEMM 可并行计算。':'每卡得到 2×1 输出列：第一卡为 [4,10]，第二卡为 [6,12]。图逐格揭示点积结果。'],
+ ['各卡计算局部矩阵',kind==='row'?'两份局部乘积均为 2×2；同一坐标是同一输出格的部分贡献。两卡同时计算；图逐格揭示算式，真实 GEMM 可并行计算。':'两卡同时计算，每卡得到 2×1 输出列：第一卡为 [4,10]，第二卡为 [6,12]。输出列延续所属权重列的颜色。'],
  ['交换需要的结果分片',kind==='row'?'本例用两卡交换局部乘积，再逐元素相加说明 AllReduce 的语义；本地贡献保持可见。':'本例用 AllGather 交换输出列的副本。原输出列保持不动，各卡取得缺少的那一列。'],
- ['按元素含义汇总',kind==='row'?'同一输出坐标相加：例如 2+2=4、6+4=10。不能把两份矩阵当作不同列直接拼接。':'按原列号恢复位置：第一列 [4,10]、第二列 [6,12]。它们不是同一坐标的贡献，不能相加。'],
+ ['按元素含义汇总',kind==='row'?'同一输出坐标相加：例如 2+2=4、6+4=10。橙色表示求和产生的新值，每个 rank 都得到完整 Y。':'两列同时移到原列号对应的位置：第一列 [4,10]、第二列 [6,12]。数值与来源颜色保持不变；每个 rank 都得到完整 Y。'],
  ['核对完整结果','两种切法都恢复 Y=[[4,6],[10,12]]。实际网络可继续使用分片输出，未必每层都 AllGather；这里为核对结果选择完整恢复。']
  ],M.tensor(kind),'采用 Y=XW 行向量布局；输入维切分对应 Row Parallel，输出维切分对应 Column Parallel。切分动画解释逻辑布局，不表示每次推理都重新切权重。两卡交换是 collective 语义示例，不限定 NCCL 算法。'));
 const dp=make('DP · 复制完整模型，分派不同请求','dp','两个副本都执行 L1(x)=2x、L2(h)=h+1；R1 输入 1，R2 输入 3。先看完整模型如何复制，再观察两条独立输入经过相同计算。',[
@@ -41,7 +41,7 @@ const pcp=[false,true].map(zigzag=>make(zigzag?'PCP · 前后配对，平衡因�
  ['同一条长请求的八个位置','p1…p8 是序列位置，不是八条请求，也不是八个调度轮次。'],
  ['把 Query 行分给两张卡',zigzag?'前后配对：Rank 0 处理 p1/p2/p7/p8，Rank 1 处理 p3/p4/p5/p6。':'连续切分：Rank 0 处理 p1…p4，Rank 1 处理 p5…p8。后半段的 Query 要读取更多历史。'],
  ['交换所需的 K/V','本图选 AllGather 局部 K/V 的示例：本地 Query 保持归属，K/V 副本交给另一 rank。其他 CP 算法可循环传块，不要求总是物化全量副本。'],
- ['按因果遮罩计算自己的行','矩阵一行对应一个 Query，一列对应一个 Key；仅下三角允许读取。蓝/绿行分别由两个 rank 计算。'],
+ ['按因果遮罩计算自己的行','矩阵一行对应一个 Query，一列对应一个 Key；仅下三角允许读取。蓝/绿两组行同时展开，表示两个 rank 独立计算；行的上色节奏不模拟 GPU 调度或耗时。'],
  ['保留各自负责的输出行','输出按 Query 位置归属返回后续层。计数是允许的 Q–K 配对数；不是实测 GPU 工作量或加速比。']
  ],M.context(zigzag),'PCP 是 Prefill 阶段的一类 CP 分工；与 Chunked Prefill 按时间分多轮处理不同，二者可以组合。'));
 const dcp=[false,true].map(equal=>make(equal?'DCP · 两片归一化权重相等':'DCP · 两片归一化权重不同','dcp','Decode Context Parallelism（解码上下文并行）把同一请求的历史 KV 按上下文位置分散保存；一个新 Query 必须汇合各片 Attention 的贡献。',[
@@ -54,5 +54,13 @@ const dcp=[false,true].map(equal=>make(equal?'DCP · 两片归一化权重相等
 const pp=root.TeachingLessons['f-parallel'].map(s=>({...s,boundaryKey:'parallel-pp',frames:[{title:'先看完整模型的层顺序',caption:'L1 到 L4 是依次执行的四层。本例把相邻两层交给同一个 PP stage，层的权重留在负责该层的 GPU。'},{title:'按层划分 Stage，再准备微批次',caption:'Stage 0 负责 L1/L2；Stage 1 负责 L3/L4。MB1 与 MB2 各包含两条请求；相同微批次必须依次经过两个阶段。'},...s.frames]}));
 root.TeachingLessons['f-parallel']=[...tp,...pp,dp,...ep,sp,...pcp,...dcp];
 const labels=['沿输入维切分','沿输出维切分','两个微批次','一个微批次','完整模型副本','均衡路由','热点专家','序列布局转换','连续位置分片','前后配对分片','归一化权重不同','归一化权重相同'];
-root.TeachingLessons['f-parallel'].forEach((s,i)=>s.scenarioLabel=labels[i]);
+const pacing={
+ 'parallel-tp':[2.2,1.5,1.6,3.2,1.4,2.8,1.1],
+ 'parallel-dp':[1.3,1.1,1.6,1.6,1.1],
+ 'parallel-ep':[1.6,1.5,2,1.4,2.6],
+ 'parallel-sp':[1.5,1.6,1.5,1.3,2.5],
+ 'parallel-pcp':[1.6,1.5,2.6,1.5],
+ 'parallel-dcp':[1.6,3.6,1.4,3.2]
+};
+root.TeachingLessons['f-parallel'].forEach((s,i)=>{s.scenarioLabel=labels[i];s.stepDurations=pacing[s.kind]||s.frames.slice(1).map((_,step)=>step<2?1.3:1.8);});
 })(typeof globalThis==='object'?globalThis:this);

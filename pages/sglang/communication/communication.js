@@ -46,7 +46,7 @@ function gates(){
  const captions=['本场景有两个源端。请求仍在交接队列，页已经为它预留。','一个源端报 Success；另一个未完成，不能推进请求。','KV 已收齐，但元数据仍未到达，整体 poll 继续保持 Transferring。','非零元数据到达只是第一层 gate；它还不等于 room 身份已经校验通过。','本图假设所有参与 rank 均满足前置条件；源码用 MIN 归约保持推进一致。',kind==='cache'?'HiCache 恢复结束后，还要提交并校验请求元数据。':kind==='corrupt'?'提交时发现 room 99 与预期 42 不同，终止请求，不能进入可调度队列。':'room 等元数据检查通过，请求才从交接队列进入后续可调度流程。','缓存恢复与元数据检查都通过，请求进入后续可调度流程。'];
  return {graph,title:'写入完成，还缺哪些就绪条件？',label:labels[step],caption:captions[step],why:'用两个源端说明 unique-rank 计数；图不复用上一实验的单源拓扑。HiCache 是可选门槛。本图只画成功条件汇合，实际 gate 可重叠完成；调度、batch 和执行还在后续。元数据非零 gate 与最终 bootstrap_room 一致性检查分属两处源码。',source:step<=2?'success':step<=4?'gate':kind==='cache'&&step===5?'ready':'commit'};
 }
-function stop(){clearInterval(timer);timer=null;$('#comm-play').textContent='播放';$('#comm-play').setAttribute('aria-pressed','false');}
+function stop(){window.LearningPlayback.stop(timer);timer=null;$('#comm-play').textContent='播放';$('#comm-play').setAttribute('aria-pressed','false');}
 function render(){
  const d=({message,collective,kv,gates})[mode]();
  $('#comm-title').textContent=d.title;$('#comm-scene').innerHTML=d.graph;$('#comm-scene').dataset.mode=mode;$('#comm-scene').dataset.step=step;
@@ -59,7 +59,7 @@ lab.hidden=false;
 lab.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;lab.querySelectorAll('[data-mode]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));lab.querySelectorAll('[data-settings]').forEach(x=>x.hidden=x.dataset.settings!==mode);reset();}));
 lab.querySelectorAll('select,input').forEach(x=>x.addEventListener('change',reset));
 $('#comm-previous').onclick=()=>{stop();if(step>0)step--;render();};$('#comm-next').onclick=()=>{stop();if(step<last())step++;render();};$('#comm-reset').onclick=reset;
-$('#comm-play').onclick=()=>{if(timer){stop();return;}if(step===last())step=0;render();$('#comm-play').textContent='暂停';$('#comm-play').setAttribute('aria-pressed','true');timer=setInterval(()=>{step++;render();},2200);};
+$('#comm-play').onclick=()=>{if(timer){stop();return;}if(step===last())step=0;render();$('#comm-play').textContent='暂停';$('#comm-play').setAttribute('aria-pressed','true');timer=window.LearningPlayback.repeat(()=>{step++;render();},2200);};
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',render);
 render();
 })();

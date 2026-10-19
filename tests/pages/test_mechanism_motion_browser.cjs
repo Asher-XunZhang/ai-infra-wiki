@@ -3,10 +3,10 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/';
 const output=process.env.MOTION_SCREENSHOT_DIR;if(output)fs.mkdirSync(output,{recursive:true});
 const capture=async(target,file)=>{if(output)await target.screenshot({path:path.join(output,file)});};
-const foundation=['tokens','generation','attention','cache','batching','hardware','parallel','communication','deployment','speculation','serving'];
+const foundation=['tokens','generation','attention','cache','batching','hardware','parallel','communication','deployment','speculation','serving','metrics'];
 const engine=['request-runtime','model-execution','kv-memory','scheduling','communication','advanced-generation','serving-operations','pd-dataflow','pd-prefill-lifecycle'];
 const pages=[...foundation.map(x=>`foundations/${x}.html`),...engine.map(x=>`sglang/${x}/index.html`)];
-(async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});try{
+(async()=>{const server=await chromium.launchServer({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});const owned=server.process();console.log(JSON.stringify({session:'test_mechanism_motion_browser.cjs',controller:process.pid,browser:owned.pid,profile:owned.spawnargs.find(a=>a.startsWith('--user-data-dir='))}));const browser=await chromium.connect(server.wsEndpoint());try{
  const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const seek=async n=>page.locator('.motion-scrub input').evaluate((e,n)=>{e.value=n;e.dispatchEvent(new Event('input',{bubbles:true}));},n);
  let variants=0,frames=0;
@@ -15,7 +15,7 @@ const pages=[...foundation.map(x=>`foundations/${x}.html`),...engine.map(x=>`sgl
   if(await supplement.count()){assert.equal(await supplement.evaluate(e=>e.open),false,'mechanism-specific view comes first');await supplement.locator(':scope>summary').click();}
   const choice=film.locator('select[aria-label="连续演示条件"]'),count=await require('./choose_motion_scene.cjs').count(page);
   for(let variant=0;variant<count;variant++){if(count>1)await require('./choose_motion_scene.cjs')(page,variant);variants++;
-   const max=Number(await film.locator('input[type=range]').getAttribute('max'));
+   const max=Number(await film.locator('.motion-scrub input').getAttribute('max'));
    await film.locator('[data-motion-id]').first().evaluate(e=>window.testIdentityNode=e);
    for(let n=0;n<=max;n++){await seek(n);frames++;assert.equal(await film.locator('[data-motion-id]').first().evaluate(e=>e===window.testIdentityNode),true,url+' must retain actor nodes');
     assert.ok((await film.locator('.motion-action').innerText()).length>0,url);
@@ -58,4 +58,4 @@ const pages=[...foundation.map(x=>`foundations/${x}.html`),...engine.map(x=>`sgl
  await page.setViewportSize({width:390,height:1000});await page.goto(base+'foundations/tokens.html');await seek(2.5);await capture(page.locator('.mechanism-film'),'tokens-mobile.png');
  const plain=await browser.newPage({javaScriptEnabled:false});await plain.goto(base+'foundations/tokens.html');assert.ok((await plain.locator('.foundation-copy').innerText()).includes('token'));await plain.close();
  assert.deepEqual(errors,[]);console.log(`PASS: ${pages.length} pages, ${variants} variants, ${frames} endpoint frames; persistent DOM, real midpoint, pause/resume/reset, backwards seek, condition reset, reduced motion/keyboard, 3 widths × 2 themes, no-JS and evidence links.`);
-}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});
+}finally{await browser.close();await server.close();try{process.kill(owned.pid,0);throw Error('owned browser still running');}catch(e){if(e.code!=='ESRCH')throw e;}}})().catch(e=>{console.error(e);process.exit(1);});
