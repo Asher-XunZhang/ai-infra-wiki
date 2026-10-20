@@ -8,7 +8,7 @@ V['f-parallel']=(svg,viewport,s)=>{
  if(s.kind==='parallel-tp')return window.TensorParallelVisual(svg,viewport,s);
  return board(svg,viewport,s.kind,()=>1090,H=>{
  const {txt,rect,text,box,show,token,move,set}=H,d=s.data,kind=s.kind.slice(9);
- const header=txt('','teach-heading'),hint=txt('','teach-small'),panels=[rect(),rect()],names=[0,1].map(r=>txt('Rank '+r+' · P'+r+' / GPU '+r,'teach-small'));
+ const header=txt('','teach-heading'),hint=txt('','teach-small'),panels=[rect(),rect()],names=[0,1].map(r=>txt('','teach-small'));
  const note=txt('','teach-small'),result=txt('','teach-heading'),line2=txt('','teach-small');
  const tile=(id,label,color=0,w=64)=>token(id,label,w,'teach-token teach-color-'+color);
  let paint;
@@ -91,7 +91,7 @@ V['f-parallel']=(svg,viewport,s)=>{
    text(line2,18,985,p>=4?`权重 ${d.weights[0]} / ${d.weights[1]}；历史 KV 留在原卡。`:'');
   };
  }
- return(p,m)=>{const x=[18,m?190:382],w=m?152:320;[0,1].forEach(i=>{box(panels[i],x[i],250,w,kind==='dcp'?430:240);text(names[i],x[i]+6,274);if(m)names[i].setAttribute('font-size','11');});svg.dataset.parallelKind=kind;svg.dataset.step=Math.floor(p);paint(p,m,x,w);if(m){header.setAttribute('font-size','16');result.setAttribute('font-size','15');hint.setAttribute('font-size','12');}};
+ return(p,m)=>{const x=[18,m?190:382],w=m?152:320;[0,1].forEach(i=>{box(panels[i],x[i],250,w,kind==='dcp'?430:240);text(names[i],x[i]+6,274,m?'Rank '+i:'Rank '+i+' · P'+i+' / GPU '+i);if(m)names[i].setAttribute('font-size','11');});svg.dataset.parallelKind=kind;svg.dataset.step=Math.floor(p);paint(p,m,x,w);if(m){header.setAttribute('font-size','16');result.setAttribute('font-size','15');hint.setAttribute('font-size','12');}};
  });
 };
 })();

@@ -54,7 +54,7 @@ visuals['f-tokens']=(svg,viewport,s)=>board(svg,viewport,'tokens',n=>n?1050:650,
  const outputs=vectors.map((v,i)=>({t:token('vector-'+i,'['+v.join(', ')+']',130,'teach-token '+color(d.ids[i])),position:txt('位置 '+(i+1),'teach-small'),link:path()}));
  ids.forEach(a=>svg.append(a.g));
  return(p,m)=>{
-  const W=m?360:720,dictY=196,embedY=m?496:196,outY=m?780:470;
+  const W=m?360:720,dictY=m?236:196,embedY=m?496:196,outY=m?780:470;
   text(heads[0],18,28);text(heads[1],18,dictY-20);text(heads[2],m?18:376,embedY-20);text(heads[3],18,outY-20);text(info,18,m?1030:630);
   text(sentence,20,82);show(sentence,1-phase(p,0));let cursor=20;pieces.forEach((a,i)=>{const gap=phase(p,0)*10;move(a,cursor+i*gap,58,phase(p,0));cursor+=a.width;set(a.r,{opacity:phase(p,0)*.85+.15});});
   lookup.forEach((a,i)=>{const y=dictY+i*48;box(a.bg,18,y,m?324:326,40);text(a.word,30,y+25);text(a.positions,m?158:158,y+25);text(a.id,m?252:254,y+25);show(a.bg,.18+.47*phase(p,1));show(a.word,.35+.65*phase(p,1));show(a.positions,.35+.65*phase(p,1));set(a.id,{'text-anchor':'middle',x:(m?248:250)+38});show(a.id,.35+.65*phase(p,2));
@@ -62,12 +62,13 @@ visuals['f-tokens']=(svg,viewport,s)=>board(svg,viewport,'tokens',n=>n?1050:650,
   });
   // The occurrence IDs stay in a fixed rail; they never cover the table row
   // that they are querying. Repeated occurrences point at the same row by identity.
-  ids.forEach((a,i)=>{const row=rowOf(d.ids[i]);move(a,18+i*60,dictY-76,phase(p,1));a.g.dataset.tableRow=String(row);});
+  ids.forEach((a,i)=>{const row=rowOf(d.ids[i]);if(m){const w=100;set(a.r,{width:w});set(a.t,{x:w/2});move(a,18+(i%3)*106,dictY-116+Math.floor(i/3)*42,phase(p,1));}else{set(a.r,{width:56});set(a.t,{x:28});move(a,18+i*60,dictY-76,phase(p,1));}a.g.dataset.tableRow=String(row);});
 
-  embedding.forEach((a,i)=>{const x=m?18:376,y=embedY+i*48;box(a.bg,x,y,m?324:326,40);text(a.id,x+12,y+25);text(a.positions,x+78,y+25);text(a.value,x+140,y+25);show(a.bg,.16+.54*phase(p,2));show(a.id,.22+.78*phase(p,2));show(a.positions,.25+.75*phase(p,2));show(a.value,.25+.75*phase(p,2));});
-  outputs.forEach((a,i)=>{const x=m?94:28+i*137,y=m?outY+i*44:outY+18,sourceX=(m?18:376)+116,sourceY=embedY+rowOf(d.ids[i])*48+3,t=phase(p,3);
+  embedding.forEach((a,i)=>{const x=m?18:376,y=embedY+i*48;box(a.bg,x,y,m?324:326,40);set(a.bg,{'data-embedding-row':String(i)});set(a.id,{'data-embedding-row':String(i),'data-embedding-field':'id'});set(a.positions,{'data-embedding-row':String(i),'data-embedding-field':'positions'});set(a.value,{'data-embedding-row':String(i),'data-embedding-field':'value'});text(a.id,m?x+10:x+12,y+25);text(a.positions,m?x+124:x+78,y+25);text(a.value,m?x+210:x+160,y+25);show(a.bg,.16+.54*phase(p,2));show(a.id,.22+.78*phase(p,2));show(a.positions,.25+.75*phase(p,2));show(a.value,.25+.75*phase(p,2));});
+  outputs.forEach((a,i)=>{const x=m?54:28+i*137,y=m?outY+i*44:outY+18,sourceX=(m?18:376)+116,sourceY=embedY+rowOf(d.ids[i])*48+3,t=phase(p,3),ow=m?270:130;
+   set(a.t.r,{width:ow});set(a.t.t,{x:ow/2});
    move(a.t,lerp(sourceX,x,t),lerp(sourceY,y,t),t);text(a.position,m?18:x,m?y+22:outY+8);show(a.position,t);
-   wire(a.link,`M${x+65} ${y+34} v6`,t);
+   wire(a.link,`M${x+ow/2} ${y+34} v6`,t);
   });
   // The first row of the embedding table is visible only when it is actually used.
   [heads[1],heads[2],heads[3]].forEach((e,i)=>show(e,.55+.45*phase(p,i)));

@@ -8,7 +8,7 @@ window.TensorParallelVisual=(svg,viewport,s)=>board(svg,viewport,'tensor-matrice
  const names=['X · 2×2','W · 2×2','Y · 2×2'].map(t=>txt(t,'teach-small'));
  const grid=(id,values,color=0)=>values.flatMap((r,i)=>r.map((v,j)=>{const a=token(id+'-'+i+'-'+j,String(v),32,'teach-token teach-color-'+color);set(a.r,{height:30});set(a.t,{y:20});return {...a,i,j,value:v};}));
  const full=[grid('tp-full-x',d.x),grid('tp-full-w',d.w),grid('tp-reference',d.result,2)];
- const cuts=[path('teach-map'),path('teach-map')],panels=[rect(),rect()],rankNames=[0,1].map(i=>txt('Rank '+i+' · P'+i+' / GPU '+i,'teach-small'));
+ const cuts=[path('teach-map'),path('teach-map')],panels=[rect(),rect()],rankNames=[0,1].map(i=>txt('','teach-small'));
  const local=d.shards.map((sh,i)=>({x:grid('tp-x'+i,sh.x,i),w:grid('tp-w'+i,sh.w,i),y:grid('tp-local'+i,d.local[i],i),xl:txt('','teach-small'),wl:txt('','teach-small'),yl:txt('','teach-small'),calc:txt('','teach-small')}));
  const incoming=[0,1].map(i=>grid('tp-incoming'+i,d.local[1-i],1-i));
  const final=[0,1].map(i=>grid('tp-final'+i,d.result,2));
@@ -29,7 +29,7 @@ window.TensorParallelVisual=(svg,viewport,s)=>board(svg,viewport,'tensor-matrice
   text(subtitle,18,220,p<1?'先看两个乘数和输出形状':p<2?'一格怎样算：1×2 + 2×1 = 4':p<3?(row?'切 X 的列、W 的对应行':'切 W 的列；完整 X 各用一份'):p<4?'两卡各自执行矩阵乘法':p<5?'交换局部结果的副本':p<6?(row?'同坐标相加 → 完整输出':'按列号拼接 → 完整输出'):'与未切分的结果核对');
   text(detail,18,250,p<2?'W 的列对应输出特征；数字是教学权重。':row?'绿色：输入特征 1；蓝色：输入特征 2。':'粉色：完整 X；绿 / 蓝：输出列 1 / 2。');
   local.forEach((l,r)=>{
-   box(panels[r],rx[r],284,pw,550);text(rankNames[r],rx[r]+8,308);show(panels[r],phase(p,2));show(rankNames[r],phase(p,2));
+   box(panels[r],rx[r],284,pw,550);text(rankNames[r],rx[r]+8,308,m?'Rank '+r:'Rank '+r+' · P'+r+' / GPU '+r);show(panels[r],phase(p,2));show(rankNames[r],phase(p,2));
    const sx=rx[r]+12,u=phase(p,2),calcIndex=Math.min(l.y.length-1,Math.floor(phase(p,3)*l.y.length)),active=l.y[calcIndex];
    text(l.xl,sx,338,row?'X 列分片 · 2×1':'X 完整副本 · 2×2');text(l.wl,sx,468,row?'W 行分片 · 1×2':'W 列分片 · 2×1');
    const operandOpacity=1-.6*phase(p,4);

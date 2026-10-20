@@ -72,3 +72,68 @@
 .parallel-strategies{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0 1.4rem}.parallel-strategies button{display:grid;gap:.25rem;min-width:5.4rem;padding:.6rem .8rem;border:1px solid var(--border,#cedbd5);border-radius:.65rem;background:transparent;color:inherit;font-weight:700;cursor:pointer}.parallel-strategies small{font-size:.75rem;font-weight:400}.parallel-strategies button[aria-pressed=true]{background:#165e71;color:white;border-color:#165e71}.parallel-strategies button:focus-visible{outline:3px solid #d89a45;outline-offset:2px}.motion-controls label[hidden]{display:none}
 .parallel-assumptions{font-size:13px;margin:12px 0}.parallel-assumptions summary{cursor:pointer;color:var(--accent)}.parallel-assumptions .motion-boundary{border:0;padding-top:0}
 .mechanism-film[data-motion=f-parallel] .teaching-viewport svg{max-height:none;max-width:900px;margin-inline:auto}
+
+/* Foundation theater: the drawing is fitted into a fixed stage, while the
+   lesson text stays in a readable evidence rail. Second-chapter pages never
+   receive .foundation-theater, so their player geometry is unchanged. */
+.foundation-theater{overflow:visible}
+.foundation-theater .motion-theater{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;height:clamp(430px,58vh,540px);margin:10px 0 12px;min-width:0}
+.foundation-theater .motion-controls{position:sticky;top:84px;z-index:12;background:var(--surface,#fff);padding:8px 0;margin-bottom:8px;border-bottom:1px solid var(--border,#dbe3e8)}
+.foundation-theater .motion-stage{position:relative;min-width:0;min-height:0;overflow:hidden;border:1px solid var(--border,#cad5df);border-radius:12px;background:#f3f6f8;box-shadow:inset 0 1px #fff}
+.foundation-theater .motion-camera{position:absolute;inset:0;height:100%!important;max-height:none!important;overflow:hidden!important;border-radius:0;background:transparent;touch-action:pan-y;cursor:default;outline-offset:-3px}
+.foundation-theater .motion-camera.is-zoomed{cursor:grab;touch-action:none}
+.foundation-theater .motion-camera.is-panning{cursor:grabbing}
+.foundation-theater .motion-camera-plane{position:absolute;inset:12px;width:auto;height:auto;transform-origin:0 0;will-change:transform;display:flex;align-items:center;justify-content:center}
+.foundation-theater .motion-camera-plane svg{display:block;width:100%!important;height:100%!important;min-width:0!important;max-width:none!important;max-height:none!important;margin:0!important;overflow:visible}
+.foundation-theater .motion-camera-tools{position:absolute;right:9px;bottom:9px;z-index:5;display:flex;align-items:center;gap:3px;padding:3px;border:1px solid #b9c8d2;border-radius:6px;background:#fffef9e8;box-shadow:0 2px 8px #15304418;backdrop-filter:blur(3px)}
+.foundation-theater .motion-camera-tools button{min-width:27px;height:27px;padding:0 6px;border:1px solid #c5d1d8;border-radius:4px;background:#f8fbfc;color:var(--fg,#173c47);font:12px/1 system-ui,sans-serif;cursor:pointer}
+.foundation-theater .motion-camera-tools button:hover{background:#eaf1f3}
+.foundation-theater .motion-camera-tools button:disabled{opacity:.35;cursor:default}
+.foundation-theater .motion-camera-tools output{min-width:40px;text-align:center;color:var(--muted,#536878);font:11px/1 ui-monospace,monospace}
+.foundation-theater .motion-camera-fit{font-size:10px!important}
+.foundation-theater .motion-camera-hint{position:absolute;left:9px;bottom:10px;z-index:4;padding:3px 6px;border:1px solid #cbd7df;border-radius:4px;background:#fffdf8dc;color:#6a7f8c;font:10px/1.2 system-ui,sans-serif;pointer-events:none}
+.foundation-theater .motion-panel{min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;border:1px solid var(--border,#cad5df);border-radius:12px;background:var(--surface,#fff);padding:13px 14px;box-shadow:0 3px 0 #dbe3e8;display:flex;flex-direction:column;gap:8px}
+.foundation-theater .motion-panel-kicker{margin:0;color:var(--accent,#166c75);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.foundation-theater .motion-panel .motion-readout{position:static;margin:0;padding:0;border:0;box-shadow:none;background:transparent}
+.foundation-theater .motion-panel .motion-status{font-size:15px;line-height:1.55}
+.foundation-theater .motion-panel .motion-action{font-size:13px;line-height:1.75;margin:5px 0 0;min-height:0}
+.foundation-theater .motion-panel .motion-scrub{margin:4px 0 0;font-size:11px;color:var(--muted,#536878)}
+.foundation-theater .motion-panel .motion-scrub input{margin:7px 0 2px;accent-color:var(--accent,#176d82)}
+.foundation-theater .motion-svg-legend{font-size:11px}
+.foundation-theater .motion-camera-plane .teach-heading,.foundation-theater .motion-camera-plane .motion-object-title,.foundation-theater .motion-camera-plane .motion-zone-title,.foundation-theater .motion-camera-plane .hardware-event-label.is-filled{font-size:var(--motion-heading-size,15px)}
+.foundation-theater .motion-camera-plane text{font-size:var(--motion-text-size,12.2px)}
+.foundation-theater .motion-camera-plane .teach-small,.foundation-theater .motion-camera-plane .motion-object-note,.foundation-theater .motion-camera-plane .motion-legend,.foundation-theater .motion-camera-plane .motion-zone-note,.foundation-theater .motion-camera-plane .batch-small,.foundation-theater .motion-camera-plane .batch-key,.foundation-theater .motion-camera-plane .batch-request-note,.foundation-theater .motion-camera-plane .hardware-event-label{font-size:var(--motion-small-size,10.5px)}
+.foundation-theater .motion-camera-plane .teach-token>text,.foundation-theater .motion-camera-plane .teach-number,.foundation-theater .motion-camera-plane .batch-request-name,.foundation-theater .motion-camera-plane .batch-output-label{font-size:var(--motion-text-size,12.2px)}
+.foundation-theater .motion-camera-plane .batch-comparison,.foundation-theater .motion-camera-plane .batch-iteration,.foundation-theater .motion-camera-plane .batch-round-members{font-size:var(--motion-small-size,10.5px)}
+.foundation-theater .motion-panel::-webkit-scrollbar{width:7px}.foundation-theater .motion-panel::-webkit-scrollbar-thumb{background:#c4d2da;border-radius:5px}
+[data-theme=dark] .foundation-theater .motion-stage{background:#142330;border-color:#405665;box-shadow:none}
+[data-theme=dark] .foundation-theater .motion-panel{background:#1d3140;border-color:#405665;box-shadow:none}
+[data-theme=dark] .foundation-theater .motion-camera-tools{background:#1d3140e8;border-color:#526b7b}
+[data-theme=dark] .foundation-theater .motion-camera-tools button{background:#243b4b;color:#deebf3;border-color:#526b7b}
+[data-theme=dark] .foundation-theater .motion-camera-hint{background:#1d3140dc;border-color:#526b7b;color:#b9cddc}
+@media(max-width:760px){
+ .foundation-theater .motion-controls{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin}
+ .foundation-theater .motion-controls>*{flex:0 0 auto}
+ .foundation-theater .motion-controls{top:72px;padding:6px 0;margin-bottom:5px}
+ .foundation-theater .motion-theater{display:flex;flex-direction:column;height:auto;gap:8px;margin:8px 0 10px}
+ .foundation-theater .motion-stage{height:min(60vh,470px);min-height:340px}
+ .foundation-theater .motion-panel{overflow:auto;max-height:200px;padding:10px 12px;gap:5px}
+ .foundation-theater .motion-panel .motion-action{font-size:12px;line-height:1.65}
+ .foundation-theater .motion-panel .motion-status{font-size:14px}
+ .foundation-theater .motion-camera-hint{display:none}
+ .foundation-theater .motion-camera-tools{right:6px;bottom:6px;padding:2px;gap:2px}
+ .foundation-theater .motion-camera-tools button{height:24px;min-width:24px;padding:0 4px;font-size:11px}
+ .foundation-theater .motion-camera-tools output{min-width:34px;font-size:9px}
+ .foundation-theater .motion-camera-fit{font-size:9px!important}
+}
+@media(max-width:420px){.foundation-theater .motion-stage{height:min(60vh,470px);min-height:340px}.foundation-theater .motion-panel{padding:9px 10px}}
+.foundation-theater .motion-panel-handoff{min-width:0}
+.foundation-theater .motion-panel-handoff .motion-handoff{border:0;border-top:1px solid var(--border,#dbe3e8);margin:2px 0 0;padding:8px 0 0;font-size:11px;line-height:1.55}
+.foundation-theater .motion-panel-handoff .motion-handoff>label{display:flex;gap:6px;align-items:center;margin:0 0 5px;font-size:11px}
+.foundation-theater .motion-panel-handoff .motion-handoff select{font-size:11px;max-width:100%;padding:3px 4px}
+.foundation-theater .motion-panel-handoff .handoff-caption{margin:0;color:var(--muted,#536878);font-size:11px;line-height:1.55}
+.foundation-theater .motion-panel-handoff .motion-handoff nav{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:5px}
+.foundation-theater .motion-panel-handoff .motion-handoff nav a{font-size:10px}
+.foundation-theater .motion-panel>.motion-handoff-links{display:flex;flex-wrap:wrap;gap:4px 10px;margin:0 0 2px;font-size:10px;line-height:1.5}
+.foundation-theater .motion-panel>.motion-handoff-links a{font-size:10px;text-underline-offset:2px}
+

@@ -36,7 +36,7 @@ function mount(host,key){
  const noLegacy=key.startsWith('f-')&&integration?.foundation[key.slice(2)]?.length===0;
  const choices=window.TeachingLessons?.[key]||catalogue[key];if(!choices)return;
  const dedicated=window.MechanismVisuals?.[key];
- const section=node('section','mechanism-film');section.dataset.motion=key;section.id='mechanism-process';section.setAttribute('aria-label','连续机制演示');
+ const section=node('section','mechanism-film');section.dataset.motion=key;section.id='mechanism-process';section.setAttribute('aria-label','连续机制演示');const foundation=key.startsWith('f-');if(foundation)section.classList.add('foundation-theater');
  const head=node('div','motion-heading'),kicker=node('p','motion-kicker','观察过程 · 可以在途中暂停'),title=node('h2'),intro=node('p','motion-intro');
  head.append(kicker,title,intro);section.append(head);
  const controls=node('div','motion-controls');
@@ -58,15 +58,28 @@ function mount(host,key){
  if(families){const nav=node('nav','parallel-strategies');nav.setAttribute('aria-label',familyConfig.label);for(const family of families){const b=node('button','',key==='f-parallel'?family:familyConfig.names[family]);b.type='button';b.dataset.lessonFamily=family;if(key==='f-parallel'){b.dataset.parallelFamily=family;b.append(node('small','',familyConfig.names[family]));}b.addEventListener('click',()=>{load(choices.findIndex(c=>familyOf(c)===family));save();});if(key==='f-communication'){nav.classList.add('comm-strategies');const def=window.CommunicationTeaching.definitions.find(d=>d.id===family);let group=nav.querySelector('[data-comm-group="'+(def?def.group:'matrix')+'"]');if(!group){group=node('div','comm-operation-group');group.dataset.commGroup=def?def.group:'matrix';group.append(node('strong','',def?window.CommunicationTeaching.groups[def.group]:'矩阵对照'));nav.append(group);}group.append(b);}else nav.append(b);familyButtons.push(b);}head.insertBefore(nav,title);selectLabel.firstChild.textContent='场景 ';}
  function syncFamily(index){if(!families)return;const current=choices[index],family=familyOf(current);select.replaceChildren();choices.forEach((c,i)=>{if(familyOf(c)!==family||(current.policy&&c.policy!==current.policy))return;const option=node('option','',c.scenarioLabel||c.name.split(' · ').slice(1).join(' · ')||c.name);option.value=i;select.append(option);});select.value=String(index);familyButtons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lessonFamily===family)));selectLabel.hidden=select.options.length===1;if(key==='scheduling'){policyLabel.hidden=family!=='admission';if(current.policy)policy.value=current.policy;}}
  if(key==='f-batching'){const guide=node('p','batch-comparison','先看 ① 执行前怎样凑批，再比较 ② 生成轮次之间是否换成员。再看 ③ 一条长输入怎样分块、与 Decode 交错。等待窗口与生成轮次使用不同刻度。');head.append(guide);}
- const readout=node('div','motion-readout');section.append(controls,readout);
+ const readout=node('div','motion-readout');section.append(controls);
  const viewport=node('div','motion-viewport');viewport.tabIndex=0;viewport.setAttribute('aria-label','可回看的机制画布，窄屏自动排列');
- const svg=svgNode('svg',{viewBox:'0 0 900 432',role:'img'});viewport.append(svg);section.append(viewport);
+ const svg=svgNode('svg',{viewBox:'0 0 900 432',role:'img'});viewport.append(svg);
  let handoff;
- const scrubLabel=node('label','motion-scrub'),range=node('input');range.type='range';range.min=0;range.step=.001;range.value=0;range.setAttribute('aria-label','教学进度，可回看中间过程');scrubLabel.append(node('span','','教学进度（不是实测耗时）'),range);section.append(scrubLabel);
+ const scrubLabel=node('label','motion-scrub'),range=node('input');range.type='range';range.min=0;range.step=.001;range.value=0;range.setAttribute('aria-label','教学进度，可回看中间过程');scrubLabel.append(node('span','','教学进度（不是实测耗时）'),range);
+ let motionCamera=null,motionPanel=null,motionHandoffHost=null;
+ if(foundation){
+  viewport.classList.add('motion-camera');viewport.setAttribute('aria-label','可缩放机制画布：拖动平移，Ctrl 或 Command 加滚轮缩放，0 键适配全图');
+  const plane=node('div','motion-camera-plane');plane.append(svg);
+  const tools=node('div','motion-camera-tools');tools.setAttribute('role','group');tools.setAttribute('aria-label','画布缩放');
+  const zoomOut=node('button','','−'),zoomValue=node('output','','100%'),zoomIn=node('button','','+'),zoomFit=node('button','motion-camera-fit','适配全图');
+  zoomOut.type=zoomIn.type=zoomFit.type='button';zoomOut.dataset.motionZoomOut='';zoomIn.dataset.motionZoomIn='';zoomFit.dataset.motionZoomFit='';zoomValue.dataset.motionZoomValue='';
+  zoomOut.setAttribute('aria-label','缩小画布');zoomIn.setAttribute('aria-label','放大画布');zoomValue.setAttribute('aria-live','polite');
+  tools.append(zoomOut,zoomValue,zoomIn,zoomFit);viewport.append(plane,tools,node('span','motion-camera-hint','Ctrl/⌘ + 滚轮缩放 · 放大后拖动'));
+  const stage=node('div','motion-stage'),panel=node('aside','motion-panel');panel.setAttribute('aria-label','当前帧与教学证据');panel.append(node('p','motion-panel-kicker','当前帧 · 证据'),readout,scrubLabel);const handoffHost=node('div','motion-panel-handoff');panel.append(handoffHost);motionPanel=panel;motionHandoffHost=handoffHost;
+  stage.append(viewport);const theater=node('div','motion-theater');theater.append(stage,panel);section.append(theater);
+  motionCamera=new window.MotionCamera({camera:viewport,plane,svg,zoomOut,zoomIn,zoomFit,zoomValue});
+ }else{section.append(readout,viewport,scrubLabel);}
  const status=node('output','motion-status');status.setAttribute('aria-live','polite');readout.append(status);
  const action=node('p','motion-action');readout.append(action);
  const scrollHint=node('p','motion-scroll-hint','画布较长；可在框内上下滚动查看完整结构。');scrollHint.hidden=true;readout.append(scrollHint);
- function updateScrollHint(){scrollHint.hidden=!(viewport.scrollHeight>viewport.clientHeight+4);}
+ function updateScrollHint(){scrollHint.hidden=foundation||!(viewport.scrollHeight>viewport.clientHeight+4);}
  const continuation=node('section','motion-continuation');section.append(continuation);
  const boundary=node('p','motion-boundary');if(key==='f-parallel'){const assumption=node('details','parallel-assumptions');assumption.append(node('summary','','教学假设与简化范围'),boundary);section.append(node('p','motion-boundary','两 rank / GPU 的教学示例；手算数值与教学时隙不代表实测性能。'),assumption);}else section.append(boundary);
  const evidence=node('a','motion-evidence','查看本课来源与适用范围 ↓');evidence.href=key.startsWith('f-')?'#evidence':'#source-baseline';section.append(evidence);
@@ -111,14 +124,17 @@ function mount(host,key){
  }
  function load(index){
   syncFamily(Number(index));
-  const oldPlacement=viewport.querySelector('[aria-label="PP 部署位置"]')?.value;const oldBoundary=scenario?.boundaryKey;
+  const handoffHost=foundation&&motionHandoffHost?motionHandoffHost:viewport;
+  motionPanel?.querySelector(':scope > .motion-handoff-links')?.remove();
+  const oldPlacement=handoffHost.querySelector('[aria-label="PP 部署位置"]')?.value;const oldBoundary=scenario?.boundaryKey;
   pause();tl?.kill();visual?.destroy();visual=null;scenario=choices[index];clock={p:0};lastPhase=-1;title.textContent=scenario.title;intro.textContent=scenario.intro;boundary.textContent=scenario.boundary;range.max=scenario.frames.length-1;
   continuation.replaceChildren();continuation.hidden=true;
   if(key==='f-tokens'){continuation.hidden=false;continuation.append(node('h3','','Detokenization：同一串 ID 也能还原文字'),node('p','',`本例把 [${scenario.data.ids.join(', ')}] 交给同一个 tokenizer 解码，会还原为“${scenario.data.text}”。这里还原的是输入；生成新回答还需要下一课的模型计算与输出选择。`));}
   if(key==='f-attention'){const d=scenario.data,fmt=v=>'['+v.map(n=>n.toFixed(2)).join(', ')+']';continuation.hidden=false;const mlp=node('details');mlp.append(node('summary','','接下来：MLP 怎样使用 Attention 输出'),node('p','',`本例用 h=[a,b,max(0,a−b)]，再输出 [h₀+h₂,h₁+h₂]：${fmt(d.mixed)} → ${fmt(d.hidden)} → ${fmt(d.output)}。这是 2→3→2 维的手算例子，省略残差与归一化；切换查询位置会同步更新这些数值。`));continuation.append(mlp);}
   if(key==='f-parallel'&&scenario.kind==='parallel-tp'){continuation.hidden=false;const nav=node('nav','concept-links');nav.setAttribute('aria-label','单独查看通信操作');for(const [label,index]of [['Broadcast：复制输入',29],['Scatter：分发输入列',30],['AllGather：收齐输出列',31],['AllReduce：贡献求和',32]]){const a=node('a','',label+' ↗');a.href='communication.html?mv='+index+'#mechanism-process';nav.append(a);}continuation.append(nav,node('p','','图中的输入复制与切分说明数据布局；实际 TP 输入可能已在各 rank，或沿用前一层的分片，无需每层都重新广播、分发。'));}
-  viewport.querySelector('.motion-handoff')?.remove();svg.dataset.placement='same-host';
-  handoff=window.HandoffBoundaries?.mount(viewport,scenario.boundaryKey||key,placement=>{svg.dataset.placement=placement;paint();});
+  viewport.querySelector('.motion-handoff')?.remove();motionHandoffHost?.replaceChildren();svg.dataset.placement='same-host';
+  handoff=window.HandoffBoundaries?.mount(handoffHost,scenario.boundaryKey||key,placement=>{svg.dataset.placement=placement;paint();});
+  const handoffLinks=handoffHost.querySelector('.motion-handoff nav');if(foundation&&handoffLinks&&motionPanel){handoffLinks.classList.add('motion-handoff-links');motionPanel.insertBefore(handoffLinks,motionPanel.querySelector('.motion-readout'));}
   svg.replaceChildren();viewport.classList.remove('batch-viewport','teaching-viewport');delete svg.dataset.teachingKind;actors=[];trails=[];links=[];evidence.href=scenario.evidence||(key.startsWith('f-')?'#evidence':'#source-baseline');
   if(scenario.kind==='dynamic-batching'){visual=window.DynamicBatchingVisual(svg,viewport,scenario);}
   else if(scenario.kind==='chunk-batching'){visual=window.ChunkBatchingVisual(svg,viewport,scenario);}
@@ -133,12 +149,13 @@ function mount(host,key){
    g.append(svgNode('rect',{width:204,height:66,rx:10}),label,note);for(let j=0;j<9;j++){const r=svgNode('rect',{x:12+j*20,y:53,width:0,height:5,rx:1,class:'motion-growth'});g.append(r);bars.push(r);}svg.append(g);actors.push({g,label,note,bars});
   });
   }
+  const commContext=foundation?viewport.querySelector('.comm-context'):null;if(commContext&&motionHandoffHost)motionHandoffHost.append(commContext);
   tl=gsap.timeline({paused:true,onUpdate:paint,onComplete(){playing=false;controlsState();save();},defaults:{duration:stepDuration,ease:'none'}});
   stepTimes=[0];
   for(let i=1;i<scenario.frames.length;i++){const requested=scenario.stepDurations?.[i-1],duration=Number.isFinite(requested)&&requested>0?requested:stepDuration;stepTimes.push(stepTimes[i-1]+duration);tl.to(clock,{p:i,duration}).addLabel(`step-${i}`);}
   section.dataset.stepDurations=JSON.stringify(stepTimes.slice(1).map((t,i)=>Number((t-stepTimes[i]).toFixed(3))));
-  if(oldBoundary===scenario.boundaryKey&&oldPlacement){const placement=viewport.querySelector('[aria-label="PP 部署位置"]');if(placement){placement.value=oldPlacement;placement.dispatchEvent(new Event("change"));}}
-  paint();requestAnimationFrame(updateScrollHint);
+  if(oldBoundary===scenario.boundaryKey&&oldPlacement){const placement=handoffHost.querySelector('[aria-label="PP 部署位置"]');if(placement){placement.value=oldPlacement;placement.dispatchEvent(new Event("change"));}}
+  paint();motionCamera?.fit();requestAnimationFrame(()=>{updateScrollHint();motionCamera?.refresh();});
  }
  // URL and scrubber positions remain logical steps; playback time may differ
  // by concept. A seek into a step must invert the exact same duration mapping.
@@ -157,7 +174,8 @@ function mount(host,key){
  section.addEventListener('keydown',e=>{if(e.target.matches('input,select,button,a'))return;if(e.key===' '){e.preventDefault();play.click();}if(e.key==='ArrowRight'){e.preventDefault();next.click();}if(e.key==='ArrowLeft'){e.preventDefault();prev.click();}});
  const observer=new IntersectionObserver(entries=>{if(!entries[0].isIntersecting)pause();},{threshold:0});observer.observe(section);
  supplement?.addEventListener('toggle',()=>{if(!supplement.open)pause();});
- active.add({pause});window.addEventListener('resize',()=>requestAnimationFrame(updateScrollHint),{passive:true});if('ResizeObserver'in window)new ResizeObserver(()=>requestAnimationFrame(updateScrollHint)).observe(viewport);
+ let layoutFrame=0;const repaintForResize=()=>{if(!scenario)return;cancelAnimationFrame(layoutFrame);layoutFrame=requestAnimationFrame(()=>{paint();motionCamera?.refresh();});};
+ active.add({pause});window.addEventListener('resize',()=>{requestAnimationFrame(updateScrollHint);if(foundation)repaintForResize();},{passive:true});if('ResizeObserver'in window){const ro=new ResizeObserver(()=>{requestAnimationFrame(updateScrollHint);if(foundation)repaintForResize();});ro.observe(viewport);}
  const params=new URL(location.href).searchParams,requested=Number(params.get('mv'));const legacyMetric=key==='f-metrics'&&!params.has('mv')?Number(params.get('fv')):NaN;const initial=Number.isInteger(legacyMetric)&&legacyMetric>=0&&legacyMetric<choices.length?legacyMetric:params.has('mv')&&Number.isInteger(requested)&&requested>=0&&requested<choices.length?requested:Math.max(0,choices.findIndex(s=>s.default));select.value=String(initial);load(initial);const saved=Number(params.get('ms')??(key==='f-metrics'?params.get('fs'):null));if(Number.isFinite(saved)&&saved>0){tl.time(timeAt(Math.min(saved,scenario.frames.length-1)));paint();}
  if(noLegacy){host.remove();experimentLabel.remove();}
 

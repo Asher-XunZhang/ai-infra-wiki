@@ -70,13 +70,13 @@ function graphSubmission(svg,viewport,s){return board(svg,viewport,'graph-submis
   text(title,18,30);text(meaning,18,56);
   prep.forEach((r,i)=>{box(r,18+i*(W/2),78,W/2-38,37);show(r,.25+.75*ready);text(prepText[i],26+i*W/2,101);});
   wire(prepLink,`M${W/2-16} 97 H${W/2+12}`,ready);text(prepNote,18,140,p<1?'首次准备：捕获不执行 GPU 运算':'首次准备已完成 · 本轮复用');
-  text(prepCost,18,158);
-  text(roundLabel,18,178,`第 ${round+1} 轮 · 输入 ${input}`);
+  text(prepCost,18,168);
+  text(roundLabel,18,188,`第 ${round+1} 轮 · 输入 ${input}`);
   wire(axis,`M${x} 211 H${W-18}`);ticks.forEach((t,i)=>{text(t,x+i*scale-3,202);show(t,m&&d.duration>8&&i%2&&i!==d.duration?0:1);});
   panels.forEach((r,i)=>{const y=225+i*190,finish=r.kernels.at(-1).end;box(r.bg,16,y,W-32,176);text(r.title,28,y+27);text(r.cpu,24,y+69);text(r.gpu,24,y+120);
    function paint(events,offset){events.forEach(e=>{const amount=clamp((clock-e.start)/(e.end-e.start)),bx=x+e.start*scale,bw=(e.end-e.start)*scale;
     box(e.outline,bx,y+offset,bw,28);show(e.outline,.5*ready);box(e.fill,bx,y+offset,bw*amount,28);e.fill.dataset.motionId=e.id;set(e.fill,{'data-start':e.start,'data-end':e.end,'data-progress':amount.toFixed(4)});
-    text(e.label,bx+bw/2,y+offset+19,e.name==='Graph'?'图':e.id.startsWith('launch')?'提交 '+e.name:e.name);set(e.label,{'text-anchor':'middle'});show(e.label,ready);
+    text(e.label,bx+bw/2,y+offset+19,e.name==='Graph'?'图':e.name);set(e.label,{'text-anchor':'middle'});show(e.label,ready);
     // Labels stay legible on filled and planned portions in both themes.
     set(e.label,{class:amount>.7?'hardware-event-label is-filled':'hardware-event-label'});
    });}
