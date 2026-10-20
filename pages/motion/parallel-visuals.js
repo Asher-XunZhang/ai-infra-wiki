@@ -25,7 +25,13 @@ V['f-parallel']=(svg,viewport,s)=>{
    text(labels[0],18,83);text(labels[1],18,244);original.forEach((t,i)=>move(t,m?128:310,94+i*34,1-.65*phase(p,0)));
    const layoutContext=1-.65*phase(p,3);
    local.forEach((t,i)=>{const r=i<2?0:1,u=phase(p,0);move(t,lerp(m?128:310,x[r]+12,u),lerp(94+i*34,294+(i%2)*42,u),u*layoutContext);t.t.textContent=(p>=2?'n':'p')+(i+1)+(p>=2?' [a′,b′]':' [a'+(i+1)+',b'+(i+1)+']');});
-   copies.forEach((t,i)=>{const r=i<2?0:1,u=phase(p,2);move(t,lerp(x[r]+12,x[1-r]+12,u),lerp(294+(i%2)*42,398+(i%2)*42,u),u*layoutContext);});
+   // Route the AllGather copies through a staging lane above the local rows.
+   // They remain concurrent but never cross the rows they are copying.
+   copies.forEach((t,i)=>{const r=i<2?0:1,u=phase(p,2),lane=408+(i%2)*44,fromY=294+(i%2)*42,toY=398+(i%2)*42;let cx,cy;
+    if(u<.28){const k=u/.28;cx=x[r]+12;cy=lerp(fromY,lane,k);}
+    else if(u<.72){const k=(u-.28)/.44;cx=lerp(x[r]+12,x[1-r]+12,k);cy=lane;}
+    else {const k=(u-.72)/.28;cx=x[1-r]+12;cy=lerp(lane,toY,k);}
+    move(t,cx,cy,u*layoutContext);});
    text(result,18,530,p<1?'按序列切行，每个 token 的特征保持完整':p<2?'各 rank 独立执行逐 token 算子':p<3?'AllGather：收齐四行的副本':p<4?'TP：每卡产生四行的局部贡献':'ReduceScatter：求和后保留本 rank 的行');
    contrib.forEach((t,i)=>move(t,x[Math.floor(i/4)]+12,564+(i%4)*44,phase(p,3)));
    reducing.forEach((t,i)=>{const r=Math.floor(i/4),q=i%4;move(t,lerp(x[r]+12,x[q<2?0:1]+12+r*58,phase(p,4,4.35)),lerp(564+q*44,820+(q%2)*48,phase(p,4.35,4.8)),phase(p,4)*(1-phase(p,4.8,5)));});
@@ -65,7 +71,8 @@ V['f-parallel']=(svg,viewport,s)=>{
  }else if(kind==='dcp'){
   const query=tile('dcp-query','Q = 1',4,80),copy=tile('dcp-query-copy','Q = 1',4,80);
   const source=d.values.map((v,i)=>tile('dcp-source-'+i,'V'+(i+1)+'='+v,i<2?0:1,72));
-  const kv=d.values.map((v,i)=>tile('dcp-kv-'+i,'p'+(i+1)+': V='+v,i<2?0:1,120));
+  const kLabel=i=>d.exp[i]===1?'0':d.exp[i]===3?'ln3':String(d.exp[i]);
+  const kv=d.values.map((v,i)=>tile('dcp-kv-'+i,'p'+(i+1)+' K='+kLabel(i)+' V='+v,i<2?0:1,132));
   const stats=[0,1].map(i=>tile('dcp-stats-'+i,`O=${d.local[i]}, Z=${d.sums[i]}`,i,136));
   const incoming=[0,1].map(r=>tile('dcp-incoming-'+r,`O=${d.local[1-r]}, Z=${d.sums[1-r]}`,1-r,136));
   const weightBars=[rect('teach-contribution teach-color-0'),rect('teach-contribution teach-color-1')],weightLabels=[txt('','teach-small'),txt('','teach-small')];

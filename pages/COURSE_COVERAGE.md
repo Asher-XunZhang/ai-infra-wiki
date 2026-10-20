@@ -14,7 +14,7 @@ Pages 分为“推理基础”和“SGLang 实现剖析”两章。第一章用�
 
 ### 通信语义覆盖
 
-[通信基础](foundations/communication.html) 提供 17 个机制入口、29 个场景，按分发与收集、归约与扫描、交换与点对点、单边访问、同步与完成分组。包含 Broadcast、Scatter(v)、Gather(v)、AllGather(v)、Reduce、AllReduce、ReduceScatter、Scan / Exscan、AllToAll(v)、邻域交换、Send/Recv、Put / Get、Accumulate / CAS、Barrier 和完成依赖。保留不同图形：固定 rank 间的数据分发与交换、数值归约、端点窗口与事件泳道。NCCL 2.32.3 / MPI 4.1 语义依据与画法参考在课程内列出；不是全部库 API 或底层算法的模拟。
+[通信基础](foundations/communication.html) 提供 17 个基础语义入口和 1 个“矩阵对照”入口，共 33 个可选场景（29 个基础语义 + 4 个矩阵对照），按分发与收集、归约与扫描、交换与点对点、单边访问、同步与完成分组。包含 Broadcast、Scatter(v)、Gather(v)、AllGather(v)、Reduce、AllReduce、ReduceScatter、Scan / Exscan、AllToAll(v)、邻域交换、Send/Recv、Put / Get、Accumulate / CAS、Barrier 和完成依赖。保留不同图形：固定 rank 间的数据分发与交换、数值归约、端点窗口与事件泳道。NCCL 2.32.3 / MPI 4.1 语义依据与画法参考在课程内列出；不是全部库 API 或底层算法的模拟。
 
 - `node tests/pages/test_communication_teaching.cjs`：输入输出、root、变长片段、rank 顺序、归约、前缀、配对、单边方向与原子更新。
 - `node tests/pages/test_communication_teaching_browser.cjs`：29 场景的中间态与响应式排版、稳定对象与回看、完成边界、播放与减少动态效果、无 JavaScript 阅读、共享选择器回归。

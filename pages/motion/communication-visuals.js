@@ -55,21 +55,30 @@ function directTransfer(svg,viewport,s){
   };
  });
 }
-function pointToPoint(svg,viewport,s){const d=s.data,get=d.op==='Get',src=get?1:0,dst=1-src;return board(svg,viewport,'communication-endpoints',m=>m?880:640,H=>{
+function pointToPoint(svg,viewport,s){const d=s.data,get=d.op==='Get',put=d.op==='Put',src=get?1:0,dst=1-src;return board(svg,viewport,'communication-endpoints',m=>m?880:640,H=>{
  const {txt,rect,path,wire,text,box,token,move,show,set}=H;
  const panels=[rect(),rect()],names=[0,1].map(r=>txt('Rank '+r+' · 进程 P'+r,'teach-heading'));
  const labels=[txt('','teach-small'),txt('','teach-small')],states=[txt('','teach-small'),txt('','teach-small')];
  const originals=[7,8].map((v,i)=>token('comm-input-'+src+'-'+i,String(v),52,'teach-token teach-color-'+src));
  const slots=[0,1].map(i=>token('comm-slot-'+dst+'-'+i,'…',52,'teach-token teach-empty'));
  const copies=[7,8].map((v,i)=>token('comm-copy-'+i,String(v),52,'teach-token teach-color-'+src));
- const payload=path(),request=path('teach-link comm-control-link'),direction=txt('','teach-small'),control=txt('','teach-small'),controlDetail=txt('','teach-small'),result=txt('','teach-heading');
+ const payload=path(),request=path('teach-link comm-control-link'),direction=txt('','teach-small'),control=txt('','teach-small'),controlDetail=txt('','teach-small'),requestLabel=txt('','teach-small'),payloadLabel=txt('','teach-small'),result=txt('','teach-heading');
  return(p,m)=>{const W=m?360:720,pos=r=>m?{x:40,y:80+r*370}:{x:46+r*360,y:80};
   for(let r=0;r<2;r++){const q=pos(r);box(panels[r],q.x-20,q.y-35,m?320:320,230);text(names[r],q.x,q.y);text(labels[r],q.x,q.y+42,r===src?'源缓冲区 · 读取后仍保留':d.op==='Put'?'目标窗口 · 位置 0、1':'目标缓冲区 · 位置 0、1');text(states[r],q.x,q.y+158,r===src?'原件 [7,8]':d.unmatched?'Recv 缺席':p<3?'内容尚未齐备':p<4?'载荷写好；等待完成条件':'本例使用条件已满足');}
   const a=pos(src),b=pos(dst);originals.forEach((t,i)=>move(t,a.x+i*70,a.y+70));slots.forEach((t,i)=>move(t,b.x+i*70,b.y+70));
-  const reqA=pos(0),reqB=pos(1);wire(request,m?`M${reqA.x+220} ${reqA.y+50} V${reqB.y+50}`:`M${reqA.x+220} ${reqA.y+20} H${reqB.x}`,phase(p,0));
-  const pathD=m?`M${a.x+55} ${a.y+87} H308 V${b.y+87} H${b.x+55}`:`M${a.x+55} ${a.y+112} V${a.y+220} H${b.x+55} V${b.y+112}`;wire(payload,pathD,d.unmatched?0:phase(p,1));
+  const reqA=pos(0),reqB=pos(1),direct=!m&&(get||d.op==='Put');
+  // On a narrow screen the two participants are stacked: use a straight
+  // vertical request/payload arrow instead of a U-shaped desktop route.
+  const mobileRequest=get&&m?`M${reqA.x+150} ${reqA.y+230} V${reqB.y}`:m?`M${reqA.x+220} ${reqA.y+50} V${reqB.y+50}`:`M${reqA.x+220} ${reqA.y+20} H${reqB.x}`;
+  wire(request,direct?`M${reqA.x+55} ${reqA.y+20} H${reqB.x}`:mobileRequest,get?phase(p,0):0);
+  const mobilePayload=put&&m?`M${a.x+200} ${a.y+230} V${b.y}`:get&&m?`M${a.x+250} ${a.y} V${b.y+230}`:null;
+  const pathD=put&&m?mobilePayload:get&&m?mobilePayload:direct?`M${a.x+150} ${a.y+70} H${b.x+20}`:m?`M${a.x+55} ${a.y+87} V${b.y+87} H${b.x+55}`:`M${a.x+55} ${a.y+112} V${a.y+220} H${b.x+55} V${b.y+112}`;
+  wire(payload,pathD,d.unmatched?0:phase(p,1));
+  const midX=(a.x+b.x)/2+55,midY=a.y+62;
+  if(m&&put){text(payloadLabel,207,380,'写入载荷 [7,8]');}else if(m&&get){text(requestLabel,120,380,'读取请求');text(payloadLabel,228,404,'返回 [7,8]');}else if(put){text(payloadLabel,midX,midY,'写入载荷 [7,8]');}else if(get){text(requestLabel,midX,reqA.y+12,'读取请求');text(payloadLabel,midX,a.y+62,'返回 [7,8]');}
+  [requestLabel,payloadLabel].forEach(t=>show(t,phase(p,1)));
   copies.forEach((t,i)=>{const u=phase(p,1,3);let x,y;if(m){const point=route({x:a.x+i*70,y:a.y+70},{x:b.x+i*70,y:b.y+70},u,220+i*62);x=point.x;y=point.y;}else{x=lerp(a.x+i*70,b.x+i*70,u);y=a.y+70+Math.sin(u*Math.PI)*180;}move(t,x,y,!d.unmatched&&p>1?1:0);set(t.g,{'data-arrived':String(p>=3&&!d.unmatched),'data-in-flight':String(p>1&&p<3&&!d.unmatched)});});
-  text(control,18,m?350:390,m?(get?'读请求：0 → 1':d.op==='Put'?'写入：0 → 1':'Send 0 → Recv 1'):get?'读请求 0 → 1；返回数据 1 → 0':d.op==='Put'?'写入 0 → 1；目标不逐条提交 Recv':'Send 0 → Recv 1；两方必须匹配');text(controlDetail,18,378,get?'返回载荷：1 → 0':d.op==='Put'?'无需逐条匹配 Recv':'双方必须匹配');show(controlDetail,m?1:0);text(direction,18,m?765:444,'实线：载荷；虚线：控制关系。');
+  text(control,18,m?430:390,m?(get?'读请求：0 → 1':d.op==='Put'?'写入：0 → 1':'Send 0 → Recv 1'):get?'读请求 0 → 1；返回数据 1 → 0':d.op==='Put'?'写入载荷 0 → 1；目标不逐条提交 Recv':'Send 0 → Recv 1；两方必须匹配');text(controlDetail,18,378,get?'返回载荷：1 → 0':d.op==='Put'?'无需逐条匹配 Recv':'双方必须匹配');show(controlDetail,0);show(control,m?0:1);text(direction,18,m?765:444,'箭头就地说明发起方与载荷方向；不规定协议阶段。');
   text(result,18,m?820:506,d.unmatched?'接收尚未完成':p<3?'载荷尚未完整到达':p<4?'继续确认完成与消费依赖':'[7,8] 可供本例消费者读取');
  };
 });}
@@ -137,7 +146,7 @@ function atomic(svg,viewport,s){const d=s.data,cas=d.atomic==='cas';return board
   const t=phase(p,0,2);move(command,lerp(x,tx-12,t),lerp(130,170,t));wire(line,`M${x+60} 340 H${tx+35}`,phase(p,0));
   text(math,18,460,cas?`比较：5 ${d.expected===5?'=':'≠'} ${d.expected} → ${d.expected===5?'写入 9':'保留 5'}`:'目标值：5 + 2 = 7');show(math,p>=2?1:0);
   move(old,lerp(tx,x,phase(p,2)),lerp(280,300,phase(p,2)),cas&&p>2?1:0);
-  text(out,18,530,p<3?'更新尚未确认完成':cas?'发起方得到旧值，目标按比较更新':'目标更新完成；不返回旧值');text(note,18,578);text(heads[1],m?166:tx-12,61,m?'Rank 1 · 窗口':'Rank 1 · 暴露的窗口');
+  text(out,18,530,p<3?'更新尚未确认完成':cas?(d.expected===5?'比较成功：写入 9；发起方得到旧值 5':'比较失败：目标保留 5；发起方得到旧值 5'):'目标更新完成；不返回旧值');text(note,18,578);text(heads[1],m?166:tx-12,61,m?'Rank 1 · 窗口':'Rank 1 · 暴露的窗口');
  };
 });}
 function matrixTransfer(svg,viewport,s){const d=s.data,sum=d.op==='AllReduce';return board(svg,viewport,'communication-matrix',()=>840,H=>{

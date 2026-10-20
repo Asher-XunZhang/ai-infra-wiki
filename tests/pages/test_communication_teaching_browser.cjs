@@ -11,9 +11,9 @@ const base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/',output=proces
  await page.goto(base+'foundations/communication.html');
  const film=page.locator('.mechanism-film'),select=film.locator('[aria-label="连续演示条件"]');
  const seek=p=>film.locator('.motion-scrub input').evaluate((e,p)=>{e.value=p;e.dispatchEvent(new Event('input',{bubbles:true}));},p);
- assert.equal(await page.locator('.foundation-lab').count(),0,'old duplicate lab removed');assert.equal(await film.locator('[data-lesson-family]').count(),17);
+ assert.equal(await page.locator('.foundation-lab').count(),0,'old duplicate lab removed');assert.equal(await film.locator('[data-lesson-family]').count(),18);
  for(const [v,s]of M.scenes().entries()){
-  await film.locator(`[data-lesson-family="${s.op}"]`).click();if(await select.locator('option').count()>1)await select.selectOption(String(v));
+  await require('./choose_motion_scene.cjs')(page,v);
   for(const width of [320,390,768,1440]){
    await page.setViewportSize({width,height:1100});await page.waitForTimeout(25);
    for(const p of [0,.5,1,1.5,2,2.5,3,3.5,4]){

@@ -43,7 +43,7 @@ function matrixArithmetic(svg,viewport,s){return board(svg,viewport,'arithmetic'
   text(heading,18,30);text(wTitle,start,68);text(xTitle,xpos-12,68);text(multiply,m?187:344,130);
   weights.forEach((row,i)=>row.forEach((t,j)=>move(t,start+j*52,86+i*44)));input.forEach((t,i)=>move(t,xpos,86+i*44));
   rows.forEach((r,i)=>{const y=244+i*120,x=m?28:142,span=m?96:144; text(r.title,18,y-20);
-   r.parts.forEach((t,j)=>{move(t,lerp(start+j*52,x+j*span,phase(p,0)),lerp(86+i*44,y,phase(p,0)),phase(p,0));t.t.textContent=p>=1?String(d.weights[i][j]*d.input[j]):d.weights[i][j]+'×'+d.input[j];});
+   r.parts.forEach((t,j)=>{move(t,lerp(start+j*52,x+j*span,phase(p,0)),lerp(86+i*44,y,phase(p,0)),phase(p,0));t.t.textContent=d.weights[i][j]+'×'+d.input[j]+'='+String(d.weights[i][j]*d.input[j]);});
    text(r.plus,x+81,y+24);show(r.plus,phase(p,1));text(r.equals,x+span+82,y+24);show(r.equals,phase(p,1));move(r.result,x+2*span+8,y,phase(p,1));
   });
   text(outputTitle,18,510);show(outputTitle,phase(p,2));output.forEach((t,i)=>{const u=phase(p,2),x=(m?28:142)+2*(m?96:144)+8;move(t,lerp(x,m?262:530,u),lerp(244+i*120,530+i*42,u),u);});
@@ -55,7 +55,7 @@ function graphSubmission(svg,viewport,s){return board(svg,viewport,'graph-submis
  const title=txt('同一条依赖链：A → B → C','teach-heading');
  const meaning=txt('A：加 1；B：乘 2；C：加 3。每轮都重新算。','teach-small');
  const prep=[rect('teach-graph-slot'),rect('teach-graph-slot')],prepText=[txt('捕获：记录操作与依赖','teach-small'),txt('实例化：可重放的图','teach-small')],prepLink=path();
- const prepNote=txt('首次准备 · 后续重复使用','teach-small'),roundLabel=txt('','teach-heading'),axis=path();
+ const prepNote=txt('首次准备 · 后续重复使用','teach-small'),prepCost=txt('一次性准备（教学假设，不标时长）','teach-small'),roundLabel=txt('','teach-heading'),axis=path();
  const ticks=Array.from({length:d.duration+1},(_,i)=>txt(String(i),'teach-small'));
  function event(e,id,cls){return {...e,name:e.id,outline:rect('teach-slot'),fill:rect(cls),label:txt(e.id,'teach-small'),id};}
  const panels=[0,1].map(i=>({bg:rect(),title:txt(i?'CUDA Graph · 一次图提交':'普通方式 · 三次逐项提交','teach-heading'),cpu:txt('CPU','teach-small'),gpu:txt('GPU','teach-small'),
@@ -70,6 +70,7 @@ function graphSubmission(svg,viewport,s){return board(svg,viewport,'graph-submis
   text(title,18,30);text(meaning,18,56);
   prep.forEach((r,i)=>{box(r,18+i*(W/2),78,W/2-38,37);show(r,.25+.75*ready);text(prepText[i],26+i*W/2,101);});
   wire(prepLink,`M${W/2-16} 97 H${W/2+12}`,ready);text(prepNote,18,140,p<1?'首次准备：捕获不执行 GPU 运算':'首次准备已完成 · 本轮复用');
+  text(prepCost,18,158);
   text(roundLabel,18,178,`第 ${round+1} 轮 · 输入 ${input}`);
   wire(axis,`M${x} 211 H${W-18}`);ticks.forEach((t,i)=>{text(t,x+i*scale-3,202);show(t,m&&d.duration>8&&i%2&&i!==d.duration?0:1);});
   panels.forEach((r,i)=>{const y=225+i*190,finish=r.kernels.at(-1).end;box(r.bg,16,y,W-32,176);text(r.title,28,y+27);text(r.cpu,24,y+69);text(r.gpu,24,y+120);
@@ -166,16 +167,18 @@ function spec(svg,viewport,s){const engine=s.kind==='engine-speculation';return 
 });}
 function foundationSpeculation(svg,viewport,s){return board(svg,viewport,'speculative-prefix',()=>700,H=>{
  const {txt,rect,path,text,box,show,wire,token,move}=H,d=s.data;
- const context=txt('已有文本 … → 本轮草稿','teach-small'),predictionRule=txt('预测只依赖该候选之前的前缀','teach-small'),heads=['① 草稿候选 · 尚未确认','② 目标模型 · 一次验证','③ 正式输出'].map(t=>txt(t,'teach-heading'));
+ const context=txt('根 token → 本轮草稿','teach-small'),predictionRule=txt('预测只依赖该候选之前的前缀','teach-small'),heads=['① 草稿候选 · 尚未确认','② 目标模型 · 一次验证','③ 正式输出'].map(t=>txt(t,'teach-heading'));
+ const root=txt('根','teach-small'),rootToken=token('root-token','t0',48,'teach-token teach-color-4');
  const draft=d.draft.map((v,i)=>token('candidate-'+i,v,48,'teach-token teach-color-'+i));
  const predicted=d.predictions.map((v,i)=>token('prediction-'+i,v,48,'teach-token teach-color-4'));
  const checks=Array.from({length:4},()=>txt('','teach-small'));
  const output=d.output.map((v,i)=>token('committed-output-'+i,v,48,'teach-token teach-color-'+(i<d.accepted?i:4)));
+ const validTitle=txt('有效历史：根 + 接受前缀','teach-small'),validHistory=d.validKV.map((v,i)=>token('valid-history-'+i,v,48,'teach-token teach-color-'+(i===0?4:i)));
  const accepted=rect('teach-read'),rejected=rect('teach-focus'),focus=rect('teach-map'),bonus=txt('补出','teach-small');focus.style.fill='none';
  const prefix=txt('','teach-small'),comparison=txt('','teach-small'),cause=txt('','teach-small');
  const reason=txt('','teach-heading'),legend=txt('候选颜色跟随身份；目标预测使用统一颜色。','teach-small');
  return(p,m)=>{const start=m?24:76,gap=m?64:128,at=i=>start+i*gap;
-  text(context,18,28);heads.forEach((h,i)=>text(h,18,[70,206,540][i]));
+  text(context,18,28);text(root,18,88);move(rootToken,18,100,1);heads.forEach((h,i)=>text(h,18,[70,206,540][i]));
   draft.forEach((t,i)=>{const u=phase(p,i/4,(i+1)/4);move(t,at(i),lerp(92,104,u),u);t.g.classList.toggle('teach-empty',p>=3&&i>=d.accepted);});
   text(predictionRule,18,232);show(predictionRule,phase(p,1));predicted.forEach((t,i)=>move(t,at(i),250,phase(p,1)*(i===4&&d.accepted<4?0:p>=3&&i>d.accepted?.3:1)));
   const checked=Math.min(d.accepted===4?4:d.accepted+1,Math.floor(phase(p,2)*4+1e-8));
@@ -189,8 +192,9 @@ function foundationSpeculation(svg,viewport,s){return board(svg,viewport,'specul
   text(cause,18,420,p>=3&&d.accepted<4?'前缀已改变，后面的匹配不再有效。':'每个位置只使用它之前的前缀进行预测。');show(cause,p>=2?1:0);
   text(bonus,at(d.accepted),456,'补出“'+d.replacement+'”');show(bonus,p>=3?1:0);
   output.forEach((t,i)=>{const u=phase(p,3);move(t,at(i),lerp(i<d.accepted?104:246,574,u),p>3?1:0);});
+  text(validTitle,18,620);show(validTitle,p>=3);validHistory.forEach((t,i)=>move(t,m?18+i*52:110+i*56,636,p>=3?1:0));
   text(reason,18,490,p>=3?(d.accepted===4?'全部接受，再补出一个 token。':'分歧处停下，其后候选都不接受。'):'');
-  text(legend,18,662,p>=4?`输出数量 = ${d.accepted} 个接受 + 1 个补出 = ${d.output.length} 个`:'候选颜色跟随身份；目标预测使用统一颜色。');if(m){reason.setAttribute('font-size','16');legend.setAttribute('font-size','12');}
+  text(legend,18,678,p>=4?(m?`输出 ${d.output.length} = 接受 ${d.accepted} + 补出 1；有效历史含根与前缀。`:`输出数量 = ${d.accepted} 个接受 + 1 个补出 = ${d.output.length} 个；有效历史只含根与接受前缀。`):'候选颜色跟随身份；目标预测使用统一颜色。');if(m)legend.style.fontSize='10px';if(m){reason.setAttribute('font-size','16');legend.setAttribute('font-size','12');}
   svg.dataset.comparedPrefix=validPrefix.join('');
  };
 });}
@@ -225,22 +229,55 @@ V['request-runtime']=(svg,viewport,s)=>board(svg,viewport,'ownership',()=>750,H=
   text(detail,18,590,p>=3?(d.cache?'实框：六个 KV 位置仍被缓存占用。':'虚框：可再分配，不表示字节已被清零。'):'线表示持有关系；位置 0…5 始终不动。');
  };
 });
-V['f-serving']=(svg,viewport,s)=>board(svg,viewport,'cancel',()=>570,H=>{
- const {txt,rect,text,box,token,move,show}=H;
+
+function servingRoute(svg,viewport,s){return board(svg,viewport,'serving-route',m=>m?540:440,H=>{
+ const {txt,rect,path,text,box,token,move,show,wire}=H,d=s.data,variant=d.variant||0;
+ const client=rect(),panels=[rect(),rect()],titles=[txt('实例 A · 完整模型','teach-heading'),txt('实例 B · 完整模型','teach-heading')];
+ const health=[txt('health ✓','teach-small'),txt('health ✓','teach-small')],queue=[txt('queue: 0','teach-small'),txt('queue: 0','teach-small')];
+ const panelState=[txt('','teach-small'),txt('','teach-small')],routeLabel=txt('','teach-small'),idleLabel=txt('A 未收到 R1','teach-small'),summary=txt('健康 / 队列 / 执行资源分列','teach-small');
+ const r1=token('route-r1','R1',56,'teach-token teach-color-0'),result=token('route-result','结果',56,'teach-token teach-color-2');
+ const arrow=path(),back=path(),note=txt('','teach-small'),state=txt('','teach-heading'),clientState=txt('','teach-small'),clientTitle=txt('客户端','teach-heading');
+ const track=rect('teach-track'),bar=rect('teach-compute');
+ return(p,m)=>{const W=m?360:720,clientW=m?W-40:196,x=[m?20:238,m?20:470],y=[m?150:70,m?300:70],pw=m?W-40:214,ph=m?126:180;
+  box(client,20,58,clientW,84);text(clientTitle,32,84);text(clientState,32,112,p>=5?'已看到结果':p>=1?'等待 R1':'准备发送 R1');
+  for(let i=0;i<(variant?2:1);i++){box(panels[i],x[i],y[i],pw,ph);text(titles[i],x[i]+10,y[i]+24);text(health[i],x[i]+10,y[i]+52);text(queue[i],x[i]+10,y[i]+76);text(panelState[i],x[i]+10,y[i]+108,variant===0?(p>=3?'R1 执行中':'等待执行资源'):i===0?'空闲 · 未接到 R1':p>=3?'R1 执行中':'等待 R1');}
+  text(summary,20,m?440:266);
+  if(!variant){[titles[1],health[1],queue[1],panelState[1]].forEach(e=>show(e,0));}
+  const ex=variant?x[1]+pw/2:x[0]+pw/2,ey=variant?y[1]+ph/2:y[0]+ph/2;
+  move(r1,20,118,p>=1?1:0);
+  const forward=m?(variant?`M${clientW+20} 100 H${W-12} V${y[1]-6} H${ex}`:`M${clientW/2+20} 142 V${y[0]-6}`):(variant?`M${clientW+20} 100 V36 H${ex} V${y[1]-6}`:`M${clientW+20} 100 H${ex}`);wire(arrow,forward,p>=1?1:0);
+  text(routeLabel,variant?x[1]+10:238,p>=1?(variant?40:56):56,variant?'只路由到 B':'进入实例');show(routeLabel,p>=1);
+  show(idleLabel,0);
+  box(track,ex-40,ey+48,80,8);box(bar,ex-40,ey+48,80*Math.min(1,Math.max(0,(p-2)/1)),8);show(bar,p>=3?1:0);
+  move(result,ex,ey+ph+8,p>=4?1:0);
+  const backward=m?(variant?`M${ex} ${y[1]-28} H${W-12} V100 H${clientW+20}`:`M${ex} ${y[0]-28} V142 H${clientW/2+20}`):(variant?`M${ex} ${ey-28} V28 H${clientW+20} V100`:`M${ex} ${ey-28} V100 H${clientW+20}`);wire(back,backward,p>=4?1:0);
+  text(note,20,m?470:380,p>=4?(variant?'结果从 B 返回；A 的健康状态不等于 R1 被 A 执行。':'结果从实例返回客户端；本图不虚构网络时延。'):'健康通过不等于接纳；请求仍要等待目标实例的资源。');
+  text(state,20,m?510:340,p>=5?'客户端可见结果':p>=3?'执行 / 回程':'接收 / 等待');if(m){state.setAttribute('font-size','16');note.setAttribute('font-size','11');}
+ };
+});}
+V['f-serving']=(svg,viewport,s)=>s.kind==='serving-route'?servingRoute(svg,viewport,s):board(svg,viewport,'cancel',()=>570,H=>{
+ const {txt,rect,text,box,token,move,show,set}=H;
  const client=rect(),backend=rect(),head=txt('客户端','teach-heading'),worker=txt('后端 · 请求 R1','teach-heading');
  const clientState=txt('','teach-small'),workState=txt('','teach-small'),resourceState=txt('','teach-small');
  const message=token('cancel-message','取消 R1',90,'teach-token teach-color-2'),resource=token('resource-r1','R1 占用',102,'teach-token teach-color-0');
- const track=rect('teach-track'),work=rect('teach-compute'),resourceLabel=txt('执行资源','teach-heading'),note=txt('','teach-heading'),why=txt('断连 → 送达取消 → 在途使用结束 → 归还','teach-small');
- return(p,m)=>{const W=m?360:720;box(client,16,24,W-32,114);box(backend,16,216,W-32,244);text(head,28,54);text(worker,28,248);
-  text(clientState,28,94,p>=1?'已断开；不再等待':'连接中；等待 R1');
-  text(workState,28,280,p>=3?'在途操作已结束':p>=2?'不再安排后续工作；等待当前操作结束':'当前操作仍在执行');
-  move(message,lerp(W-124,W-124,phase(p,1)),lerp(145,298,phase(p,1)),p>=1?1:0);
-  box(track,28,330,W-56,12);box(work,28,330,(W-56)*(.2+.8*clamp(p/3)),12);
-  text(resourceLabel,28,392);move(resource,m?224:500,370);resource.t.textContent=p>=4?'可再分配':'R1 占用';resource.g.classList.toggle('teach-empty',p>=4);
-  text(resourceState,28,432,p>=4?'已归还使用权':p>=3?'安全条件满足，准备归还':'仍不可复用');
-  text(note,18,506,p>=4?'完成收尾，资源才可再使用':'取消通知不会立即终止在途操作');text(why,18,546);if(m){note.setAttribute('font-size','16');why.setAttribute('font-size','12');}
+ const lanes=[rect('teach-track'),rect('teach-track'),rect('teach-track')],work=rect('teach-compute');
+ const labels=[txt('客户端 / 控制通知','teach-small'),txt('后端在途操作','teach-small'),txt('资源使用权','teach-small')];
+ const eventControl=txt('','teach-small'),eventWork=txt('','teach-small'),note=txt('','teach-heading'),why=txt('断连 → 送达取消 → 在途使用结束 → 归还','teach-small');
+ return(p,m)=>{const W=m?360:720;box(client,16,24,W-32,96);box(backend,16,150,W-32,350);text(head,28,54);text(worker,28,178);
+  text(clientState,28,88,p>=1?'已断开；不再等待':'连接中；等待 R1');
+  const laneX=120,laneW=W-148;
+  labels.forEach((e,i)=>text(e,28,232+i*92));
+  [0,1,2].forEach(i=>box(lanes[i],laneX,236+i*92,laneW,8));
+  move(message,m?W-178:lerp(W-178,W-150,phase(p,1)),m?258:lerp(108,252,phase(p,1)),p>=1?1:0);
+  text(eventControl,28,270,p>=2?'取消已送达后端':'取消通知在途');show(eventControl,p>=1);
+  box(work,laneX,328,laneW*(.15+.85*Math.min(1,p/3)),12);text(workState,28,364,p>=3?'在途操作已结束；不再安排后续工作':p>=2?'收到取消，等待安全收尾':'当前操作仍在执行');
+  move(resource,m?W-178:W-178,420);resource.t.textContent=p>=4?'可再分配':'R1 占用';resource.g.classList.toggle('teach-empty',p>=4);
+  text(resourceState,28,464,p>=4?'已归还使用权':p>=3?'安全条件满足，准备归还':'仍不可复用');
+  text(note,18,494,p>=4?'完成收尾，资源才可再使用':'取消通知不会立即终止在途操作');text(why,18,532);if(m){note.setAttribute('font-size','16');why.setAttribute('font-size','12');}
+  svg.dataset.cancelState=p>=4?'released':p>=3?'draining':p>=2?'received':p>=1?'sent':'running';
  };
 });
+
 V['serving-operations']=(svg,viewport,s)=>board(svg,viewport,'queued-cancel',()=>800,H=>{
  const {txt,rect,text,box,show,token,move}=H,d=s.data;
  const panels=[rect(),rect()],titles=[txt('前端 TokenizerManager','teach-heading'),txt('后端 Scheduler','teach-heading')],states=[txt('','teach-small'),txt('','teach-small')];

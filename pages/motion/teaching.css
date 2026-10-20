@@ -41,7 +41,7 @@
 [data-theme=dark] .teach-write-cover{fill:#1d3140}
 [data-theme=dark] .teach-gate{fill:#2a3c4c;stroke:#667e90}
 [data-theme=dark] .teach-gate.is-ready{fill:#224b40;stroke:#79b89b}
-@media(max-width:650px){.teaching-viewport .teach-heading{font-size:15px}.teaching-viewport .teach-small{font-size:12px}}
+@media(max-width:650px){.teaching-viewport .teach-heading{font-size:17px}.teaching-viewport .teach-text{font-size:16px}.teaching-viewport .teach-small{font-size:14px}.teaching-viewport .teach-number{font-size:16px}.teaching-viewport .teach-token>text{font-size:15px}}
 .teach-graph-slot{fill:#eef3f7;stroke:#8ca9ba;stroke-dasharray:5 4}
 .teach-focus{fill:#fff1d6;stroke:#c28a3a;stroke-width:2}
 .teach-memory-slot{fill:#fff;stroke:#a5bac9;stroke-dasharray:4 3}

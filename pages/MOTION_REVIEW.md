@@ -332,7 +332,7 @@ python3 -B scripts/build_pages.py
 
 ## 通信语义扩展复核（2026-10-19）
 
-[通信基础](foundations/communication.html) 将原求和／拼接与独立通知实验整合为 17 个机制入口、29 个场景。操作与场景分开选择；原有 `why-meaning`、`why-ready`、`why-topology` 锚点保留。
+[通信基础](foundations/communication.html) 将原求和／拼接与独立通知实验整合为 17 个基础语义入口和 1 个“矩阵对照”入口，共 33 个可选场景（29 个基础语义 + 4 个矩阵对照）。操作与场景分开选择；原有 `why-meaning`、`why-ready`、`why-topology` 锚点保留。
 
 | 观察问题 | 画法与调整 | 验收重点 |
 | --- | --- | --- |
@@ -345,7 +345,7 @@ python3 -B scripts/build_pages.py
 
 画法参考 MPI Tutorial 的固定参与者与前后布局、Roman Vorushin 的矩阵分片动画、GPU Collective Communication Visualizer 的固定设备与单步控制。数值和完成条件按 NCCL 官方说明及 MPI 4.1 复核；本课没有复制第三方源码，也不将某个教程的 ring/tree 拓扑当作操作本身的定义。参考链接就近列于课程的来源区。
 
-模型检查由 `tests/pages/test_communication_teaching.cjs` 执行；浏览器检查覆盖 29 个场景在 320、390、768、1440 宽度的端点与中间态，以及对象身份、回看、链接恢复、缺席分支、主题、减少动态效果和无 JavaScript 正文。仍属教学模型验证，不是 GPU / MPI 集群运行测试。
+模型检查由 `tests/pages/test_communication_teaching.cjs` 执行；浏览器检查覆盖 33 个可选场景在 320、390、768、1440 宽度的端点与中间态，以及对象身份、回看、链接恢复、缺席分支、主题、减少动态效果和无 JavaScript 正文。仍属教学模型验证，不是 GPU / MPI 集群运行测试。
 
 ### 通信并发与依赖复核
 

@@ -93,7 +93,8 @@ function scenes(){return configs.map(([op,opts,name])=>{
  ['输出位置写好',opts.unmatched?'接收缺席，接收输出仍不可用。':'每份副本落在约定的输出位置；普通收集与交换不改变元素数值。'],
  ['按契约使用结果',op==='Put'||op==='Get'?'此处假定窗口访问合法且完成同步已满足。Put/Get 不自动保证应用已消费数据，继续阅读完成语义。':opts.unmatched?'需要补齐匹配接收或走错误处理，不能跳到“计算可用”。':'核对各 rank 的输出、元素顺序与数量，再交给后续计算。']];
  const stepDurations=data.matrix?(op==='AllReduce'?[.7,1.15,1.15,2.4]:[.65,1.05,1.05,.7]):data.math.length?[1.1,1.6,1.2,.7]:['Barrier','Completion'].includes(op)?[1,1,1.4,1.2]:op==='Atomic'?[.8,1.1,1.5,.7]:['Put','Get','SendRecv'].includes(op)?[.9,1,1,1.2]:[.65,1,1,.65];
- return {stepDurations,name,scenarioLabel:name,op,kind:'communication-contract',group:def.group,title:`${op==='SendRecv'?'Send / Recv':op==='Atomic'?'Accumulate / CAS':op==='Completion'?'异步完成':op}：${def.label}`,intro:def.why,data,frames:steps.map(([title,caption])=>({title,caption})),boundaryKey:'communication-contract',boundary:'教学示例：rank 是组内进程编号。图中呈现数据去向与结果，不指定 ring/tree、物理链路或真实耗时。MPI 扩展语义不表示同名 NCCL 接口或当前 SGLang 已使用它。',evidence:'#evidence'};
+ if(opts.unmatched)steps[4]=['接收尚未完成','接收侧仍没有匹配接收；结果不可用，不能跳到“计算可用”。'];if(op==='Atomic'&&opts.atomic==='cas'&&opts.expected!==5)steps[4]=['比较失败：保留 5','期望 4 与实际 5 不同；目标不写入，发起方得到旧值 5。'];
+ return {stepDurations,name,scenarioLabel:name,op,matrix:!!opts.matrix,kind:'communication-contract',group:def.group,title:`${op==='SendRecv'?'Send / Recv':op==='Atomic'?'Accumulate / CAS':op==='Completion'?'异步完成':op}：${def.label}`,intro:def.why,data,frames:steps.map(([title,caption])=>({title,caption})),boundaryKey:'communication-contract',boundary:'教学示例：rank 是组内进程编号。图中呈现数据去向与结果，不指定 ring/tree、物理链路或真实耗时。MPI 扩展语义不表示同名 NCCL 接口或当前 SGLang 已使用它。',evidence:'#evidence'};
  });}
 const api={definitions,groups,calculate,scenes};if(typeof module==='object'&&module.exports)module.exports=api;root.CommunicationTeaching=api;
 if(root.document)(root.TeachingLessons||(root.TeachingLessons={}))['f-communication']=scenes();

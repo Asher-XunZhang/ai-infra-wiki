@@ -153,7 +153,7 @@ V.lifecycle=(svg,viewport,s)=>board(svg,viewport,'release',m=>150+s.frames.lengt
    [r.time,r.control,r.poll,r.held,r.label].forEach(e=>show(e,active?1:.18));
    if(i===1)wire(r.link,`M${xs[0]+(m?60:100)} ${y+30} H${xs[1]-8}`,phase(p,0));
   });
-  const y=96+p*94;move(cursor,m?200:430,y+40);wire(timeline,`M20 76 V${96+p*94}`,1);text(note,18,130+s.frames.length*94);if(m)note.setAttribute('font-size','10');
+  const y=96+p*94;move(cursor,m?200:430,y+40);wire(timeline,`M20 76 V${96+p*94}`,1);text(note,18,130+s.frames.length*94);note.style.fontSize='10px';
  };
 });
 })();

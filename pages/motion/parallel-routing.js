@@ -27,7 +27,7 @@ window.DataParallelVisual=(svg,viewport,s)=>board(svg,viewport,'replicated-model
 window.ExpertParallelVisual=(svg,viewport,s)=>board(svg,viewport,'expert-routing',()=>1150,H=>{
  const {txt,rect,text,box,show,token,move,set}=H,d=s.data;
  const title=txt('4 个 token → Router → 4 个专家','teach-heading'),legend=txt('t1…t4 = 输入位置；E0…E3 = 不同专家','teach-small');
- const input=Array.from({length:4},(_,i)=>token('ep-input-'+i,'t'+(i+1),54,'teach-token teach-color-'+i));
+ const input=Array.from({length:4},(_,i)=>token('ep-input-'+i,i?'t'+(i+1):'t1 x=2',i?54:66,'teach-token teach-color-'+i));
  const owners=txt('输入归属：t1/t2 在 Rank 0，t3/t4 在 Rank 1','teach-small');
  const matrix=Array.from({length:16},()=>rect('teach-mask')),heads=[0,1,2,3].map(i=>txt('E'+i,'teach-small')),rows=[0,1,2,3].map(i=>txt('t'+(i+1),'teach-small'));
  const ranks=[rect(),rect()],rankNames=[0,1].map(i=>txt('Rank '+i+' / P'+i+' / GPU '+i,'teach-small'));

@@ -13,7 +13,7 @@ const engine=['system-overview/index','inference-overview/journey','inference-ov
   const bad=await page.locator('nav[aria-label="本课阅读入口"] a,.parallel-reading-nav a').evaluateAll(es=>es.filter(a=>a.hash&&!document.getElementById(a.hash.slice(1))).map(a=>a.hash));assert.deepEqual(bad,[],url);
   for(const width of [1440,390]){await page.setViewportSize({width,height:1000});await page.waitForTimeout(40);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,url+' overflow');}
  }
- await page.goto(base+'foundations/batching.html');assert.equal(await page.locator('[data-diagram=latency]').count(),0);assert.equal(await page.locator('[data-diagram=scheduling]').count(),1,'keep independent mixed-chunk example');
+ await page.goto(base+'foundations/batching.html');assert.equal(await page.locator('[data-diagram=latency]').count(),0);assert.equal(await page.locator('[data-diagram=scheduling]').count(),0,'integrated batching player replaces the duplicate lab');assert.equal(await page.locator('.mechanism-film').count(),1);
  assert.equal(await page.locator('#parallel-overview tbody tr').count(),3);await capture(page.locator('#parallel-reading'),'batching-reading-mobile');
  for(const [i,n]of [[2,3],[1,1],[0,1]]){await choose(page,i);assert.equal(await page.getByLabel('连续演示条件').locator('option').count(),n);assert.equal(await page.getByLabel('连续演示条件').isVisible(),n>1);}
  await page.goto(base+'sglang/scheduling/');await choose(page,2);await page.getByLabel('准入排序策略').selectOption('lpm');assert.equal(await page.evaluate(()=>window.TeachingLessons.scheduling[Number(document.querySelector('[aria-label="连续演示条件"]').value)].scenario),'exact','switch policy, preserve resource condition');
