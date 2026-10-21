@@ -52,7 +52,7 @@ function chip(parent, label, cls) {
 function build() {
   W = Math.max(220, Math.min(820, Math.round(root.clientWidth || 320)));
   narrow = W < 520;
-  const pad = 8, railW = narrow ? 66 : 180, gap = narrow ? 8 : 18;
+  const pad = 8, railW = narrow ? 66 : 180, gap = narrow ? 8 : 18, packetW = railW - 8;
   const rightX = pad + railW + gap, rightW = W - rightX - pad;
   const inputY = 10, inputH = narrow ? 72 : 78;
   const layerTop = inputY + inputH + 12;
@@ -63,7 +63,7 @@ function build() {
   H = outRowY + outRowH + 12;
   const center = inputY + inputH / 2;
   const stations = [center, ...layerY.map(y => y + rowH / 2), outHeadY + outHeadH / 2];
-  geom = { W, H, pad, railW, gap, rightX, rightW, inputY, inputH, layerTop, rowH, rowGap, layerY, outHeadY, outHeadH, outRowY, outRowH, stations, narrow, outCenter: outRowY + 36 };
+  geom = { W, H, pad, railW, packetW, gap, rightX, rightW, inputY, inputH, layerTop, rowH, rowGap, layerY, outHeadY, outHeadH, outRowY, outRowH, stations, narrow, outCenter: outRowY + 36 };
   root.style.setProperty('--jl-w', W + 'px');
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   svg.setAttribute('width', W); svg.setAttribute('height', H); svg.style.width = W + 'px';
@@ -74,7 +74,7 @@ function build() {
 
   // moving forward packet: four prompt positions, then one y1 position
   const pre = node('g', { class: 'jl-packet', 'data-packet': 'prefill' }, svg);
-  node('rect', { x: 0, y: 0, width: railW - 8, height: 62, rx: 8, class: 'jl-packet-bg' }, pre);
+  node('rect', { x: 0, y: 0, width: packetW, height: 62, rx: 8, class: 'jl-packet-bg' }, pre);
   const preTitle = txt('jl-packet-title', '输入 ×4', pre);
   preTitle.setAttribute('x', 6); preTitle.setAttribute('y', 15);
   preChips = positions.map((label, i) => {
@@ -88,12 +88,12 @@ function build() {
     return { g, t };
   });
   const dec = node('g', { class: 'jl-packet', 'data-packet': 'decode' }, svg);
-  node('rect', { x: 0, y: 0, width: railW - 8, height: 54, rx: 8, class: 'jl-packet-bg decode' }, dec);
+  node('rect', { x: 0, y: 0, width: packetW, height: 54, rx: 8, class: 'jl-packet-bg decode' }, dec);
   const decTitle = txt('jl-packet-title', '同一 y1', dec);
   decTitle.setAttribute('x', 6); decTitle.setAttribute('y', 15);
   const decChip = node('g', { class: 'jl-packet-chip y' }, dec);
-  node('rect', { x: (railW - 8 - 44) / 2, y: 22, width: 44, height: 24, rx: 4 }, decChip);
-  const decText = node('text', { x: (railW - 8) / 2, y: 39, 'text-anchor': 'middle', class: 'jl-token' }, decChip);
+  node('rect', { x: (packetW - 44) / 2, y: 22, width: 44, height: 24, rx: 4 }, decChip);
+  const decText = node('text', { x: packetW / 2, y: 39, 'text-anchor': 'middle', class: 'jl-token' }, decChip);
   decText.textContent = 'y1';
 
   // three layer rows, each with its own KV shelf
@@ -152,7 +152,22 @@ function build() {
   });
   node('path', { d: `M${rightX + rightW / 2} ${outHeadY + outHeadH} V${outRowY}`, class: 'jl-drop' }, or);
 
-  el = { pre, preTitle, dec, decTitle, decChip, oh, ohTitle, ohSub, ohSub2, slots, orTitle };
+  // Return lane: the y1 copy never enters the output row. It appears in the
+  // rail gutter just above that row and climbs to the input station. A thin
+  // dashed route leaves the original y1 slot around the row's left padding so
+  // the causal link stays visible without covering the heading or the token.
+  const packetX = railX - packetW / 2;
+  const linkY = outRowY - 4, laneX = 4, slotLeft = slots[0].x;
+  const link = node('path', {
+    class: 'jl-return-link',
+    d: `M${slotLeft - 2} ${outRowY + 40} H${laneX + 3} Q${laneX} ${outRowY + 40} ${laneX} ${outRowY + 37} ` +
+      `V${linkY + 3} Q${laneX} ${linkY} ${laneX + 3} ${linkY} H${packetX}`
+  }, svg);
+  link.dataset.returnLink = 'y1';
+  svg.insertBefore(or, dec);
+  svg.insertBefore(link, dec);
+
+  el = { pre, preTitle, dec, decTitle, decChip, oh, ohTitle, ohSub, ohSub2, slots, orTitle, link, linkY };
   root.dataset.jlWidth = String(W);
   render();
 }
@@ -170,6 +185,10 @@ function render() {
   const i = Math.round(q);
   const prefill = q < 4.45;
   const railX = geom.pad + geom.railW / 2;
+  // Packet rects are authored at x=0 with their full width to the right.
+  // Shift the translate left by half the width so the card straddles the
+  // rail; using railX alone pushed its right half over layer 1.
+  const packetX = railX - geom.packetW / 2;
   const pbgH = 62, dbgH = 54;
   const u = (a, b) => phase(q, a, b);
 
@@ -179,22 +198,28 @@ function render() {
     const a = Math.min(3, Math.floor(q)), t = u(a, a + 1);
     py = lerp(geom.stations[a], geom.stations[a + 1], t);
   } else py = geom.stations[4];
-  const preOp = q < 4.35 ? 1 : 1 - u(4.35, 4.9);
-  el.pre.setAttribute('transform', `translate(${railX} ${py - pbgH / 2})`);
+  // Clear the output-head station before the y1 copy appears there: the two
+  // packets occupy the same rail gutter, so a crossfade would overlap them.
+  const preOp = q < 4.3 ? 1 : 1 - u(4.3, 4.5);
+  el.pre.setAttribute('transform', `translate(${packetX} ${py - pbgH / 2})`);
   el.pre.style.opacity = preOp.toFixed(3);
   el.pre.style.display = preOp <= 0.01 ? 'none' : '';
   setText(el.preTitle, q < 1 ? '输入 ×4' : q < 2 ? 'h¹ ×4' : q < 3 ? 'h² ×4' : 'h³ ×4');
   preChips.forEach((c, j) => { c.g.style.opacity = q >= 3.55 && j < 3 ? '.35' : '1'; });
 
-  // decode packet: y1 copy travels output → input, then down all three layers
-  let dx = railX, dy = geom.stations[0], dop = 0;
-  if (q >= 4.55) {
-    dop = 1;
+  // decode packet: the y1 copy lifts out of the output row *above* its top
+  // edge, never across its heading or original token, then rises to the input
+  // station and down all three layers. The card's left edge stays at packetX,
+  // left of every layer band and of the output-head text.
+  let dx = packetX, dy = geom.stations[0], dop = 0;
+  const copyLift = geom.outRowY - 4 - dbgH / 2;
+  if (q >= 4.5) {
+    dop = u(4.5, 4.55);
     if (q < 5) {
-      const t = u(4.55, 5);
-      const sx = el.slots[0].x + 19, sy = geom.outCenter;
-      dx = lerp(sx, railX, u(4.55, 4.78));
-      dy = t < 0.55 ? sy : lerp(sy, geom.stations[0], u(4.78, 5));
+      // Start resting on the output row's top edge in the rail gutter, then
+      // climb. No horizontal slide means the card never crosses the row's
+      // title or its original y1 slot at any intermediate frame.
+      dy = q < 4.55 ? copyLift : lerp(copyLift, geom.stations[0], u(4.55, 5));
     } else {
       const a = Math.min(3, Math.floor(q - 5)), t = u(5 + a, 6 + a);
       dy = lerp(geom.stations[a], geom.stations[a + 1], t);
@@ -204,6 +229,18 @@ function render() {
   el.dec.style.opacity = dop.toFixed(3);
   el.dec.style.display = dop ? '' : 'none';
   setText(el.decTitle, q < 5.5 ? '同一 y1' : q < 6.5 ? 'h¹(y1)' : q < 7.5 ? 'h²(y1)' : 'h³(y1)');
+
+  // Dashed copy route from the original y1 slot, around the row's left
+  // padding to the card's current takeoff corner above the row. Tracking the
+  // card keeps the causal link while it climbs; the route fades once the card
+  // has clearly left the output area.
+  const linkOp = q < 4.45 ? 0 : Math.min(u(4.45, 4.52), 1 - u(4.62, 4.8));
+  el.link.style.opacity = Math.max(0, linkOp).toFixed(3);
+  el.link.style.display = linkOp <= 0.01 ? 'none' : '';
+  const cardBottom = (q >= 4.5 ? dy : copyLift) + dbgH / 2, slotMidY = geom.outRowY + 40, laneX = 4;
+  el.link.setAttribute('d',
+    `M${el.slots[0].x - 2} ${slotMidY} H${laneX + 3} Q${laneX} ${slotMidY} ${laneX} ${slotMidY - 3} ` +
+    `V${cardBottom + 3} Q${laneX} ${cardBottom} ${laneX + 3} ${cardBottom} H${packetX}`);
 
   // per-layer KV shelves
   cells.forEach((L, l) => {

@@ -72,6 +72,7 @@
 .jl .jl-out-token text{fill:var(--jl-ink);font-weight:700}
 .jl .jl-out-status{fill:var(--jl-muted);font-size:10px}
 .jl .jl-drop{fill:none;stroke:var(--jl-line);stroke-width:1.5;stroke-dasharray:3 3}
+.jl .jl-return-link{fill:none;stroke:var(--jl-y);stroke-width:1.5;stroke-dasharray:4 4;stroke-linecap:round;opacity:0}
 .jl .jl-token{font:700 12px ui-monospace,SFMono-Regular,Consolas,monospace}
 .jl .jl-kv-cell[data-state=read] .jl-cell-label:after{content:""}
 @media(min-width:520px){.jl .jl-layer-title{font-size:14px}.jl .jl-layer-sub,.jl .jl-shelf-status,.jl .jl-head-sub{font-size:11.5px}.jl .jl-shelf-title{font-size:12px}.jl .jl-cell-label{font-size:12px}.jl .jl-caption{font-size:14px}.jl .jl-note{font-size:12px}}
