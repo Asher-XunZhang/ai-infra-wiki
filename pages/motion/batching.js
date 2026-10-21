@@ -57,25 +57,29 @@
       function text(x, y, value, cls = 'batch-region-title') {
         const t = el('text', { x, y, class: cls }, value); backdrop.append(t); return t;
       }
-      function region(x, y, w, h, title, note) {
+      function region(x, y, w, h, title, note, tx, titleOffset = 27, noteOffset = 57) {
         backdrop.append(el('rect', { x, y, width: w, height: h, rx: 10, class: 'batch-region' }));
-        text(x + 16, y + 27, title); text(x + 16, y + 49, note, 'batch-small');
+        text((tx ?? x + 16), y + titleOffset, title); text(x + 16, y + noteOffset, note, 'batch-small');
       }
       text(16, narrow ? 26 : 22, narrow ? '② 生成中 · 小方块是 token，不是请求' : '② 生成中 · 一行是一条请求；浅色已有，实色新增，虚框还需生成', 'batch-key');
       region(12, 40, narrow ? 336 : 238, narrow ? 220 : 266, '等待队列', 'C 在第一轮期间进入等待队列');
-      region(narrow ? 12 : 274, narrow ? 282 : 40, narrow ? 336 : 614, 266, 'GPU · 一起执行这一轮', '每条参与请求，各新增一个 token');
+      // On the narrow board C descends from the queue through this region, so
+      // its caption sits below the slots instead of in the path.
+      region(narrow ? 12 : 274, narrow ? 282 : 40, narrow ? 336 : 614, 266, 'GPU · 一起执行这一轮', '每条参与请求，各新增一个 token', undefined, narrow ? 224 : 27, narrow ? 250 : 57);
       slotLabels = [0, 1].map(i => {
-        const y = (narrow ? 350 : 108) + i * 96;
-        backdrop.append(el('rect', { x: narrow ? 24 : 290, y, width: narrow ? 312 : 582, height: 80, rx: 5, class: 'batch-slot', 'data-batch-slot': i }));
-        return text(narrow ? 40 : 308, y + 48, '空位', 'batch-empty');
+        const y = (narrow ? 336 : 108) + i * (narrow ? 74 : 96);
+        backdrop.append(el('rect', { x: narrow ? 24 : 290, y, width: narrow ? 312 : 582, height: narrow ? 68 : 80, rx: 5, class: 'batch-slot', 'data-batch-slot': i }));
+        return text(narrow ? 40 : 308, y + (narrow ? 44 : 48), '空位', 'batch-empty');
       });
       iterationLabel = text(narrow ? 28 : 290, narrow ? 574 : 334, '', 'batch-iteration');
       ledger = rounds.map((round, i) => {
-        const x = (narrow ? 16 : 290) + i * (narrow ? 84 : 148), y = narrow ? 594 : 354;
+        // Leave a right-hand aisle for requests leaving the GPU row: the round
+        // boxes must not sit under that exit path on either width.
+        const x = (narrow ? 16 : 290) + i * (narrow ? 72 : 124), y = narrow ? 594 : 354;
         const cell = el('g');
-        cell.append(el('rect', { x, y, width: narrow ? 76 : 136, height: 48, rx: 4, class: 'batch-round-box' }),
-          el('text', { x: x + 8, y: y + 18, class: 'batch-small' }, `第 ${i + 1} 轮`));
-        const members = el('text', { x: x + 8, y: y + 38, class: 'batch-round-members' }); cell.append(members);backdrop.append(cell);
+        cell.append(el('rect', { x, y, width: narrow ? 64 : 104, height: narrow ? 56 : 52, rx: 4, class: 'batch-round-box' }),
+          el('text', { x: x + 8, y: y + 19, class: 'batch-small' }, `第 ${i + 1} 轮`));
+        const members = el('text', { x: x + 8, y: y + (narrow ? 45 : 42), class: 'batch-round-members' }); cell.append(members);backdrop.append(cell);
         return { cell, members };
       });
       gate = text(20, narrow ? 680 : 440, '', 'batch-region-title');
@@ -86,7 +90,7 @@
     }
     function position(a, index) {
       if (a.x === 48) return { x: narrow ? 40 : 34, y: (narrow ? 112 : 116) + (index === 1 ? 86 : index === 2 ? 42 : 0), scale: 1 };
-      if (a.x === 348) return { x: narrow ? 48 : 326, y: (narrow ? 364 : 122) + (a.y === 108 ? 0 : 96), scale: 1 };
+      if (a.x === 348) return { x: narrow ? 48 : 326, y: (narrow ? 344 : 122) + (a.y === 108 ? 0 : narrow ? 74 : 96), scale: 1 };
       return narrow ? { x: 48, y: 798 + index * 76, scale: 1 } : { x: 34 + index * 288, y: 550, scale: 1 };
     }
     function paint(frame, target, u, p) {
@@ -98,18 +102,23 @@
         const mix = (x, y) => x + (y - x) * u;
         let x = mix(a.x, b.x), y = mix(a.y, b.y), scale = mix(a.scale, b.scale);
         if (from.x === 348 && to.x === 648) {
-          // Exit along the outside edge, never through the unfinished B sequence.
-          const edge = narrow ? 300 : 746, small = narrow ? .18 : .52;
-          if (u < .3) { const t = u / .3; x = a.x + (edge - a.x) * t; y = a.y; scale = 1 + (small - 1) * t; }
-          else if (!narrow) {
-            // The completion shelf has a separate approach lane, so B never
-            // passes across C after C has already finished.
-            if (u < .55) { x = edge; y = a.y + (432 - a.y) * (u - .3) / .25; scale = small; }
-            else if (u < .8) { x = edge + (b.x - edge) * (u - .55) / .25; y = 432; scale = small; }
-            else { const t = (u - .8) / .2; x = b.x; y = 432 + (b.y - 432) * t; scale = small + (1 - small) * t; }
+          // Exit along the right-hand aisle, never through ledger, gate or the
+          // unfinished B sequence. The final drop uses a column clear of the
+          // completion caption before sliding onto the shelf.
+          const edge = narrow ? 326 : 780, small = narrow ? .18 : .52;
+          if (narrow) {
+            if (u < .12) { const t = u / .12; x = a.x + (edge - a.x) * t; y = a.y; scale = 1 + (small - 1) * t; }
+            else if (u < .72) { x = edge; y = a.y + (b.y - a.y) * (u - .12) / .6; scale = small; }
+            else { const t = (u - .72) / .28; x = edge + (b.x - edge) * t; y = b.y; scale = small + (1 - small) * t; }
+          } else {
+            const lane = Math.max(b.x, 200);
+            if (u < .12) { const t = u / .12; x = a.x + (edge - a.x) * t; y = a.y; scale = 1 + (small - 1) * t; }
+            else if (u < .58) { x = edge; y = a.y + (474 - a.y) * (u - .12) / .46; scale = small; }
+            else if (u < .7) { x = edge; y = 474; scale = small; }
+            else if (u < .8) { x = edge + (lane - edge) * (u - .7) / .1; y = 474; scale = small; }
+            else if (u < .92) { x = lane; y = 474 + (550 - 474) * (u - .8) / .12; scale = small; }
+            else { const t = (u - .92) / .08; x = lane + (b.x - lane) * t; y = 550; scale = small + (1 - small) * t; }
           }
-          else if (u < .7) { x = edge; y = a.y + (b.y - a.y) * (u - .3) / .4; scale = small; }
-          else { const t = (u - .7) / .3; x = edge + (b.x - edge) * t; y = b.y; scale = small + (1 - small) * t; }
         }
         const count = mix(from.count, to.count), opacity = mix(from.opacity, to.opacity);
         actor.g.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${scale.toFixed(3)})`);

@@ -126,6 +126,13 @@
  .foundation-theater .motion-camera-fit{font-size:9px!important}
 }
 @media(max-width:420px){.foundation-theater .motion-stage{height:min(calc(60vh + 40px),510px);min-height:380px}.foundation-theater .motion-stage:has(.batch-viewport){height:min(78vh,640px);min-height:420px}.foundation-theater .motion-panel{padding:9px 10px}}
+/* A 600px-tall laptop window used to fit the same drawing into a 400px stage.
+   The camera's type compensation is deliberately capped so boxes keep their
+   layout; without canvas height that cap leaves 7-9px labels. Give short
+   windows a readable canvas floor instead of inflating type inside fixed boxes. */
+@media(max-width:1200px) and (max-height:820px){
+ .foundation-theater .motion-stage{min-height:min(520px,calc(100vh - 80px))}
+}
 .foundation-theater .motion-panel-handoff{min-width:0}
 .foundation-theater .motion-panel-handoff .motion-handoff{border:0;border-top:1px solid var(--border,#dbe3e8);margin:2px 0 0;padding:8px 0 0;font-size:11px;line-height:1.55}
 .foundation-theater .motion-panel-handoff .motion-handoff>label{display:flex;gap:6px;align-items:center;margin:0 0 5px;font-size:11px}
@@ -138,6 +145,13 @@
 
 
 @media(max-width:650px){.mechanism-film[data-motion=f-attention] .motion-stage{height:min(72vh,600px)}}
+/* Parallel/communication keep their reading order on a phone. The taller stage
+   gives the compact viewBox enough width to render the 10.5px labels without
+   asking the reader to zoom into a letterboxed drawing. */
+@media(max-width:650px){
+ .mechanism-film[data-motion=f-parallel] .motion-stage,
+ .mechanism-film[data-motion=f-communication] .motion-stage{height:min(calc(72vh + 40px),620px)}
+}
 /* Hardware needs the extra height so the full width can carry the eight-second
    grid; its camera hint would otherwise cover the bottom formula. */
 .mechanism-film[data-motion=f-hardware] .motion-camera-hint{display:none}

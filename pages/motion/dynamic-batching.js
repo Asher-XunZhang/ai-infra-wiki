@@ -60,13 +60,23 @@ root.DynamicBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,view
   const outgoing=b.event==='dispatch'&&raw>0;
   text(note,18,404+rows.length*58+16);
   text(reason,18,144,outgoing?'发往执行端途中':a.queue.length>=3?'凑满 → 发出':a.queue.length&&time>=a.deadline?(s.delay?'到期 → 发出':'不再等 → 发出'):a.queue.length?'未满且未到期 → 等待':a.arrived.length===3?'本例全部已发出':'等待下一条到达');
-  text(outTitle,18,374,m?'执行端':'发往执行端');text(outNote,18,392);
+  text(outTitle,18,370,m?'执行端':'发往执行端');text(outNote,18,392);
   rows.forEach((r,i)=>{const y=404+i*58,batch=a.batches[i],planned=b.batches[i];box(r.bg,16,y,W-32,56);
-   text(r.label,28,y+16,`第 ${i+1} 批`);text(r.time,28,y+33,batch?`t=${batch.time}`:outgoing&&planned?'发出途中':'尚未发出');text(r.why,28,y+50,batch?batch.reason:'');
-   r.wait.forEach((e,j)=>{const k=batch?.ids.indexOf('ABC'[j])??-1;text(e,x(j),y+54,k>=0?`等了 ${batch.waits[k]}`:'');});show(r.bg,batch||planned?1:.35);
+   text(r.label,28,y+14,`第 ${i+1} 批`);text(r.time,28,y+34,batch?`t=${batch.time}`:outgoing&&planned?'发出途中':'尚未发出');text(r.why,28,y+53,batch?batch.reason:'');
+   r.wait.forEach((e,j)=>{const k=batch?.ids.indexOf('ABC'[j])??-1;text(e,x(j)+(m?16:0),y+54,k>=0?`等了 ${batch.waits[k]}`:'');});show(r.bg,batch||planned?1:.35);
   });
-  function pos(f,i){const id='ABC'[i],row=f.batches.findIndex(z=>z.ids.includes(id));return row>=0?{y:411+58*row,o:1}:f.queue.includes(id)?{y:300,o:1}:{y:204,o:.3};}
-  cards.forEach((c,i)=>{const from=pos(a,i),to=pos(b,i),w=m?64:78;set(c.r,{width:w});set(c.t,{x:w/2});move(c,x(i),from.y+(to.y-from.y)*u,from.o+(to.o-from.o)*u);c.g.setAttribute('aria-label',`请求 ${'ABC'[i]}，${raw&&from.y!==to.y?'移动中':a.queue.includes('ABC'[i])?'等待组批':a.arrived.includes('ABC'[i])?'已发出':'尚未到达'}`);});
+  function pos(f,i){const id='ABC'[i],row=f.batches.findIndex(z=>z.ids.includes(id));return row>=0?{y:405+58*row,o:1}:f.queue.includes(id)?{y:300,o:1}:{y:204,o:.3};}
+  cards.forEach((c,i)=>{const from=pos(a,i),to=pos(b,i),w=m?64:78;set(c.r,{width:w});set(c.t,{x:w/2});
+   let cx=x(i),cy=from.y+(to.y-from.y)*u;
+   // Queue slots sit below their own captions. Enter through the right aisle
+   // beside the caption, then slide across the slot row once the card has
+   // descended past the labels; a straight drop would cut through the title.
+   if(from.y===204&&to.y===300){
+    const aisle=m?Math.max(x(i),282):Math.max(x(i),312);
+    if(u<.85){cx=x(i)+(aisle-x(i))*Math.min(1,u/.2);cy=204+(300-204)*(u/.85);}
+    else{cx=aisle+(x(i)-aisle)*((u-.85)/.15);cy=300;}
+   }
+   move(c,cx,cy,from.o+(to.o-from.o)*u);c.g.setAttribute('aria-label',`请求 ${'ABC'[i]}，${raw&&from.y!==to.y?'移动中':a.queue.includes('ABC'[i])?'等待组批':a.arrived.includes('ABC'[i])?'已发出':'尚未到达'}`);});
   svg.dataset.clock=time.toFixed(3);svg.dataset.dispatched=a.batches.length;
  };
 });

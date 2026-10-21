@@ -27,7 +27,7 @@ V['f-tokens'] = (svg, viewport, s) => board(svg, viewport, 'tokens', () => 520, 
     row.positions.push(o.position);
   });
 
-  const heading = txt(innerWidth <= 340 ? '原句 → 片段 → 编号 → 向量' : '原句 → 可复用片段 → 词表编号 → 一行向量', 'teach-heading');
+  const heading = txt('原句 → 可复用片段 → 词表编号 → 一行向量', 'teach-heading');
   const sentenceLabel = txt('你输入的原句（本例未加聊天模板）', 'teach-small');
   const lookupHead = txt('词表与 Embedding 表 · 只列本例用到的项', 'teach-small');
   const outHead = txt('按出现位置排列：同一个编号可以出现两次，位置不能合并', 'teach-small');
@@ -55,7 +55,7 @@ V['f-tokens'] = (svg, viewport, s) => board(svg, viewport, 'tokens', () => 520, 
 
   return (p, m) => {
     const W = m ? 360 : 720, chipY = 58, tableY = 132, rowH = 58;
-    text(heading, 16, 25);
+    text(heading, 16, 25, m ? '原句 → 片段 → 编号 → 向量' : '原句 → 可复用片段 → 词表编号 → 一行向量');
     text(sentenceLabel, 16, 44); show(sentenceLabel, p < 3 ? 1 : .55);
     // The sentence is one unit until step 2; pieces then separate continuously,
     // while each occurrence keeps the same token identity and position label.
@@ -71,8 +71,8 @@ V['f-tokens'] = (svg, viewport, s) => board(svg, viewport, 'tokens', () => 520, 
       joinX += a.width + joinedGap;
       sepX += a.width + sepGap;
     });
-    text(lookupHead, 16, tableY - 22); show(lookupHead, p >= 1 ? 1 : 0);
-    text(shape, 360, tableY - 22); show(shape, !m && p >= 3 ? 1 : 0);
+    text(lookupHead, 16, tableY - 10); show(lookupHead, p >= 1 ? 1 : 0);
+    text(shape, 360, tableY - 10); show(shape, !m && p >= 3 ? 1 : 0);
     rows.forEach((r, i) => {
       const y = tableY + i * rowH, ax = m ? 20 : 20, idX = m ? 128 : 136, vecX = m ? 232 : 246;
       box(r.bg, 12, y - 5, m ? 336 : 696, 50); show(r.bg, p >= 1 ? .28 + .5 * phase(p, 1) : 0); r.bg.dataset.tokenRow = String(i + 1);
@@ -83,7 +83,7 @@ V['f-tokens'] = (svg, viewport, s) => board(svg, viewport, 'tokens', () => 520, 
       wire(r.lookup, `M${ax + r.piece.width} ${y + 17} H${idX - 8}`, p >= 2 ? phase(p, 1.8, 2.2) : 0);
       wire(r.embed, `M${idX + (m ? 62 : 76)} ${y + 17} H${vecX - 6}`, p >= 3 ? phase(p, 2.8, 3.2) : 0);
     });
-    text(outHead, 16, 380); show(outHead, p >= 4 ? 1 : 0);
+    text(outHead, 16, 380, m ? '同一编号可出现两次；位置不能合并' : '按出现位置排列：同一个编号可以出现两次，位置不能合并'); show(outHead, p >= 4 ? 1 : 0);
     outputs.forEach((o, i) => {
       const n = occurrences.length, gap = m ? 4 : 6, slotW = (W - 32 - gap * (n - 1)) / n;
       const sx = 16 + i * (slotW + gap), sy = 402;
@@ -99,8 +99,8 @@ V['f-tokens'] = (svg, viewport, s) => board(svg, viewport, 'tokens', () => 520, 
       move({g: o.node, r: o.bg, t: o.node}, lerp(srcX, sx + slotW / 2, u), lerp(srcY, sy + 25, u), u);
       show(o.node, u);
     });
-    text(note, 16, 486, m ? '编号是查表索引；向量是手算假设，不是模型权重。' : '编号是查表索引；向量是手算假设，不是模型权重。p1…p5 表示出现顺序。'); show(note, 1);
-    text(note2, 16, 498, 'p1…p5 只是出现位置。'); show(note2, m ? 1 : 0);
+    text(note, 16, m ? 466 : 486, m ? '编号是查表索引；向量是手算假设，不是模型权重。' : '编号是查表索引；向量是手算假设，不是模型权重。p1…p5 表示出现顺序。'); show(note, 1);
+    text(note2, 16, m ? 500 : 506, 'p1…p5 只是出现位置。'); show(note2, m ? 1 : 0);
   };
 });
 
@@ -134,26 +134,18 @@ V['f-generation'] = (svg, viewport, s) => board(svg, viewport, 'generation', () 
   const boundary = txt('教学轮次只说明依赖，不表示 GPU 耗时；分布是手算值，不是正确率。', 'teach-small');
   const shape = txt('', 'teach-small');
 
-  function loopXY(u, m) {
-    const outX = 30, outY = m ? 390 : 284, corner = 12, topY = m ? 112 : 130, inX = m ? 162 : 174;
-    if (u < .38) return {x: lerp(outX, corner, u / .38), y: outY};
-    if (u < .7) return {x: corner, y: lerp(outY, topY, (u - .38) / .32)};
-    if (u < .88) return {x: lerp(corner, inX, (u - .7) / .18), y: topY};
-    return {x: inX, y: lerp(topY, m ? 72 : 94, (u - .88) / .12)};
-  }
-
   return (p, m) => {
     const round2 = p >= 4, showDist1 = p >= 2 && p < 4, showDist2 = p >= 5;
     const inY = m ? 72 : 94, inX = [30, m ? 96 : 106, m ? 162 : 174];
     text(title, 16, 24, round2 ? '第 2 轮 · Decode' : '第 1 轮 · Prefill');
     text(round, 16, 44, innerWidth <= 340 ? (round2 ? '送回上轮输出，只算 1 个新位置；历史仍读取' : '处理 2 个输入位置，留下 K/V，得到候选') : (round2 ? '把上一轮输出送回，只计算 1 个新位置；历史仍需读取' : '处理 2 个输入位置，留下 K/V，得到第一组候选'));
     box(inputZone, 16, m ? 52 : 54, m ? 328 : 300, m ? 98 : 112); box(modelZone, 16, m ? 158 : 176, m ? 328 : 300, m ? 42 : 48);
-    box(candidateZone, m ? 16 : 336, m ? 208 : 54, m ? 328 : 368, m ? 116 : 286);
-    box(outputZone, 16, m ? 332 : 236, m ? 328 : 300, m ? 80 : 96); box(kvZone, 16, m ? 418 : 344, m ? 328 : 300, m ? 86 : 100);
+    box(candidateZone, m ? 16 : 336, m ? 208 : 54, m ? 328 : 368, m ? 122 : 286);
+    box(outputZone, 16, m ? 336 : 236, m ? 328 : 300, m ? 80 : 96); box(kvZone, 16, m ? 422 : 344, m ? 328 : 300, m ? 86 : 100);
     text(inputTitle, 28, m ? 70 : 76, round2 ? '本轮送入前向：1 个新 token' : '本轮输入：2 个位置'); text(modelTitle, 28, m ? 174 : 200); text(modelNote, 28, m ? 196 : 218, round2 ? '读取历史，只算新位置' : '处理输入，留下 K/V');
     text(candTitle, m ? 28 : 350, m ? 214 : 80, innerWidth <= 340 ? '下一 token 候选' : '下一 token 候选（手工分布）'); text(candNote, 0, 0, '');
-    text(outputTitle, 28, m ? 342 : 258); text(client, m ? (innerWidth <= 340 ? 190 : 170) : 430, m ? 406 : 288, p >= 6 ? '客户端已见：' + d.visible : p >= 3 ? '客户端已见：' + first : '客户端尚未收到文字');
-    text(kvTitle, 28, m ? 430 : 366); text(kvEmpty, 28, m ? 462 : 386, '尚无历史；Prefill 完成后才出现'); show(kvEmpty, p < 2);
+    text(outputTitle, 28, m ? 346 : 258); text(client, m ? (innerWidth <= 340 ? 190 : 170) : 430, m ? 410 : 288, p >= 6 ? '客户端已见：' + d.visible : p >= 3 ? '客户端已见：' + first : '客户端尚未收到文字');
+    text(kvTitle, 28, m ? 434 : 366); text(kvEmpty, 28, m ? 466 : 386, '尚无历史；Prefill 完成后才出现'); show(kvEmpty, p < 2);
     text(boundary, 16, 500); show(boundary, m ? 0 : 1); text(shape, 16, m ? 480 : 480, round2 ? '本轮新输入 1 个位置；历史仍需读取' : '本轮输入 2 个位置'); show(shape, p >= 7 || m ? 0 : 1);
     move(inputA, inX[0], inY, 1); move(inputB, inX[1], inY, 1);
     text(inputLabelCached, inX[0], m ? 126 : 148);
@@ -165,11 +157,11 @@ V['f-generation'] = (svg, viewport, s) => board(svg, viewport, 'generation', () 
     show(cacheBracket, p >= 4 ? 1 : 0); show(newBracket, p >= 4 ? 1 : 0);
     inputA.g.dataset.context = round2 ? 'cached' : 'new'; inputB.g.dataset.context = round2 ? 'cached' : 'new'; inputC.g.dataset.context = 'new';
     inputA.g.dataset.forwarded = round2 ? 'false' : 'true'; inputB.g.dataset.forwarded = round2 ? 'false' : 'true'; inputC.g.dataset.forwarded = 'true';
-    // The feedback copy is visible for the whole return trip; the output
-    // original (out1) stays in the output sequence and is never moved.
-    const copyU = phase(p, 3.3, 4), copyPoint = loopXY(copyU, m);
-    move(inputC, copyPoint.x, copyPoint.y, copyU);
-    wire(loop, m ? 'M30 390 H12 V112 H162' : 'M30 284 H12 V130 H174', copyU);
+    // Only the thin return wire travels. A wide token cannot cross either
+    // column on a phone (the panels span almost the full 360px), so the copy
+    // appears at the new input when round 2 starts instead of covering text.
+    move(inputC, inX[2], inY, p >= 4 ? 1 : 0);
+    wire(loop, m ? 'M30 394 H12 V112 H162' : 'M30 284 H12 V130 H174', phase(p, 3.3, 4));
     text(loopLabel, 16, 452); show(loopLabel, p >= 4 && !m ? 1 : 0);
     wire(inputFlow, m ? 'M166 150 V158' : 'M166 166 V176', p >= 1 ? phase(p, .6, 1) : 0);
     wire(outputFlow, m ? 'M344 179 H352 V216 H344' : 'M316 200 H336', p >= 2 ? phase(p, 1, 2) : 0);
@@ -180,7 +172,7 @@ V['f-generation'] = (svg, viewport, s) => board(svg, viewport, 'generation', () 
     const grow = showDist2 ? phase(p, 4.35, 5) : phase(p, 1.4, 2);
     candRows.forEach((r, i) => {
       const item = dist[i], visible = (showDist1 || showDist2) && !!item;
-      const y = m ? 242 + i * 21 : 102 + i * 34, bx = m ? 88 : 420, bw = m ? 150 : 168;
+      const y = m ? 232 + i * 22 : 102 + i * 34, bx = m ? 88 : 420, bw = m ? 150 : 168;
       show(r.bg, visible && selectedIndex === i ? 1 : 0);
       box(r.bg, m ? 22 : 342, y - 5, m ? 312 : 350, 24);
       text(r.name, m ? 28 : 350, y + 13, item ? item.word : ''); show(r.name, visible ? 1 : 0);
@@ -191,35 +183,39 @@ V['f-generation'] = (svg, viewport, s) => board(svg, viewport, 'generation', () 
     show(candNote, 0);
     box(waitBox, m ? 28 : 350, m ? 252 : 140, m ? 300 : 340, 38); show(waitBox, p >= 4 && p < 5 ? 1 : 0);
     text(waitText, m ? 40 : 362, m ? 276 : 164, p < 4.5 ? '等待模型计算新输入' : '正在计算新输入，候选尚未产生'); show(waitText, p >= 4 && p < 5 ? 1 : 0);
-    const intervals = choice ? choice.intervals : [], start = m ? 28 : 350, iw = m ? 304 : 340, iy = m ? 296 : 214;
+    const intervals = choice ? choice.intervals : [], start = m ? 28 : 350, iw = m ? 304 : 340, iy = m ? 300 : 214;
     interval.forEach((seg, i) => {
       const item = intervals[i], on = item && choice && choice.draw !== null;
       show(seg.bar, on ? 1 : 0); show(seg.label, on ? 1 : 0);
       if (!item) return;
       box(seg.bar, start + item.start * iw, iy, Math.max(1, item.p * iw), 15);
-      text(seg.label, start + item.start * iw + 4, iy + 11, item.word);
+      text(seg.label, start + item.start * iw + 4, iy + 9, item.word);
     });
     const draw = choice && choice.draw !== null ? choice.draw : null;
+    const picked = intervals.find(x => draw !== null && draw >= x.start - 1e-9 && draw <= x.start + x.p + 1e-9);
+    const bounds = picked ? `${picked.start.toFixed(1)}–${(picked.start + picked.p).toFixed(1)}` : '';
     wire(needle, `M${start + (draw || 0) * iw} ${iy - 9} V${iy - 1}`, draw !== null ? 1 : 0);
-    text(intervalNote, start, iy + 24, draw !== null ? `固定抽样数 u=${draw} → 落在 ${choice.selected} 的区间` : (showDist1 || showDist2 ? '贪心：取本轮概率最大的候选' : ''));
+    text(intervalNote, start, iy + 29, draw !== null ? (m ? `u=${draw} → ${choice.selected} 区间` : `固定抽样数 u=${draw} 落在 ${bounds} → ${choice.selected}`) : (showDist1 || showDist2 ? '贪心：取本轮概率最大的候选' : ''));
     show(intervalNote, (showDist1 || showDist2) ? 1 : 0);
 
-    const outY = m ? 354 : 270, sel1 = d.scores.findIndex(x => x.word === first), sel2 = d.nextScores.findIndex(x => x.word === second);
-    // Start the move at 2.75/5.75, not at the endpoint, so the output token
-    // is visible while it travels instead of appearing only at the end.
-    const u1 = phase(p, 2.75, 3), u2 = phase(p, 5.75, 6);
+    const outY = m ? 358 : 270, sel1 = d.scores.findIndex(x => x.word === first), sel2 = d.nextScores.findIndex(x => x.word === second);
+    // Emit at the step boundary. A diagonal flight would cross the candidate
+    // rows and the sampling note; the candidate highlight already shows which
+    // row was selected, and the output appears when the selection is complete.
+    const u1 = p >= 3 ? 1 : 0, u2 = p >= 6 ? 1 : 0;
     move(out1, lerp(m ? 28 : 350, 30, u1), lerp(m ? 232 : 102 + sel1 * 34, outY, u1), u1);
     move(out2, lerp(m ? 28 : 350, m ? 100 : 100, u2), lerp(m ? 232 : 102 + sel2 * 34, outY, u2), u2);
     out1.g.dataset.output = 'first'; out2.g.dataset.output = 'second';
 
-    const kvY = m ? 444 : 386;
+    const kvY = m ? 448 : 386;
     move(kv1, 30, kvY, p >= 2 ? 1 : 0); move(kv2, 110, kvY, p >= 2 ? 1 : 0);
-    if (p >= 4.5) { const u = phase(p, 4.5, 5); move(kv3, lerp(166, 190, u), lerp(204, kvY, u), u); }
-    else move(kv3, inX[2], inY, 0);
+    // The K/V write completes at step 5; showing it in place avoids a vertical
+    // flight through the "历史 KV" caption that spans the panel.
+    move(kv3, 190, kvY, p >= 5 ? 1 : 0);
     kv1.g.dataset.kv = '1'; kv2.g.dataset.kv = '2'; kv3.g.dataset.kv = '3';
     kv1.g.dataset.kvWritten = p >= 2 ? 'true' : 'false'; kv2.g.dataset.kvWritten = p >= 2 ? 'true' : 'false'; kv3.g.dataset.kvWritten = p >= 5 ? 'true' : 'false';
     inputC.g.dataset.inputCopy = p >= 4 ? 'true' : 'false';
-    text(kvNote, 28, m ? 492 : 430, p >= 5 ? `已计算：我、想、${first}；${second} 尚未作为输入` : p >= 4.5 ? '正在计算新输入；K/V 写入尚未完成' : p >= 2 ? '已计算：我、想；新 token 尚未经过模型' : '尚无历史');
+    text(kvNote, 28, m ? 496 : 430, p >= 5 ? `已计算：我、想、${first}；${second} 尚未作为输入` : p >= 4.5 ? '正在计算新输入；K/V 写入尚未完成' : p >= 2 ? '已计算：我、想；新 token 尚未经过模型' : '尚无历史');
     show(kvNote, p >= 1 ? 1 : 0);
   };
 });

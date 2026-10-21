@@ -259,7 +259,7 @@ async function family(page, label) {
     await goFinal(page);
     assert.match(await page.locator('.mechanism-film').textContent(), /源 KV 2\/2 · 仍保留/);
     assert.match(await page.locator('.mechanism-film').textContent(), /副本 2\/2 · y1 已到/);
-    assert.match(await page.locator('.mechanism-film').textContent(), /已追加 y1 KV/);
+    assert.match(await page.locator('.mechanism-film').textContent(), /y1 KV 已写入 · 选出 y2/);
     assert.match(await page.locator('.mechanism-film').textContent(), /可用 3\/3 · y1 KV 完成/);
     assert.equal(await page.locator('.mechanism-film svg text[data-ready="true"]').count(), 1, 'deployment ready state is rendered');
 

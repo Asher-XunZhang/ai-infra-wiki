@@ -20,8 +20,10 @@ root.MechanismVisuals['f-metrics']=(svg,viewport,s)=>board(svg,viewport,'metrics
  const labels=Array.from({length:6},()=>txt('','teach-small'));
  const bars=[0,1,2].map(()=>rect('teach-value'));
  const events=Array.from({length:4},(_,i)=>({point:token('metric-event-'+i,'',60,'teach-token teach-color-'+i),caption:txt('','teach-small'),line:path()}));
+ const sortLink=path('teach-link');
  const samples=d.samples.map((value,i)=>({value,i,t:token('sample-'+i,String(value),48,'teach-token teach-color-0')}));
  const percentileMark=rect('teach-map');set(percentileMark,{fill:'none','stroke-width':2});
+ const poolTitle=txt('','teach-small'),rackTitle=txt('','teach-small');
  const verdict=txt('','teach-heading'),detail=txt('','teach-small'),detail2=txt('','teach-small');
  const packetCaption=txt('','teach-small'),windowNote=txt('','teach-small'),windowEnd=txt('','teach-small'),windowEnd2=txt('','teach-small');
  const packetTokens=['token 2','token 3'].map((label,i)=>token('packet-'+i,label,56,'teach-token teach-color-'+(i+1)));
@@ -37,20 +39,51 @@ root.MechanismVisuals['f-metrics']=(svg,viewport,s)=>board(svg,viewport,'metrics
    events.forEach((a,j)=>{if(j>=eventTimes.length){show(a.point.g,0);show(a.caption,0);return;}const t=eventTimes[j],arrived=now>=t-1e-6,x=at(t),y=j%2?270:212;move(a.point,Math.min(W-66,Math.max(6,x-30)),y,arrived?1:.15);a.point.t.textContent=names[j];wire(a.line,`M${x} 158 V${y}`,arrived?1:.15);text(a.caption,Math.min(W-65,Math.max(6,x-30)),y+53,t+' ms');a.point.g.dataset.arrived=String(arrived);});
    const barY=v===1?(m?398:378):350,barLabelY=v===1?(m?424:408):385;box(bars[0],at(0),barY,span*Math.min(now,100)/200,12);show(bars[0],1);text(labels[3],18,barLabelY,now<100?'TTFT · 等首个输出':'TTFT = 100 ms');show(labels[3],1);
    if(v===0){box(bars[1],at(100),410,span*Math.max(0,Math.min(now,140)-100)/200,10);box(bars[2],at(140),410,span*Math.max(0,now-140)/200,10);show(bars[1],1);show(bars[2],1);text(verdict,18,474,p>=3?'后续间隔：40 ms、40 ms':'首个输出之后，才开始量后续间隔');text(detail,18,515,p>=4?'TPOT = (180 − 100) ÷ 2 = 40 ms':'同一时间轴，起止点随指标改变。');text(detail2,18,552,'这里每包一个 token，包间隔可用于观测 ITL。');}
-   else{text(verdict,18,m?470:450,p>=2?'第二包内有 2 个 token':'同包到达，只有一个观测时刻');text(detail,18,m?506:490,'100 → 180 ms：包间隔为 80 ms。');text(detail2,18,m?538:530,'不能据此拆出两个 token 各自的生成耗时。');text(packetCaption,18,m?346:322,'包 2 内有两个 token；只有一个到达时刻。');show(packetCaption,phase(p,2,3));const packetStart=m?Math.min(W-120,at(180)-58):at(180)-28;packetTokens.forEach((t,i)=>move(t,packetStart+i*58,m?358:336,phase(p,2,3)));}
+   else{text(verdict,18,m?470:450,p>=2?'第二包内有 2 个 token':'同包到达，只有一个观测时刻');text(detail,18,m?506:490,'100 → 180 ms：包间隔为 80 ms。');text(detail2,18,m?538:530,'不能据此拆出两个 token 各自的生成耗时。');text(packetCaption,18,m?346:322,'包 2 内有两个 token；只有一个到达时刻。');show(packetCaption,phase(p,2,3));const packetStart=m?Math.min(W-120,at(180)-58):at(180)-28;packetTokens.forEach((t,i)=>move(t,packetStart+i*(m?62:58),m?358:336,phase(p,2,3)));}
    if(m){text(windowNote,18,580,p>=3?'请求总观测窗口':'');text(windowEnd,18,600,p>=3?'发出 → 末 token = 180 ms':'');text(windowEnd2,18,620,p>=3?'结束消息可能更晚。':'');show(windowNote,p>=3);show(windowEnd,p>=3);show(windowEnd2,p>=3);}else{text(windowNote,18,570,p>=3?'请求总观测窗口（发出 → 末 token）= 180 ms；结束消息可能更晚。':'');show(windowNote,p>=3);show(windowEnd,0);show(windowEnd2,0);}
    svg.dataset.observedTime=now.toFixed(3);
   }else if(v<4){
-   text(heading,18,30,'P95 取决于哪些样本被统计');text(unit,18,60,p<1?'将样本按延迟从小到大排列 · ms':'样本已按延迟从小到大排列 · ms');
-   const cols=m?5:10,gap=m?66:65,failed=v===3&&p>=2,n=failed?18:20,idx=Math.ceil(.95*n)-1;
-   samples.forEach(a=>{const excluded=failed&&a.i>=18,chosen=p>=3&&a.i===idx,original=(a.i*7)%20,order=phase(p,0,1);move(a.t,18+lerp(original%cols,a.i%cols,order)*gap,100+lerp(Math.floor(original/cols),Math.floor(a.i/cols),order)*64,v===3&&a.i>=18?1-.75*phase(p,1,2):1);a.t.t.textContent=a.value+(excluded?' ×':'');a.t.g.setAttribute('class','teach-token '+(chosen?'teach-color-2':'teach-color-0'));a.t.g.dataset.included=String(!excluded);a.t.g.dataset.percentile=String(chosen);});
-   const scanned=Math.min(idx,Math.floor(idx*phase(p,2,3)));box(percentileMark,15+(scanned%cols)*gap,97+Math.floor(scanned/cols)*64,54,40);
-   text(verdict,18,420,p<3?'先定样本，再找 95% 的位置':`P95：第 ${idx+1} 项 = ${d.p95} ms`);text(detail,18,466,`成功 ${n} / 20 · 成功率 ${n*5}%`);text(detail2,18,510,p>=3?`nearest-rank：ceil(0.95 × ${n}) = ${idx+1}`:'× 表示失败，仍保留记录。');
+   // Two stacked regions: the shuffled records stay put while the smallest
+   // remaining value is lifted into the sorted rack below. Only the card at
+   // the head of that queue changes position, so values never cross or cover
+   // each other; the faint link keeps the source and destination traceable.
+   const cols=m?5:10,gap=m?66:65,poolTop=m?96:104,rackTop=m?292:244,pitch=m?40:62;
+   const failed=v===3&&p>=2,n=failed?18:20,idx=Math.ceil(.95*n)-1;
+   text(heading,18,30,'P95 取决于哪些样本被统计');
+   text(unit,18,60,p<1?(m?'从乱序记录中逐条取出最小值':'从原始顺序中逐条取出最小值，排到下方排序区 · ms'):'样本已按延迟从小到大排列 · ms');
+   text(poolTitle,18,m?84:88,'原始 20 条请求（乱序）');show(poolTitle,1-phase(p,.8,.96));
+   text(rackTitle,18,rackTop-14,'排序区：延迟从小到大');show(rackTitle,v>=2?1:0);
+   let moving=null;
+   samples.forEach(a=>{
+    const excluded=failed&&a.i>=18,chosen=p>=3&&a.i===idx;
+    const original=(a.i*7)%20,ox=18+(original%cols)*gap,oy=poolTop+Math.floor(original/cols)*pitch;
+    const rx=18+(a.i%cols)*gap,ry=rackTop+Math.floor(a.i/cols)*pitch;
+    const start=.02+(a.i/20)*.8,u=phase(p,start,start+.06),placed=u>=.5;
+    // The card hands off at 45% opacity, then rises to full in the rack: it is
+    // always readable, and the jump happens while both cells are empty of text.
+    const opacity=(.45+.55*Math.abs(2*u-1))*(excluded?.62:1);
+    if(u>0&&u<1)moving={ox,oy,rx,ry,u};
+    a.t.t.textContent=a.value+(excluded?' ×':'');
+    a.t.r.setAttribute('stroke-dasharray',excluded?'4 3':'');
+    a.t.g.setAttribute('class','teach-token '+(chosen?'teach-color-2':excluded?'teach-color-4':'teach-color-0'));
+    move(a.t,placed?rx:ox,placed?ry:oy,opacity);
+    a.t.g.dataset.included=String(!excluded);a.t.g.dataset.percentile=String(chosen);a.t.g.dataset.placed=String(placed);
+   });
+   if(moving){set(sortLink,{d:`M${moving.ox+24} ${moving.oy+17} L${moving.rx+24} ${moving.ry+17}`,'stroke-dasharray':'4 4','marker-end':'none'});show(sortLink,Math.sin(moving.u*Math.PI)*.7);}
+   else show(sortLink,0);
+   const scanned=Math.min(idx,Math.floor(idx*phase(p,2,3)));
+   box(percentileMark,15+(scanned%cols)*gap,rackTop-3+Math.floor(scanned/cols)*pitch,54,40);
+   show(percentileMark,v>=2&&v<4&&p>2?1:0);
+   text(verdict,18,m?486:390,p<3?'先定样本，再找 95% 的位置':`P95：第 ${idx+1} 项 = ${d.p95} ms`);
+   text(detail,18,m?522:432,`成功 ${n} / 20 · 成功率 ${n*5}%`);
+   text(detail2,18,m?556:470,p>=3?`nearest-rank：ceil(0.95 × ${n}) = ${idx+1}`:'× 表示失败，仍保留记录。');
+   svg.dataset.sortedCount=String(samples.filter(a=>p>=.02+(a.i/20)*.8+.03).length);
+   svg.dataset.p95=String(d.p95);
   }else{
    const times=[0,2,4,7,10],i=Math.min(4,Math.floor(p)),now=lerp(times[i],times[Math.min(4,i+1)],phase(p,i)),at=t=>left+span*t/10,completed=d.completions.filter(t=>t<=now+1e-6).length,total=d.outputCounts.slice(0,completed).reduce((a,b)=>a+b,0);
    text(heading,18,30,'同一窗口：分别数请求与输出 token');text(unit,18,58,'横轴：0–10 秒；标记是完成事件');wire(axis,`M${left} 140 H${right}`,1);wire(cursor,`M${at(now)} 122 V410`,1);move(clock,Math.min(W-78,Math.max(8,at(now)-34)),80);clock.t.textContent=now.toFixed(1)+' s';
    [0,5,10].forEach((t,j)=>{text(labels[j],at(t)-8,168,String(t));show(labels[j],1);});
-   events.forEach((a,j)=>{const x=at(d.completions[j]),y=200+j*49,arrived=j<completed;move(a.point,x-30,y,arrived?1:.15);a.point.t.textContent='R'+(j+1);text(a.caption,18,y+24,`${d.completions[j]}s · ${d.outputCounts[j]} token`);});
+   events.forEach((a,j)=>{const x=at(d.completions[j]),y=200+j*49,arrived=j<completed;move(a.point,x-30,y,arrived?1:.15);a.point.t.textContent='R'+(j+1);text(a.caption,18,y+38,`${d.completions[j]}s · ${d.outputCounts[j]} token`);});
    text(verdict,18,448,`完成 ${completed} 条 · 输出 ${total} token`);text(detail,18,490,p>=4?'请求吞吐：4 ÷ 10 = 0.4 请求/秒':'尚未关窗，先保留累计数。');text(detail2,18,530,p>=4?'输出吞吐：10 ÷ 10 = 1 token/秒':'两种工作量使用同一统计窗口。');svg.dataset.completed=completed;svg.dataset.outputTokens=total;
   }
  };

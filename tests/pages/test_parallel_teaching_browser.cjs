@@ -1,8 +1,61 @@
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
-const assert=require('node:assert/strict'),fs=require('node:fs');
+const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {execFileSync}=require('node:child_process');
 const dir=process.env.MOTION_SCREENSHOT_DIR;if(dir)fs.mkdirSync(dir,{recursive:true});
 const base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:18765/';
-(async()=>{console.log('controller PID',process.pid);const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE});try{
+let server,browser,owned,profilePath,shuttingDown;
+const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const pidState=pid=>{try{process.kill(pid,0);return 'alive';}catch(error){return error.code==='ESRCH'?'gone':`error:${error.code||error.message}`;}};
+function profileProcesses(){
+ if(!profilePath)return [];
+ try{return execFileSync('pgrep',['-fl',profilePath],{encoding:'utf8'}).trim().split('\n').filter(Boolean).map(line=>line.match(/^(\d+)\s+(.*)$/)).filter(Boolean).map(m=>({pid:Number(m[1]),command:m[2]})).filter(entry=>pidState(entry.pid)!=='gone');}
+ catch(error){if(error.status===1)return [];throw error;}
+}
+async function waitGone(pid,timeout){const end=Date.now()+timeout;let state=pidState(pid);while(state!=='gone'&&Date.now()<end){await delay(80);state=pidState(pid);}return state;}
+function signal(pid,sig){try{process.kill(pid,sig);return null;}catch(error){return error.code==='ESRCH'?null:error.code||error.message;}}
+function ownedProfile(candidate){
+ if(!candidate||!/playwright/i.test(path.basename(candidate)))return false;
+ const roots=[path.resolve(os.tmpdir())];try{roots.push(fs.realpathSync(os.tmpdir()));}catch{}
+ const files=[path.resolve(candidate)];try{files.push(fs.realpathSync(candidate));}catch{}
+ return files.some(file=>roots.some(root=>file.startsWith(root+path.sep)));
+}
+async function shutdown(reason){
+ if(shuttingDown)return shuttingDown;
+ shuttingDown=(async()=>{
+  const failures=[];
+  await browser?.close().catch(error=>failures.push(`browser close: ${error.message}`));
+  await server?.close().catch(error=>failures.push(`server close: ${error.message}`));
+  let state=owned?.pid?await waitGone(owned.pid,1500):'not-created';
+  for(const sig of ['SIGTERM','SIGKILL']){
+   if(state==='gone')break;
+   if(!profileProcesses().some(entry=>entry.pid===owned.pid)){failures.push(`pid ${owned.pid} is not our browser`);break;}
+   const error=signal(owned.pid,sig);if(error)failures.push(`browser ${sig}: ${error}`);
+   state=await waitGone(owned.pid,sig==='SIGTERM'?1200:800);
+  }
+  if(owned?.pid&&state!=='gone')failures.push(`browser pid ${owned.pid} remains (${state})`);
+  let remaining=profileProcesses();
+  for(const sig of ['SIGTERM','SIGKILL']){
+   for(const entry of remaining){const error=signal(entry.pid,sig);if(error)failures.push(`profile ${entry.pid} ${sig}: ${error}`);}
+   await delay(180);remaining=profileProcesses();if(!remaining.length)break;
+  }
+  if(remaining.length)failures.push(`profile processes remain: ${remaining.map(entry=>entry.pid).join(',')}`);
+  let removed=!profilePath||!fs.existsSync(profilePath);
+  if(profilePath&&!removed&&ownedProfile(profilePath)&&!remaining.length){
+   try{fs.rmSync(profilePath,{recursive:true,force:true});}catch(error){failures.push(`profile: ${error.code||error.message}`);}
+   removed=!fs.existsSync(profilePath);
+  }
+  console.log(JSON.stringify({event:'cleanup',reason,controller:process.pid,browser:owned?.pid??null,browserState:state,profile:profilePath,profileRemoved:removed,remaining:remaining.length}));
+  if(failures.length)throw new Error(`cleanup incomplete (${reason}): ${failures.join('; ')}`);
+ })();
+ return shuttingDown;
+}
+for(const [sig,code] of [['SIGINT',130],['SIGTERM',143]])process.once(sig,()=>shutdown(sig).then(()=>process.exit(code)).catch(error=>{console.error(error);process.exit(1);}));
+(async()=>{console.log('controller PID',process.pid);
+ server=await chromium.launchServer({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE});
+ owned=server.process();profilePath=owned.spawnargs.find(a=>a.startsWith('--user-data-dir='))?.slice('--user-data-dir='.length)||null;
+ console.log(JSON.stringify({session:'parallel-teaching',controller:process.pid,browser:owned.pid,profile:profilePath}));
+ browser=await chromium.connect(server.wsEndpoint());
+ try{
 const page=await browser.newPage(),errors=[],overflow=[];page.on('pageerror',e=>errors.push(e.message));
 await page.goto(base+'foundations/parallel.html');const film=page.locator('.mechanism-film'),sel=film.locator('select[aria-label="连续演示条件"]');
 const seek=async p=>page.locator('.motion-scrub input').evaluate((e,p)=>{e.value=p;e.dispatchEvent(new Event('input',{bubbles:true}));},p);
@@ -17,7 +70,7 @@ if(dir&&[390,1440].includes(width))for(const step of v===0||v===1?[0,2,3.5,5.5,m
 }
 // Switching mechanisms resets playback; URL restores both semantic levels.
 await page.locator('[data-parallel-family=TP]').click();await seek(0);
-const actor=page.locator('[data-motion-id="tp-x0-0-0"]');const x0=await actor.getAttribute('transform');await seek(2.5);const xm=await actor.getAttribute('transform');await seek(3);const x1=await actor.getAttribute('transform');assert.notEqual(x0,xm);assert.notEqual(xm,x1);
+const actor=page.locator('[data-motion-id="tp-x0-0-0"]');const x0=await actor.getAttribute('transform');await seek(2.25);const xm=await actor.getAttribute('transform');await seek(3);const x1=await actor.getAttribute('transform');assert.notEqual(x0,xm);assert.notEqual(xm,x1);assert.notEqual(x0,x1);
 await seek(4);assert.deepEqual(await page.locator('[data-motion-id^="tp-local0-"] text').allTextContents(),['2','0','6','0']);
 assert.deepEqual(await page.locator('[data-motion-id^="tp-local1-"] text').allTextContents(),['2','6','4','12']);await seek(6);assert.deepEqual(await page.locator('[data-motion-id^="tp-final0-"] text').allTextContents(),['4','6','10','12']);
 await sel.selectOption('1');await seek(4);assert.deepEqual(await page.locator('[data-motion-id^="tp-local0-"] text').allTextContents(),['4','10']);assert.deepEqual(await page.locator('[data-motion-id^="tp-local1-"] text').allTextContents(),['6','12']);
@@ -30,4 +83,4 @@ await page.evaluate(()=>document.documentElement.dataset.theme='light');
 if(dir)for(const id of ['parallel-overview','read-pcp','read-dcp'])await page.locator('#'+id).screenshot({path:`${dir}/${id}.png`});
 const plain=await browser.newPage({javaScriptEnabled:false});await plain.goto(base+'foundations/parallel.html');assert.equal(await plain.locator('.parallel-reading-section').count(),8);await plain.locator('#read-pcp summary').click();assert.match(await plain.locator('#read-pcp').innerText(),/padding/);await plain.locator('#parallel-glossary summary').click();assert.match(await plain.locator('#parallel-glossary').innerText(),/Log-Sum-Exp/);await plain.close();
 if(dir)fs.writeFileSync(dir+'/findings.json',JSON.stringify({errors,overflow},null,2));assert.deepEqual(errors,[]);assert.deepEqual(overflow,[]);console.log('PASS 12 parallel scenarios; 4 widths and half-steps; 2 themes; TP arithmetic/geometry; PP activation gating; keyboard, URL restore, pause/reset, reduced motion and no-JS reading.');
-}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});
+}finally{try{await shutdown('complete');}catch(error){console.error(error);process.exitCode=1;}}})().catch(e=>{console.error(e);process.exitCode=1});

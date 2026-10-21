@@ -29,7 +29,7 @@ root.ChunkBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,viewpo
   box(selected,left+r*s.chunk*gap-3,80,s.chunk*gap+1,61);set(selected,{fill:'none','stroke-width':2});show(selected,p>0&&!end?1:0);
   text(roundText,18,175,end?'B 的 Prefill 完成':`第 ${r+1} / ${s.rounds} 轮`);text(progress,18,203,`B 已完成 ${processed} / 8 个位置 · 每轮上限 ${s.chunk}`);
   text(history,18,225);
-  text(aTitle,18,246);outputs.forEach((e,i)=>{move(e,left+i*gap,264,i<done?1:i===r?work:0);set(e.r,{width:gap-5});set(e.t,{x:(gap-5)/2});e.g.dataset.complete=String(i<done);});
+  text(aTitle,18,251);outputs.forEach((e,i)=>{move(e,left+i*gap,269,i<done?1:i===r?work:0);set(e.r,{width:gap-5});set(e.t,{x:(gap-5)/2});e.g.dataset.complete=String(i<done);});
   text(ledgerTitle,18,340);const width=(W-40)/s.rounds;
   ledger.forEach((e,i)=>{const x=left+i*width,f=i<r?1:i===r?work:0;box(e.panel,x,370,width-5,69);text(e.label,x+2,362);text(e.b,x+2,392,s.chunk===1?`B ${i+1}`:`B ${i*s.chunk+1}–${(i+1)*s.chunk}`);text(e.a,x+2,416);box(e.fill,x,433,(width-5)*f,6);});
   text(result,18,479,end?`B 用了 ${s.rounds} 轮；A 交错生成 ${s.rounds} 次`:'下一块要等下一轮才继续');svg.dataset.processed=processed;svg.dataset.decodeOutputs=done;
