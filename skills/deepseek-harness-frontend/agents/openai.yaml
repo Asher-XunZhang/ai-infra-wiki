@@ -1,0 +1,4 @@
+interface:
+  display_name: "DeepSeek Harness 前端交接"
+  short_description: "准备源码与教学资料，交给本机 Harness 实现前端并独立验收"
+  default_prompt: "使用 $deepseek-harness-frontend，整理本次前端任务的源码与教学依据，交给本机 DeepSeek Harness 使用 Flash-1017 / Max 实现，再检查并呈现本地结果。"
