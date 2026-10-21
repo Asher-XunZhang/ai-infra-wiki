@@ -77,15 +77,15 @@
    lesson text stays in a readable evidence rail. Second-chapter pages never
    receive .foundation-theater, so their player geometry is unchanged. */
 .foundation-theater{overflow:visible}
-.foundation-theater .motion-theater{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;height:clamp(430px,58vh,540px);margin:10px 0 12px;min-width:0}
+.foundation-theater .motion-theater{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;height:clamp(470px,calc(58vh + 40px),580px);margin:10px 0 12px;min-width:0}
 .foundation-theater .motion-controls{position:sticky;top:84px;z-index:12;background:var(--surface,#fff);padding:8px 0;margin-bottom:8px;border-bottom:1px solid var(--border,#dbe3e8)}
-.foundation-theater .motion-stage{position:relative;min-width:0;min-height:0;overflow:hidden;border:1px solid var(--border,#cad5df);border-radius:12px;background:#f3f6f8;box-shadow:inset 0 1px #fff}
-.foundation-theater .motion-camera{position:absolute;inset:0;height:100%!important;max-height:none!important;overflow:hidden!important;border-radius:0;background:transparent;touch-action:pan-y;cursor:default;outline-offset:-3px}
+.foundation-theater .motion-stage{position:relative;min-width:0;min-height:0;overflow:hidden;padding-bottom:40px;border:1px solid var(--border,#cad5df);border-radius:12px;background:#f3f6f8;box-shadow:inset 0 1px #fff}
+.foundation-theater .motion-camera{position:absolute;inset:0 0 40px;height:auto!important;max-height:none!important;overflow:hidden!important;border-radius:0;background:transparent;touch-action:pan-y;cursor:default;outline-offset:-3px}
 .foundation-theater .motion-camera.is-zoomed{cursor:grab;touch-action:none}
 .foundation-theater .motion-camera.is-panning{cursor:grabbing}
 .foundation-theater .motion-camera-plane{position:absolute;inset:12px;width:auto;height:auto;transform-origin:0 0;will-change:transform;display:flex;align-items:center;justify-content:center}
 .foundation-theater .motion-camera-plane svg{display:block;width:100%!important;height:100%!important;min-width:0!important;max-width:none!important;max-height:none!important;margin:0!important;overflow:visible}
-.foundation-theater .motion-camera-tools{position:absolute;right:9px;bottom:9px;z-index:5;display:flex;align-items:center;gap:3px;padding:3px;border:1px solid #b9c8d2;border-radius:6px;background:#fffef9e8;box-shadow:0 2px 8px #15304418;backdrop-filter:blur(3px)}
+.foundation-theater .motion-camera-tools{position:absolute;right:9px;bottom:4px;z-index:5;display:flex;align-items:center;gap:3px;padding:3px;border:1px solid #b9c8d2;border-radius:6px;background:#fffef9e8;box-shadow:0 2px 8px #15304418;backdrop-filter:blur(3px)}
 .foundation-theater .motion-camera-tools button{min-width:27px;height:27px;padding:0 6px;border:1px solid #c5d1d8;border-radius:4px;background:#f8fbfc;color:var(--fg,#173c47);font:12px/1 system-ui,sans-serif;cursor:pointer}
 .foundation-theater .motion-camera-tools button:hover{background:#eaf1f3}
 .foundation-theater .motion-camera-tools button:disabled{opacity:.35;cursor:default}
@@ -111,22 +111,21 @@
 [data-theme=dark] .foundation-theater .motion-camera-tools{background:#1d3140e8;border-color:#526b7b}
 [data-theme=dark] .foundation-theater .motion-camera-tools button{background:#243b4b;color:#deebf3;border-color:#526b7b}
 [data-theme=dark] .foundation-theater .motion-camera-hint{background:#1d3140dc;border-color:#526b7b;color:#b9cddc}
-@media(max-width:760px){
- .foundation-theater .motion-controls{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin}
- .foundation-theater .motion-controls>*{flex:0 0 auto}
+@media(max-width:1200px){
  .foundation-theater .motion-controls{top:72px;padding:6px 0;margin-bottom:5px}
  .foundation-theater .motion-theater{display:flex;flex-direction:column;height:auto;gap:8px;margin:8px 0 10px}
- .foundation-theater .motion-stage{height:min(60vh,470px);min-height:340px}
+ .foundation-theater .motion-stage{height:min(calc(60vh + 40px),510px);min-height:380px}
+ .foundation-theater .motion-stage:has(.batch-viewport){height:min(78vh,640px);min-height:420px}
  .foundation-theater .motion-panel{overflow:auto;max-height:200px;padding:10px 12px;gap:5px}
  .foundation-theater .motion-panel .motion-action{font-size:12px;line-height:1.65}
  .foundation-theater .motion-panel .motion-status{font-size:14px}
  .foundation-theater .motion-camera-hint{display:none}
- .foundation-theater .motion-camera-tools{right:6px;bottom:6px;padding:2px;gap:2px}
+ .foundation-theater .motion-camera-tools{right:6px;bottom:5px;padding:2px;gap:2px}
  .foundation-theater .motion-camera-tools button{height:24px;min-width:24px;padding:0 4px;font-size:11px}
  .foundation-theater .motion-camera-tools output{min-width:34px;font-size:9px}
  .foundation-theater .motion-camera-fit{font-size:9px!important}
 }
-@media(max-width:420px){.foundation-theater .motion-stage{height:min(60vh,470px);min-height:340px}.foundation-theater .motion-panel{padding:9px 10px}}
+@media(max-width:420px){.foundation-theater .motion-stage{height:min(calc(60vh + 40px),510px);min-height:380px}.foundation-theater .motion-stage:has(.batch-viewport){height:min(78vh,640px);min-height:420px}.foundation-theater .motion-panel{padding:9px 10px}}
 .foundation-theater .motion-panel-handoff{min-width:0}
 .foundation-theater .motion-panel-handoff .motion-handoff{border:0;border-top:1px solid var(--border,#dbe3e8);margin:2px 0 0;padding:8px 0 0;font-size:11px;line-height:1.55}
 .foundation-theater .motion-panel-handoff .motion-handoff>label{display:flex;gap:6px;align-items:center;margin:0 0 5px;font-size:11px}
@@ -136,4 +135,17 @@
 .foundation-theater .motion-panel-handoff .motion-handoff nav a{font-size:10px}
 .foundation-theater .motion-panel>.motion-handoff-links{display:flex;flex-wrap:wrap;gap:4px 10px;margin:0 0 2px;font-size:10px;line-height:1.5}
 .foundation-theater .motion-panel>.motion-handoff-links a{font-size:10px;text-underline-offset:2px}
+
+
+@media(max-width:650px){.mechanism-film[data-motion=f-attention] .motion-stage{height:min(72vh,600px)}}
+/* Hardware needs the extra height so the full width can carry the eight-second
+   grid; its camera hint would otherwise cover the bottom formula. */
+.mechanism-film[data-motion=f-hardware] .motion-camera-hint{display:none}
+@media(max-width:650px){
+ .mechanism-film[data-motion=f-hardware]{padding-left:10px;padding-right:10px}
+ .mechanism-film[data-motion=f-hardware] .motion-stage{height:min(76vh,640px);min-height:420px}
+}
+@media(max-width:420px){
+ .mechanism-film[data-motion=f-hardware] .motion-stage{height:min(74vh,600px);min-height:400px}
+}
 

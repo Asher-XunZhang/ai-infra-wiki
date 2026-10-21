@@ -82,7 +82,7 @@ function pointToPoint(svg,viewport,s){const d=s.data,get=d.op==='Get',put=d.op==
   text(result,18,m?820:506,d.unmatched?'接收尚未完成':p<3?'载荷尚未完整到达':p<4?'继续确认完成与消费依赖':'[7,8] 可供本例消费者读取');
  };
 });}
-function reductions(svg,viewport,s){const d=s.data,scan=['Scan','Exscan'].includes(d.op);return board(svg,viewport,'communication-reduction',()=>1120,H=>{
+function reductions(svg,viewport,s){const d=s.data,scan=['Scan','Exscan'].includes(d.op);return board(svg,viewport,'communication-reduction',m=>m?490:1120,H=>{
  const {txt,rect,text,box,show,token,move,set}=H;
  const heads=[txt('① 输入 · 每一行属于一个 rank','teach-heading'),txt(scan?'② 前缀范围：只取阶梯内的贡献':'② 相同下标对齐，再执行归约','teach-heading'),txt('③ 各 rank 的输出','teach-heading')];
  const originals=d.input.flatMap((a,r)=>a.map((v,i)=>({r,i,t:token('comm-input-'+r+'-'+i,String(v),48,'teach-token teach-color-'+r)})));
@@ -92,29 +92,60 @@ function reductions(svg,viewport,s){const d=s.data,scan=['Scan','Exscan'].includ
  const outputLabels=[0,1,2].map(r=>txt('Rank '+r,'teach-small'));
  const results=d.math.flatMap((line,i)=>line.destinations.filter(()=>line.value!==null).map(dest=>({i,...dest,t:token('comm-result-'+dest.dst+'-'+dest.di,line.value===null?'未定义':String(line.value),50,'teach-token teach-color-3')})));
  const outputPanels=[0,1,2].map(()=>rect());
- const empties=d.output.map((a,r)=>({r,t:txt(a[0]===null?'未定义':a.length?'':'无归约输出','teach-small')}));
+ const empties=d.output.map((a,r)=>({r,out:a,t:txt(a[0]===null?'未定义':a.length?'':'无归约输出','teach-small')}));
+ const equals=d.math.map(()=>txt('＝','teach-number'));
  const note=txt('','teach-small'),formula=txt('','teach-number'),status=txt('','teach-heading');
- return(p,m)=>{const sx=m?90:200,cw=m?58:98,mx=m?60:160,mc=m?58:105,rx=m?244:540;
-  heads.forEach((e,i)=>text(e,18,[30,308,650][i]));inputLabels.forEach((e,r)=>text(e,20,94+r*65));originals.forEach(a=>move(a.t,sx+a.i*cw,72+a.r*65));
-  columns.forEach((e,r)=>text(e,mx+r*mc,348));rows.forEach(row=>{const y=374+row.i*86;text(row.label,18,y+24);row.cells.forEach((c,r)=>{box(c.bg,mx+r*mc-3,y-3,54,44);text(c.tag,mx+r*mc+8,y+24,'—');show(c.tag,row.line.sources.some(a=>a.src===r)?0:1);});
-   row.copies.forEach(a=>{const t=phase(p,0);move(a.t,lerp(sx+a.si*cw,mx+a.src*mc,t),lerp(72+a.src*65,y,t),t);});
-   text(row.op,mx,y+64,row.line.value===null?'空前缀':d.reduce==='max'?'MAX：取最大':'SUM：'+row.line.sources.map(a=>d.input[a.src][a.si]).join(' + '));show(row.op,phase(p,1));move(row.result,rx,y,p>=2?1:0);
+ return(p,m)=>{const mobile=!!m;
+  const sx=mobile?66:200,cw=mobile?38:98,mx=mobile?58:160,mc=mobile?40:105,rx=mobile?204:540,rowY=i=>mobile?162+i*56:374+i*86;
+  // Keep the first heading below the top edge: camera type compensation can
+  // make its ascender taller than the 20-unit baseline on wide, short stages.
+  heads.forEach((e,i)=>{text(e,mobile?14:18,[mobile?32:38,mobile?136:256,mobile?334:320][i]);show(e,i===0?1:i===1?(p>=1?1:0):(p>=2?1:0));});
+  inputLabels.forEach((e,r)=>text(e,mobile?14:20,mobile?52+r*30:94+r*65));
+  originals.forEach(a=>{if(mobile){set(a.t.r,{width:30,height:26});text(a.t.t,15,18);move(a.t,sx+a.i*cw,36+a.r*30);}else{set(a.t.r,{width:48,height:34});text(a.t.t,24,22);move(a.t,sx+a.i*cw,72+a.r*65);}});
+  columns.forEach((e,r)=>{if(mobile){text(e,mx+r*mc+10,151,'R'+r);e.setAttribute('text-anchor','middle');}else{text(e,mx+r*mc,348,'来自 '+r);e.removeAttribute('text-anchor');}});
+  rows.forEach((row,i)=>{const y=rowY(i);
+   text(row.label,mobile?14:18,mobile?y+19:y+24);
+   row.cells.forEach((c,r)=>{if(mobile){box(c.bg,mx+r*mc-2,y-2,36,30);text(c.tag,mx+r*mc+10,y+21,'—');}else{box(c.bg,mx+r*mc-3,y-3,54,44);text(c.tag,mx+r*mc+8,y+24,'—');}show(c.tag,row.line.sources.some(a=>a.src===r)?0:1);});
+   row.copies.forEach(a=>{const t=phase(p,0);
+    if(mobile){set(a.t.r,{width:32,height:26});text(a.t.t,16,18);move(a.t,lerp(sx+a.si*cw,mx+a.src*mc+2,t),lerp(36+a.src*30,y+2,t),t);}
+    else{set(a.t.r,{width:48,height:34});text(a.t.t,24,22);move(a.t,lerp(sx+a.si*cw,mx+a.src*mc,t),lerp(72+a.src*65,y,t),t);}
+   });
+   if(mobile){
+    show(equals[i],p>=2?1:0);text(equals[i],176,y+20);
+    text(row.op,58,y+46,row.line.value===null?'空前缀':d.reduce==='max'?'MAX：取最大':'SUM：'+row.line.sources.map(a=>d.input[a.src][a.si]).join(' + '));show(row.op,phase(p,1));
+    set(row.result.r,{width:44,height:26});text(row.result.t,22,18);move(row.result,204,y+2,p>=2?1:0);
+   }else{
+    show(equals[i],0);
+    text(row.op,mx,y+64,row.line.value===null?'空前缀':d.reduce==='max'?'MAX：取最大':'SUM：'+row.line.sources.map(a=>d.input[a.src][a.si]).join(' + '));show(row.op,phase(p,1));
+    set(row.result.r,{width:50,height:34});text(row.result.t,25,22);move(row.result,rx,y,p>=2?1:0);
+   }
   });
-  text(note,18,1058,scan?'灰格不参与；按 rank 顺序取前缀。':'此处是算式，不是一台中央设备。');
-  text(formula,18,1023,d.op==='ReduceScatter'?'归约整体 → 按 rank 分片':d.op==='Reduce'?'归约整体 → 仅 root':d.op==='AllReduce'?'归约整体 → 每个 rank 一份':d.op==='Exscan'?'Rank 0：MPI 接收结果未定义':'每个 rank 取得自己的前缀和');
-  const W=m?360:720,ow=(W-36)/3,ox=r=>18+r*ow+ow/2-25;
-  outputPanels.forEach((b,r)=>{box(b,18+r*ow,706,ow-8,272);b.parentNode.insertBefore(b,heads[0]);});
-  outputLabels.forEach((e,r)=>text(e,26+r*ow,958,`Rank ${r}${d.op==='Reduce'&&r===d.root?' ★':''}`));empties.forEach(a=>text(a.t,26+a.r*ow,762));
+  const W=mobile?360:720,ow=(W-36)/3,ox=r=>18+r*ow+ow/2-25;
+  outputPanels.forEach((b,r)=>{if(mobile)box(b,12+r*115,344,104,100);else box(b,18+r*ow,706,ow-8,272);b.parentNode.insertBefore(b,heads[0]);});
+  outputLabels.forEach((e,r)=>text(e,mobile?20+r*115:26+r*ow,mobile?438:958,`Rank ${r}${d.op==='Reduce'&&r===d.root?' ★':''}`));
+  empties.forEach(a=>text(a.t,mobile?20+a.r*115:26+a.r*ow,mobile?395:762,a.out[0]===null?'未定义':a.out.length?'':'无归约输出'));
   results.forEach(a=>{
-   const from={x:rx,y:374+a.i*86},gutter={x:W-56,y:from.y},below={x:gutter.x,y:668+a.i*44},fan={x:ox(a.dst),y:below.y},to={x:ox(a.dst),y:744+a.di*52};
-   // Clear the arithmetic before fanning out. Shared value copies overlap only
-   // while they follow the same logical branch, never across different values.
-   const point=p<2.15?between(from,gutter,phase(p,2,2.15)):p<2.5?between(gutter,below,phase(p,2.15,2.5)):p<2.8?between(below,fan,phase(p,2.5,2.8)):between(fan,to,phase(p,2.8,3));
-   move(a.t,point.x,point.y,p>2?1:0);set(a.t.g,{'data-arrived':String(p>=3),'data-in-flight':String(p>2&&p<3),'data-target':a.dst});
+   if(mobile){
+    // Lift a finished value into the free lane above its own row before moving
+    // it sideways. The old direct diagonal crossed the row's contribution cell.
+    const from={x:204,y:rowY(a.i)+2},lift={x:204,y:rowY(a.i)-22},across={x:12+a.dst*115+38,y:rowY(a.i)-22},to={x:12+a.dst*115+38,y:368+a.di*22},u=phase(p,2,3);
+    const point=u<.25?between(from,lift,phase(p,2,2.25)):u<.6?between(lift,across,phase(p,2.25,2.6)):between(across,to,phase(p,2.6,3));
+    move(a.t,point.x,point.y,p>2?1:0);
+    set(a.t.r,{width:42,height:20});text(a.t.t,21,15);
+   }else{
+    const from={x:rx,y:374+a.i*86},gutter={x:W-56,y:from.y},below={x:gutter.x,y:668+a.i*44},fan={x:ox(a.dst),y:below.y},to={x:ox(a.dst),y:744+a.di*52};
+    const point=p<2.15?between(from,gutter,phase(p,2,2.15)):p<2.5?between(gutter,below,phase(p,2.15,2.5)):p<2.8?between(below,fan,phase(p,2.5,2.8)):between(fan,to,phase(p,2.8,3));
+    move(a.t,point.x,point.y,p>2?1:0);
+    set(a.t.r,{width:50,height:34});text(a.t.t,25,22);
+   }
+   set(a.t.g,{'data-arrived':String(p>=3),'data-in-flight':String(p>2&&p<3),'data-target':a.dst});
   });
-  text(status,18,1100,p<2?'状态：归约尚未完成':p<3?'状态：各份结果并发交到指定参与者':'核对每个 rank 的输出与对应算式');
+  text(note,18,mobile?386:1058,scan?'灰格不参与；按 rank 顺序取前缀。':'此处是算式，不是一台中央设备。');show(note,mobile?0:1);
+  text(formula,mobile?14:18,mobile?464:1023,d.op==='ReduceScatter'?'归约整体 → 按 rank 分片':d.op==='Reduce'?'归约整体 → 仅 root':d.op==='AllReduce'?'归约整体 → 每个 rank 一份':d.op==='Exscan'?'Rank 0：MPI 接收结果未定义':'每个 rank 取得自己的前缀和');
+  text(status,mobile?14:18,mobile?480:1100,p<2?'状态：归约尚未完成':p<3?(mobile?'各份结果并发交给 rank':'状态：各份结果并发交到指定参与者'):(mobile?'核对各 rank 输出与算式':'核对每个 rank 的输出与对应算式'));
  };
 });}
+
 function synchronization(svg,viewport,s){const d=s.data,barrier=d.op==='Barrier';return board(svg,viewport,'communication-events',()=>690,H=>{
  const {txt,rect,path,wire,text,box,token,move,show}=H;
  const heading=txt(barrier?'各 rank 何时到达屏障？':'控制返回与数据可用是两条时间线','teach-heading');

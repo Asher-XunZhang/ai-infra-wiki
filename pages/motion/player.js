@@ -71,9 +71,9 @@ function mount(host,key){
   const zoomOut=node('button','','−'),zoomValue=node('output','','100%'),zoomIn=node('button','','+'),zoomFit=node('button','motion-camera-fit','适配全图');
   zoomOut.type=zoomIn.type=zoomFit.type='button';zoomOut.dataset.motionZoomOut='';zoomIn.dataset.motionZoomIn='';zoomFit.dataset.motionZoomFit='';zoomValue.dataset.motionZoomValue='';
   zoomOut.setAttribute('aria-label','缩小画布');zoomIn.setAttribute('aria-label','放大画布');zoomValue.setAttribute('aria-live','polite');
-  tools.append(zoomOut,zoomValue,zoomIn,zoomFit);viewport.append(plane,tools,node('span','motion-camera-hint','Ctrl/⌘ + 滚轮缩放 · 放大后拖动'));
+  tools.append(zoomOut,zoomValue,zoomIn,zoomFit);const hint=node('span','motion-camera-hint','Ctrl/⌘ + 滚轮缩放 · 放大后拖动');viewport.append(plane);
   const stage=node('div','motion-stage'),panel=node('aside','motion-panel');panel.setAttribute('aria-label','当前帧与教学证据');panel.append(node('p','motion-panel-kicker','当前帧 · 证据'),readout,scrubLabel);const handoffHost=node('div','motion-panel-handoff');panel.append(handoffHost);motionPanel=panel;motionHandoffHost=handoffHost;
-  stage.append(viewport);const theater=node('div','motion-theater');theater.append(stage,panel);section.append(theater);
+  stage.append(viewport,tools,hint);const theater=node('div','motion-theater');theater.append(stage,panel);section.append(theater);
   motionCamera=new window.MotionCamera({camera:viewport,plane,svg,zoomOut,zoomIn,zoomFit,zoomValue});
  }else{section.append(readout,viewport,scrubLabel);}
  const status=node('output','motion-status');status.setAttribute('aria-live','polite');readout.append(status);

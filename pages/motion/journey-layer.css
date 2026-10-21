@@ -1,0 +1,82 @@
+/* Only generation.html's optional layer-by-layer figure. */
+.jl{
+  --jl-ink:var(--fg);--jl-muted:var(--muted);--jl-line:var(--border);
+  --jl-paper:var(--surface);--jl-soft:var(--soft);--jl-accent:var(--accent);
+  --jl-l1:light-dark(#216c51,#8bceab);--jl-l1t:light-dark(#e3f1ed,#233d2c);
+  --jl-l2:light-dark(#336a99,#a5cff3);--jl-l2t:light-dark(#e6edfc,#273e50);
+  --jl-l3:light-dark(#7a5a9e,#c9b3e0);--jl-l3t:light-dark(#f0e7fa,#3d304d);
+  --jl-y:light-dark(#926015,#f2ca84);--jl-yt:light-dark(#fff3dc,#483c26);
+  color:var(--jl-ink);font:14px/1.6 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  min-width:0;
+}
+.jl *{box-sizing:border-box}
+.jl .jl-caption-line{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin:0 0 10px}
+.jl .jl-kicker{font-size:11px;letter-spacing:.08em;color:var(--jl-muted)}
+.jl .jl-caption-line strong{font-size:15px;color:var(--jl-ink)}
+.jl .jl-controls{display:flex;flex-wrap:wrap;align-items:center;gap:7px 9px;margin:0 0 10px}
+.jl .jl-controls button,.jl .jl-controls select{font-size:12px;min-height:34px;padding:5px 9px;color:var(--jl-ink);background:var(--jl-paper);border:1px solid var(--jl-line);border-radius:6px}
+.jl .jl-controls button{cursor:pointer}
+.jl .jl-controls button:hover{background:var(--jl-soft)}
+.jl .jl-controls button[aria-pressed=true]{background:var(--jl-accent);border-color:var(--jl-accent);color:var(--jl-paper)}
+.jl .jl-controls button:disabled{opacity:.5;cursor:default}
+.jl .jl-count{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--jl-muted);min-width:54px;text-align:center}
+.jl .jl-speed{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--jl-muted)}
+.jl .jl-meters{display:flex;flex-wrap:wrap;gap:6px 14px;padding:7px 10px;background:var(--jl-soft);border-radius:6px;font-size:11px;color:var(--jl-muted);margin:0 0 8px}
+.jl .jl-meters b{color:var(--jl-ink);font-variant-numeric:tabular-nums}
+.jl .jl-caption{margin:0 0 8px;min-height:3.2em;font-size:13px;line-height:1.7;color:var(--jl-ink)}
+.jl .jl-canvas{width:100%;display:flex;justify-content:center;overflow:hidden}
+.jl .jl-canvas svg{display:block;width:100%;height:auto;max-width:100%;overflow:visible}
+.jl .jl-scrub{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--jl-muted);margin:10px 0 0}
+.jl .jl-scrub input{width:100%;accent-color:var(--jl-accent);height:24px}
+.jl .jl-note{font-size:11.5px;line-height:1.7;color:var(--jl-muted);margin:7px 0 0}
+.jl .jl-rail{stroke:var(--jl-line);stroke-width:2;stroke-dasharray:3 4}
+.jl .jl-rail-dot{fill:var(--jl-line)}
+.jl .jl-packet{transition:opacity .12s linear}
+.jl .jl-packet-bg{fill:var(--jl-soft);stroke:var(--jl-accent);stroke-width:1.5}
+.jl .jl-packet-bg.decode{stroke:var(--jl-y);fill:var(--jl-yt)}
+.jl .jl-packet-title{fill:var(--jl-muted);font-size:10.5px;font-weight:650}
+.jl .jl-packet-chip rect{fill:var(--jl-paper);stroke:var(--jl-line)}
+.jl .jl-packet-chip text{fill:var(--jl-ink);font-weight:650;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.jl .jl-packet-chip.y rect{fill:var(--jl-yt);stroke:var(--jl-y)}
+.jl .jl-band{fill:var(--jl-paper);stroke:var(--jl-line);stroke-width:1}
+.jl .jl-layer.is-active .jl-band{fill:var(--jl-soft);stroke:var(--jl-accent)}
+.jl .jl-layer-title{fill:var(--jl-ink);font-size:13px;font-weight:700}
+.jl .jl-layer-sub{fill:var(--jl-muted);font-size:10.5px}
+.jl .jl-shelf{fill:var(--jl-paper);stroke-width:1}
+.jl .jl-shelf.l0{stroke:var(--jl-l1)}
+.jl .jl-shelf.l1{stroke:var(--jl-l2)}
+.jl .jl-shelf.l2{stroke:var(--jl-l3)}
+.jl .jl-shelf-title{font-size:11px;font-weight:700}
+.jl .jl-shelf-title.l0{fill:var(--jl-l1)}.jl .jl-shelf-title.l1{fill:var(--jl-l2)}.jl .jl-shelf-title.l2{fill:var(--jl-l3)}
+.jl .jl-shelf-status{fill:var(--jl-muted);font-size:10px}
+.jl .jl-kv-cell rect{fill:var(--jl-paper);stroke:var(--jl-line);stroke-width:1;stroke-dasharray:3 2}
+.jl .jl-kv-cell .jl-cell-fill{stroke:none;opacity:0}
+.jl .jl-kv-cell.p[data-state=written] .jl-cell-fill,.jl .jl-kv-cell.p[data-state=read] .jl-cell-fill{fill:var(--jl-cell-tint,var(--jl-soft))}
+.jl .jl-kv-cell.y .jl-cell-fill{fill:var(--jl-yt)}
+.jl .jl-kv-cell.p[data-state=written] rect:first-child,.jl .jl-kv-cell.p[data-state=read] rect:first-child{stroke:var(--jl-cell-ink,var(--jl-accent));stroke-dasharray:none}
+.jl .jl-kv-cell.y[data-state=written] rect:first-child{stroke:var(--jl-y);stroke-dasharray:none}
+.jl .jl-kv-cell.is-read rect:first-child{stroke-dasharray:2 2;stroke-width:1.5}
+.jl .jl-kv-cell.is-read .jl-cell-label{fill:var(--jl-muted)}
+.jl .jl-layer.l0 .jl-kv-cell{--jl-cell-ink:var(--jl-l1);--jl-cell-tint:var(--jl-l1t)}
+.jl .jl-layer.l1 .jl-kv-cell{--jl-cell-ink:var(--jl-l2);--jl-cell-tint:var(--jl-l2t)}
+.jl .jl-layer.l2 .jl-kv-cell{--jl-cell-ink:var(--jl-l3);--jl-cell-tint:var(--jl-l3t)}
+.jl .jl-cell-label{fill:var(--jl-ink);font:600 11px ui-monospace,SFMono-Regular,Consolas,monospace}
+.jl .jl-head-box{fill:var(--jl-paper);stroke:var(--jl-line);stroke-width:1}
+.jl .jl-outhead.is-active .jl-head-box{fill:var(--jl-soft);stroke:var(--jl-accent)}
+.jl .jl-head-title{fill:var(--jl-ink);font-size:13px;font-weight:700}
+.jl .jl-head-sub{fill:var(--jl-muted);font-size:10.5px}
+.jl .jl-out-row{fill:var(--jl-soft);stroke:var(--jl-line)}
+.jl .jl-output-title{fill:var(--jl-ink);font-size:11px;font-weight:650}
+.jl .jl-slot{fill:none;stroke:var(--jl-line);stroke-dasharray:3 3}
+.jl .jl-out-token rect{fill:var(--jl-yt);stroke:var(--jl-y)}
+.jl .jl-out-token text{fill:var(--jl-ink);font-weight:700}
+.jl .jl-out-status{fill:var(--jl-muted);font-size:10px}
+.jl .jl-drop{fill:none;stroke:var(--jl-line);stroke-width:1.5;stroke-dasharray:3 3}
+.jl .jl-token{font:700 12px ui-monospace,SFMono-Regular,Consolas,monospace}
+.jl .jl-kv-cell[data-state=read] .jl-cell-label:after{content:""}
+@media(min-width:520px){.jl .jl-layer-title{font-size:14px}.jl .jl-layer-sub,.jl .jl-shelf-status,.jl .jl-head-sub{font-size:11.5px}.jl .jl-shelf-title{font-size:12px}.jl .jl-cell-label{font-size:12px}.jl .jl-caption{font-size:14px}.jl .jl-note{font-size:12px}}
+@media(max-width:380px){.jl .jl-controls button{padding:5px 7px;font-size:11.5px}.jl .jl-caption{font-size:12.5px;line-height:1.65}}
+@media(prefers-reduced-motion:reduce){.jl .jl-packet{transition:none}}
+
+.lab.jl{padding:14px}
+@media(max-width:700px){.lab.jl{padding:9px}#mechanism-extension{padding:12px}}

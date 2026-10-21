@@ -21,7 +21,7 @@ root.ChunkBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,viewpo
  const outputs=Array.from({length:8},(_,i)=>token('chunk-output-'+i,'y'+(i+1),34,'teach-token teach-color-0'));
  const ledgerTitle=txt('按轮次对照：同列在同一轮执行','teach-heading');
  const ledger=Array.from({length:s.rounds},(_,i)=>({label:txt('轮 '+(i+1),'teach-small'),panel:rect('teach-track'),b:txt('','teach-small'),a:txt('A +1','teach-small'),fill:rect('teach-value')}));
- const result=txt('','teach-heading'),note=txt('','teach-small');
+ const result=txt('','teach-heading');
  return(p,m)=>{
   const W=m?360:720,left=20,gap=(W-40)/8,r=Math.min(s.rounds-1,Math.floor(Math.max(0,p-.000001)/2)),local=Math.max(0,Math.min(2,p-r*2)),work=root.TeachingDrawing.phase(local,1,2),done=Math.floor(p/2),processed=Math.min(8,done*s.chunk),end=p>=s.frames.length-1;
   text(title,18,30);text(legend,18,57);
@@ -32,7 +32,7 @@ root.ChunkBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,viewpo
   text(aTitle,18,246);outputs.forEach((e,i)=>{move(e,left+i*gap,264,i<done?1:i===r?work:0);set(e.r,{width:gap-5});set(e.t,{x:(gap-5)/2});e.g.dataset.complete=String(i<done);});
   text(ledgerTitle,18,340);const width=(W-40)/s.rounds;
   ledger.forEach((e,i)=>{const x=left+i*width,f=i<r?1:i===r?work:0;box(e.panel,x,370,width-5,69);text(e.label,x+2,362);text(e.b,x+2,392,s.chunk===1?`B ${i+1}`:`B ${i*s.chunk+1}–${(i+1)*s.chunk}`);text(e.a,x+2,416);box(e.fill,x,433,(width-5)*f,6);});
-  text(result,18,479,end?`B 用了 ${s.rounds} 轮；A 交错生成 ${s.rounds} 次`:'下一块要等下一轮才继续');text(note,18,513,'更多交错机会，也意味着更多执行轮次。');svg.dataset.processed=processed;svg.dataset.decodeOutputs=done;
+  text(result,18,479,end?`B 用了 ${s.rounds} 轮；A 交错生成 ${s.rounds} 次`:'下一块要等下一轮才继续');svg.dataset.processed=processed;svg.dataset.decodeOutputs=done;
  };
 });
 })(typeof window==='object'?window:globalThis);

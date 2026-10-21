@@ -16,6 +16,9 @@
     viewport.setAttribute('aria-label', '等待队列与 GPU 执行位置；方块表示 token');
     const backdrop = el('g'), actorsLayer = el('g');
     svg.append(backdrop, actorsLayer);
+    // Switch the camera to the batch type scale: this board is much taller
+    // than a 360x520 foundation board, so the generic scale is too small.
+    svg.dataset.teachingKind = 'batching';
     const totals = [1, 3, 1], letters = ['A', 'B', 'C'];
     const actors = letters.map((id, i) => {
       const g = el('g', { 'data-motion-id': id, class: `batch-request batch-request-${id}` });
@@ -58,7 +61,7 @@
         backdrop.append(el('rect', { x, y, width: w, height: h, rx: 10, class: 'batch-region' }));
         text(x + 16, y + 27, title); text(x + 16, y + 49, note, 'batch-small');
       }
-      text(16, 22, narrow ? '② 生成中 · 小方块是 token，不是请求' : '② 生成中 · 一行是一条请求；浅色已有，实色新增，虚框还需生成', 'batch-key');
+      text(16, narrow ? 26 : 22, narrow ? '② 生成中 · 小方块是 token，不是请求' : '② 生成中 · 一行是一条请求；浅色已有，实色新增，虚框还需生成', 'batch-key');
       region(12, 40, narrow ? 336 : 238, narrow ? 220 : 266, '等待队列', 'C 在第一轮期间进入等待队列');
       region(narrow ? 12 : 274, narrow ? 282 : 40, narrow ? 336 : 614, 266, 'GPU · 一起执行这一轮', '每条参与请求，各新增一个 token');
       slotLabels = [0, 1].map(i => {
@@ -134,7 +137,7 @@
       gateNote.textContent = p < 2 ? '先让 A、B 执行；C 还没就绪。' : p < 3 ? 'A 正在退出；B 继续保留自己的历史。' : !cEntered ? (fixed ? (frame.actors[1].x === 648 ? 'A、B 均已退出 → C 现在可加入下一批。' : 'B 还未退出 → 即使有空位，C 也继续等。') : '本例资源满足 → C 可在下一轮加入。') : frame.actors[2].count < 1 ? (fixed ? 'C 已入批，将在第 4 轮参与生成。' : 'C 已入批，将在第 2 轮与 B 一起生成。') : fixed ? '结果：C 等 A、B 全部退出，第 4 轮才参与。' : '结果：C 第 2 轮参与；B 没有重新开始。';
       const completedRounds = rounds.filter(r => p >= r.endpoint - 1e-6).length;
       const growing = rounds.findIndex(r => p > r.endpoint - 1 && p < r.endpoint);
-      iterationLabel.textContent = growing >= 0 ? `第 ${growing + 1} 轮正在生成 · 新方块从右侧长出` : `已执行 ${completedRounds} 轮 · 这是 Decode 轮次，不是等待时间`;
+      iterationLabel.textContent = growing >= 0 ? `第 ${growing + 1} 轮正在生成 · 新方块从右侧长出` : innerWidth <= 340 ? `已执行 ${completedRounds} 轮 · Decode 轮次，不是等待时间` : `已执行 ${completedRounds} 轮 · 这是 Decode 轮次，不是等待时间`;
       ledger.forEach(({ cell, members }, i) => {
         const visible = p > rounds[i].endpoint - 1;
         cell.classList.toggle('is-generated', p >= rounds[i].endpoint);

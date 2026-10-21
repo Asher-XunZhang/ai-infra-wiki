@@ -32,7 +32,7 @@ const scenarios=definitions.map(d=>({...d,kind:'dynamic-batching',group:'① 执
 scenarios.forEach(s=>{s.stepDurations=s.frames.slice(1).map(f=>({clock:.65,arrival:.8,dispatch:1.2,summary:.7})[f.event]||.9);});
 if(typeof module==='object'&&module.exports){module.exports={simulate,scenarios};return;}
 const old=root.MechanismScenes['f-batching'];old.forEach(s=>{s.group='② 多轮生成：什么时候换成员？';});old.push(...scenarios);
-root.DynamicBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,viewport,'dynamic-batching',()=>482+s.frames.at(-1).batches.length*92,H=>{
+root.DynamicBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,viewport,'dynamic-batching',()=>500+58*(s.frames.at(-1).batches.length-1)+34,H=>{
  const {txt,rect,text,box,show,token,move,set}=H;
  const heading=txt('① 执行前 · 一张卡 = 一条图片请求','teach-heading');
  const ruler=rect('teach-track'),elapsed=rect('teach-value'),deadlineLine=rect('teach-compute'),clock=txt('','teach-number');
@@ -40,7 +40,7 @@ root.DynamicBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,view
  const waitLabel=txt('','teach-small'),waitTrack=rect('teach-track'),waitFill=rect('teach-compute');
  const arrivalLabel=txt('到达计划 · 先认出三条请求','teach-heading');
  const arrivals=[0,2,4].map((at,i)=>txt(`${'ABC'[i]} · t=${at} 到达`,'teach-small'));
- const queuePanel=rect(),queueTitle=txt('等待区','teach-heading'),capacityLabel=txt('每批最多 3 条','teach-small');
+ const queuePanel=rect(),queueTitle=txt('等待区 · A/B/C 是三条请求','teach-heading'),capacityLabel=txt('每批最多 3 条','teach-small');
  const slots=[0,1,2].map(()=>rect('teach-memory-slot'));
  const count=txt('','teach-small'),reason=txt('','teach-badge');
  const outTitle=txt('发往执行端','teach-heading'),outNote=txt('≠ 执行完成','teach-small');
@@ -50,23 +50,23 @@ root.DynamicBatchingVisual=(svg,viewport,s)=>root.TeachingDrawing.board(svg,view
  return(p,m)=>{
   const W=m?360:720,x=i=>m?110+i*76:260+i*150,at=i=>[0,2,4][i];
   const index=Math.min(Math.floor(p+1e-8),s.frames.length-1),a=s.frames[index],b=s.frames[Math.min(index+1,s.frames.length-1)],raw=p-index,u=raw*raw*(3-2*raw),time=a.time+(b.time-a.time)*u;
-  text(heading,18,26);text(clock,18,55,`t = ${Number(time.toFixed(1))} · 教学时间`);box(ruler,28,68,W-56,5);box(elapsed,28,68,(W-56)*time/8,5);ticks.forEach((e,i)=>text(e,25+(W-56)*i/8,91));
-  box(deadlineLine,28+(W-56)*(a.deadline??0)/8,61,2,20);show(deadlineLine,a.deadline!==null?1:0);
+  text(heading,18,24,m?'① 执行前 · 一张卡 = 一条请求':'① 执行前 · 一张卡 = 一条图片请求');text(clock,18,50,`t = ${Number(time.toFixed(1))} · 教学时间`);box(ruler,28,62,W-56,5);box(elapsed,28,62,(W-56)*time/8,5);ticks.forEach((e,i)=>text(e,25+(W-56)*i/8,84));
+  box(deadlineLine,28+(W-56)*(a.deadline??0)/8,55,2,20);show(deadlineLine,a.deadline!==null?1:0);
   const first=a.queue[0],start=first?at('ABC'.indexOf(first)):time,wait=Math.max(0,time-start);
-  text(waitLabel,18,115,first?`最早 ${first} 已等 ${Number(wait.toFixed(1))} / ${s.delay} · 截止 t=${a.deadline}`:(a.batches.length?'当前没有待组批请求 · 上批计时已结束':'没有等待中的请求 · 计时未启动'));box(waitTrack,18,126,W-36,7);box(waitFill,18,126,s.delay&&first?(W-36)*Math.min(1,wait/s.delay):0,7);
-  text(arrivalLabel,18,180);arrivals.forEach((e,i)=>text(e,x(i),206));
-  box(queuePanel,16,260,W-32,112);text(queueTitle,28,284);text(capacityLabel,28,310);slots.forEach((r,i)=>box(r,x(i)-3,295,m?70:84,40));
-  text(count,28,354,`入队 ${a.queue.length} / 3`);count.dataset.queueCount=a.queue.length;
+  text(waitLabel,18,106,first?`最早 ${first} 已等 ${Number(wait.toFixed(1))} / ${s.delay} · 截止 t=${a.deadline}`:(a.batches.length?'当前没有待组批请求 · 上批计时已结束':'没有等待中的请求 · 计时未启动'));box(waitTrack,18,116,W-36,7);box(waitFill,18,116,s.delay&&first?(W-36)*Math.min(1,wait/s.delay):0,7);
+  text(arrivalLabel,18,170);arrivals.forEach((e,i)=>{text(e,x(i)+(m?32:0),190);e.setAttribute('text-anchor',m?'middle':'start');if(m)e.textContent=`t=${at(i)}`;});
+  box(queuePanel,16,244,W-32,110);text(queueTitle,28,270);text(capacityLabel,28,292);slots.forEach((r,i)=>box(r,x(i)-3,300,m?70:84,38));
+  text(count,28,346,`入队 ${a.queue.length} / 3`);count.dataset.queueCount=a.queue.length;
   const outgoing=b.event==='dispatch'&&raw>0;
-  text(reason,18,150,outgoing?'发往执行端途中':a.queue.length>=3?'凑满 → 发出':a.queue.length&&time>=a.deadline?(s.delay?'到期 → 发出':'不再等 → 发出'):a.queue.length?'未满且未到期 → 等待':a.arrived.length===3?'本例全部已发出':'等待下一条到达');
-  text(outTitle,18,390);text(outNote,18,410);if(m)set(outTitle,{'font-size':15});
-  rows.forEach((r,i)=>{const y=422+i*92,batch=a.batches[i],planned=b.batches[i];box(r.bg,16,y,W-32,84);
-   text(r.label,28,y+18,`第 ${i+1} 批`);text(r.time,28,y+38,batch?`t=${batch.time}`:outgoing&&planned?'发出途中':'尚未发出');text(r.why,28,y+58,batch?batch.reason:'');
-   r.wait.forEach((e,j)=>{const k=batch?.ids.indexOf('ABC'[j])??-1;text(e,x(j),y+76,k>=0?`等了 ${batch.waits[k]}`:'');});show(r.bg,batch||planned?1:.35);
+  text(note,18,404+rows.length*58+16);
+  text(reason,18,144,outgoing?'发往执行端途中':a.queue.length>=3?'凑满 → 发出':a.queue.length&&time>=a.deadline?(s.delay?'到期 → 发出':'不再等 → 发出'):a.queue.length?'未满且未到期 → 等待':a.arrived.length===3?'本例全部已发出':'等待下一条到达');
+  text(outTitle,18,374,m?'执行端':'发往执行端');text(outNote,18,392);
+  rows.forEach((r,i)=>{const y=404+i*58,batch=a.batches[i],planned=b.batches[i];box(r.bg,16,y,W-32,56);
+   text(r.label,28,y+16,`第 ${i+1} 批`);text(r.time,28,y+33,batch?`t=${batch.time}`:outgoing&&planned?'发出途中':'尚未发出');text(r.why,28,y+50,batch?batch.reason:'');
+   r.wait.forEach((e,j)=>{const k=batch?.ids.indexOf('ABC'[j])??-1;text(e,x(j),y+54,k>=0?`等了 ${batch.waits[k]}`:'');});show(r.bg,batch||planned?1:.35);
   });
-  text(note,18,456+rows.length*92);
-  function pos(f,i){const id='ABC'[i],row=f.batches.findIndex(z=>z.ids.includes(id));return row>=0?{y:450+92*row,o:1}:f.queue.includes(id)?{y:298,o:1}:{y:222,o:.3};}
-  cards.forEach((c,i)=>{const from=pos(a,i),to=pos(b,i);set(c.r,{width:m?64:78});set(c.t,{x:m?32:39,'font-size':m?12:14});move(c,x(i),from.y+(to.y-from.y)*u,from.o+(to.o-from.o)*u);c.g.setAttribute('aria-label',`请求 ${'ABC'[i]}，${raw&&from.y!==to.y?'移动中':a.queue.includes('ABC'[i])?'等待组批':a.arrived.includes('ABC'[i])?'已发出':'尚未到达'}`);});
+  function pos(f,i){const id='ABC'[i],row=f.batches.findIndex(z=>z.ids.includes(id));return row>=0?{y:411+58*row,o:1}:f.queue.includes(id)?{y:300,o:1}:{y:204,o:.3};}
+  cards.forEach((c,i)=>{const from=pos(a,i),to=pos(b,i),w=m?64:78;set(c.r,{width:w});set(c.t,{x:w/2});move(c,x(i),from.y+(to.y-from.y)*u,from.o+(to.o-from.o)*u);c.g.setAttribute('aria-label',`请求 ${'ABC'[i]}，${raw&&from.y!==to.y?'移动中':a.queue.includes('ABC'[i])?'等待组批':a.arrived.includes('ABC'[i])?'已发出':'尚未到达'}`);});
   svg.dataset.clock=time.toFixed(3);svg.dataset.dispatched=a.batches.length;
  };
 });

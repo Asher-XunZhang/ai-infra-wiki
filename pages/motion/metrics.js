@@ -27,16 +27,17 @@ root.MechanismVisuals['f-metrics']=(svg,viewport,s)=>board(svg,viewport,'metrics
  const packetTokens=['token 2','token 3'].map((label,i)=>token('packet-'+i,label,56,'teach-token teach-color-'+(i+1)));
  return(p,m)=>{const W=m?360:720,left=m?26:52,right=W-48,span=right-left;
   samples.forEach(a=>show(a.t.g,v>=2&&v<4?1:0));show(percentileMark,v>=2&&v<4&&p>2?1:0);events.forEach(a=>{show(a.point.g,v<2||v===4?1:0);show(a.caption,v<2||v===4?1:0);show(a.line,0);});labels.forEach(a=>show(a,0));bars.forEach(a=>show(a,0));show(axis,v>=2&&v<4?0:1);show(cursor,v>=2&&v<4?0:1);show(clock.g,v>=2&&v<4?0:1);
+  packetTokens.forEach(t=>show(t.g,0));show(packetCaption,0);
   if(v<2){
-   packetTokens.forEach(t=>show(t.g,0));show(packetCaption,0);show(windowNote,0);
+   show(windowNote,0);
    const i=Math.min(3,Math.floor(p)),times=v===0?[0,100,140,180]:[0,100,180,180],now=lerp(times[i],times[Math.min(3,i+1)],phase(p,i)),at=t=>left+span*t/200;
    text(heading,18,30,'发出请求 → 首个输出 → 后续输出');text(unit,18,58,'横轴：客户端观测时间（ms）');wire(axis,`M${left} 158 H${right}`,1);wire(cursor,`M${at(now)} 122 V390`,1);move(clock,Math.min(W-78,Math.max(8,at(now)-34)),80);clock.t.textContent=Math.round(now)+' ms';
    [0,100,200].forEach((t,j)=>{text(labels[j],at(t)-8,188,String(t));show(labels[j],1);});
    const eventTimes=v===0?[0,100,140,180]:[0,100,180],names=v===0?['发出','token 1','token 2','token 3']:['发出','包 1','包 2'];
    events.forEach((a,j)=>{if(j>=eventTimes.length){show(a.point.g,0);show(a.caption,0);return;}const t=eventTimes[j],arrived=now>=t-1e-6,x=at(t),y=j%2?270:212;move(a.point,Math.min(W-66,Math.max(6,x-30)),y,arrived?1:.15);a.point.t.textContent=names[j];wire(a.line,`M${x} 158 V${y}`,arrived?1:.15);text(a.caption,Math.min(W-65,Math.max(6,x-30)),y+53,t+' ms');a.point.g.dataset.arrived=String(arrived);});
-   box(bars[0],at(0),350,span*Math.min(now,100)/200,12);show(bars[0],1);text(labels[3],18,385,now<100?'TTFT · 等首个输出':'TTFT = 100 ms');show(labels[3],1);
+   const barY=v===1?(m?398:378):350,barLabelY=v===1?(m?424:408):385;box(bars[0],at(0),barY,span*Math.min(now,100)/200,12);show(bars[0],1);text(labels[3],18,barLabelY,now<100?'TTFT · 等首个输出':'TTFT = 100 ms');show(labels[3],1);
    if(v===0){box(bars[1],at(100),410,span*Math.max(0,Math.min(now,140)-100)/200,10);box(bars[2],at(140),410,span*Math.max(0,now-140)/200,10);show(bars[1],1);show(bars[2],1);text(verdict,18,474,p>=3?'后续间隔：40 ms、40 ms':'首个输出之后，才开始量后续间隔');text(detail,18,515,p>=4?'TPOT = (180 − 100) ÷ 2 = 40 ms':'同一时间轴，起止点随指标改变。');text(detail2,18,552,'这里每包一个 token，包间隔可用于观测 ITL。');}
-   else{text(verdict,18,450,p>=2?'第二包内有 2 个 token':'同包到达，只有一个观测时刻');text(detail,18,490,'100 → 180 ms：包间隔为 80 ms。');text(detail2,18,530,'不能据此拆出两个 token 各自的生成耗时。');text(packetCaption,18,300,'包 2 内有两个 token；只有一个到达时刻。');show(packetCaption,phase(p,2,3));packetTokens.forEach((t,i)=>move(t,at(180)-28+i*58,326,phase(p,2,3)));}
+   else{text(verdict,18,m?470:450,p>=2?'第二包内有 2 个 token':'同包到达，只有一个观测时刻');text(detail,18,m?506:490,'100 → 180 ms：包间隔为 80 ms。');text(detail2,18,m?538:530,'不能据此拆出两个 token 各自的生成耗时。');text(packetCaption,18,m?346:322,'包 2 内有两个 token；只有一个到达时刻。');show(packetCaption,phase(p,2,3));const packetStart=m?Math.min(W-120,at(180)-58):at(180)-28;packetTokens.forEach((t,i)=>move(t,packetStart+i*58,m?358:336,phase(p,2,3)));}
    if(m){text(windowNote,18,580,p>=3?'请求总观测窗口':'');text(windowEnd,18,600,p>=3?'发出 → 末 token = 180 ms':'');text(windowEnd2,18,620,p>=3?'结束消息可能更晚。':'');show(windowNote,p>=3);show(windowEnd,p>=3);show(windowEnd2,p>=3);}else{text(windowNote,18,570,p>=3?'请求总观测窗口（发出 → 末 token）= 180 ms；结束消息可能更晚。':'');show(windowNote,p>=3);show(windowEnd,0);show(windowEnd2,0);}
    svg.dataset.observedTime=now.toFixed(3);
   }else if(v<4){

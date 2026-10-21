@@ -43,6 +43,13 @@ async function goFinal(page) {
   }
 }
 
+async function seek(page, position) {
+  await page.locator('.mechanism-film .motion-scrub input').evaluate((el, p) => {
+    el.value = String(p);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }, position);
+}
+
 async function family(page, label) {
   const button = page.locator('.parallel-strategies button').filter({ hasText: label }).first();
   assert.equal(await button.count(), 1, `family button ${label}`);
@@ -102,7 +109,10 @@ async function family(page, label) {
           assert.ok(state.action.length > 3, `${course.slug}/${value}/${step} action`);
           assert.doesNotMatch(state.svg + state.action + state.status, /undefined|NaN/, `${course.slug}/${value}/${step} no missing values`);
         }
-        if (course.slug === 'deployment') assert.match(await film.textContent(), /当前可用 3\/3/);
+        if (course.slug === 'deployment') {
+          assert.match(await film.textContent(), /可用 3\/3 · y1 KV 完成/);
+          assert.equal(await film.locator('svg text[data-ready="true"]').count(), 1, 'deployment ready state is rendered');
+        }
       }
       // The narrow layout must not create a page-level horizontal scroll.
       await page.setViewportSize({ width: 390, height: 844 });
@@ -114,42 +124,96 @@ async function family(page, label) {
     }
     assert.ok(sceneCount >= 77, `main scene coverage ${sceneCount}`);
 
-    // F01-01: the two lookup tables show occurrence positions and the exact
-    // vocabulary/ID mapping; the occurrence rail is not a duplicate table row.
+    // F01-01: one row per vocabulary item, and both occurrences of a repeated
+    // token remain positions of that one row rather than duplicate table rows.
     await page.goto(BASE + 'foundations/tokens.html', { waitUntil: 'networkidle' });
     const tokens = page.locator('.mechanism-film');
     await choose(tokens, 0); await goFinal(page);
     assert.match(await tokens.textContent(), /100134.*p2.*p4/s);
     assert.match(await tokens.textContent(), /104100.*p1/);
-    assert.equal(await tokens.locator('svg [data-motion-id="id-3"]').count(), 1);
+    assert.equal(await tokens.locator('svg [data-token-row]').count(), 4);
+    assert.equal(await tokens.locator('svg [data-motion-id^="row-piece-"]').count(), 4);
 
-    // F02: client-visible text and KV remain separate from the selected token.
+    // F02: the selected token is copied back to the model input; the output
+    // node and the KV history remain separate until the new input is computed.
     await page.goto(BASE + 'foundations/generation.html', { waitUntil: 'networkidle' });
     const generation = page.locator('.mechanism-film');
-    await choose(generation, 1); await goFinal(page);
+    await choose(generation, 1);
+    await generation.locator('[data-motion-action=reset]').click();
+    for (let i = 0; i < 4; i++) { await generation.locator('[data-motion-action=next]').click(); await page.waitForTimeout(18); }
+    assert.equal(await generation.locator('[data-kv-written="true"]').count(), 2, 'y1 KV is not written before Decode');
+    assert.equal(await generation.locator('[data-input-copy="true"]').count(), 1, 'the output copy is the new input');
+    await goFinal(page);
     assert.match(await generation.textContent(), /客户端已见：休息一下/);
     assert.match(await generation.textContent(), /历史 KV/);
+    assert.equal(await generation.locator('[data-kv-written="true"]').count(), 3);
+    assert.equal(await generation.locator('[data-output="first"]').count(), 1);
+    assert.equal(await generation.locator('[data-output="second"]').count(), 1);
 
-    // F03: both dimensions expose their added terms.
+    // F03: both dimensions expose their added terms, and future rows stay out
+    // of the denominator.
     await page.goto(BASE + 'foundations/attention.html', { waitUntil: 'networkidle' });
     const attention = page.locator('.mechanism-film');
     await choose(attention, 0); await goFinal(page);
-    assert.match(await attention.textContent(), /维度1：0\.66 \+ 0\.00.*≈ 0\.66/s);
-    assert.match(await attention.textContent(), /维度2：0\.00 \+ 1\.34.*≈ 1\.34/s);
+    const attentionEqs = await attention.locator('svg [data-equation]').evaluateAll(es => es.map(e => e.textContent));
+    assert.deepEqual(attentionEqs, ['维度1：33.0%×2 + 67.0%×0', '维度2：33.0%×0 + 67.0%×2']);
+    assert.equal(await attention.locator('svg [data-complete="true"]').textContent(), '汇合得到 [0.66, 1.34]');
+    assert.equal(await attention.locator('svg [data-future-row="true"]').count(), 2);
+    assert.match(await attention.textContent(), /允许权重合计 ≈ 100\.0%/);
     await chooseScene(page, 1); await goFinal(page);
-    assert.match(await attention.textContent(), /2\.59 ≈ 3\.22/);
-    assert.doesNotMatch(await attention.textContent(), /2\.59 = 3\.22/);
+    assert.equal(await attention.locator('svg [data-equation="1"]').textContent(), '维度1：15.7%×2 + 3.8%×0 + 15.7%×2 + 64.7%×4');
+    assert.equal(await attention.locator('svg [data-complete="true"]').textContent(), '汇合得到 [3.22, 0.39]');
+    assert.match(await attention.textContent(), /16\.92.*26\.15/);
 
-    // F04: page mapping and shared-prefix references are in the main selector;
-    // the comparison keeps the read cost visible.
+    // F04: the comparison keeps read and compute costs separate; the page
+    // mapping is a real arrow relation; shared-prefix holders are explicit.
     await page.goto(BASE + 'foundations/cache.html', { waitUntil: 'networkidle' });
     const cache = page.locator('.mechanism-film');
     await choose(cache, 0); await goFinal(page);
     assert.match(await cache.textContent(), /读取历史：4 \+ 5 = 9/);
+    assert.match(await cache.textContent(), /新算位置数：15.*vs 6/);
     await choose(cache, 1); await goFinal(page);
     assert.match(await cache.textContent(), /页 7.*页 2/s);
-    await choose(cache, 2); await goFinal(page);
-    assert.match(await cache.textContent(), /共享历史：同一份 K\/V/);
+    assert.match(await cache.textContent(), /p1 → 页 7 \/ 槽 0/);
+    assert.ok(await cache.locator('svg [data-map]').count() >= 6, 'page table and slot mappings are drawn');
+    await choose(cache, 2);
+    // Midpoints only exist outside reduced-motion mode; the shared player
+    // rounds scrub positions when reduced motion is requested.
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await seek(page, 0.5);
+    const earlyLabels = await cache.locator('svg text').evaluateAll(es => es.map(e => e.textContent));
+    assert.ok(earlyLabels.includes('尚未建立共享历史'), 'history is not announced before R1 writes it');
+    assert.equal(earlyLabels.filter(label => label === '共享历史：同一份 K/V').length, 0);
+    assert.equal(await cache.locator('svg [data-holder]').getAttribute('aria-hidden'), 'true');
+    const sharedMidpoints = [
+      { position: 1.5, refs: ['r1'], text: /R1 指向这份数据；R2 尚未接入/, forbid: /R1、R2 指向|引用 0|R1 引用消失/ },
+      { position: 2.5, refs: ['r1', 'r2'], text: /R1、R2 指向同一份数据；没有复制第二份/, forbid: /引用 0|R1 引用消失/ },
+      { position: 3.5, refs: ['r2'], text: /R1 已结束；R2 仍指向同一份数据/, forbid: /引用 0|R1、R2 指向/ },
+    ];
+    for (const { position, refs, text, forbid } of sharedMidpoints) {
+      await seek(page, position);
+      const state = await cache.evaluate(el => ({
+        position: Number(el.dataset.position),
+        holder: Number(el.querySelector('svg [data-holder]')?.dataset.holder),
+        holderText: el.querySelector('svg [data-holder]')?.textContent,
+        refs: [...el.querySelectorAll('svg [data-ref]')]
+          .filter(node => Number(node.getAttribute('opacity')) > 0.5)
+          .map(node => node.dataset.ref),
+        svg: el.querySelector('svg')?.textContent || '',
+      }));
+      assert.equal(state.position, position);
+      assert.deepEqual(state.refs, refs, `visible reference arrows at ${position}`);
+      assert.equal(state.holder, refs.length, `holder count matches arrows at ${position}`);
+      assert.equal(state.holderText, `持有者：${refs.length}`, `holder label at ${position}`);
+      assert.match(state.svg, text, `explanation at ${position}`);
+      assert.doesNotMatch(state.svg, forbid, `no premature or stale release copy at ${position}`);
+    }
+    await seek(page, 4);
+    assert.match(await cache.textContent(), /共享历史：仍被缓存保留/);
+    assert.match(await cache.textContent(), /引用 0：没有活跃请求，缓存仍被保留/);
+    assert.match(await cache.textContent(), /持有者：0/);
+    assert.equal(await cache.locator('svg [data-holder="0"]').count(), 1);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
 
     // F06: products keep both factors, and graph prep cost is a labelled
     // one-time assumption rather than a measured break-even.
@@ -193,9 +257,11 @@ async function family(page, label) {
     // F09: prefix, local y1 KV and total available count are separate.
     await page.goto(BASE + 'foundations/deployment.html', { waitUntil: 'networkidle' });
     await goFinal(page);
-    assert.match(await page.locator('.mechanism-film').textContent(), /收到的前缀 2\/2/);
-    assert.match(await page.locator('.mechanism-film').textContent(), /本地新增 y1 KV 1/);
-    assert.match(await page.locator('.mechanism-film').textContent(), /当前可用 3\/3/);
+    assert.match(await page.locator('.mechanism-film').textContent(), /源 KV 2\/2 · 仍保留/);
+    assert.match(await page.locator('.mechanism-film').textContent(), /副本 2\/2 · y1 已到/);
+    assert.match(await page.locator('.mechanism-film').textContent(), /已追加 y1 KV/);
+    assert.match(await page.locator('.mechanism-film').textContent(), /可用 3\/3 · y1 KV 完成/);
+    assert.equal(await page.locator('.mechanism-film svg text[data-ready="true"]').count(), 1, 'deployment ready state is rendered');
 
     // F10: root and valid history are in the main speculation explanation.
     await page.goto(BASE + 'foundations/speculation.html', { waitUntil: 'networkidle' });
@@ -249,22 +315,34 @@ async function family(page, label) {
 
     await page.goto(BASE + 'foundations/generation.html', { waitUntil: 'networkidle' });
     const extension = page.locator('.foundation-extension');
+    const journeyRoot = extension.locator('[data-layer-journey]');
     assert.equal(await extension.evaluate(e => e.open), false);
-    assert.equal(await extension.locator('.wr-scene').count(), 0, 'closed supplement is lazy');
+    assert.equal(await journeyRoot.locator('[data-jl-play]').count(), 0, 'closed supplement is lazy');
     await extension.locator(':scope > summary').click();
-    await extension.locator('[data-id=j-play]').click();
-    await page.waitForTimeout(120);
+    const jlPlay = journeyRoot.locator('[data-jl-play]');
+    await jlPlay.waitFor();
+    await jlPlay.click();
+    await page.waitForFunction(() => Number(document.querySelector('[data-layer-journey]').dataset.jlStep) > 0, null, { timeout: 2500 });
+    assert.equal(await jlPlay.getAttribute('aria-pressed'), 'true', 'journey play state is pressed');
+    assert.ok(Number(await journeyRoot.getAttribute('data-jl-step')) > 0, 'journey playback advances');
     await extension.locator(':scope > summary').click();
     await page.waitForTimeout(200);
-    const closedText = await extension.locator('.wr-scene').textContent();
-    await page.waitForTimeout(1000);
-    assert.equal(await extension.locator('.wr-scene').textContent(), closedText, 'collapsing a supplement pauses its playback');
+    const closedStep = await journeyRoot.getAttribute('data-jl-step');
+    assert.equal(await jlPlay.getAttribute('aria-pressed'), 'false', 'collapse clears pressed state');
+    await page.waitForTimeout(700);
+    assert.equal(await journeyRoot.getAttribute('data-jl-step'), closedStep, 'collapsing a supplement pauses its playback');
 
     // Without JavaScript the prose, source links and quiz explanations remain readable.
     const staticPage = await browser.newPage({ javaScriptEnabled: false });
     await staticPage.goto(BASE + 'foundations/tokens.html');
     assert.equal(await staticPage.locator('h1').count(), 1);
     assert.ok((await staticPage.locator('.foundation-copy').innerText()).length > 100);
+    assert.ok(await staticPage.locator('#evidence a').count());
+    await staticPage.goto(BASE + 'foundations/generation.html');
+    const staticExtension = staticPage.locator('.foundation-extension');
+    assert.match(await staticExtension.innerText(), /逐层前向/);
+    await staticExtension.locator(':scope > summary').click();
+    assert.match(await staticExtension.locator('noscript').innerText(), /请启用 JavaScript/);
     assert.ok(await staticPage.locator('#evidence a').count());
     await staticPage.close();
 

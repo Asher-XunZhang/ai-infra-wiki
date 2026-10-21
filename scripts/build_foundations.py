@@ -96,6 +96,8 @@ def render(c, i):
     mechanism_assets = '<script src="../motion/batching.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/dynamic-batching.js" defer></script><script src="../motion/batching-chunk.js" defer></script>' if c['slug'] == 'batching' else ''
     if c['slug'] in {'tokens', 'generation', 'attention', 'cache', 'deployment'}:
         mechanism_assets += '<link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-scenes.js" defer></script><script src="../motion/teaching-visuals.js" defer></script>'
+        if c['slug'] != 'deployment':
+            mechanism_assets += '<script src="../motion/basics-visuals.js" defer></script>'
     if c['slug'] in {'hardware', 'parallel', 'communication', 'speculation', 'serving'}:
         mechanism_assets += '<link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/detail-scenes.js" defer></script><script src="../motion/detail-visuals.js" defer></script>'
     if c['slug'] == 'metrics':
@@ -106,6 +108,8 @@ def render(c, i):
         mechanism_assets += '<script src="parallel-model.js" defer></script><script src="../motion/parallel-scenes.js" defer></script><script src="../motion/parallel-tensor.js" defer></script><script src="../motion/parallel-routing.js" defer></script><script src="../motion/parallel-visuals.js" defer></script>'
     if extension:
         extension_assets = '<link rel="stylesheet" href="../sglang/inference-overview/overview.css"><link rel="stylesheet" href="../diagrams.css"><script src="../sglang/inference-overview/model.js" defer></script><script src="../diagrams.js" defer></script><script src="../sglang/inference-overview/overview.js" defer></script>'
+        if c['slug'] == 'generation':
+            extension_assets += '<link rel="stylesheet" href="../motion/journey-layer.css"><script src="../motion/journey-layer.js" defer></script>'
         extension_html = (f'<details class="foundation-extension" id="mechanism-extension"><summary>选读 · {escape(extension["title"])}</summary>'
             '<p>主线之外的完整机制对照图。沿用原课程的教学假设；不代表 SGLang 的运行轨迹。</p>'
             + extension['html'] + f'<p><a href="../sglang/inference-overview/{extension["source_lesson"]}">转到 SGLang：核对实现接口与固定源码 →</a></p></details>')

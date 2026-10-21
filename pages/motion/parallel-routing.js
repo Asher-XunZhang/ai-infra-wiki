@@ -8,7 +8,7 @@ window.DataParallelVisual=(svg,viewport,s)=>board(svg,viewport,'replicated-model
  const req=[token('dp-R1','R1 · x=1',112,'teach-token teach-color-0'),token('dp-R2','R2 · x=3',112,'teach-token teach-color-1')];
  const note=txt('','teach-heading'),step=txt('','teach-small'),returnLines=[path(),path()];
  return(p,m)=>{const x=[18,m?190:382],w=m?152:320;
-  text(title,18,28);if(m)title.setAttribute('font-size','14');text(legend,18,54);
+  text(title,18,34);if(m)title.setAttribute('font-size','14');text(legend,18,54);
   move(source[0],m?30:150,90,1-.65*phase(p,1));move(source[1],m?200:460,90,1-.65*phase(p,1));
   models.forEach((r,i)=>{const u=phase(p,0);box(r.panel,x[i],200,w,470);show(r.panel,u);text(r.name,x[i]+10,230,'完整副本 '+(i?'B':'A'));show(r.name,u);
    r.layers.forEach((l,j)=>move(l,lerp(m?(j?200:30):(j?460:150),x[i]+16,u),lerp(90,285+j*165,u),u));
@@ -39,7 +39,7 @@ window.ExpertParallelVisual=(svg,viewport,s)=>board(svg,viewport,'expert-routing
  const instruction=txt('','teach-heading'),formula=txt('','teach-number'),math=[txt('','teach-small'),txt('','teach-small')],final=token('ep-final','t1: '+d.result,100,'teach-token teach-color-2'),note=txt('','teach-small');
  return(p,m)=>{const rx=[18,m?190:382],w=m?152:320,cw=m?48:95,left=m?86:170;
   const focused=p>=2&&!d.loads.some(n=>n>2),background=focused?.28:1;
-  text(title,18,28);text(legend,18,54);input.forEach((t,i)=>move(t,28+i*(m?78:170),82,i?background:1));
+  text(title,18,36);text(legend,18,56);input.forEach((t,i)=>move(t,28+i*(m?78:170),82,i?background:1));
   text(owners,18,132);if(m)owners.setAttribute('font-size','11');heads.forEach((t,i)=>text(t,left+i*cw,155));rows.forEach((t,i)=>text(t,left-38,190+i*38));
   matrix.forEach((c,i)=>{const r=Math.floor(i/4),e=i%4,chosen=d.routes[r].includes(e);box(c,left+e*cw,170+r*38,cw-6,30);set(c,{class:chosen&&p>=1?'teach-contribution teach-color-'+r:'teach-mask'});show(c,r?background:1);});
   rows.forEach((t,i)=>show(t,i?background:1));

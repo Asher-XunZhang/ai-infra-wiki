@@ -21,7 +21,7 @@ V['f-parallel']=(svg,viewport,s)=>{
   const outputs=Array.from({length:4},(_,i)=>tile('sp-output-'+i,'y'+(i+1)+' [u,v]',i<2?0:1,116));
   const labels=[txt('完整激活 · 4 个位置 × 2 个特征','teach-small'),txt('行分片：每行的两个特征仍在一起','teach-small')];
   paint=(p,m,x,w)=>{
-   text(header,18,28,'SP：序列行分片与 TP 布局转换');text(hint,18,54,'p = 输入行；n = 逐 token 变换后的行');
+   text(header,18,36,'SP：序列行分片与 TP 布局转换');text(hint,18,54,'p = 输入行；n = 逐 token 变换后的行');
    text(labels[0],18,83);text(labels[1],18,244);original.forEach((t,i)=>move(t,m?128:310,94+i*34,1-.65*phase(p,0)));
    const layoutContext=1-.65*phase(p,3);
    local.forEach((t,i)=>{const r=i<2?0:1,u=phase(p,0);move(t,lerp(m?128:310,x[r]+12,u),lerp(94+i*34,294+(i%2)*42,u),u*layoutContext);t.t.textContent=(p>=2?'n':'p')+(i+1)+(p>=2?' [a′,b′]':' [a'+(i+1)+',b'+(i+1)+']');});
@@ -49,7 +49,7 @@ V['f-parallel']=(svg,viewport,s)=>{
   const rows=Array.from({length:8},(_,i)=>txt('Q'+(i+1),'teach-small')),cols=Array.from({length:8},(_,i)=>txt('K'+(i+1),'teach-small'));
   const explain=txt('同一条输入的八个位置','teach-small'),dependency=txt('','teach-small'),localLabels=[txt('','teach-small'),txt('','teach-small')],workSums=[txt('','teach-small'),txt('','teach-small')];
   paint=(p,m,x,w)=>{
-   text(header,18,28,'PCP：沿 Query 行分担 Prefill');text(hint,18,54,'矩阵格 = 一次 Q–K 配对；灰格禁止读取');
+   text(header,18,36,'PCP：沿 Query 行分担 Prefill');text(hint,18,54,'矩阵格 = 一次 Q–K 配对；灰格禁止读取');
    source.forEach((t,i)=>move(t,18+i*(m?41:84),88));text(explain,18,145);
    qs.forEach((t,i)=>{const r=d.ranks[0].includes(i)?0:1,j=d.ranks[r].indexOf(i),u=phase(p,0);move(t,lerp(18+i*(m?41:84),x[r]+12+(j%2)*64,u),lerp(88,294+Math.floor(j/2)*44,u),u*(1-phase(p,3)));});
    originals.forEach((t,r)=>move(t,x[r]+12,394,phase(p,0)));
@@ -78,7 +78,7 @@ V['f-parallel']=(svg,viewport,s)=>{
   const weightBars=[rect('teach-contribution teach-color-0'),rect('teach-contribution teach-color-1')],weightLabels=[txt('','teach-small'),txt('','teach-small')];
   const equations=[0,1].map(()=>Array.from({length:5},()=>txt('','teach-small'))),before=txt('','teach-small'),derive=txt('','teach-small'),merge=txt('','teach-small');
   paint=(p,m,x,w)=>{
-   text(header,18,28,'DCP：分片历史，共同算一个 Query');text(hint,18,54,'同一历史 p1…p4；每个位置都保存 K 和 V');source.forEach((t,i)=>move(t,18+i*(m?82:174),88,1-.65*phase(p,0)));
+   text(header,18,36,'DCP：分片历史，共同算一个 Query');text(hint,18,54,'同一历史 p1…p4；每个位置都保存 K 和 V');source.forEach((t,i)=>move(t,18+i*(m?82:174),88,1-.65*phase(p,0)));
    text(before,18,150,d.exp[2]===3?'K=[0,0,ln3,ln3]；V=[1,3,5,7]':'K=[0,0,0,0]；V=[1,3,5,7]');
    text(derive,18,190,'score=Q×K；exp(0)=1，exp(ln3)=3');show(derive,p>=1?1:0);
    move(query,x[0]+12,294);move(copy,lerp(x[0]+12,x[1]+12,phase(p,0)),294,phase(p,0));

@@ -31,7 +31,17 @@ const output=process.env.MOTION_SCREENSHOT_DIR;
   for(const mode of [0,1,2,3,4]){await require('./choose_motion_scene.cjs')(page,Number(String(mode)));const last=Number(await range.getAttribute('max'));await seek(mode<2?3.5:last);await page.waitForTimeout(60);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    assert.equal(await film.locator('.motion-viewport').evaluate(e=>e.scrollWidth>e.clientWidth),false);
-   const clipped=await svg.locator('text').evaluateAll(es=>es.filter(e=>e.getAttribute('opacity')!=='0.000'&&e.closest('[opacity="0.000"]')===null).filter(e=>{const b=e.getBBox(),v=e.ownerSVGElement.viewBox.baseVal;return b.x<0||b.x+b.width>v.width+1;}).map(e=>e.textContent));assert.deepEqual(clipped,[],`${width}/${theme}/${mode} text outside SVG`);
+   // Check painted text against the real screen-space viewport. The SVG uses
+   // preserveAspectRatio letterboxing, so a getBBox()/viewBox comparison can
+   // report labels that are still fully visible. The SVG and its clipping
+   // camera are both used as bounds, which keeps genuine clipping failures.
+   const outside=await svg.evaluate(svg=>{
+    const rect=e=>e.getBoundingClientRect();
+    const s=rect(svg),camera=svg.closest('.motion-camera')||svg.closest('.motion-viewport'),c=camera?rect(camera):s;
+    const bounds={left:Math.max(s.left,c.left),top:Math.max(s.top,c.top),right:Math.min(s.right,c.right),bottom:Math.min(s.bottom,c.bottom)};
+    const visible=e=>{for(let a=e;a&&a!==svg;a=a.parentElement){const cs=getComputedStyle(a);if(cs.display==='none'||cs.visibility==='hidden'||Number(cs.opacity)<.02)return false;}return true;};
+    return [...svg.querySelectorAll('text')].filter(e=>e.textContent.trim()&&visible(e)).map(e=>{const r=rect(e);return {text:e.textContent.trim().slice(0,80),rect:{left:+r.left.toFixed(1),top:+r.top.toFixed(1),right:+r.right.toFixed(1),bottom:+r.bottom.toFixed(1)},bounds:{left:+bounds.left.toFixed(1),top:+bounds.top.toFixed(1),right:+bounds.right.toFixed(1),bottom:+bounds.bottom.toFixed(1)}};}).filter(o=>o.rect.left<o.bounds.left-2||o.rect.right>o.bounds.right+2||o.rect.top<o.bounds.top-2||o.rect.bottom>o.bounds.bottom+2);
+   });assert.deepEqual(outside,[],`${width}/${theme}/${mode} visible text outside screen viewport`);
    if(output&&[390,1440].includes(width)&&((theme==='light'&&[0,1,2,3].includes(mode))||(theme==='dark'&&mode===4)))await film.screenshot({path:path.join(output,`batch-${mode}-${width}-${theme}.png`)});
   }
  }}

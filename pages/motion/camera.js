@@ -28,11 +28,17 @@ class MotionCamera{
   const f=(target)=>`${(target/m.scale).toFixed(3)}px`;
   const set=(name,value)=>{if(this.camera.style.getPropertyValue(name)!==value)this.camera.style.setProperty(name,value);};
   const key=this.camera.closest('.mechanism-film')?.dataset.motion;
-  const narrow=innerWidth<=760;const denseGraph=key==='f-hardware'&&this.svg.dataset.teachingKind==='graph-submission';
+  const narrow=innerWidth<=760,veryNarrow=innerWidth<=340;const batching=key==='f-batching'&&!!this.svg.dataset.teachingKind;
+  const basics=key==='f-tokens'||key==='f-generation'||key==='f-attention'||key==='f-cache';
+  const attention=key==='f-attention';
   const compact=narrow&&(key==='f-parallel'||key==='f-communication');
-  const heading=denseGraph?13:compact?11.5:(narrow?12:15);
-  const text=denseGraph?10.8:compact?10.8:12.2;
-  const small=denseGraph?9:compact?9:10.5;
+  const tp=key==='f-parallel'&&this.svg.dataset.parallelKind==='tp';
+  const hardware=key==='f-hardware';
+  // Hardware keeps its own type scale: the 390px stage is height-limited, and the
+  // old dense-graph reduction made axis and formula labels unreadable.
+  const heading=hardware?(narrow?(veryNarrow?15:16.5):16):attention?(narrow?(veryNarrow?15.2:15.6):15.8):basics?(veryNarrow?13.6:narrow?16:15):batching?(narrow?(veryNarrow?14.5:15.5):16):tp?(narrow?(veryNarrow?13.5:14.5):16):compact?12.2:(narrow?12:15);
+  const text=hardware?(narrow?(veryNarrow?12.8:13.8):13):attention?(narrow?(veryNarrow?13.2:13.4):13.2):basics?(veryNarrow?11.2:narrow?12.8:12.2):batching?(narrow?(veryNarrow?12.8:13.8):13.5):tp?(narrow?(veryNarrow?12:12.8):14):compact?11.4:12.2;
+  const small=hardware?(narrow?(veryNarrow?11.8:12.8):12):attention?(narrow?(veryNarrow?12.4:12.6):11.8):basics?(veryNarrow?10.8:narrow?11.2:10.5):batching?(narrow?(veryNarrow?11.6:12.4):12.2):tp?(narrow?(veryNarrow?11:11.5):12.5):compact?9.6:10.5;
   // Align tall mobile drawings to the left so labels can use the stage margin
   // instead of being clipped by the centered viewBox. Desktop remains centered.
   this.svg.setAttribute('preserveAspectRatio',narrow?'xMinYMid meet':'xMidYMid meet');
