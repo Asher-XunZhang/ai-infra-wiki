@@ -24,13 +24,17 @@ function board(svg,viewport,kind,height,build){
   set(r,{width,height:34,rx:5});set(t,{x:width/2,y:22,'text-anchor':'middle'});t.textContent=label;g.append(r,t);return {g,r,t,width};
  }
  const move=(a,x,y,opacity=1,scale=1)=>{set(a.g,{transform:`translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${scale})`});Object.assign(a.g.dataset,{x:x.toFixed(3),y:y.toFixed(3)});show(a.g,opacity);};
- let narrow=viewport.clientWidth<600,last=0,dead=false,resizeFrame=0,resizeTimeout=0;
+ // Shared-canvas lessons use the wide drawing as soon as the PC stage has
+ // room for it. Sampling/streaming keep their accepted 600-unit boundary.
+ const sharedWide=()=>{const film=viewport.closest('.mechanism-film');return !!film?.classList.contains('is-shared-canvas')&&!film.classList.contains('is-generation-sampling');};
+ const narrowAt=()=>viewport.clientWidth<(sharedWide()?520:600);
+ let narrow=narrowAt(),last=0,dead=false,resizeFrame=0,resizeTimeout=0;
  const paint=build({node,txt,rect,path,set,show,text,box,wire,token,move});
- function render(p){last=p;narrow=viewport.clientWidth<600;svg.setAttribute('viewBox',`0 0 ${narrow?360:720} ${height(narrow)}`);svg.dataset.teachingKind=kind;paint(p,narrow);}
- const observer=new ResizeObserver(()=>{if(!dead){narrow=viewport.clientWidth<600;render(last);}});observer.observe(viewport);
+ function render(p){last=p;narrow=narrowAt();svg.setAttribute('viewBox',`0 0 ${narrow?360:720} ${height(narrow)}`);svg.dataset.teachingKind=kind;paint(p,narrow);}
+ const observer=new ResizeObserver(()=>{if(!dead)render(last);});observer.observe(viewport);
  // A resized-away board must not repaint a later renderer's SVG. Cancel both
  // the animation frame and the debounce timer when the player replaces it.
- const repaintOnResize=()=>{resizeFrame=0;resizeTimeout=0;if(dead)return;narrow=viewport.clientWidth<600;render(last);};
+ const repaintOnResize=()=>{resizeFrame=0;resizeTimeout=0;if(dead)return;render(last);};
  const schedule=()=>{if(dead)return;if(resizeFrame)cancelAnimationFrame(resizeFrame);if(resizeTimeout)clearTimeout(resizeTimeout);resizeFrame=requestAnimationFrame(repaintOnResize);resizeTimeout=setTimeout(repaintOnResize,50);};
  const mq=window.matchMedia('(max-width:650px)');
  window.addEventListener('resize',schedule,{passive:true});mq.addEventListener?.('change',schedule);
@@ -38,7 +42,8 @@ function board(svg,viewport,kind,height,build){
 }
 window.TeachingDrawing={board,phase,lerp,clamp};
 const visuals=window.MechanismVisuals||(window.MechanismVisuals={});
-visuals['f-deployment']=(svg,viewport,s)=>board(svg,viewport,'deployment',m=>m?440:420,H=>{
+visuals['f-deployment']=(svg,viewport,s)=>{
+ const inner=board(svg,viewport,'deployment',m=>m?440:420,H=>{
  const {txt,rect,text,box,show,token,move,set}=H;
  // Two complete roles stay side by side at every width. Source KV stays in P;
  // copies are dashed, labelled payloads that travel below the KV labels so the
@@ -116,5 +121,8 @@ visuals['f-deployment']=(svg,viewport,s)=>board(svg,viewport,'deployment',m=>m?4
   text(result,8,m?396:402,p<3?'历史 KV 与 y1 齐备后，D 才能 Decode':p<4?'D 已收到输入，y1 的 KV 尚未写完':p<5?'D 正在用同一请求的历史生成 y2':'D 选出 y2，继续自回归生成');
   if(m)result.setAttribute('font-size','14');
  };
-});
+ });
+ const panel=window.DeploymentAdoption?.mount('contrast',viewport)||null;
+ return {paint(...args){inner.paint(...args);},destroy(){panel?.destroy();inner.destroy();}};
+};
 })();

@@ -1,0 +1,106 @@
+/* Chapter 1 component lesson: a quiet dark board, one local operation per
+ * concept. The site theme still owns the page; only the mechanism stage is
+ * dark, matching the existing attention and token boards. */
+.mechanism-film[data-motion=f-components] .motion-stage{background:#071522;border-color:#243d4d}
+.mechanism-film[data-motion=f-components] .motion-camera{background:#071522}
+.mechanism-film[data-motion=f-components] .motion-camera-tools{background:#0b1d2ae8;border-color:#365363}
+.mechanism-film[data-motion=f-components] .motion-camera-tools button{background:#102a39;border-color:#3c5b6c;color:#dff8ff}
+.mechanism-film[data-motion=f-components] .motion-camera-tools output{color:#9db3c5}
+.mechanism-film[data-motion=f-components] .motion-camera-hint{background:#0b1d2adc;border-color:#365363;color:#9db3c5}
+.mechanism-film[data-motion=f-components] .parallel-strategies{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:0 0 10px}
+.mechanism-film[data-motion=f-components] .parallel-strategies button{display:flex;align-items:center;justify-content:flex-start;min-width:0;min-height:40px;padding:6px 8px;border:1px solid #c7d5df;border-radius:8px;background:var(--surface,#fff);color:var(--fg,#173c47);font:650 12px/1.35 system-ui,sans-serif;text-align:left;cursor:pointer}
+.mechanism-film[data-motion=f-components] .parallel-strategies button:hover{border-color:#4b8b9b;background:#eef8fa}
+.mechanism-film[data-motion=f-components] .parallel-strategies button[aria-pressed=true]{background:#0e5363;border-color:#0e5363;color:#fff;box-shadow:0 0 0 1px #0e5363 inset}
+.mechanism-film[data-motion=f-components] .parallel-strategies button:focus-visible{outline:3px solid #d98d36;outline-offset:2px}
+
+.mechanism-film[data-motion=f-components] .motion-camera-plane text{stroke:none}
+.cmp-band{fill:#0b1e2c}
+.cmp-circle{fill:#0a1b28;stroke:#315166;stroke-width:1.2}
+.cmp-axis{stroke:#476376;stroke-width:1}
+.cmp-dash{stroke:#557184;stroke-dasharray:4 4;stroke-width:1}
+.cmp-vector-q{stroke:#62d8e9;stroke-width:2.4}
+.cmp-vector-k{stroke:#bda9f7;stroke-width:2.4}
+.cmp-target-q{stroke:#62d8e9;stroke-width:1;stroke-dasharray:3 4;opacity:.4}
+.cmp-target-k{stroke:#bda9f7;stroke-width:1;stroke-dasharray:3 4;opacity:.4}
+.cmp-track{fill:#102a39;stroke:#29485b;stroke-width:1}
+.cmp-track-fill{fill:#f2b45c;opacity:.9}
+.cmp-wires{pointer-events:none}
+.cmp-wire{stroke:#6f8a9b;stroke-width:1.4;fill:none;opacity:.8}
+.cmp-arc-q{stroke:#62d8e9;stroke-width:1.5;opacity:.8}
+.cmp-arc-k{stroke:#bda9f7;stroke-width:1.5;opacity:.8}
+.cmp-tip-q{fill:#62d8e9}.cmp-tip-k{fill:#bda9f7}
+.cmp-panel{fill:#0b1d2a;stroke:#29485b;stroke-width:1}
+.cmp-bar-in{fill:#62d8e9;opacity:.85}
+.cmp-bar-norm{fill:#7fe0c3;opacity:.9}
+.cmp-bar-gamma{fill:#f2b45c;opacity:.92}
+.cmp-line{stroke:#7893a4;stroke-width:1.6}
+.cmp-bypass{stroke:#7fe0c3;stroke-width:1.6;stroke-dasharray:5 4}
+.cmp-plus circle{fill:#102a39;stroke:#f2b45c;stroke-width:1.4}
+.cmp-plus text{fill:#f2b45c;font-weight:700}
+.cmp-op{fill:#102b3b;stroke:#3b7a89;stroke-width:1.2}
+.cmp-op-t{fill:#dff8ff;font-size:13px;font-weight:700;text-anchor:middle}
+.cmp-mult circle{fill:#102b3b;stroke:#f2b45c;stroke-width:1.6}
+.cmp-mult text{fill:#f2b45c;font-weight:700;font-size:16px}
+.cmp-qbox{fill:#0d2230;stroke:#29485b;stroke-width:1}
+.cmp-kvbox{fill:#102b3b;stroke:#3b8494;stroke-width:1.2}
+.cmp-qrow text{fill:#dff8ff;font-size:12px}
+.cmp-kvrow text{fill:#dff8ff;font-size:12px}
+.cmp-map{stroke:#f2b45c;stroke-width:1.4;opacity:.9}
+.cmp-block-box{fill:#0d2230;stroke:#29485b;stroke-width:1}
+.cmp-block-box.is-on{fill:#10323f;stroke:#61d7e7;stroke-width:2.2}
+.cmp-block text{fill:#dff8ff;font-size:12.5px;font-weight:650}
+.cmp-block text:last-child{fill:#8fa7b9;font-size:10.5px;font-weight:400}
+.cmp-btn>rect{fill:#102b3b;stroke:#3c6377;stroke-width:1}
+.cmp-btn>text{fill:#dff8ff;font-weight:650;font-size:11.5px}
+.cmp-btn[aria-pressed=true]>rect{fill:#155e75;stroke:#61d7e7;stroke-width:1.6}
+.cmp-btn[aria-pressed=true]>text{fill:#fff}
+.cmp-btn:focus{outline:none}.cmp-btn:focus>rect{stroke:#f2b45c;stroke-width:2.4}
+.cmp-hit{cursor:pointer;outline:none}
+.cmp-hit:focus>rect,.cmp-hit:focus-visible>rect{stroke:#f2b45c;stroke-width:2.6}
+.cmp-hit:focus,.cmp-hit:focus-visible{outline:2px solid #f2b45c;outline-offset:2px}
+.cmp-back>rect{fill:#0b1d2a;stroke:#557184}
+.cmp-back>text{fill:#9db3c5;font-size:10.5px}
+.att-foot.cmp-foot{fill:#6d8496}
+@media(max-width:650px){
+ .mechanism-film[data-motion=f-components] .parallel-strategies{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .cmp-foot{display:none}
+}
+/* The components lesson is a PC-first board: at 1280px the old two-column
+ * theater shrank the canvas below its 600px wide-layout threshold. Stack the
+ * evidence rail only for this lesson so the 720-unit board is never squeezed
+ * into the 360-unit narrow layout on a normal desktop window. */
+@media(min-width:1201px) and (max-width:1360px){
+ body[data-lesson=components] .foundation-theater .motion-theater{display:flex;flex-direction:column;height:auto;gap:8px}
+ body[data-lesson=components] .foundation-theater .motion-stage{height:min(calc(60vh + 40px),560px);min-height:480px}
+ body[data-lesson=components] .foundation-theater .motion-panel{max-height:210px}
+}
+
+/* Attention V11: a compact HTML comparison above the accepted attention player.
+ * It is deliberately explanatory, not a performance or accuracy claim. */
+.attention-motive{margin:28px 0 20px;padding:20px 22px;border:1px solid var(--border,#d8e0e6);border-radius:12px;background:var(--surface,#fff)}
+.attention-motive h2{font-size:20px;line-height:1.5;margin:0 0 6px}
+.attention-motive>p{margin:0 0 14px;color:var(--muted,#536878);font-size:14px;line-height:1.8}
+.motive-card{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;align-items:start}
+.motive-inputs{display:flex;flex-wrap:wrap;gap:6px;grid-column:1/-1}
+.motive-chip{padding:5px 8px;border:1px solid var(--border,#d8e0e6);border-radius:6px;background:var(--soft,#f4f7f9);font:600 12px/1.3 ui-monospace,SFMono-Regular,monospace;color:var(--fg,#173c47)}
+.motive-chip.p1{border-color:#3a8a7e}.motive-chip.p2{border-color:#b2762a}
+.motive-controls{display:flex;gap:8px;flex-wrap:wrap;grid-column:1/-1}
+.motive-controls button{min-height:38px;padding:7px 12px;border:1px solid var(--border,#c9d6df);border-radius:7px;background:var(--surface,#fff);color:var(--fg,#173c47);font:650 13px/1.3 system-ui,sans-serif;cursor:pointer}
+.motive-controls button[aria-pressed=true]{background:#155e75;border-color:#155e75;color:#fff}
+.motive-controls button:focus-visible{outline:3px solid #d98d36;outline-offset:2px}
+.motive-title{font-size:13px;font-weight:700;color:var(--muted,#536878);margin:0 0 8px}
+.motive-weights{display:grid;gap:7px}
+.motive-weight{display:grid;grid-template-columns:34px minmax(0,1fr) 58px;gap:8px;align-items:center;font-size:12.5px}
+.motive-track{height:16px;border-radius:3px;background:var(--soft,#eef3f6);overflow:hidden}
+.motive-fill{height:100%;border-radius:3px;transition:width .28s ease}
+.motive-fill.p1{background:#3a8a7e}.motive-fill.p2{background:#c1893a}
+.motive-weight b{font-variant-numeric:tabular-nums;text-align:right;font-weight:650}
+.motive-result{margin-top:14px}
+.motive-result-row{display:grid;grid-template-columns:26px minmax(0,1fr) 76px;gap:8px;align-items:center;margin:7px 0;font-size:12.5px}
+.motive-stack{display:flex;height:20px;border-radius:3px;background:var(--soft,#eef3f6);overflow:hidden}
+.motive-seg{height:100%;transition:width .28s ease}
+.motive-seg.p1{background:#3a8a7e}.motive-seg.p2{background:#c1893a}
+.motive-value{font:650 12px/1.3 ui-monospace,SFMono-Regular,monospace;text-align:right}
+.motive-explain{grid-column:1/-1;margin:2px 0 0;padding:10px 12px;border-left:3px solid var(--accent,#256f59);background:var(--accent-soft,#e9f3ef);font-size:13.5px;line-height:1.8;color:var(--fg,#173c47)}
+.motive-boundary{grid-column:1/-1;margin:0;color:var(--muted,#536878);font-size:12px;line-height:1.7}
+@media(max-width:760px){.attention-motive{padding:16px}.attention-motive h2{font-size:18px}.motive-card{grid-template-columns:1fr}.motive-result{margin-top:0}}

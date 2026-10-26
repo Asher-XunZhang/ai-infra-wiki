@@ -6,7 +6,7 @@ const examples=[{text:'我想学习人工智能。',pieces:['我想','学习','�
 const definitions={
  tokens:{label:'换一句话',options:['我想学习人工智能。','我想学习机器学习。'],steps:['你输入的原句','分成可复用的片段','查词表，取得编号','按原顺序排列输入','按编号查出向量','编号也能还原为文字']},
  generation:{label:'下一 token 怎样选择',options:['取最高分：贪心示例','按分布选择：固定的一次示例'],steps:['输入已经准备好','处理整段输入，得到候选分数（Prefill）','选择第一个输出','反分词，客户端看到第一段','把刚选出的 token 送回模型','根据新输入获得下一组候选（Decode）','选择并返回下一段','停止生成，进入收尾']},
- attention:{label:'当前观察位置',options:['第 2 个位置','第 4 个位置'],steps:['四个位置，各有一行向量','从向量得到查询、键和值','比较查询与允许读取的键','把分数变成合计为 1 的权重','按权重混合各位置的值','MLP 继续变换这一行结果']},
+ attention:{label:'Query 位置',options:['第 2 个位置','第 4 个位置','第 3 个位置'],steps:['四个位置，各有一行向量','从向量得到查询、键和值','比较查询与允许读取的键','把分数变成合计为 1 的权重','按权重混合各位置的值','遮罩回看：被遮项不进分母']},
  cache:{label:'观察哪件事',options:['每轮重算历史 K/V','保存历史 K/V','从空池分配页面','两条请求共享前缀'],steps:['先看输入与空缓存','第一次处理输入','开始下一轮工作','继续写入或复用','请求完成后的状态']},
  batching:{label:'调度方式',options:['固定批次对照','连续批处理','长输入分块'],steps:['A、B 准备开始；C 尚未到达','第一轮：A 完成，C 到达','第二轮：谁获得空位？','第三轮：B 完成','剩余请求继续']},
  hardware:{label:'只改变一项资源',options:['原配：搬运 8 u，计算 3 u','带宽翻倍','算力翻倍'],steps:['权重和输入先在存储里','把需要的数据送给计算单元','按两行权重做乘加','得到中间结果','比较搬运与计算的理想下界']},
@@ -37,11 +37,57 @@ function chooseToken(scores,draw=null){
  return {intervals,draw,selected:selected.word};
 }
 function attention(variant){
- const inputs=[[1,0],[0,1],[1,1],[2,0]],query=variant===0?1:3,Q=inputs[query],keys=inputs,values=inputs.map(v=>v.map(x=>2*x));
+ // Variant 0 and 1 keep their original URL meaning (p2, p4); variant 2 adds p3.
+ const queryByVariant=[1,3,2],query=queryByVariant[variant];
+ const inputs=[[1,0],[0,1],[1,1],[2,0]],Q=inputs[query],keys=inputs,values=inputs.map(v=>v.map(x=>2*x));
  const scores=keys.map((k,i)=>i<=query?k.reduce((s,x,j)=>s+x*Q[j],0)/Math.sqrt(2):-Infinity);
- const weights=softmax(scores),mixed=[0,1].map(j=>values.reduce((s,v,i)=>s+weights[i]*v[j],0));
+ const exps=scores.map(s=>Number.isFinite(s)?Math.exp(s):0),denominator=exps.reduce((a,b)=>a+b,0);
+ const weights=exps.map(e=>e/denominator),contributions=values.map((v,i)=>v.map(x=>weights[i]*x));
+ const mixed=[0,1].map(j=>contributions.reduce((s,c)=>s+c[j],0));
  const hidden=[mixed[0],mixed[1],Math.max(0,mixed[0]-mixed[1])],output=[hidden[0]+hidden[2],hidden[1]+hidden[2]];
- return {inputs,query,Q,keys,values,scores,weights,mixed,hidden,output};
+ return {inputs,query,queryPosition:query+1,allowed:query+1,Q,keys,values,scores,exps,denominator,weights,contributions,mixed,hidden,output,weightSum:weights.reduce((a,b)=>a+b,0)};
+}
+// Serving comparison is intentionally independent from the older R1 snapshot
+// fields. The same pair of requests and the same complete model are placed in
+// one shared instance or two independent instances; only the placement changes.
+function servingComparison(){
+ const requests=[{id:'R1',arrival:'先到'},{id:'R2',arrival:'随后到达'}];
+ const shared={
+  id:'shared',title:'1 个实例 · 共享容量',subtitle:'一个共享队列，一个执行槽',
+  instances:1,modelCopies:1,executionSlots:1,executionCapacity:1,
+  accepted:['R1','R2'],running:['R1'],waiting:['R2'],
+  replicas:[{id:'shared',name:'共享实例',health:true,queue:['R1','R2'],executionSlot:'R1',modelCopies:1}],
+  counts:{accepted:2,executing:1,waiting:1,modelCopies:1}
+ };
+ const split={
+  id:'split',title:'2 个实例 · 各接一条',subtitle:'两条独立队列，各有一个执行槽',
+  instances:2,modelCopies:2,executionSlots:2,executionCapacity:1,
+  accepted:['R1','R2'],running:['R1','R2'],waiting:[],
+  // The main trace follows R1 into B. R2 goes to A in this two-request
+  // comparison, which explains why A is not doing R1 in the main animation.
+  replicas:[
+   {id:'A',name:'实例 A',health:true,queue:['R2'],executionSlot:'R2',modelCopies:1},
+   {id:'B',name:'实例 B',health:true,queue:['R1'],executionSlot:'R1',modelCopies:1}
+  ],
+  counts:{accepted:2,executing:2,waiting:0,modelCopies:2}
+ };
+ return {
+  key:'serving-contrast',requests,shared,split,
+  capacity:'本例每个实例每轮只放 1 条请求，R1 先到先执行。真实推理实例可以把多条请求 batch（合批）在同一轮，单个实例不等于只能串行。',
+  health:'health ✓ 只表示探活通过；它不等于实例空闲，也不等于请求已经进入执行槽。',
+  cost:'完整模型权重副本 1→2；KV Cache、激活、通信与额外调度开销另计。',
+  moment:'固定对照时刻：上方是另加入 R2 的固定对照快照；下方动画只包含 R1，追踪其全过程。'
+ };
+}
+function servingRouteState(variant=0,step=0){
+ const dual=variant===1,accepted=step>=1,routed=accepted&&(!dual||step>=2);
+ const waiting=accepted&&routed&&step<3,executing=routed&&step>=3&&step<4,returning=routed&&step>=4&&step<5,visible=step>=5;
+ return {
+  dual,accepted,routed,selected:accepted?(dual?(routed?'实例 B':null):'实例 A'):null,target:dual?'B':'A',
+  routePending:dual&&step===1,waiting,queueCount:waiting?1:0,executing,returning,visible,
+  clientWaiting:!visible,
+  stage:step<1?'arriving':step<2?'accepted':step<3?'waiting':step<4?'executing':step<5?'returning':'visible'
+ };
 }
 function schedule(variant,step){
  if(variant===2){const round=Math.min(step,3),done=round*2;return {round,chunk:2,longDone:done,longTotal:6,shortOutputs:round,active:step<3?['短请求：续写一个位置','长请求：下一块 2 个位置']:[],waiting:[],done:step>=3?['长请求输入处理完成']:[]};}
@@ -60,9 +106,14 @@ function snapshot(key,variant=0,step=0){
  const d={key,variant,step,title:(variantSteps[key]?.[variant]||def.steps)[step],last:def.steps.length-1};
  if(key==='tokens')return {...d,...examples[variant],count:examples[variant].ids.length};
  if(key==='generation'){
-  const scores=[{word:'学习',p:.6},{word:'休息',p:.3},{word:'。',p:.1}],choice=chooseToken(scores,variant===0?null:.75),first=choice.selected;
-  const nextScores=[{word:first==='学习'?'。':'一下',p:.8},{word:'其他',p:.2}],nextChoice=chooseToken(nextScores,variant===0?null:.25),second=nextChoice.selected;
-  return {...d,first,second,scores,nextScores,choice,nextChoice,selected:step>=2?first:null,visible:step>=6?first+second:step>=3?first:'',kv:step>=5?['输入1','输入2',first]:step>=1?['输入1','输入2']:[],newInput:step>=4?first:null};
+  // The published candidate probabilities are exact for these logits:
+  // [ln 6, ln 3, 0] -> [6, 3, 1] / 10 -> [.6, .3, .1]; the next round uses
+  // [ln 4, 0] -> [4, 1] / 5 -> [.8, .2]. This is an equivalent hand example,
+  // not a score from a trained model.
+  const scores=[{word:'学习',p:.6,z:Math.log(6)},{word:'休息',p:.3,z:Math.log(3)},{word:'。',p:.1,z:0}],choice=chooseToken(scores,variant===0?null:.75),first=choice.selected;
+  const nextScores=[{word:first==='学习'?'。':'一下',p:.8,z:Math.log(4)},{word:'其他',p:.2,z:0}],nextChoice=chooseToken(nextScores,variant===0?null:.25),second=nextChoice.selected;
+  const expScores=scores.map(x=>Math.exp(x.z)),nextExpScores=nextScores.map(x=>Math.exp(x.z));
+  return {...d,first,second,scores,nextScores,choice,nextChoice,selected:step>=2?first:null,visible:step>=6?first+second:step>=3?first:'',kv:step>=5?['输入1','输入2',first]:step>=1?['输入1','输入2']:[],newInput:step>=4?first:null,logits:scores.map(x=>x.z),expScores,expSum:expScores.reduce((a,b)=>a+b,0),nextLogits:nextScores.map(x=>x.z),nextExpScores,nextExpSum:nextExpScores.reduce((a,b)=>a+b,0)};
  }
  if(key==='attention')return {...d,...attention(variant)};
  if(key==='cache'){
@@ -77,11 +128,100 @@ function snapshot(key,variant=0,step=0){
  }
  if(key==='communication')return {...d,input:[[1,2],[10,20]],result:variant===0?[11,22]:[1,2,10,20],metadata:variant===2&&step>=1,arrived:step>=3,usable:step>=4};
  if(key==='deployment')return {...d,kv:step>=1,first:step>=2,transit:variant===1&&step===3,received:step>=4,decode:step>=4,weights:['完整模型','完整模型']};
- if(key==='speculation'){const accepted=[2,0,4][variant],draft=['我','想','喝','茶'],replacement=variant===2?'。':variant===1?'你':'吃';return {...d,draft,accepted,replacement,output:step>=4?[...draft.slice(0,accepted),replacement]:[],validKV:step>=4?['根',...draft.slice(0,accepted)]:[]};}
- if(key==='serving')return {...d,location:step,clientDone:variant===2?step>=3:step>=5,cancelReceived:variant===2&&step>=4,resourceHeld:step>=3&&step<5,visible:variant!==2&&step>=5,selected:variant===1?'实例 B':'实例 A'};
+ if(key==='speculation'){
+  const accepted=[2,0,4][variant],draft=['我','想','喝','茶'],replacement=variant===2?'。':variant===1?'你':'吃';
+  // One fixture drives both the foundation visual and the older step lab.
+  // The submitted sequence is the reference for ordinary per-token calls;
+  // the verification is one call over five input positions, not five calls.
+  const submitted=[...draft.slice(0,accepted),replacement],verificationPositions=5;
+  return {...d,draft,accepted,replacement,submitted,
+   output:step>=4?submitted:[],validKV:step>=4?['根',...draft.slice(0,accepted)]:[],
+   draftCalls:4,verificationCalls:1,verificationPositions,
+   targetCallsSequential:submitted.length,discardedCount:draft.length-accepted,
+   bonusToken:submitted[submitted.length-1],bonusKVComputed:false};
+ }
+ if(key==='serving')return {...d,location:step,clientDone:variant===2?step>=3:step>=5,cancelReceived:variant===2&&step>=4,resourceHeld:step>=3&&step<5,visible:variant!==2&&step>=5,selected:variant===1?'实例 B':'实例 A',route:servingRouteState(variant,step),comparison:servingComparison()};
  if(key==='metrics'){const samples=Array.from({length:20},(_,i)=>(i+1)*10),success=variant===3?samples.slice(0,18):samples;return {...d,arrivals:variant===1?[100,180,180]:[100,140,180],ttft:100,tpot:40,samples,success,p95:success[Math.ceil(.95*success.length)-1],failed:20-success.length,window:10,completions:[2,4,7,9],outputCounts:[2,3,1,4],completed:Math.min(step,4),outputTotal:[0,2,5,6,10][step],qps:.4,outputTPS:1};}
  return d;
 }
-const api={definitions,snapshot,attention,schedule,chooseToken,examples,tokenSource};
+
+// Pure comparison fixtures for the cache lesson. They are deliberately separate
+// from the older snapshot variants so the existing scene ids keep their meaning.
+function cacheHistory(){
+ const calls=[4,5,6], saved=[4,5,6], readCounts=[0,4,5];
+ return {calls, saved, readCounts, computedNoCache:15, computedCache:6, readTotal:9,
+  note:'15/6 是 K/V 投影位置数，不是总工作量或速度；读取历史 4+5=9 仍要访问 K/V。'};
+}
+function cachePages(){
+ const pageSize=2, pageCount=8;
+ const occupiedPages=[0,2,3,5,6,7], freePages=[1,4];
+ const pages=Array.from({length:pageCount},(_,page)=>({page,slots:[null,null]}));
+ // New teaching pool (not the empty-pool page 7/2 animation): six full pages
+ // leave two separate two-slot holes, so the same 3-position demand fits only
+ // when it may use slots from both holes.
+ for(const page of occupiedPages) pages[page].slots=['已有占用','已有占用'];
+ const before=pages.map(p=>p.slots.slice());
+ const mapping=[
+  {position:'p1',page:4,slot:0},
+  {position:'p2',page:4,slot:1},
+  {position:'p3',page:1,slot:0}
+ ];
+ for(const m of mapping) pages[m.page].slots[m.slot]=m.position;
+ const freeRuns=freePages.map(page=>({page,slots:[0,1],length:2}));
+ const after=pages.map(p=>p.slots.slice());
+ const count=rows=>rows.reduce((n,slots)=>n+slots.filter(Boolean).length,0);
+ const beforeOccupied=count(before), afterOccupied=count(after);
+ const usedPages=[...new Set(mapping.map(m=>m.page))];
+ // Two logical pages, two block-table entries. The three per-position rows are
+ // a separate address derivation, not three page-table entries.
+ const pageTable=[
+  {entry:1,logicPage:0,positions:['p1','p2'],page:4,offset:0},
+  {entry:2,logicPage:1,positions:['p3'],page:1,offset:0}
+ ];
+ const positionRows=mapping.map((m,i)=>({position:m.position,logicPage:Math.floor(i/pageSize),page:m.page,slot:m.slot,offset:m.slot}));
+ const tailPage=pageTable[pageTable.length-1].page;
+ const tailFreeSlots=after[tailPage].map((value,slot)=>value?null:slot).filter(slot=>slot!==null);
+ const totalFree=pageSize*pageCount-beforeOccupied, maxContiguous=Math.max(...freeRuns.map(run=>run.length));
+ const beforeAllocatedPages=occupiedPages.length, allocatedPages=pageCount;
+ const beforeCapacity=beforeAllocatedPages*pageSize, allocatedCapacity=allocatedPages*pageSize;
+ const validPositions=afterOccupied, allocatablePages=freePages.length, tailRemainder=tailFreeSlots.length;
+ const occupiedUnchanged=before.every((slots,page)=>slots.every((value,slot)=>value===null||after[page][slot]===value));
+ return {pageSize,pageCount,occupiedPages,freePages,pages,before,after,mapping,pageTable,positionRows,
+  freeRuns,totalFree,maxContiguous,usedPages,
+  continuous:{request:3,fits:false,maxRun:maxContiguous,metadataEntries:1,
+   reason:'最大连续空槽 2 < 3；起始只有 6 个旧页的 12 个有效位置，页 1、4 是 2 个可分配页。'},
+  paged:{fits:true,usedPages,pageTableEntries:pageTable.length,metadataEntries:pageTable.length,
+   positionRows:positionRows.length,tailFree:{page:tailPage,slots:tailFreeSlots},tailSlots:tailRemainder,tailRemainder,
+   beforeOccupied,afterOccupied,validPositions,beforeAllocatedPages,allocatedPages,
+   beforeCapacity,allocatedCapacity,allocatablePages:0,unusedCapacity:tailRemainder},
+  occupancyOnly:{beforeOccupied,beforeFree:totalFree,beforeAllocatedPages,beforeCapacity,
+   allocatablePages,afterOccupied,afterAllocatedPages:allocatedPages,
+   afterCapacity:allocatedCapacity,afterAllocatablePages:0,tailRemainder},
+  occupiedUnchanged,
+  note:'新教学池例：同一个 8 页池先有 6 个已分配旧页、12 个有效位置，页 1、页 4 是 2 个可分配页。连续预留需要 3 个相邻槽，但最大只有 2；分页把逻辑页 0（p1、p2）映射到物理页 4，逻辑页 1（p3）映射到物理页 1，是 2 条页表映射；另列 3 行逐 token 位置演算。分页后池内 8 页都有归属：6 个旧页保持不变、仍归已有请求，页 4、页 1 这 2 个原可分配页归新请求。新请求 3 个位置沿用页 4 的两槽和页 1 的一槽；有效位置 15、已分配容量 16、可分配页 0、末页余量 1。页 1 的 1 个空槽属于新请求的末页，不是池里可分配的空槽；原有 6 页的所有者没有被改写。'};
+}
+function cachePrefix(){
+ const prefix=['p1','p2','p3'], r1Suffix=['a1','a2'], r2Suffix=['b1','b2'];
+ const suffixCopies=r1Suffix.length+r2Suffix.length;
+ const independentPrefix=prefix.length*2, sharedPrefix=prefix.length;
+ const compatibility=[
+  {key:'tokens',label:'token 前缀 p1 p2 p3',ok:true},
+  {key:'model',label:'模型与权重',ok:true},
+  {key:'config',label:'影响计算的配置/状态',ok:true}
+ ];
+ return {prefix,r1Suffix,r2Suffix,
+  independent:{prefixCopies:independentPrefix,suffixCopies,total:independentPrefix+suffixCopies,refs:0,
+   rows:[prefix.slice(),prefix.slice()],suffixRows:[r1Suffix.slice(),r2Suffix.slice()]},
+  shared:{prefixCopies:sharedPrefix,suffixCopies,total:sharedPrefix+suffixCopies,refs:2,
+   rows:[prefix.slice()],suffixRows:[r1Suffix.slice(),r2Suffix.slice()]},
+  compatible:{tokens:true,model:true,config:true},compatibility,mismatchNoReuse:true,
+  refTimeline:[{phase:'R1 持有',refs:1},{phase:'R2 接入',refs:2},{phase:'R1 结束',refs:1},{phase:'R2 结束',refs:0}],
+  retainedAtZero:true,evictionSeparate:true,
+  savings:{prefixPositions:independentPrefix-sharedPrefix,
+   totalPositions:(independentPrefix+suffixCopies)-(sharedPrefix+suffixCopies)},
+  note:'共同前缀 2×3=6 → 1×3=3，省 3 个前缀位置；各自后缀 a1/a2 与 b1/b2 仍分开保存，不做合并。引用 0 只表示没有活跃请求，缓存仍可保留；驱逐是另一个条件。'};
+}
+
+const api={definitions,snapshot,attention,schedule,chooseToken,examples,tokenSource,cacheHistory,cachePages,cachePrefix,servingComparison,servingRouteState};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.FoundationModel=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

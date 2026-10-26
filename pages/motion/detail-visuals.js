@@ -175,7 +175,7 @@ V['f-parallel']=(svg,viewport,s)=>board(svg,viewport,'pipeline-grid',()=>860,H=>
   transfers.forEach((line,i)=>wire(line,`M${start+i*cw+38} 202 L${start+(i+1)*cw+38} 230`));
   text(crossing,18,396,svg.dataset.placement==='cross-host'?'激活交接：跨进程 · GPU 间 · 跨主机':'激活交接：跨进程 · GPU 间 · 同机');if(m)crossing.setAttribute('font-size','13');
   jobs.forEach((j,i)=>{const progress=clamp(phase(p,i+1)/.3),x0=start+i*cw+8,x1=start+(i+1)*cw+8;move(j,lerp(x0,x1,progress),lerp(136,281,progress),p>=i?1:0);});
-  const done=Math.min(s.data.n,Math.max(0,Math.floor(p)-1));const passed=done?Array.from({length:done},(_,i)=>'MB'+(i+1)).join('、'):'';text(completed,18,440,s.data.n===1?(done?'MB1 已依次通过 Stage 0 和 Stage 1':'尚无微批次通过两个 stage'):(done>=s.data.n?'MB1、MB2 均通过 Stage 0→1':done?`${passed} 已通过两段；MB${done+1} 尚未`:'尚无微批次通过两个 stage'));if(m)completed.setAttribute('font-size','16');text(reason,18,478,p<1?'Stage 1 等待 Stage 0 产生激活。':p<2?'激活抵达 Stage 1 后，它才能开始计算。':p<3?'完成的是微批次，不是 stage。':'时间格保留各 stage 的计算与空闲记录。');if(m)reason.setAttribute('font-size','13');paths.forEach((h,i)=>{text(h,18,500+i*36,i===1&&s.data.n===1?'本条件只送入 MB1 = {R1,R2}':undefined);if(m)h.setAttribute('font-size','13');});
+  const done=Math.min(s.data.n,Math.max(0,Math.floor(p)-1));const passed=done?Array.from({length:done},(_,i)=>'MB'+(i+1)).join('、'):'';text(completed,18,440,s.data.n===1?(done?'MB1 已依次完成 Stage 0 和 Stage 1':'尚无微批次完成两个 stage'):(done>=s.data.n?'MB1、MB2 均完成 Stage 0→1':done?`${passed} 已完成两段；MB${done+1} 尚未`:'尚无微批次完成两个 stage'));if(m)completed.setAttribute('font-size','16');text(reason,18,478,p<1?'Stage 1 等待 Stage 0 产生激活。':p<2?'激活抵达 Stage 1 后，它才能开始计算。':p<3?'完成的是微批次，不是 stage。':'时间格保留各 stage 的计算与空闲记录。');if(m)reason.setAttribute('font-size','13');paths.forEach((h,i)=>{text(h,18,500+i*36,i===1&&s.data.n===1?'本条件只送入 MB1 = {R1,R2}':undefined);if(m)h.setAttribute('font-size','13');});
  };
 });
 function spec(svg,viewport,s){const engine=s.kind==='engine-speculation';return board(svg,viewport,'verification',()=>engine?820:650,H=>{
@@ -203,8 +203,11 @@ function spec(svg,viewport,s){const engine=s.kind==='engine-speculation';return 
   show(state,engine?1:0);text(state,18,780,p>=5?'有效历史 ≠ 刚刚发出的输出序列':'验证临时状态不等于已提交历史');
  };
 });}
-function foundationSpeculation(svg,viewport,s){return board(svg,viewport,'speculative-prefix',m=>m?760:700,H=>{
- const {txt,rect,path,text,box,show,wire,token,move}=H,d=s.data;
+function foundationSpeculation(svg,viewport,s){return board(svg,viewport,'speculative-prefix',m=>m?1220:1060,H=>{
+ const {txt,rect,text,box,show,token,move,set}=H,d=s.data;
+ // One word for the extra token in every branch: accepted-4 adds a drafted
+ // bonus token; a shorter accepted prefix commits a replacement instead.
+ const bonusLabel=d.accepted===4?'补出':'替代';
  const context=txt('根 token → 本轮草稿','teach-small'),predictionRule=txt('预测只依赖该候选之前的前缀','teach-small'),heads=['① 草稿候选 · 尚未确认','② 目标模型 · 一次验证','③ 正式输出'].map(t=>txt(t,'teach-heading'));
  const root=txt('根','teach-small'),rootToken=token('root-token','t0',48,'teach-token teach-color-4');
  const draft=d.draft.map((v,i)=>token('candidate-'+i,v,48,'teach-token teach-color-'+i));
@@ -213,9 +216,24 @@ function foundationSpeculation(svg,viewport,s){return board(svg,viewport,'specul
  const output=d.output.map((v,i)=>token('committed-output-'+i,v,48,'teach-token teach-color-'+(i<d.accepted?i:4)));
  const validTitle=txt('有效历史：根 + 接受前缀','teach-small'),validHistory=d.validKV.map((v,i)=>token('valid-history-'+i,v,48,'teach-token teach-color-'+(i===0?4:i)));
  const accepted=rect('teach-read'),rejected=rect('teach-focus'),focus=rect('teach-map'),bonus=txt('补出','teach-small');focus.style.fill='none';
- const prefix=txt('','teach-small'),comparison=txt('','teach-small'),cause=txt('','teach-small');
+ const prefix=txt('','teach-small'),prefixMore=txt('','teach-small'),comparison=txt('','teach-small'),verdict=txt('','teach-small'),cause=txt('','teach-small');
  const reason=txt('','teach-heading'),legend=txt('候选颜色跟随身份；目标预测使用统一颜色。','teach-small'),legend2=txt('','teach-small');
- return(p,m)=>{const start=m?78:76,gap=m?56:128,at=i=>start+i*gap;
+ // The call ledger is a second, visible accounting of the same submitted
+ // sequence. One verification over five positions is one call, not five
+ // single-token calls and not a speed-up claim. The ledger is shown while the
+ // verification is still in progress, so its heading says it is the
+ // after-completion comparison rather than a completed action.
+ const callPanel=rect('teach-panel is-reference'),callKicker=txt('','teach-heading'),callTitle=txt('','teach-small');
+ const callOrdinaryLabel=txt('','teach-small'),callSpecLabel=txt('','teach-small');
+ const callBoxes=Array.from({length:9},()=>rect('spec-call-card'));
+ const callLabels=Array.from({length:9},()=>txt('','teach-small'));
+ const callValues=Array.from({length:9},()=>txt('','teach-small'));
+ const verifyBox=rect('spec-verify'),verifyLabel=txt('','teach-small');
+ const finalLine=txt('','teach-small'),kvLine=txt('','teach-small'),kvNote1=txt('','teach-small'),kvNote2=txt('','teach-small'),cost1=txt('','teach-small'),cost2=txt('','teach-small');
+ const callNodes=[callPanel,callKicker,callTitle,callOrdinaryLabel,callSpecLabel,verifyBox,verifyLabel,finalLine,kvLine,kvNote1,kvNote2,cost1,cost2,...callBoxes,...callLabels,...callValues];
+ const callLayer=document.createElementNS('http://www.w3.org/2000/svg','g');
+ callNodes.forEach(n=>callLayer.append(n));svg.append(callLayer);
+ return(p,m)=>{const W=m?360:720,start=m?78:76,gap=m?56:128,at=i=>start+i*gap;
   text(context,18,28);text(root,18,92);move(rootToken,18,102,1);heads.forEach((h,i)=>text(h,18,[70,206,532][i]));
   draft.forEach((t,i)=>{const u=phase(p,i/4,(i+1)/4);move(t,at(i),lerp(92,104,u),u);t.g.classList.toggle('teach-empty',p>=3&&i>=d.accepted);});
   text(predictionRule,18,232);show(predictionRule,phase(p,1));predicted.forEach((t,i)=>{const commit=phase(p,3+i*.12,4),base=phase(p,1)*(i===4&&d.accepted<4?0:p>=3&&i>d.accepted?.3:1);move(t,at(i),250,p>=3&&i<d.accepted?base*(1-Math.min(1,commit*2)):base);});
@@ -225,27 +243,77 @@ function foundationSpeculation(svg,viewport,s){return board(svg,viewport,'specul
   box(rejected,at(Math.min(d.accepted,3))-4,99,56,42);rejected.style.fill='none';show(rejected,d.accepted<4&&checked>d.accepted?1:0);
   const comparing=Math.min(d.accepted,Math.floor(phase(p,2)*4)),validPrefix=d.draft.slice(0,comparing);
   box(focus,at(comparing)-4,246,56,42);show(focus,p>=2?1:0);
-  text(prefix,18,360,'输入前缀：已有文本'+(validPrefix.length?' + '+validPrefix.join(' / '):''));show(prefix,p>=2?1:0);
-  text(comparison,18,390,comparing===4?`目标预测“${d.predictions[4]}” → 多得到一个 token`:`预测“${d.predictions[comparing]}” ↔ 候选“${d.draft[comparing]}”：${d.predictions[comparing]===d.draft[comparing]?'相同，可接受':'不同，停止接受'}`);show(comparison,p>=2?1:0);
-  text(cause,18,420,p>=3&&d.accepted<4?'前缀已改变，后面的匹配不再有效。':'每个位置只使用它之前的前缀进行预测。');show(cause,p>=2?1:0);
-  text(bonus,at(d.accepted),466,'补出“'+d.replacement+'”');show(bonus,p>=3?1:0);
-  // Committed tokens enter from the clear lower channel: the middle band holds
-  // the prefix/check explanations, so a descent from the prediction row would
-  // cross real text. Starting at 540 stays below the ③ label (baseline 532) and
-  // the 16-unit drop keeps identity without cutting through any static text.
-  output.forEach((t,i)=>{const u=phase(p,3+i*.12,4);move(t,at(i),lerp(540,556,u),p>3?1:0);});
-  text(validTitle,18,620);show(validTitle,p>=3);validHistory.forEach((t,i)=>move(t,m?18+i*52:110+i*56,636,p>=3?1:0));
-  text(reason,18,490,p>=3?(d.accepted===4?'全部接受，再补出一个 token。':'分歧处停下，其后候选都不接受。'):'');
+  // Prefix and comparison are split on the narrow board; the full sentence
+  // otherwise exceeds the 360-unit canvas once the camera restores type size.
+  text(prefix,18,360,'输入前缀：已有文本'+(m||!validPrefix.length?'':' + '+validPrefix.join(' / ')));
+  if(m){text(prefixMore,18,382,validPrefix.length?'+ '+validPrefix.join(' / '):'');show(prefixMore,validPrefix.length&&p>=2?1:0);}else{text(prefixMore,18,382,'');show(prefixMore,0);}
+  show(prefix,p>=2?1:0);
   if(m){
-   text(legend,18,690,p>=4?`输出 ${d.output.length} = 接受 ${d.accepted} + 补出 1`:'候选颜色跟随身份；目标预测使用统一颜色。');
-   text(legend2,18,712,p>=4?'有效历史只含根与接受前缀。':'');
-   show(legend2,p>=4?1:0);
-   reason.setAttribute('font-size','16');legend.setAttribute('font-size','12');legend2.setAttribute('font-size','12');
+   text(comparison,18,410,comparing===4?`目标预测“${d.predictions[4]}” → 多 1 个 token`:`预测“${d.predictions[comparing]}” ↔ 候选“${d.draft[comparing]}”`);
+   text(verdict,18,432,comparing===4?'接受并补出':d.predictions[comparing]===d.draft[comparing]?'相同，可接受':'不同，停止接受');
+   show(verdict,p>=2?1:0);
   }else{
-   text(legend,18,690,p>=4?`输出数量 = ${d.accepted} 个接受 + 1 个补出 = ${d.output.length} 个；有效历史只含根与接受前缀。`:'候选颜色跟随身份；目标预测使用统一颜色。');
-   text(legend2,18,700,'');show(legend2,0);
-   reason.removeAttribute('font-size');legend.removeAttribute('font-size');legend2.removeAttribute('font-size');
+   text(comparison,18,390,comparing===4?`目标预测“${d.predictions[4]}” → 多 1 个 token`:`预测“${d.predictions[comparing]}” ↔ 候选“${d.draft[comparing]}”：${d.predictions[comparing]===d.draft[comparing]?'相同，可接受':'不同，停止接受'}`);
+   text(verdict,18,432,'');show(verdict,0);
   }
+  show(comparison,p>=2?1:0);
+  text(cause,18,m?456:420,p>=3&&d.accepted<4?'前缀已改变，后面的匹配不再有效。':'每个位置只使用它之前的前缀进行预测。');show(cause,p>=2?1:0);
+  text(reason,18,490,p>=3?(d.accepted===4?'全部接受，再补出 1 个。':'分歧后，后续不再接受。'):'');
+  // Committed tokens enter from the clear lower channel; the bonus label sits
+  // under the token it names, so it can never drift past the accepted4 column.
+  output.forEach((t,i)=>{const u=phase(p,3+i*.12,4);move(t,at(i),lerp(540,548,u),p>3?1:0);});
+  text(bonus,at(d.accepted),598,bonusLabel);show(bonus,p>3?1:0);
+  text(validTitle,18,628);show(validTitle,p>=4);
+  validHistory.forEach((t,i)=>move(t,m?18+i*52:110+i*56,644,p>=4?1:0));
+  text(legend,18,696,p>=4?(m?`输出 ${d.output.length} = 接受 ${d.accepted} + ${bonusLabel} 1`:`输出数量 = ${d.accepted} 个接受 + 1 个${bonusLabel} = ${d.output.length} 个；`):(m?'候选按身份配色；目标预测同色。':'候选颜色跟随身份；目标预测使用统一颜色。'));
+  text(legend2,18,718,p>=4?'有效历史只含根 + 接受前缀。':'');
+  show(legend2,p>=4?1:0);
+  // Ledger geometry: labels get their own line above the card rows. Every long
+  // sentence is split into short lines instead of shrinking the type, and the
+  // two-column desktop layout keeps the ledger from doubling the board height.
+  const ledgerY=742,ledgerH=m?460:308,ledgerX=12,ledgerW=W-24;
+  box(callPanel,ledgerX,ledgerY,ledgerW,ledgerH);
+  text(callKicker,ledgerX+14,ledgerY+32,'本轮完成后的对照');
+  text(callTitle,ledgerX+14,ledgerY+(m?54:56),m?'调用账单 · 不是已完成动作':'调用账单 · 不是当前已完成的动作');
+  const leftX=ledgerX+14,rightX=m?leftX:ledgerX+354;
+  text(callOrdinaryLabel,leftX,ledgerY+(m?80:92),m?`普通目标 ${d.targetCallsSequential} 次 · 逐 token 调用`:`普通目标 ${d.targetCallsSequential} 次 · 每个输出调 1 次`);
+  const ordinaryBoxW=m?54:58,ordinaryGap=m?5:6,ordinaryBoxY=ledgerY+(m?90:102);
+  const cardH=m?68:62,labelDy=m?18:16,valueDy=m?58:51;
+  for(let i=0;i<5;i++){
+   const x=leftX+i*(ordinaryBoxW+ordinaryGap),used=i<d.targetCallsSequential;
+   box(callBoxes[i],x,ordinaryBoxY,used?ordinaryBoxW:0,cardH);
+   text(callLabels[i],x+ordinaryBoxW/2,ordinaryBoxY+labelDy,'调'+(i+1));
+   text(callValues[i],x+ordinaryBoxW/2,ordinaryBoxY+valueDy,used?d.output[i]:'');
+   set(callLabels[i],{'text-anchor':'middle'});set(callValues[i],{'text-anchor':'middle'});
+   show(callBoxes[i],used?1:0);show(callLabels[i],used?1:0);show(callValues[i],used?1:0);
+  }
+  const specY=ordinaryBoxY+cardH+18;
+  text(callSpecLabel,leftX,specY,`采用：草稿 ${d.draftCalls} 次 + 验证 ${d.verificationCalls} 次`);
+  const draftBoxW=m?60:64,draftGap=m?5:6,draftBoxY=specY+10;
+  for(let i=0;i<4;i++){
+   const x=leftX+i*(draftBoxW+draftGap);
+   box(callBoxes[5+i],x,draftBoxY,draftBoxW,cardH);
+   text(callLabels[5+i],x+draftBoxW/2,draftBoxY+labelDy,'草'+(i+1));
+   text(callValues[5+i],x+draftBoxW/2,draftBoxY+valueDy,d.draft[i]);
+   set(callLabels[5+i],{'text-anchor':'middle'});set(callValues[5+i],{'text-anchor':'middle'});
+  }
+  const verifyX=leftX,verifyY=draftBoxY+cardH+4,verifyW=m?308:320;
+  box(verifyBox,verifyX,verifyY,verifyW,38);
+  text(verifyLabel,verifyX+verifyW/2,verifyY+24,`1 次验证 · 覆盖 ${d.verificationPositions} 个输入位置`);
+  set(verifyLabel,{'text-anchor':'middle'});
+  const finalY=m?verifyY+60:ledgerY+94,kvY=finalY+(m?24:30),note1Y=kvY+(m?24:28),note2Y=note1Y+24,cost1Y=note2Y+(m?28:32),cost2Y=cost1Y+26;
+  text(finalLine,rightX,finalY,`完成后提交：${d.output.join(' ')}`);
+  text(kvLine,rightX,kvY,`有效 KV：${d.validKV.join(' ')}`);
+  text(kvNote1,rightX,note1Y,`${bonusLabel}“${d.output.at(-1)}”尚未输入，`);
+  text(kvNote2,rightX,note2Y,'未计入有效 KV。');
+  if(d.accepted===0){
+   text(cost1,rightX,cost1Y,'目标调用没有减少（各 1 次）。');
+   text(cost2,rightX,cost2Y,'还多 4 次草稿；成本不等。');
+  }else{
+   text(cost1,rightX,cost1Y,`1 次验证覆盖 ${d.verificationPositions} 个位置；`);
+   text(cost2,rightX,cost2Y,'不是 5 次调用；成本不等。');
+  }
+  show(callLayer,p>=2?1:0);
   svg.dataset.comparedPrefix=validPrefix.join('');
  };
 });}
@@ -281,39 +349,66 @@ V['request-runtime']=(svg,viewport,s)=>board(svg,viewport,'ownership',()=>750,H=
  };
 });
 
-function servingRoute(svg,viewport,s){return board(svg,viewport,'serving-route',m=>m?540:440,H=>{
+function servingRoute(svg,viewport,s){const inner=board(svg,viewport,'serving-route',m=>m?540:440,H=>{
  const {txt,rect,path,text,box,token,move,show,wire}=H,d=s.data,variant=d.variant||0;
  const client=rect(),panels=[rect(),rect()],titles=[txt('实例 A · 完整模型','teach-heading'),txt('实例 B · 完整模型','teach-heading')];
  const health=[txt('health ✓','teach-small'),txt('health ✓','teach-small')],queue=[txt('queue: 0','teach-small'),txt('queue: 0','teach-small')];
- const panelState=[txt('','teach-small'),txt('','teach-small')],routeLabel=txt('','teach-small'),idleLabel=txt('A 未收到 R1','teach-small'),summary=txt('健康 / 队列 / 执行资源分列','teach-small');
- const r1=token('route-r1','R1',56,'teach-token teach-color-0'),result=token('route-result','结果',56,'teach-token teach-color-2');
+ const panelState=[txt('','teach-small'),txt('','teach-small')],routeLabel=txt('','teach-small'),idleLabel=txt('A 未收到 R1','teach-small'),summary=txt('health ✓ 只说明在线；本例每实例 1 个执行槽','teach-small');
+ const r1=token('route-r1','R1',56,'teach-token teach-color-0');
  const arrow=path(),back=path(),note=txt('','teach-small'),note2=txt('','teach-small'),state=txt('','teach-heading'),clientState=txt('','teach-small'),clientTitle=txt('客户端','teach-heading');
  const track=rect('teach-track'),bar=rect('teach-compute');
  return(p,m)=>{const W=m?360:720,clientW=m?W-40:196,x=[m?20:238,m?20:470],y=[m?150:70,m?300:70],pw=m?W-40:214,ph=m?126:180;
   box(client,20,58,clientW,84);text(clientTitle,32,84);text(clientState,32,112,p>=5?'已看到结果':p>=1?'等待 R1':'准备发送 R1');
-  for(let i=0;i<(variant?2:1);i++){box(panels[i],x[i],y[i],pw,ph);text(titles[i],x[i]+10,y[i]+24);text(health[i],x[i]+10,y[i]+52);text(queue[i],x[i]+10,y[i]+76);text(panelState[i],x[i]+10,y[i]+108,variant===0?(p>=3?'R1 执行中':'等待执行资源'):i===0?'空闲 · 未接到 R1':p>=3?'R1 执行中':'等待 R1');}
+  // Queue count follows the same teaching state as the status line. A request
+  // waits from acceptance (or, for routing, from selection) until it gets the
+  // execution slot; then it is no longer a waiting item.
+  const route=d.route||{},waiting=variant?(p>=2&&p<3):(p>=1&&p<3);
+  for(let i=0;i<(variant?2:1);i++){
+   box(panels[i],x[i],y[i],pw,ph);text(titles[i],x[i]+10,y[i]+24);text(health[i],x[i]+10,y[i]+52);text(queue[i],x[i]+10,y[i]+76);
+   let queueText='queue: 0',stateText='',queueCount=0;
+   if(variant&&i===0){stateText='未接到 R1';}
+   else if(variant&&i===1&&p<2){stateText=p<1?'尚未接收':'等待服务层选择';}
+   else if(p<1){stateText='尚未接收';}
+   else if(waiting&&(!variant||p>=2)){queueText='queue: 1 · R1 等待';queueCount=1;stateText=variant?'已选中 · 等待执行槽':p<2?'已接收 · 等待执行':'排队等待执行槽';}
+   else if(p<3){stateText='已接收 · 等待执行';queueCount=1;queueText='queue: 1 · R1 等待';}
+   else if(p<4){stateText='R1 执行中 · 占用执行槽';}
+   else if(p<5){stateText='R1 已完成 · 结果回程';}
+   else{stateText='R1 已完成 · 结果已送达';}
+   text(queue[i],x[i]+10,y[i]+76,queueText);text(panelState[i],x[i]+10,y[i]+108,stateText);
+   queue[i].dataset.queueCount=String(queueCount);panelState[i].dataset.state=stateText;
+  }
   text(summary,20,m?440:266);
   if(!variant){[titles[1],health[1],queue[1],panelState[1]].forEach(e=>show(e,0));}
   const ex=variant?x[1]+pw/2:x[0]+pw/2,ey=variant?y[1]+ph/2:y[0]+ph/2;
-  move(r1,20,118,p>=1?1:0);
-  const forward=m?(variant?`M${clientW+20} 100 H${W-12} V${y[1]-6} H${ex}`:`M${clientW/2+20} 142 V${y[0]-6}`):(variant?`M${clientW+20} 100 V36 H${ex} V${y[1]-6}`:`M${clientW+20} 100 H${ex}`);wire(arrow,forward,p>=1?1:0);
-  text(routeLabel,variant?x[1]+10:238,p>=1?(variant?40:56):56,variant?'只路由到 B':'进入实例');show(routeLabel,p>=1);
+  // R1 sits at the client edge after admission, then enters the selected
+  // instance. In the two-instance trace it must wait for routing first.
+  const targetX=variant?x[1]+30:x[0]+30,targetY=variant?y[1]+64:y[0]+64;
+  const travel=phase(p,variant?2:1,variant?2.6:1.8),startX=Math.min(clientW+20,W-62);
+  move(r1,lerp(startX,targetX,travel),lerp(100,targetY,travel),p>=1&&p<4?1:0);
+  const forward=variant?(p<2?(m?`M${startX} 100 H${W-12} V44`:`M${startX} 100 V36 H300`):(m?`M${startX} 100 H${W-12} V${y[1]-6} H${ex}`:`M${startX} 100 V36 H${ex} V${y[1]-6}`)):(m?`M${clientW/2+20} 142 V${y[0]-6}`:`M${startX} 100 H${ex}`);wire(arrow,forward,p>=1?1:0);
+  text(routeLabel,variant?(p<2?(m?150:300):x[1]+10):238,p>=1?(variant?40:56):56,variant?(p<2?'等待服务层选择':'只路由到 B'):'进入实例');show(routeLabel,p>=1);
   show(idleLabel,0);
-  box(track,ex-40,ey+48,80,8);box(bar,ex-40,ey+48,80*Math.min(1,Math.max(0,(p-2)/1)),8);show(bar,p>=3?1:0);
-  move(result,ex,ey+ph+8,p>=4?1:0);
+  const active=variant?1:0,slotY=y[active]+88;
+  box(track,x[active]+10,slotY,pw-20,7);box(bar,x[active]+10,slotY,pw-20,7);show(bar,p>=3?1:0);
   const backward=m?(variant?`M${ex} ${y[1]-28} H${W-12} V100 H${clientW+20}`:`M${ex} ${y[0]-28} V142 H${clientW/2+20}`):(variant?`M${ex} ${ey-28} V28 H${clientW+20} V100`:`M${ex} ${ey-28} V100 H${clientW+20}`);wire(back,backward,p>=4?1:0);
+  const notes=p>=5?(variant?['结果已从 B 返回客户端；','A 的健康状态不等于 R1 被 A 执行。']:['结果已返回客户端；','本图不虚构网络时延。']):p>=4?(variant?['结果正在从 B 回程；','A 未执行 R1；客户端仍在等待。']:['结果正在回程；','客户端仍在等待，执行完成不等于已看见。']):p>=3?(variant?['R1 在 B 内执行；','执行完成前，结果尚未回程。']:['R1 正在目标实例内执行；','执行完成前，结果尚未回程。']):(variant?(p>=2?['B 已选中 R1；','R1 等待 B 的执行槽。']:p>=1?['R1 仍要等服务层选择；','等待目标实例接纳。']:['R1 尚未发送；','健康检查通过不等于 R1 被接纳。']):(p>=1?['健康通过不等于接纳；','请求仍要等待目标实例的执行槽。']:['R1 尚未发送；','健康检查只说明实例在线。']));
   if(m){
-   text(note,20,464,p>=4?(variant?'结果从 B 返回；':'结果从实例返回客户端；'):'健康通过不等于接纳；');
-   text(note2,20,482,p>=4?(variant?'A 的健康状态不等于 R1 被 A 执行。':'本图不虚构网络时延。'):'请求仍要等待目标实例的资源。');
-   show(note2,1);
+   text(note,20,464,notes[0]);text(note2,20,482,notes[1]);show(note2,1);
   }else{
-   text(note,20,380,p>=4?(variant?'结果从 B 返回；A 的健康状态不等于 R1 被 A 执行。':'结果从实例返回客户端；本图不虚构网络时延。'):'健康通过不等于接纳；请求仍要等待目标实例的资源。');
-   text(note2,20,400,'');show(note2,0);
+   text(note,20,380,notes[0]+notes[1]);text(note2,20,400,'');show(note2,0);
   }
-  text(state,20,m?510:340,p>=5?'客户端可见结果':p>=3?'执行 / 回程':'接收 / 等待');if(m){state.setAttribute('font-size','16');note.setAttribute('font-size','11');note2.setAttribute('font-size','11');}
+  text(state,20,m?510:340,p>=5?'完成：客户端可见结果':p>=4?'完成：结果回程中':p>=3?'执行：R1 执行中':p>=1?'接收 / 等待':'准备发送');if(m){state.setAttribute('font-size','16');note.setAttribute('font-size','11');note2.setAttribute('font-size','11');}
+  svg.dataset.routeState=p<1?'arriving':p<2?(variant?'routing':'accepted'):p<3?'waiting':p<4?'executing':p<5?'returning':'visible';
+  svg.dataset.selected=route.selected||'';
  };
-});}
-V['f-serving']=(svg,viewport,s)=>s.kind==='serving-route'?servingRoute(svg,viewport,s):board(svg,viewport,'cancel',()=>570,H=>{
+});
+ const panel=window.ServingAdoption?.mount('contrast',viewport,s.data)||null;
+ return {paint(...args){inner.paint(...args);},destroy(){panel?.destroy();inner.destroy();}};
+}
+V['f-serving']=(svg,viewport,s)=>{
+ if(s.kind==='serving-route')return servingRoute(svg,viewport,s);
+ window.ServingAdoption?.clear(viewport);
+ return board(svg,viewport,'cancel',()=>570,H=>{
  const {txt,rect,text,box,token,move,show,set}=H;
  const client=rect(),backend=rect(),head=txt('客户端','teach-heading'),worker=txt('后端 · 请求 R1','teach-heading');
  const clientState=txt('','teach-small'),workState=txt('','teach-small'),resourceState=txt('','teach-small');
@@ -334,7 +429,7 @@ V['f-serving']=(svg,viewport,s)=>s.kind==='serving-route'?servingRoute(svg,viewp
   text(note,18,494,p>=4?'完成收尾，资源才可再使用':'取消通知不会立即终止在途操作');text(why,18,532);if(m){note.setAttribute('font-size','16');why.setAttribute('font-size','12');}
   svg.dataset.cancelState=p>=4?'released':p>=3?'draining':p>=2?'received':p>=1?'sent':'running';
  };
-});
+});};
 
 V['serving-operations']=(svg,viewport,s)=>board(svg,viewport,'queued-cancel',()=>800,H=>{
  const {txt,rect,text,box,show,token,move}=H,d=s.data;

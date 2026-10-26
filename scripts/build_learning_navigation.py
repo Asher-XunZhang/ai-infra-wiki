@@ -104,7 +104,7 @@ def learning_start(page):
         '<div class="chapter-choice"><a href="#chapter-foundations"><span>第一章</span><strong>推理基础</strong><p>从一句话怎样变成数字开始，逐步认识生成、缓存、调度与多卡协作。</p><span>先建立直觉，再进入实现</span></a>',
         '<a href="#chapter-sglang"><span>第二章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十二模块 · 二十节实现课程</span></a></div></section>',
         '<section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>',
-        '<p>前五课建立请求生成的主线；后七课解释硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">']
+        '<p>第一章从文字、生成、Attention 与基础部件，走向缓存、调度、硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">']
     for i, c in enumerate(FOUNDATIONS, 1):
         parts.append(f'<li><a href="{href(page, "foundations/"+c["slug"]+".html")}"><span class="lesson-no">{i:02}</span><span><strong>{escape(c["title"])}</strong><small>{escape(c["goal"])}</small></span></a></li>')
     parts.append('</ol></section><!-- learning-start:end -->')

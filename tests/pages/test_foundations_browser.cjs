@@ -138,13 +138,14 @@ async function family(page, label) {
     // node and the KV history remain separate until the new input is computed.
     await page.goto(BASE + 'foundations/generation.html', { waitUntil: 'networkidle' });
     const generation = page.locator('.mechanism-film');
-    await choose(generation, 1);
+    await generation.getByLabel('连续演示条件').selectOption({ label: '自回归完整过程 · 固定抽样' });
     await generation.locator('[data-motion-action=reset]').click();
     for (let i = 0; i < 4; i++) { await generation.locator('[data-motion-action=next]').click(); await page.waitForTimeout(18); }
     assert.equal(await generation.locator('[data-kv-written="true"]').count(), 2, 'y1 KV is not written before Decode');
     assert.equal(await generation.locator('[data-input-copy="true"]').count(), 1, 'the output copy is the new input');
     await goFinal(page);
-    assert.match(await generation.textContent(), /客户端已见：休息一下/);
+    assert.match(await generation.textContent(), /客户端文字另经反分词与传输/);
+    assert.doesNotMatch(await generation.textContent(), /客户端已见/);
     assert.match(await generation.textContent(), /历史 KV/);
     assert.equal(await generation.locator('[data-kv-written="true"]').count(), 3);
     assert.equal(await generation.locator('[data-output="first"]').count(), 1);

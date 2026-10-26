@@ -1,0 +1,56 @@
+/* Generation lesson 02: one independent logits -> softmax -> choice board.
+ * The shared teaching styles provide panels, rows and value bars; these rules
+ * only cover the in-board condition controls and the probability axis. */
+.gs-word{fill:#163c48;font-size:15px;font-weight:700}
+.gs-formula{fill:#1e4558;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.gs-arrow{fill:#7893a4;font-size:15px}
+.gs-axis-bg{fill:#f2f6f8;stroke:#c6d4de}
+.gs-seg-word{fill:#1e3b48;font-size:12px;font-weight:700;text-anchor:middle}
+.gs-seg-pct{fill:#335463;font-size:11px;text-anchor:middle;font-variant-numeric:tabular-nums}
+.gs-selected{fill:none;stroke:#b77626;stroke-width:3;pointer-events:none}
+.gs-tick{stroke:#ffffff;stroke-width:2;pointer-events:none}
+.gs-needle line{stroke:#b77626;stroke-width:3}
+.gs-needle path{fill:#b77626}
+.gs-marker{fill:#b77626}
+.gs-btn>rect{fill:#eef3f7;stroke:#a9bcc8;stroke-width:1}
+.gs-btn>text{fill:#264653;font-size:12px;font-weight:600;text-anchor:middle}
+.gs-btn.is-on>rect{fill:#dceee8;stroke:#2a8478;stroke-width:2}
+.gs-btn:hover>rect{stroke:#2a8478}
+.gs-btn:focus{outline:none}
+.gs-btn:focus-visible>rect{stroke:#b77626;stroke-width:2.5;stroke-dasharray:4 2}
+[data-theme=dark] .gs-word{fill:#deebf3}
+[data-theme=dark] .gs-formula{fill:#cfe0ea}
+[data-theme=dark] .gs-arrow{fill:#9fb6c6}
+[data-theme=dark] .gs-axis-bg{fill:#1d3140;stroke:#476171}
+/* Segment fills keep the existing light tint in both themes, so their labels
+ * stay dark for contrast. The selected outline stays amber on either theme. */
+[data-theme=dark] .gs-btn>rect{fill:#243c4d;stroke:#557081}
+[data-theme=dark] .gs-btn>text{fill:#deebf3}
+[data-theme=dark] .gs-btn.is-on>rect{fill:#295044;stroke:#79b89b}
+[data-theme=dark] .gs-btn:hover>rect{stroke:#79b89b}
+[data-theme=dark] .gs-tick{stroke:#1d3140}
+@media(max-width:650px){
+ .gs-formula{font-size:14px}
+ .gs-btn>text{font-size:13px}
+ .gs-seg-word{font-size:13px}
+ .gs-seg-pct{font-size:12px}
+}
+
+/* A result separator gives the selected token and the same-distribution
+ * comparison their own vertical bands instead of overlapping baselines. */
+.gs-separator{stroke:#d5e0e7;stroke-width:1}
+[data-theme=dark] .gs-separator{stroke:#3d5769}
+
+/* PC canvas. The board is 720 units wide; at 1280 the shared two-column
+ * theater leaves the stage under 600px, which used to flip this lesson into
+ * the 360-unit phone layout. Give this board enough height at desktop widths,
+ * and stack its evidence rail at 1201-1360 so the wide layout is never
+ * squeezed on a normal laptop window. */
+@media(min-width:1361px){
+ .mechanism-film.is-generation-sampling .motion-theater{height:clamp(600px,calc(68vh + 40px),660px)}
+}
+@media(min-width:1201px) and (max-width:1360px){
+ .mechanism-film.is-generation-sampling .motion-theater{display:flex;flex-direction:column;height:auto;gap:8px}
+ .mechanism-film.is-generation-sampling .motion-stage{height:min(calc(74vh + 40px),640px);min-height:560px}
+ .mechanism-film.is-generation-sampling .motion-panel{max-height:210px}
+}

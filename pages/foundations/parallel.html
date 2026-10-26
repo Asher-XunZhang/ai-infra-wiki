@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？ · 推理基础</title><meta name="description" content="分别观察计算、模型层、请求、专家、激活和上下文怎样分工；沿数据交接理解每种方法的收益与代价。"><link rel="icon" href="data:,"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/detail-scenes.js" defer></script><script src="../motion/detail-visuals.js" defer></script><script src="parallel-model.js" defer></script><script src="../motion/parallel-scenes.js" defer></script><script src="../motion/parallel-tensor.js" defer></script><script src="../motion/parallel-routing.js" defer></script><script src="../motion/parallel-visuals.js" defer></script><script src="../motion/camera.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？ · 推理基础</title><meta name="description" content="分别观察计算、模型层、请求、专家、激活和上下文怎样分工；沿数据交接理解每种方法的收益与代价。"><link rel="icon" href="data:,"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/detail-scenes.js" defer></script><script src="../motion/detail-visuals.js" defer></script><link rel="stylesheet" href="../motion/parallel-adoption.css"><link rel="stylesheet" href="../motion/parallel-pcp.css"><link rel="stylesheet" href="../motion/parallel-dcp.css"><script src="parallel-model.js" defer></script><script src="../motion/parallel-scenes.js" defer></script><script src="../motion/parallel-tensor.js" defer></script><script src="../motion/parallel-routing.js" defer></script><script src="../motion/parallel-dp.js" defer></script><script src="../motion/parallel-adoption.js" defer></script><script src="../motion/parallel-pcp.js" defer></script><script src="../motion/parallel-visuals.js" defer></script><link rel="stylesheet" href="../motion/parallel-goals.css"><script src="../motion/parallel-goals.js" defer></script><link rel="stylesheet" href="../motion/parallel-space-time.css"><script src="../motion/parallel-space-time.js" defer></script><script src="../motion/camera.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script></head>
 <body data-page="foundations" data-lesson="parallel"><a class="skip-link" href="#main-content">跳到正文</a>
 <header class="site-header"><a class="site-brand" href="../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub ↗</a><button class="theme-toggle" type="button" aria-label="切换配色">配色：系统</button></div></header>
 <div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
@@ -10,15 +10,16 @@
 <a href="tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
 <a href="generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
 <a href="attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
-<a href="cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
-<a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
-<a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
-<a href="parallel.html" aria-current="page">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
-<a href="communication.html">08 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
-<a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
-<a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
-<a href="serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
-<a href="metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+<a href="components.html">04 Transformer 基础部件：一层内部怎样计算？</a>
+<a href="cache.html">05 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="batching.html">06 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="hardware.html">07 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="parallel.html" aria-current="page">08 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="communication.html">09 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
+<a href="deployment.html">10 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="speculation.html">11 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="serving.html">12 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="metrics.html">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
 </nav></details>
 <details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
@@ -114,14 +115,224 @@
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside><div class="site-content"><main id="main-content">
 <nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</span></nav>
-<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 07 / 12</a><span class="lesson-count">通用原理</span></div><h1>TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</h1><p>分别观察计算、模型层、请求、专家、激活和上下文怎样分工；沿数据交接理解每种方法的收益与代价。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 08 / 13</a><span class="lesson-count">通用原理</span></div><h1>TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</h1><p>分别观察计算、模型层、请求、专家、激活和上下文怎样分工；沿数据交接理解每种方法的收益与代价。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
 <p class="foundation-prereqs">先看：<a href="hardware.html">GPU 计算与访存：算力、带宽和 CUDA Graph</a> · <a href="attention.html">Attention 与 Q/K/V：模型怎样参考上下文？</a></p>
 <p class="foundation-intro">先从 TP 的手算和 PP 的依赖开始，再看完整副本 DP 与专家 EP。随后比较 SP 的激活布局转换，以及 CP 在 Prefill / Decode 阶段的不同分工：PCP 切 Query 行，DCP 分散历史 KV。它们可以组合，但不是同一个开关。</p>
 <section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>多卡可能用于装下模型、服务更多请求，或缩短某段计算。三种目标要求的分工不同；需要先决定切分哪一种对象，再判断结果之间有什么依赖和通信。</p></section>
-<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>
+
+<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#parallel-goals">先问哪里不够</a><a href="#understand">理解设计</a><a href="#parallel-space-time">两轴对照</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav><section class="parallel-goals" id="parallel-goals" data-parallel-goals aria-labelledby="parallel-goals-title">
+<header class="pg-head">
+<p class="pg-kicker">先问哪里不够</p>
+<h2 id="parallel-goals-title">三种“卡不够”，先选最像的那个</h2>
+<p class="pg-lead">装不下权重、接不住请求、放不下长上下文，切的是不同对象。先选一个目标，只展开相关策略；这是阅读入口，不是性能排名，也不表示只能选一种。</p>
+</header>
+<div class="pg-goals" role="group" aria-label="选择当前最接近的容量问题">
+<button type="button" class="pg-goal" id="pg-goal-fit" data-goal="fit" data-label="权重 / 模型层装不下" aria-pressed="false" aria-controls="parallel-goal-fit"><small>容量 · 参数</small><strong>权重 / 模型层装不下</strong><span>一张卡放不下整份权重，或单个算子、整段层数在单卡上执行不了。</span><span class="pg-tags">先看：TP 算子内切分 · PP 按层分段 · EP 只对 MoE 专家</span></button>
+<button type="button" class="pg-goal" id="pg-goal-requests" data-goal="requests" data-label="模型装得下，但请求多" aria-pressed="false" aria-controls="parallel-goal-requests"><small>容量 · 并发</small><strong>模型装得下，但请求多</strong><span>单条请求能跑，独立请求在排队；希望同时服务更多条。</span><span class="pg-tags">先看：DP 完整副本分请求</span></button>
+<button type="button" class="pg-goal" id="pg-goal-context" data-goal="context" data-label="Prefill 行多 / Decode 历史长" aria-pressed="false" aria-controls="parallel-goal-context"><small>长上下文</small><strong>Prefill 行多 / Decode 历史长</strong><span>权重装得下，但长输入的 Query 行，或 Decode 要读的历史 KV，成为压力。</span><span class="pg-tags">先看：PCP 分 Prefill 行 · DCP 分历史 KV</span></button>
+</div>
+<p class="pg-rule">TP / PP / EP / DP / SP / PCP / DCP 可以组合；这里只决定先读哪组说明，不把策略当成互斥选项，也不声明任意组合在某引擎可运行。策略链接只进入对应现有图，默认停在第 1 步；播放、暂停和切步骤仍由你控制。</p>
+<div class="pg-aside">
+<div class="pg-aside-copy"><small>激活布局 · 可与上述策略组合</small><strong>逐 token 激活占用</strong><span>长序列会放大逐 token 区域的激活；经典 SP 在 TP 组内按序列分片，减少这部分激活的重复保存，但不改变 KV 总量。</span></div>
+<button type="button" id="pg-goal-activation" data-goal="activation" data-label="逐 token 激活占用" aria-pressed="false" aria-controls="parallel-goal-activation">看 SP 布局</button>
+</div>
+<p class="pg-status" data-goal-status role="status" aria-live="polite">先选一个目标，只展开相关策略与代价；未选择时不会自动播放动画。</p>
+<noscript><p class="pg-noscript">未启用 JavaScript：动画不能播放，但下面仍按目标分组列出全部策略说明与算例；启用 JavaScript 后可切换目标、单步查看对应动画。</p></noscript>
+<div class="pg-panels">
+<section class="pg-panel" id="parallel-goal-fit" data-goal-panel="fit" aria-labelledby="parallel-goal-fit-title">
+<div class="pg-panel-head"><h3 id="parallel-goal-fit-title">权重 / 模型层装不下</h3><p>先分清整份权重、层间流水和 MoE 专家。它们分担的对象不同，不能互相替代。</p></div>
+<div class="pg-strategies">
+<article class="pg-strategy"><div class="pg-strategy-head"><h4>张量并行</h4><span class="pg-abbr">TP</span></div><dl>
+<div><dt>分担</dt><dd>单个算子的权重矩阵与计算；输入维切列、W 切行，或 W 切列后按输出列拼接。</dd></div>
+<div><dt>不消失</dt><dd>总参数量与总乘加数；本例仍是 8 乘、4 加，权重来自同一份 W。</dd></div>
+<div><dt>代价</dt><dd>局部结果要相加或拼接，跨卡通信；每卡只持有权重分片，激活或临时缓冲还可能复制。</dd></div>
+<div><dt>边界</dt><dd>相邻算子的布局决定是否需要通信；TP 组可以作为更大配置的一部分。</dd></div>
+</dl><div class="pg-links"><a href="?mv=0#lesson-animation">看输入维切分 ↗</a><a href="?mv=1#lesson-animation">看输出维切分 ↗</a></div></article>
+<article class="pg-strategy"><div class="pg-strategy-head"><h4>流水线并行</h4><span class="pg-abbr">PP</span></div><dl>
+<div><dt>分担</dt><dd>连续模型层；Stage 0 执行 L1–L2，Stage 1 执行 L3–L4。</dd></div>
+<div><dt>不消失</dt><dd>单个 MB 仍要按 L1→L4 逐层经过两个 stage；两个 MB 示例合计 8 段层计算，单 MB 示例两侧各 4 段、同在第 4 格结束。</dd></div>
+<div><dt>代价</dt><dd>激活交接、填充/排空气泡与 stage 间负载不均；两个 MB 示例两 stage 合计 12 GPU·时隙，其中 4 格是气泡；单 MB 示例两 stage 合计 8 GPU·时隙，其中 4 格为空闲。</dd></div>
+<div><dt>边界</dt><dd>PP 是层间流水，不是 Prefill/Decode 分离；1 MB 与 2 MB 工作量不同，不能当等量性能比较；单 MB 自身仍可对照采用前后的依赖与空闲。</dd></div>
+</dl><div class="pg-links"><a href="?mv=2#lesson-animation">看两个 MB ↗</a><a href="?mv=3#lesson-animation">看单 MB ↗</a></div></article>
+<article class="pg-strategy"><div class="pg-strategy-head"><h4>专家并行</h4><span class="pg-abbr">EP</span></div><dl>
+<div><dt>分担</dt><dd>MoE 层的专家参数与专家计算；token 按路由被派发到持有专家的 rank。</dd></div>
+<div><dt>不消失</dt><dd>总专家数与 top-2 分支数；每个 token 仍只算被选中的专家，稀疏激活不是 EP 新增的。</dd></div>
+<div><dt>代价</dt><dd>dispatch/combine 激活交换；专家参数均分不保证负载均衡（本例 4/4 与 6/2）。</dd></div>
+<div><dt>边界</dt><dd>只适用于带 MoE 专家的模型；不切 dense 权重，也不能当成所有模型的省显存开关。</dd></div>
+</dl><div class="pg-links"><a href="?mv=5#lesson-animation">看均衡路由 ↗</a><a href="?mv=6#lesson-animation">看热点路由 ↗</a></div></article>
+</div>
+<p class="pg-note"><strong>DP 不在这一组：</strong>它复制完整模型，不能解决一份模型装不下。<strong>SP 也不在这一组：</strong>它不减少权重，但可减轻 TP 组内逐 token 激活的重复保存。TP/PP/EP 可组合，但组合后的通信、气泡、负载与支持范围要按具体引擎和拓扑核对。</p>
+</section>
+<section class="pg-panel" id="parallel-goal-requests" data-goal-panel="requests" aria-labelledby="parallel-goal-requests-title">
+<div class="pg-panel-head"><h3 id="parallel-goal-requests-title">模型装得下，但请求多</h3><p>先把目标定在并发容量，而不是单条请求延迟；DP 复制的是执行容量，不是把一条请求的矩阵拆小。</p></div>
+<div class="pg-strategies">
+<article class="pg-strategy"><div class="pg-strategy-head"><h4>数据并行</h4><span class="pg-abbr">DP</span></div><dl>
+<div><dt>分担</dt><dd>不同请求；每条请求仍经过一个完整模型，图中 R1、R2 分别到两个副本。</dd></div>
+<div><dt>不消失</dt><dd>单条请求的矩阵计算、层数与 KV 读写；每个副本都保留完整参数。</dd></div>
+<div><dt>代价</dt><dd>本例每副本一张 GPU：1→2 个副本就是 1→2 张 GPU 和 2 份完整权重；另有每副本 KV/状态、请求路由与负载均衡。</dd></div>
+<div><dt>边界</dt><dd>只有请求足够多、能并行或合批并被调度时，容量才可能转成吞吐；不保证单请求延迟下降。一个副本内部还可以组合 TP/PP，“副本”不等于“一张 GPU”。</dd></div>
+</dl><div class="pg-links"><a href="?mv=4#lesson-animation">看完整副本 ↗</a></div></article>
+</div>
+<p class="pg-note"><strong>单副本也可以 batch：</strong>图中把两条请求分到两个副本，是为了看清复制成本，不是说一个副本只能串行。<strong>两个反例：</strong>一份模型本身装不下时，DP 不能解决；单条请求算得慢时，DP 也不会拆它的矩阵。</p>
+</section>
+<section class="pg-panel" id="parallel-goal-context" data-goal-panel="context" aria-labelledby="parallel-goal-context-title">
+<div class="pg-panel-head"><h3 id="parallel-goal-context-title">Prefill 行多 / Decode 历史长</h3><p>长上下文不是一个阶段。Prefill 的压力在 Query 行与计算，Decode 的压力在每轮读取历史 KV；下面是两个独立教学例。</p></div>
+<div class="pg-strategies">
+<article class="pg-strategy"><div class="pg-strategy-head"><h4>Prefill 上下文并行</h4><span class="pg-abbr">PCP</span></div><dl>
+<div><dt>分担</dt><dd>同一条长 prompt 的 Prefill Query/token 行；连续切分或前后配对改变行的归属。</dd></div>
+<div><dt>不消失</dt><dd>每行仍需因果范围内的历史 K/V；总因果配对数仍是 36。</dd></div>
+<div><dt>代价</dt><dd>远端 K/V 的交换或暂存；因果遮罩造成负载不均（连续 10/26，前后配对 18/18）。</dd></div>
+<div><dt>边界</dt><dd>本例用 AllGather 副本，不保证每卡 KV 驻留减半；配对数不是耗时或加速比。</dd></div>
+</dl><div class="pg-links"><a href="?mv=8#lesson-animation">看连续分片 ↗</a><a href="?mv=9#lesson-animation">看前后配对 ↗</a></div></article>
+<article class="pg-strategy"><div class="pg-strategy-head"><h4>Decode 上下文并行</h4><span class="pg-abbr">DCP</span></div><dl>
+<div><dt>分担</dt><dd>Decode 时按上下文位置分散的历史 KV；每卡读一部分历史，再合并当前 Query 的局部 Attention。</dd></div>
+<div><dt>不消失</dt><dd>总历史位置仍是 4；每卡读 2 个不等于总读取或总算力减半，当前 Query 仍要看全部允许历史。</dd></div>
+<div><dt>代价</dt><dd>每步 Decode 交换局部 O 与归一化量 Z/LSE；短上下文时通信可能占主导，ITL 可能变差。</dd></div>
+<div><dt>边界</dt><dd>必须按 Z 加权：两片局部 O 分别为 2、6，Z 分别为 2、6 时，加权结果为 5；两片 Z 分别为 2、2（局部 O 仍为 2、6）时，结果为 4。局部平均只在 Z 相等时碰巧正确。</dd></div>
+</dl><div class="pg-links"><a href="?mv=10#lesson-animation">看不等权 ↗</a><a href="?mv=11#lesson-animation">看等权 ↗</a></div></article>
+</div>
+<p class="pg-note"><strong>不是二选一：</strong>PCP 与 DCP 是不同阶段的分工；8 个 Query 位置与 4 个历史位置是两个独立例子，不拿两图数值做速度比较。它们也不等于 TP/PP：TP 切算子，PP 切层。<strong>与切块的关系：</strong>Chunked Prefill 是按轮分段时间切块，不是 PCP/DCP 的卡间分工；可以组合，但支持范围要另核。</p><p class="pg-note"><a href="#parallel-space-time">用同一组 p1…p8 对齐“按卡分工”与“每轮范围” →</a></p>
+</section>
+<section class="pg-panel" id="parallel-goal-activation" data-goal-panel="activation" aria-labelledby="parallel-goal-activation-title">
+<div class="pg-panel-head"><h3 id="parallel-goal-activation-title">逐 token 激活占用（SP）</h3><p>长上下文除了历史 KV，逐 token 区域的激活也会随序列长度增加。经典 SP 在 TP 组内沿序列切分这部分激活，减少每张卡的重复副本；它不改变历史 KV 的分片方式，也不等于全程显存减半。</p></div>
+<div class="pg-strategies">
+<article class="pg-strategy"><div class="pg-strategy-head"><h4>经典序列并行</h4><span class="pg-abbr">SP</span></div><dl>
+<div><dt>分担</dt><dd>同一 TP 组内、逐 token 区域的序列行；长序列时每卡只保留本地行，减少这部分激活的重复副本。本例每卡完整行由 4 变为 2。</dd></div>
+<div><dt>不消失</dt><dd>不新增 GPU；不改变总 KV、完整 Attention 上下文、模型权重与总计算。激活分片本身仍占空间，只是不再每卡复制整段。</dd></div>
+<div><dt>代价</dt><dd>进入 TP 区域前 AllGather，离开时 ReduceScatter；总通信取决于实现与原 TP collective，不能笼统写成固定新增两次。</dd></div>
+<div><dt>边界</dt><dd>这是 Megatron 经典 SP 的教学布局，不声称是某引擎的通用开关；它不替代 PCP/DCP 对历史 KV 与 Attention 上下文的分工，也不把激活分片等同于 KV 分片。</dd></div>
+</dl><div class="pg-links"><a href="?mv=7#lesson-animation">看 TP+SP 布局 ↗</a></div></article>
+</div>
+<p class="pg-note">SP 通常与 TP 一起出现，也可放进更大的 PP/DP 配置；实际支持范围按引擎与拓扑核对。<strong>它减轻的是 TP 组内逐 token 激活的重复保存，</strong>不减总 KV，也不代表全程显存减半。</p>
+</section>
+</div>
+</section><section class="parallel-space-time" id="parallel-space-time" data-parallel-space-time data-owner="zigzag" data-chunk="chunk4" data-ready="false" aria-labelledby="pst-title">
+<header class="pst-head">
+ <div class="pst-head-copy">
+  <p class="pst-kicker">同一条 Prefill 请求 · 两条轴</p>
+  <h2 id="pst-title">Query 归哪张卡，和它在第几轮进入前向，是两件事</h2>
+  <p class="pst-lead">同一组 p1…p8、同一模型与因果遮罩。先选“按卡分工”，再选“每轮处理范围”；改一条轴，另一条保持不动。播放后逐位置看 Q 行读取 K/V、写入缓存，以及下一轮怎样读取上轮保留的历史。</p>
+ </div>
+ <p class="pst-total"><span>计划总量 · 因果配对</span><strong>36</strong><small>不随切法或轮次改变；完成数另计</small></p>
+</header>
+<div class="pst-controls">
+ <div class="pst-control" role="group" aria-labelledby="pst-owner-label">
+  <p class="pst-control-label" id="pst-owner-label">按卡分工 <span>空间 · 谁算这一行</span></p>
+  <div class="pst-segments">
+   <button type="button" class="pst-segment" data-pst-owner="single" aria-pressed="false"><strong>单卡</strong><small>对照基线</small></button>
+   <button type="button" class="pst-segment" data-pst-owner="contiguous" aria-pressed="false"><strong>连续切分</strong><small>p1–p4 / p5–p8</small></button>
+   <button type="button" class="pst-segment" data-pst-owner="zigzag" aria-pressed="true"><strong>前后配对</strong><small>p1,2,7,8 / p3–p6</small></button>
+  </div>
+ </div>
+ <div class="pst-control" role="group" aria-labelledby="pst-chunk-label">
+  <p class="pst-control-label" id="pst-chunk-label">每轮处理范围 <span>时间 · 这一行何时进入前向</span></p>
+  <div class="pst-segments">
+   <button type="button" class="pst-segment" data-pst-chunk="whole" aria-pressed="false"><strong>整段 1 轮</strong><small>p1–p8 同轮</small></button>
+   <button type="button" class="pst-segment" data-pst-chunk="chunk4" aria-pressed="true"><strong>chunk 4</strong><small>每轮 4 位置 · 2 轮</small></button>
+  </div>
+ </div>
+ <p class="pst-unit">单位：因果配对数量<br>不是 GPU 耗时或加速比</p>
+</div>
+<p class="pst-status" data-pst-status role="status" aria-live="polite">前后配对 + chunk 4：已完成 0 / 36 对；第 1 轮计划 3 / 7（10 对），第 2 轮计划 15 / 11（26 对），全程计划 18 / 18（36 对）。尚未进入轮次。</p>
+<p class="pst-sr" data-pst-live aria-live="polite" aria-atomic="true"></p>
+<div class="pst-player" data-pst-player>
+ <div class="pst-transport" role="group" aria-label="过程播放控制">
+  <button type="button" data-pst-action="play" aria-pressed="false">播放</button>
+  <button type="button" data-pst-action="prev">回看</button>
+  <button type="button" data-pst-action="next">单步</button>
+  <button type="button" data-pst-action="replay">重播</button>
+  <button type="button" data-pst-action="reset">重置</button>
+  <span class="pst-step-label" data-pst-step-label>步骤 1 / 12 · 计划</span>
+ </div>
+ <p class="pst-phase" data-pst-phase>计划：p1…p8 尚未进入前向，K/V1–8 尚未写入。每个 Qi 只读 K/V1–i；按播放或单步开始第 1 轮。</p>
+</div>
+<div class="pst-board">
+ <p class="pst-scroll-hint">窄屏可左右滑动，查看全部 8 个位置。</p>
+ <div class="pst-table-wrap">
+  <table class="pst-table">
+   <caption class="pst-sr">同一组八个 Query 位置的所属 rank 与进入轮次；选择位置可查看因果范围。</caption>
+   <thead><tr><th scope="col">位置</th><th scope="col" data-col="1" class="pst-head-cell is-selected"><button type="button" class="pst-pick" data-pst-pick="0" aria-pressed="true" aria-label="选择 p1，查看 Q1 的所属卡与轮次"><span class="pst-pos">p1</span><small>Q1</small></button></th><th scope="col" data-col="2" class="pst-head-cell"><button type="button" class="pst-pick" data-pst-pick="1" aria-pressed="false" aria-label="选择 p2，查看 Q2 的所属卡与轮次"><span class="pst-pos">p2</span><small>Q2</small></button></th><th scope="col" data-col="3" class="pst-head-cell"><button type="button" class="pst-pick" data-pst-pick="2" aria-pressed="false" aria-label="选择 p3，查看 Q3 的所属卡与轮次"><span class="pst-pos">p3</span><small>Q3</small></button></th><th scope="col" data-col="4" class="pst-head-cell"><button type="button" class="pst-pick" data-pst-pick="3" aria-pressed="false" aria-label="选择 p4，查看 Q4 的所属卡与轮次"><span class="pst-pos">p4</span><small>Q4</small></button></th><th scope="col" data-col="5" class="pst-head-cell"><button type="button" class="pst-pick" data-pst-pick="4" aria-pressed="false" aria-label="选择 p5，查看 Q5 的所属卡与轮次"><span class="pst-pos">p5</span><small>Q5</small></button></th><th scope="col" data-col="6" class="pst-head-cell"><button type="button" class="pst-pick" data-pst-pick="5" aria-pressed="false" aria-label="选择 p6，查看 Q6 的所属卡与轮次"><span class="pst-pos">p6</span><small>Q6</small></button></th><th scope="col" data-col="7" class="pst-head-cell"><button type="button" class="pst-pick" data-pst-pick="6" aria-pressed="false" aria-label="选择 p7，查看 Q7 的所属卡与轮次"><span class="pst-pos">p7</span><small>Q7</small></button></th><th scope="col" data-col="8" class="pst-head-cell"><button type="button" class="pst-pick" data-pst-pick="7" aria-pressed="false" aria-label="选择 p8，查看 Q8 的所属卡与轮次"><span class="pst-pos">p8</span><small>Q8</small></button></th></tr></thead>
+   <tbody>
+    <tr><th scope="row">因果配对</th><td data-col="1" class="pst-cell is-selected"><span class="pst-pairs">1</span></td><td data-col="2" class="pst-cell"><span class="pst-pairs">2</span></td><td data-col="3" class="pst-cell"><span class="pst-pairs">3</span></td><td data-col="4" class="pst-cell"><span class="pst-pairs">4</span></td><td data-col="5" class="pst-cell"><span class="pst-pairs">5</span></td><td data-col="6" class="pst-cell"><span class="pst-pairs">6</span></td><td data-col="7" class="pst-cell"><span class="pst-pairs">7</span></td><td data-col="8" class="pst-cell"><span class="pst-pairs">8</span></td></tr>
+    <tr><th scope="row">所属 rank</th><td data-col="1" class="pst-cell is-selected"><span class="pst-owner" data-pst-owner-cell="0" data-owner="0">GPU 0</span></td><td data-col="2" class="pst-cell"><span class="pst-owner" data-pst-owner-cell="1" data-owner="0">GPU 0</span></td><td data-col="3" class="pst-cell"><span class="pst-owner" data-pst-owner-cell="2" data-owner="1">GPU 1</span></td><td data-col="4" class="pst-cell"><span class="pst-owner" data-pst-owner-cell="3" data-owner="1">GPU 1</span></td><td data-col="5" class="pst-cell"><span class="pst-owner" data-pst-owner-cell="4" data-owner="1">GPU 1</span></td><td data-col="6" class="pst-cell"><span class="pst-owner" data-pst-owner-cell="5" data-owner="1">GPU 1</span></td><td data-col="7" class="pst-cell"><span class="pst-owner" data-pst-owner-cell="6" data-owner="0">GPU 0</span></td><td data-col="8" class="pst-cell"><span class="pst-owner" data-pst-owner-cell="7" data-owner="0">GPU 0</span></td></tr>
+    <tr><th scope="row">进入轮次</th><td data-col="1" class="pst-cell is-selected"><span class="pst-round" data-pst-round-cell="0" data-round="1">第 1 轮</span></td><td data-col="2" class="pst-cell"><span class="pst-round" data-pst-round-cell="1" data-round="1">第 1 轮</span></td><td data-col="3" class="pst-cell"><span class="pst-round" data-pst-round-cell="2" data-round="1">第 1 轮</span></td><td data-col="4" class="pst-cell"><span class="pst-round" data-pst-round-cell="3" data-round="1">第 1 轮</span></td><td data-col="5" class="pst-cell"><span class="pst-round" data-pst-round-cell="4" data-round="2">第 2 轮</span></td><td data-col="6" class="pst-cell"><span class="pst-round" data-pst-round-cell="5" data-round="2">第 2 轮</span></td><td data-col="7" class="pst-cell"><span class="pst-round" data-pst-round-cell="6" data-round="2">第 2 轮</span></td><td data-col="8" class="pst-cell"><span class="pst-round" data-pst-round-cell="7" data-round="2">第 2 轮</span></td></tr>
+    <tr><th scope="row">本轮状态</th><td data-col="1" class="pst-cell"><span class="pst-state" data-pst-state-cell="0" data-state="waiting">未进入</span></td><td data-col="2" class="pst-cell"><span class="pst-state" data-pst-state-cell="1" data-state="waiting">未进入</span></td><td data-col="3" class="pst-cell"><span class="pst-state" data-pst-state-cell="2" data-state="waiting">未进入</span></td><td data-col="4" class="pst-cell"><span class="pst-state" data-pst-state-cell="3" data-state="waiting">未进入</span></td><td data-col="5" class="pst-cell"><span class="pst-state" data-pst-state-cell="4" data-state="waiting">未进入</span></td><td data-col="6" class="pst-cell"><span class="pst-state" data-pst-state-cell="5" data-state="waiting">未进入</span></td><td data-col="7" class="pst-cell"><span class="pst-state" data-pst-state-cell="6" data-state="waiting">未进入</span></td><td data-col="8" class="pst-cell"><span class="pst-state" data-pst-state-cell="7" data-state="waiting">未进入</span></td></tr>
+   </tbody>
+  </table>
+ </div>
+ <div class="pst-kv-panel">
+  <div class="pst-kv-head"><strong>K/V 缓存 · 逐位置</strong><span>K 和 V 都写入；青色 = 当前读取，斜线 = 未来遮罩，琥珀 = 上轮保留</span></div>
+  <div class="pst-kv-scroll"><div class="pst-kv-grid"><div class="pst-kv-axis" aria-hidden="true"><span></span><span>K</span><span>V</span></div><div class="pst-kv-col" data-pst-kv-col="0"><div class="pst-kv-pos"><strong>p1</strong><small data-pst-kv-round="0" data-round="1">第 1 轮</small></div><div class="pst-kv-cell" data-pst-kv="K" data-pst-pos="0" data-state="waiting"><span>K1</span><small>未写入</small></div><div class="pst-kv-cell" data-pst-kv="V" data-pst-pos="0" data-state="waiting"><span>V1</span><small>未写入</small></div></div><div class="pst-kv-col" data-pst-kv-col="1"><div class="pst-kv-pos"><strong>p2</strong><small data-pst-kv-round="1" data-round="1">第 1 轮</small></div><div class="pst-kv-cell" data-pst-kv="K" data-pst-pos="1" data-state="waiting"><span>K2</span><small>未写入</small></div><div class="pst-kv-cell" data-pst-kv="V" data-pst-pos="1" data-state="waiting"><span>V2</span><small>未写入</small></div></div><div class="pst-kv-col" data-pst-kv-col="2"><div class="pst-kv-pos"><strong>p3</strong><small data-pst-kv-round="2" data-round="1">第 1 轮</small></div><div class="pst-kv-cell" data-pst-kv="K" data-pst-pos="2" data-state="waiting"><span>K3</span><small>未写入</small></div><div class="pst-kv-cell" data-pst-kv="V" data-pst-pos="2" data-state="waiting"><span>V3</span><small>未写入</small></div></div><div class="pst-kv-col" data-pst-kv-col="3"><div class="pst-kv-pos"><strong>p4</strong><small data-pst-kv-round="3" data-round="1">第 1 轮</small></div><div class="pst-kv-cell" data-pst-kv="K" data-pst-pos="3" data-state="waiting"><span>K4</span><small>未写入</small></div><div class="pst-kv-cell" data-pst-kv="V" data-pst-pos="3" data-state="waiting"><span>V4</span><small>未写入</small></div></div><div class="pst-kv-col" data-pst-kv-col="4"><div class="pst-kv-pos"><strong>p5</strong><small data-pst-kv-round="4" data-round="2">第 2 轮</small></div><div class="pst-kv-cell" data-pst-kv="K" data-pst-pos="4" data-state="waiting"><span>K5</span><small>未写入</small></div><div class="pst-kv-cell" data-pst-kv="V" data-pst-pos="4" data-state="waiting"><span>V5</span><small>未写入</small></div></div><div class="pst-kv-col" data-pst-kv-col="5"><div class="pst-kv-pos"><strong>p6</strong><small data-pst-kv-round="5" data-round="2">第 2 轮</small></div><div class="pst-kv-cell" data-pst-kv="K" data-pst-pos="5" data-state="waiting"><span>K6</span><small>未写入</small></div><div class="pst-kv-cell" data-pst-kv="V" data-pst-pos="5" data-state="waiting"><span>V6</span><small>未写入</small></div></div><div class="pst-kv-col" data-pst-kv-col="6"><div class="pst-kv-pos"><strong>p7</strong><small data-pst-kv-round="6" data-round="2">第 2 轮</small></div><div class="pst-kv-cell" data-pst-kv="K" data-pst-pos="6" data-state="waiting"><span>K7</span><small>未写入</small></div><div class="pst-kv-cell" data-pst-kv="V" data-pst-pos="6" data-state="waiting"><span>V7</span><small>未写入</small></div></div><div class="pst-kv-col" data-pst-kv-col="7"><div class="pst-kv-pos"><strong>p8</strong><small data-pst-kv-round="7" data-round="2">第 2 轮</small></div><div class="pst-kv-cell" data-pst-kv="K" data-pst-pos="7" data-state="waiting"><span>K8</span><small>未写入</small></div><div class="pst-kv-cell" data-pst-kv="V" data-pst-pos="7" data-state="waiting"><span>V8</span><small>未写入</small></div></div></div></div>
+  <div class="pst-kv-legend"><span><i></i>已写入</span><span><i class="history"></i>上轮保留</span><span><i class="future"></i>未来遮罩</span><span><i class="read"></i>当前读取</span></div>
+ </div>
+ <div class="pst-history" data-pst-history>
+  <div><strong>第 1 轮（计划）</strong> 完成后写入并保留 K/V1–4</div>
+  <span class="pst-history-arrow" aria-hidden="true">→</span>
+  <div><strong>第 2 轮（计划）</strong> 只新增 p5–p8；Q5 读 1–5，Q6 读 1–6，Q7 读 1–7，Q8 读 1–8</div>
+  <p class="pst-history-note">不是“Q5 读 K/V1–8”：每个 Qi 只读 K/V1..i；K/V1–4 是上轮历史，K 和 V 都保留。</p>
+ </div>
+</div>
+<div class="pst-lower">
+ <aside class="pst-detail" aria-label="当前 Query 的位置属性" aria-live="polite">
+  <div class="pst-detail-head">
+   <div class="pst-detail-id"><small>当前 Query</small><strong data-pst-detail-q>Q1</strong></div>
+   <div class="pst-detail-tags"><span class="pst-detail-state" data-pst-detail-state data-state="planned">计划</span><span class="pst-round" data-pst-detail-round data-round="1">第 1 轮</span><span class="pst-owner" data-pst-detail-owner data-owner="0">GPU 0</span></div>
+  </div>
+  <p class="pst-detail-pairs"><strong data-pst-detail-pairs>1</strong> 个因果配对 <span class="pst-detail-causal" data-pst-detail-causal>因果范围：K/V1</span></p>
+  <p class="pst-detail-note" data-pst-detail-note>计划进入第 1 轮，由 GPU 0 计算；尚未进入前向，未计算，K/V1 未写入。</p>
+ </aside>
+ <div class="pst-ledger">
+  <div class="pst-ledger-head"><strong>计划账本</strong><span>表内是计划总数</span></div>
+  <div class="pst-ledger-scroll"><table>
+   <caption class="pst-sr">各组合的计划因果配对数量；完成数在表下单独统计。</caption>
+   <thead><tr><th scope="col">轮次</th><th scope="col">GPU 0</th><th scope="col">GPU 1</th><th scope="col">本轮</th></tr></thead>
+   <tbody>
+    <tr data-pst-round-row="1"><th scope="row"><span data-pst-round-name="1">第 1 轮</span><small data-pst-round-range="1">p1–p4</small></th><td data-pst-ledger="r1-0">3</td><td data-pst-ledger="r1-1">7</td><td data-pst-ledger="r1-total">10</td></tr>
+    <tr data-pst-round-row="2"><th scope="row"><span data-pst-round-name="2">第 2 轮</span><small data-pst-round-range="2">p5–p8</small></th><td data-pst-ledger="r2-0">15</td><td data-pst-ledger="r2-1">11</td><td data-pst-ledger="r2-total">26</td></tr>
+    <tr class="is-total"><th scope="row">全程</th><td data-pst-ledger="all-0">18</td><td data-pst-ledger="all-1">18</td><td data-pst-ledger="all-total">36</td></tr>
+   </tbody>
+  </table></div>
+  <div class="pst-done">
+   <div class="pst-done-line"><span>已完成</span><strong data-pst-done-total>0</strong><span>/ 36 对</span></div>
+   <div class="pst-bar" role="progressbar" aria-label="已完成因果配对" aria-valuemin="0" aria-valuemax="36" aria-valuenow="0" data-pst-progress><i data-pst-ledger-fill></i></div>
+   <p class="pst-done-breakdown" data-pst-done-breakdown>第 1 轮 0 / 0 对 · 第 2 轮 0 / 0 对</p>
+  </div>
+  <p class="pst-ledger-note">表内是计划；已完成只统计已经读完并写入 K/V 的 Q 行。第 2 轮只新增 p5–p8，仍读上轮 K/V1–4；每个 Qi 只读 1..i。</p>
+ </div>
+</div>
+<p class="pst-note"><strong>总 36 不变：</strong>Q1…Q8 各自的因果配对是 1…8，合计 36。每个 Qi 只读 K/V1..i，i 之后保持未来遮罩；第 2 轮的 Q5 只读 1–5，不能理解成 Q5 读 K/V1–8。</p>
+<p class="pst-note"><strong>历史保留的是 K 和 V：</strong>chunk 4 的第 1 轮写入并保留 K/V1–4；第 2 轮只新增 p5–p8，Q5..Q8 仍按 1..i 读取上轮 K/V1–4 与本轮新增。整段 1 轮没有跨轮历史，但每个 Qi 仍只读 1..i。</p>
+<p class="pst-note"><strong>计数不是耗时：</strong>全程 18/18 是总配对均衡，不代表每轮均衡：前后配对 + chunk 4 的第 1 轮是 3/7，第 2 轮是 15/11。配对数是因果读取次数，不是 GPU 耗时、吞吐或加速比。</p>
+<p class="pst-note"><strong>逐行演示边界：</strong>为看清因果范围，过程按 Q 行逐个展示；真实内核会在一次前向中批量处理一个 chunk，不表示每行单独启动一次 kernel。PCP 的 owner 是“谁计算该 Q 行”，K/V 读取按因果范围（本例 AllGather 副本），不表示每卡只驻留一半。</p>
+<aside class="pst-dcp" aria-labelledby="pst-dcp-title">
+ <div><p class="pst-kicker">Decode 阶段 · 另一个例子</p><h3 id="pst-dcp-title">DCP 不把一个新 Q 切成 Prefill chunk</h3><p>Decode 时，同一个新 Q 读取按上下文位置分片的历史 K/V；各片得到局部 O 与 Z，再按 Z 合并。它不在这张 Prefill 的轮次轴上，也不把新 Q 逐块 Prefill。</p></div>
+ <a href="?mv=10#lesson-animation">看本课 DCP 的局部 O / Z 合并 →</a>
+</aside>
+<noscript><div class="pst-noscript"><strong>未启用 JavaScript：</strong>下面是六种组合的计划配对账本；过程不能推进，已完成数保持 0。
+<table><caption>六种组合的因果配对账本</caption><thead><tr><th scope="col">按卡分工</th><th scope="col">整段 1 轮</th><th scope="col">chunk 4 两轮</th></tr></thead><tbody>
+<tr><th scope="row">单卡</th><td>GPU 0：36；Total 36</td><td>第 1 轮 10；第 2 轮 26；Total 36</td></tr>
+<tr><th scope="row">连续切分</th><td>10 / 26；Total 36</td><td>第 1 轮 10 / 0；第 2 轮 0 / 26；Total 36</td></tr>
+<tr><th scope="row">前后配对</th><td>18 / 18；Total 36</td><td>第 1 轮 3 / 7；第 2 轮 15 / 11；Total 36</td></tr>
+</tbody></table>
+<p>第 2 轮只新增 p5–p8，仍读第 1 轮保留的 K/V1–4；每个 Qi 只读 K/V1..i。表内是计划数量，配对数量不是耗时。</p></div></noscript>
+</section><section class="parallel-adoption-static" aria-labelledby="parallel-adoption-static-title">
+<h2 id="parallel-adoption-static-title">TP / PP / DP / EP / SP / PCP / DCP 采用前后速览</h2>
+<p>固定同一输入、模型和工作量；下表只列核心差异，下面的动态图把对象、资源和时间关系展开。乘积项、层数、行数、配对数、位置数与教学时隙都是计数，不是实测性能。</p>
+<table class="fd-table"><caption>同一算例的七项对照</caption><thead><tr><th scope="col">机制</th><th scope="col">未采用</th><th scope="col">采用后</th><th scope="col">代价与边界</th></tr></thead><tbody>
+<tr><th scope="row">TP</th><td>1 张 GPU；W 有 4 个权重格；8 个乘积项、4 次加法，得到 Y=XW。</td><td>2 张 GPU；每卡 2 个权重格、4 个乘积项。切输入维时每格只有 1 个乘积，每卡 0 次局部加法，合并再加 4 次；切输出维时每格 2 乘 1 加，每卡 2 次局部加法，合并只按列拼接。</td><td>两侧系统都仍是 8 乘、4 加；权重来自同一份 W；合并与通信是新增成本，不折算成实测加速。</td></tr>
+<tr><th scope="row">PP</th><td>1 张 GPU 保存 4 层；两个 MB 共 8 段层计算，用 8 个教学时隙。</td><td>2 张 GPU，每卡保存 2 层；同样 8 段层计算，第 6 格完成；2 张卡合计 12 个 GPU·时隙，其中 4 格是填充/排空。</td><td>同一 MB 仍须逐层经过两个 stage；两侧横轴使用同一时隙刻度；时隙等长只表示依赖和重叠，不是实测耗时。</td></tr>
+<tr><th scope="row">DP</th><td>1 份完整模型；1 条共享执行路径；两请求可同批或先后进入；每请求仍做 2 层计算。</td><td>2 份完整模型；2 条独立执行路径；每请求仍做 2 层计算，输出仍分别对应。</td><td>参数存储从 2 个层块变为 4 个；单请求计算不减少；吞吐是否增加取决于请求量、合批与调度。</td></tr>
+<tr><th scope="row">EP</th><td>1 张 GPU 保存 4 个专家；4 个 token 各选 2 个专家，8 个专家分支都在本卡。均衡路由 t1 选中 E0/E2，输出 3。</td><td>2 张 GPU，每卡 2 个专家；总专家、top-2 与每个路由条件内的 t1 输出不变。均衡路由 t1 仍为 3；热点路由改选 E0/E1，t1 输出 2.5。均衡时两 rank 各 4 次激活；热点时 6 / 2。</td><td>跨卡分支要 dispatch 激活并 combine 返回；两种路由本例都合计 4 次跨卡派发/返回，但来源不同。参数 2/2 均分不保证计算均衡；MoE 的稀疏激活收益不是 EP 独有。</td></tr>
+<tr><th scope="row">SP</th><td>同一 TP 组 2 张 GPU；逐 token 区域每卡复制 p1…p4 共 4 行。</td><td>TP+SP 仍是同一 2 张 GPU；每卡 2 行（p1/p2 与 p3/p4），经 AllGather 进入 TP 区域，再由 ReduceScatter 回到分片。</td><td>不新增卡；总通信取决于实现和原 TP collective，不能笼统写成新增两次；不改变 KV 总量或完整 Attention 上下文。</td></tr>
+<tr><th scope="row">PCP</th><td>1 张 GPU 负责 Q1…Q8；Qi 允许 i 个配对，1+…+8 = 36 对。</td><td>2 张 GPU；连续切分 10 / 26，前后配对 18 / 18，总数仍 36；Query 行归属改变。</td><td>每行仍需因果范围内的历史 K/V；本例 AllGather 副本，不保证每卡 KV 驻留减半；配对数不是耗时或加速比。</td></tr>
+<tr><th scope="row">DCP</th><td>1 张 GPU 读取 p1…p4；不等权分支 exp=[1,1,3,3]、Z=8，结果为 5；等权分支 exp=[1,1,1,1]、Z=4，结果为 4。</td><td>2 张 GPU 各读 2 个位置；不等权分支 Z=2/6、局部 O=2/6，按 Z 加权合并为 5；等权分支 Z=2/2、局部 O=2/6，合并为 4。每步 Decode 交换一轮 O/Z。</td><td>局部平均只在 Z 相等时碰巧等于加权结果；不等权时局部平均为 4，不是正确答案 5。Z=2/6 只属于不等权分支，不能与等权的 Z=2/2 混用；每步新增局部结果与统计量通信，4→2 是读取位置数。</td></tr>
+</tbody></table>
+<p class="parallel-adoption-static-note">PP 还保留单 MB 分支：单 MB 示例两侧各 4 段层计算、同在第 4 格结束，两 stage 合计 8 GPU·时隙，其中 4 格为空闲；1 MB 与 2 MB 工作量不同，不能当等量性能比较，但单 MB 自身仍可对照采用前后的依赖与空闲。DP 的单副本也可 batch，图中不把单实例画成只能串行。EP 的 4/4 与 6/2 是 rank 激活负载，不是参数量；热点改变路由与 t1 结果，但同一路由条件内采用前后输出相同。SP 不新增 GPU；经典 SP 减轻 TP 组内逐 token 激活副本，但不改变总 KV，也不把激活分片等同于 KV 分片。PCP 的单卡基线并入同一面板，连续/前后配对仍可选。DCP 的 5 与 4 分属不等权与等权分支，Z=2/6 与 Z=2/2 也按分支区分，不混用结果。</p>
+</section>
 <div id="lesson-animation"></div>
 <div id="parallel-animation"></div>
 <section class="foundation-lab" data-foundation-lab="parallel" data-full="true" data-title="TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？"><h2>走一遍具体过程</h2><p>能区分七类并行的切分对象、通信载荷与适用场景，并解释 PCP / DCP 的成本。</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>
+
 <section id="understand" class="concept-guide"><h2>理解设计：为什么需要这些机制？</h2><nav class="concept-nav" aria-label="按概念问题阅读"><a href="#why-objective">先问：一张卡到底哪里不够？</a><a href="#why-cost">为什么卡更多，单条请求不一定更快？</a></nav><section id="why-objective" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">01</span><h3>先问：一张卡到底哪里不够？</h3></div><p>如果权重装不下，需要拆分参数或层；如果模型能装下，但许多独立请求在排队，完整副本可能更合适；如果长上下文的 Attention 或 KV 成为压力，则要考虑上下文相关分工。一个并行名称不能同时回答所有容量和性能问题。</p><p>同一矩阵的不同贡献需要合并，不同流水线阶段需要交接激活，独立请求副本则各自推进。下面的动画分别从矩阵、层依赖、请求、专家和上下文出发，避免把它们当作相同的卡片分发。</p><ul class="concept-links"><li><a href="#parallel-overview">选择一种策略看细节 →</a></li></ul><p class="concept-refs">依据：<a href="https://research.nvidia.com/labs/adlr/MegatronLM/">Megatron-LM · 大模型切分动机与矩阵分解</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-cost" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">02</span><h3>为什么卡更多，单条请求不一定更快？</h3></div><p>拆分后每个参与者可能少算一些，但还要传输张量、等待依赖并承担负载不均。以两张卡分摊工作为例，理想计算时间减半只是一个组成部分，通信和等待并不会自动减半。</p><p>因此比较方案要同时固定工作量、模型、硬件和服务目标。DP 常用于增加同时处理请求的能力；PP 的填充、排空气泡与 TP 的通信成本不同；PCP/DCP 的收益也取决于上下文长度。具体优势与代价在各策略下并列保留。</p><ul class="concept-links"><li><a href="communication.html#understand">通信操作怎样决定结果 →</a></li><li><a href="metrics.html#understand">怎样衡量延迟与吞吐 →</a></li></ul><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><aside class="concept-check"><h3>试着解释</h3><p>完整模型已能装下一张卡，加一个 DP 副本会让单条请求的矩阵乘法减半吗？</p><details><summary>展开解释</summary><p>不会。DP 分担不同请求，各副本仍执行完整模型。要拆分单条请求内的矩阵工作，应考虑 TP 等不同机制及通信成本。</p></details></aside></section>
 <section id="lesson-glossary"><h2>术语速查</h2><details id="parallel-glossary" class="parallel-glossary"><summary>术语速查 · 英文全称与含义</summary><dl class="foundation-terms" aria-label="这课用到的词"><div><dt>TP：张量并行</dt><dd>把某个计算及其参数拆开，多卡共同完成。局部结果可能需要拼接或求和。</dd></div><div><dt>PP：流水线并行</dt><dd>把模型层划分到依次执行的流水线阶段（PP stage）；后一个 stage 必须等待前一个 stage 的激活（activation，中间特征张量）。本例 Stage 0 执行 L1–L2，Stage 1 执行 L3–L4。</dd></div><div><dt>DP：数据并行</dt><dd>本例指多个完整模型副本分担不同请求；每个副本内部仍可由多卡组成。</dd></div><div><dt>Microbatch：微批次</dt><dd>MB1 / MB2 中的 MB 指 microbatch。它是一次送入流水线的工作单元，可含多条请求。本例 MB1={R1,R2}、MB2={R3,R4}；两者都经过相同的两个 stage。实际 batch 如何形成由引擎调度决定。</dd></div><div><dt>Stage 与 rank</dt><dd>Stage 是模型层的执行分工；rank 是进程在某个通信组中的编号。本例一个 stage 对应一张 GPU，这不是两种术语的通用定义。</dd></div><div><dt>Pipeline bubble：流水线气泡</dt><dd>某 stage 因等待激活或没有后续微批次而出现的空闲时隙。不是一次有效计算，也不能仅凭图中空格推算真实吞吐。</dd></div><div><dt>EP（Expert Parallelism）</dt><dd>专家并行：把 MoE 专家参数和计算分到不同 rank，按路由派发 token 激活并合并结果。</dd></div><div><dt>SP（Sequence Parallelism）</dt><dd>本课采用 Megatron 经典定义：LayerNorm 等逐 token 区域的激活沿序列切分，通过 AllGather / ReduceScatter 与 TP 计算区域转换。</dd></div><div><dt>CP（Context Parallelism）</dt><dd>上下文并行：沿同一请求的上下文位置分工，必须解决 Attention 对其他分片历史的依赖。</dd></div><div><dt>PCP（Prefill Context Parallelism）</dt><dd>预填充上下文并行：把长 prompt 的 Query/token 行分给多个 rank；每行仍需访问因果范围内的 K/V。</dd></div><div><dt>DCP（Decode Context Parallelism）</dt><dd>解码上下文并行：把历史 KV 按上下文位置分散存放，再合并当前 Query 在各分片上的 Attention 结果。</dd></div><div><dt>LSE（Log-Sum-Exp）</dt><dd>分数指数之和的对数；用于数值稳定地合并局部 Attention 归一化量。本例用 Z=exp(LSE) 帮助手算。</dd></div></dl></details></section>
 <section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2><nav class="parallel-reading-nav" aria-label="算例与机制入口"><a href="#parallel-animation">操作动画</a><a href="#parallel-overview">机制速览</a><a href="#parallel-glossary">术语速查</a><a href="#evidence">来源与边界</a></nav><div class="foundation-copy"><section id="parallel-reading"><h2>机制与取舍</h2><section class="parallel-overview" id="parallel-overview"><h2>先看分工对象</h2><p>名字相近，切分的对象和需要交换的数据不同。选择下方策略可阅读收益、代价和例子。</p><table class="fd-table"><thead><tr><th>策略</th><th>分什么</th><th>交接什么</th></tr></thead><tbody><tr><th scope="row"><a href="#read-tp">TP</a></th><td>权重矩阵与特征维</td><td>局部贡献或输出分片</td></tr><tr><th scope="row"><a href="#read-pp">PP</a></th><td>连续模型层</td><td>微批次的激活</td></tr><tr><th scope="row"><a href="#read-dp">DP</a></th><td>请求</td><td>请求分派与独立返回</td></tr><tr><th scope="row"><a href="#read-ep">EP</a></th><td>MoE 专家</td><td>被选中 token 的激活</td></tr><tr><th scope="row"><a href="#read-sp">SP</a></th><td>激活的序列行</td><td>激活行与 TP 输出贡献</td></tr><tr><th scope="row"><a href="#read-pcp">PCP</a></th><td>长 prompt 的 Query 行</td><td>Query 所需的远端 K/V</td></tr><tr><th scope="row"><a href="#read-dcp">DCP</a></th><td>历史 KV 的上下文位置</td><td>局部 Attention 输出与 LSE</td></tr></tbody></table><nav class="parallel-reading-nav" aria-label="按学习问题阅读"><a href="#read-tp">TP</a><a href="#read-pp">PP</a><a href="#read-dp">DP</a><a href="#read-ep">EP</a><a href="#read-sp">SP</a><a href="#read-pcp">PCP</a><a href="#read-dcp">DCP</a><a href="#read-chunking">与切块的关系</a></nav></section><section id="read-tp" class="parallel-reading-section"><div class="parallel-reading-title"><h3>TP · 一层里的矩阵分工</h3><a href="#parallel-overview">回到速览 ↑</a></div><p class="parallel-reading-lead">先确定切分轴，再决定求和还是拼接。</p><dl class="parallel-comparison"><div><dt>怎样切</dt><dd>输入维：X 切列、W 切对应行；输出维：W 切列、X 保持完整。</dd></div><div><dt>怎样合</dt><dd>前者逐元素相加，后者按输出列号拼接。相邻算子有时可直接使用分片输出。</dd></div></dl><details><summary>展开机制细节与完整说明</summary><h4>Tensor Parallelism（TP）：拆分计算与合并贡献</h4><p>同一矩阵乘法可沿输入维拆分，再把局部贡献逐元素求和；也可沿输出维拆分，按位置拼接输出。动画用同一个 W 和 X 对照两种做法，采用 Y=XW，结果均为 [[4,6],[10,12]]。实际网络可在相邻算子之间保持分片，通信方式取决于布局。</p></details></section><section id="read-pp" class="parallel-reading-section"><div class="parallel-reading-title"><h3>PP · 沿模型层安排流水线</h3><a href="#parallel-overview">回到速览 ↑</a></div><p class="parallel-reading-lead">不同 stage 处理不同层；同一微批次保持层间依赖。</p><dl class="parallel-comparison"><div><dt>怎样分</dt><dd>Stage 0 执行 L1/L2，Stage 1 执行 L3/L4；MB1、MB2 是两份工作单元。</dd></div><div><dt>代价与边界</dt><dd>激活就绪后下游才可计算；填充、排空和通信会留下气泡。</dd></div></dl><details><summary>展开机制细节与完整说明</summary><h4>Pipeline Parallelism（PP）：微批次与流水线气泡</h4><p>PP Stage 1没有收到激活前不能计算。先让 MB1 走过两级，再加入 MB2：Stage 0做 MB2 时，Stage 1可以做 MB1。图中填充和排空仍存在，同一个批次的依赖没有消失。</p><h4>Activation Transfer：激活怎样跨进程和设备</h4><p>本例每个 PP stage 由独立进程驱动一张 GPU。相邻 stage 传递微批次的激活张量：同机两卡跨越进程与设备边界；跨机两卡还需经过主机间互联。图中的部署选项只改变位置示意，教学时隙未计真实通信耗时。具体传输与完成条件见通信课程。</p></details></section><section id="read-dp" class="parallel-reading-section"><div class="parallel-reading-title"><h3>DP · 不同请求使用完整副本</h3><a href="#parallel-overview">回到速览 ↑</a></div><p class="parallel-reading-lead">每条请求经过一个完整模型，两条回答分别返回。</p><dl class="parallel-comparison"><div><dt>收益</dt><dd>让多个副本同时服务不同请求；各副本也可组合 TP / PP。</dd></div><div><dt>代价与边界</dt><dd>需要复制模型参数和请求状态；单条请求不会因此自动变快。</dd></div></dl><details><summary>展开机制细节与完整说明</summary><h4>Data Parallelism（DP）：完整副本分担不同请求</h4><p>推理 DP 用完整模型副本分别服务 R1、R2。它增加同时处理请求的容量，也复制模型参数和各请求的状态；单条请求不因此自动变快。副本内部可以组合 TP / PP，不能把一个副本等同于一张 GPU。</p></details></section><section id="read-ep" class="parallel-reading-section"><div class="parallel-reading-title"><h3>EP · 按 Router 结果选择专家</h3><a href="#parallel-overview">回到速览 ↑</a></div><p class="parallel-reading-lead">先看 token–专家路由表，再追踪派发、计算和加权合并。</p><dl class="parallel-comparison"><div><dt>收益</dt><dd>分散专家参数和计算，扩大可用专家容量。</dd></div><div><dt>代价与边界</dt><dd>Dispatch / Combine 需要交换激活；专家参数均匀放置不保证路由负载均匀。</dd></div></dl><details><summary>展开机制细节与完整说明</summary><h4>Expert / Context Parallelism（EP / CP）：专家与上下文分工</h4><p>EP 分的是 MoE 层里的专家工作，先由路由为 token 选专家；CP 分的是上下文相关计算。它们不是普通请求副本。第二章保留独立算例，不能把所有并行参数简单相乘当成卡数。</p><h4>EP：专家放置、路由与负载</h4><p>EP 分散专家参数和计算，让稀疏 MoE 能使用更多专家容量；每个 token 只访问路由选中的部分专家。Dispatch / Combine 带来激活交换，热点专家可能使某些 rank 忙而其他 rank 等待。共享专家、专家内部 TP、容量限制与具体 dispatcher 不在本例展开。</p></details></section><section id="read-sp" class="parallel-reading-section"><div class="parallel-reading-title"><h3>SP · 逐 token 区域保留序列分片</h3><a href="#parallel-overview">回到速览 ↑</a></div><p class="parallel-reading-lead">本课采用 Megatron 经典 SP 定义，重点是激活布局。</p><dl class="parallel-comparison"><div><dt>SP 与 TP</dt><dd>逐 token 区域按行分片；AllGather / ReduceScatter 负责与 TP 区域衔接。</dd></div><div><dt>SP 与 CP</dt><dd>CP 还要解决 Attention 对远端历史 K/V 的依赖；同样切序列，不代表范围相同。</dd></div></dl><details><summary>展开机制细节与完整说明</summary><h4>SP 与 CP：同样沿序列切分，范围不同</h4><p>本课的 SP 是 Megatron 经典序列并行：逐 token 算子区域保持激活分片，进入 TP 区域前 AllGather，离开时 ReduceScatter。CP 则让 Attention 本身跨上下文分工，各 rank 必须处理其他分片的 K/V 依赖。两者可组合；SP 名称在其他项目中可能用于更广的序列并行方案，阅读实现时应先核对定义。</p></details></section><section id="read-pcp" class="parallel-reading-section"><div class="parallel-reading-title"><h3>PCP · 分担长输入的 Prefill</h3><a href="#parallel-overview">回到速览 ↑</a></div><p class="parallel-reading-lead">多卡计算同一条长输入；每行仍需读取其允许范围内的历史。</p><dl class="parallel-comparison"><div><dt>可能的收益</dt><dd>分担 Prefill 计算与激活压力，在合适模型、后端和拓扑下降低 TTFT（首 token 延迟）。</dd></div><div><dt>必须支付的代价</dt><dd>交换 K/V，并可能暂存远端副本；因果遮罩会造成负载不均。</dd></div><div><dt>何时值得尝试</dt><dd>长输入的计算压力明显时；短输入或通信主导时，多卡可能更慢。</dd></div><div><dt>动画里的证据</dt><dd>连续切分为 10 / 26 个因果配对，前后配对为 18 / 18；这是计数，不是实测耗时。</dd></div></dl><details><summary>展开机制细节与完整说明</summary><h4>PCP 的收益：让一条长 prompt 同时使用多个 rank</h4><p>长输入的许多 Query 行可分配到不同 rank，在合适模型、后端和拓扑上减轻单 rank 的 Prefill 工作与激活压力，可能降低长请求的 TTFT。动画中的连续切分需要 10 / 26 个因果配对；前后配对后为 18 / 18。配对数仅说明不均匀的来源，不是 GPU 实测成本。</p><h4>PCP 的代价：通信、临时存储与负载不均</h4><p>各 Query 仍须访问完整的允许历史。AllGather 方案传输并暂存其他 rank 的 K/V；ring 等分块方案降低某些临时峰值，但需要更多阶段与协调。因果遮罩、短输入、padding、前缀命中、并行组合和网络都可能影响收益。PCP 不保证所有实现都降低每卡 KV 占用；短输入或通信主导时，多卡可能更慢。</p></details></section><section id="read-dcp" class="parallel-reading-section"><div class="parallel-reading-title"><h3>DCP · 分散长历史的保存与读取</h3><a href="#parallel-overview">回到速览 ↑</a></div><p class="parallel-reading-lead">同一个 Decode Query 在多份历史 KV 上计算，最后正确归一化。</p><dl class="parallel-comparison"><div><dt>可能的收益</dt><dd>减少每卡历史 KV 的保存和读取量，或减少某些 TP 布局的 KV 重复。</dd></div><div><dt>必须支付的代价</dt><dd>每轮交换局部结果及归一化统计量；短上下文时可能增大 ITL（相邻输出 token 间隔）。</dd></div><div><dt>何时值得尝试</dt><dd>长历史的缓存或读取压力明显时；仍需核对 KV head、TP 布局、batch 与注意力后端。</dd></div><div><dt>动画里的证据</dt><dd>局部输出 2、6，对应 Z=2、6：全局输出是 5。必须按 Z 加权，简单平均会得到 4。</dd></div></dl><details><summary>展开机制细节与完整说明</summary><h4>DCP 的收益：分散长历史 KV 的保存与读取</h4><p>普通 Decode 每条请求通常只有一个新 Query，但要读取很长的历史。DCP 把 KV 的上下文位置分散到不同 rank，可减少每卡这部分缓存与读取量，或减少某些 TP 布局的 KV 重复。收益取决于序列长度、KV head 数、TP 布局、batch 和注意力后端；它不自动切分全部模型权重或剩余层计算。</p><h4>DCP 的代价：每轮通信与正确归一化</h4><p>各片得到局部 O 与 LSE 后仍须通信并合并；普通 Decode 每轮都支付这类开销，可能增大短上下文的 ITL。示例两片的局部输出为 2、6，归一化量为 2、6，正确全局结果是 5；直接平均得到 4。数值稳定的 LSE 合并、分片页管理、拓扑和后端支持共同决定可用性，不能只看显存节省。</p></details></section><section id="read-chunking" class="parallel-reading-section"><div class="parallel-reading-title"><h3>与 Chunked Prefill 的关系</h3><a href="#parallel-overview">回到速览 ↑</a></div><p class="parallel-reading-lead">PCP / DCP 讨论多卡如何分工；Chunked Prefill 讨论输入何时分轮计算。</p><dl class="parallel-comparison"><div><dt>组合边界</dt><dd>空间分工与时间切块可以组合，实际支持范围取决于引擎版本与后端。</dd></div></dl><details><summary>展开机制细节与完整说明</summary><h4>PCP / DCP / Chunked Prefill：空间分工与时间切块</h4><p>PCP 在 Prefill 阶段沿上下文分工；DCP 在 Decode 阶段分散历史 KV 并合并 Attention；Chunked Prefill 把输入分到多个调度轮次。前两者描述多个 rank 如何协作，后者描述何时计算多少位置；可组合，但兼容性必须核对具体引擎版本。</p></details></section></section></div></section>

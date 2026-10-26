@@ -14,7 +14,7 @@ const BASE = process.env.OVERVIEW_TEST_URL || process.env.BASICS_TEST_URL || 'ht
 const CHROME = process.env.CHROMIUM_EXECUTABLE || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const LESSONS = {
   tokens: { variants: [0, 1], positions: [0, .5, 1, 2, 3, 4] },
-  generation: { variants: [0, 1], positions: [0, 1, 2, 2.5, 2.8, 3, 3.5, 4, 4.5, 4.9, 5, 6] },
+  generation: { variants: [2, 3], positions: [0, 1, 2, 2.5, 2.8, 3, 3.5, 4, 4.5, 4.9, 5, 6] },
   deployment: { variants: [0], positions: [0, 1, 2, 2.1, 2.3, 2.5, 2.6, 2.7, 2.9, 3, 4, 5] },
   metrics: { variants: [2, 3], positions: [0, .5, 1, 2, 2.5, 3, 4] },
 };

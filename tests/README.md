@@ -47,7 +47,7 @@ done
 
 非默认安装可设置 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`；Prefill 生命周期检查使用 `PREFILL_PLAYWRIGHT_MODULE`。服务地址覆盖参数仍按各测试文件提供的环境变量使用。
 
-CI 保留原有模型、PP 生成与源码基线检查，并增加通用文档检查。浏览器测试仍为本地运行入口；迁移目录不代表此前未进入 CI 的浏览器测试已经自动执行。基础章节另有 `test_foundations.cjs` 与 `test_foundations_browser.cjs`，检查十二课的机制不变量、场景切换与完整阅读路径。具体复核范围见 [课程维护表](../pages/COURSE_COVERAGE.md)。
+CI 保留原有模型、PP 生成与源码基线检查，并增加通用文档检查。浏览器测试仍为本地运行入口；迁移目录不代表此前未进入 CI 的浏览器测试已经自动执行。基础章节另有 `test_foundations.cjs` 与 `test_foundations_browser.cjs`，检查十三课的机制不变量、场景切换与完整阅读路径。具体复核范围见 [课程维护表](../pages/COURSE_COVERAGE.md)。
 
 `pages/test_concept_focus_browser.cjs` 检查 Chunked Prefill 的分轮累计、CUDA Graph 的提交与计算依赖、性能指标的样本和窗口边界，以及按概念设置不同时长后的拖动、回看、途中调速和旧链接恢复。它使用与其他 Pages 浏览器检查相同的 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL`，结束时关闭并核对自有浏览器进程。
 

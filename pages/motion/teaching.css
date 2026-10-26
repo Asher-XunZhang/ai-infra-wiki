@@ -52,6 +52,17 @@
 .teach-memory-fill{fill:#cae4db;stroke:none}
 .teach-map{fill:none;stroke:#8b64b6;stroke-width:2.5}
 .teach-check{fill:#fff6e6;stroke:#bd9555}
+.schedule-status{font-weight:700}
+.schedule-status.is-committed{fill:#256f59}
+.schedule-status.is-checking{fill:#9a611f}
+.schedule-status.is-blocked{fill:#a34a28}
+.schedule-status.is-unchecked{fill:#617787}
+.schedule-decision{fill:#163c48;font-size:15px;font-weight:700}
+[data-theme=dark] .schedule-status.is-committed{fill:#7ac4a5}
+[data-theme=dark] .schedule-status.is-checking{fill:#e0b272}
+[data-theme=dark] .schedule-status.is-blocked{fill:#f0a17d}
+[data-theme=dark] .schedule-status.is-unchecked{fill:#a9bdca}
+[data-theme=dark] .schedule-decision{fill:#deebf3}
 .teach-plan{fill:#f7fbfa;stroke:#278374;stroke-dasharray:5 4}
 .teaching-viewport [role=button]{cursor:pointer;outline:none}.teaching-viewport [role=button]:focus>rect{stroke:#e58a30;stroke-width:3}
 [data-theme=dark] .teach-graph-slot{fill:#243b4b;stroke:#7e9aaa}
@@ -65,7 +76,29 @@
 [data-theme=dark] .teach-panel.is-reference{fill:#22473d;stroke:#78b6a3}
 [data-theme=dark] .teach-panel.is-changed{stroke:#d9a75f}
 [data-theme=dark] .teach-held{fill:#2a3b5a;stroke:#89a4d1}[data-theme=dark] .teach-held.is-free{fill:#23483b;stroke:#82b59a}
-@media(min-width:651px){.teaching-viewport svg{max-height:840px}.teaching-viewport svg[data-teaching-kind=execution]{max-height:950px}}
+@media(min-width:651px){
+ .teaching-viewport svg{max-height:840px}.teaching-viewport svg[data-teaching-kind=execution]{max-height:950px}
+ /* The admission board must finish inside its viewport at the default desktop
+    state. Cap its width against 70vh so the whole decision is visible without
+    a second inner scrollbar; wrapping, not smaller type, keeps lines in place. */
+ .mechanism-film[data-motion=scheduling] .teaching-viewport{max-height:none;overflow:visible}
+ .mechanism-film[data-motion=scheduling] .teaching-viewport svg{max-width:min(900px,94vh);margin-inline:auto}
+ /* The model-execution call map is taller than the reading viewport. Let the
+    page scroll instead of hiding the active node behind an inner scrollbar;
+    the sticky readout keeps the current action beside the map. */
+ .mechanism-film[data-motion=model-execution] .motion-viewport{max-height:none;overflow:visible}
+ .mechanism-film[data-motion=model-execution] .motion-viewport svg[data-teaching-kind=execution]{max-width:min(100%,760px);margin-inline:auto}
+}
+/* Scheduling keeps a compact boundary strip instead of hiding it. The strip
+   retains the participants, the transferred object and the same-process edge,
+   while its detail links stay reachable. */
+.mechanism-film[data-motion=scheduling] .motion-viewport>.motion-handoff{padding:8px 12px;border-bottom:1px solid var(--border,#ccd7df);background:#f7fafb;font-size:12px;line-height:1.55}
+.mechanism-film[data-motion=scheduling] .motion-viewport>.motion-handoff>strong{font-size:10.5px;letter-spacing:.04em;margin-bottom:2px;color:var(--muted,#536878)}
+.mechanism-film[data-motion=scheduling] .motion-viewport>.motion-handoff .handoff-caption{margin:0;color:var(--fg,#173c47);font-size:12px}
+.mechanism-film[data-motion=scheduling] .motion-viewport>.motion-handoff nav{margin-top:3px;gap:4px 14px}
+.mechanism-film[data-motion=scheduling] .motion-viewport>.motion-handoff a{font-size:11px}
+[data-theme=dark] .mechanism-film[data-motion=scheduling] .motion-viewport>.motion-handoff{background:#1a2c3a;border-color:#405665}
+[data-theme=dark] .mechanism-film[data-motion=scheduling] .motion-viewport>.motion-handoff .handoff-caption{color:#deebf3}
 
 [data-theme=dark] svg[data-teaching-kind=dynamic-batching] .teach-badge{fill:#edb974}
 /* Active operands keep their value and position while the dot product is explained. */
@@ -78,3 +111,142 @@
 [data-theme=dark] .hardware-event-label{fill:#b9cddc}
 [data-theme=dark] .hardware-event-label.is-filled{fill:#fff}
 .mechanism-film[data-motion=scheduling] svg[data-teaching-kind=chunk-prefill]{max-height:none;max-width:900px;margin:auto}
+
+/* Speculation: visible call ledger, not an equal-cost or speed model. */
+.spec-call-card{fill:#f7fafb;stroke:#b9cbd6;stroke-width:1}
+.spec-verify{fill:#e7f1ed;stroke:#2d8a7a;stroke-width:1.6}
+.spec-keep{fill:#256f59;font-weight:700}
+.spec-drop{fill:#8a6a4f}
+.spec-alternate{fill:#9a611f;font-weight:700}
+[data-theme=dark] .spec-call-card{fill:#223644;stroke:#526b7b}
+[data-theme=dark] .spec-verify{fill:#1f3f37;stroke:#6cb59d}
+[data-theme=dark] .spec-keep{fill:#7ac4a5}
+[data-theme=dark] .spec-drop{fill:#d7b28c}
+[data-theme=dark] .spec-alternate{fill:#e0b272}
+
+/* --------------------------------------------------------------- 03 attention
+   One dark board; each concept is a complete readable state at every timeline
+   position. Progress only moves emphasis: projection/compare/use cursor,
+   active formula stage, active denominator/weight/output. */
+.att-board{fill:#08131f;stroke:#20384d;stroke-width:1}
+.att-topline{fill:#5fd6e8;opacity:.85}
+.att-kicker{fill:#6f8799;font-size:10.5px;letter-spacing:.06em}
+.att-mode-num{fill:#5fd6e8;font-size:12px;font-weight:700}
+.att-mode-title{fill:#eef8ff;font-size:18px;font-weight:700}
+.att-mode-sub{fill:#9bb2c4;font-size:11.5px}
+.att-stage-title{fill:#e9f5ff;font-size:13.5px;font-weight:700}
+.att-note{fill:#9db4c6;font-size:12px}
+.att-dim{fill:#6d8496;font-size:11.5px}
+.att-num{fill:#d6e9f5;font-size:13px;font-variant-numeric:tabular-nums}
+.att-score{fill:#f2b45c;font-size:13px;font-variant-numeric:tabular-nums}
+.att-q{fill:#62d8e9}
+.att-k{fill:#bda9f7}
+.att-v{fill:#f2b45c}
+.att-w{fill:#82e3c6}
+.att-mask{fill:#f0808b}
+.att-strong{fill:#eef8ff;font-size:13.5px;font-weight:700}
+.att-out{fill:#dcfaee;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.att-stage-chip{fill:#9ff0ff;font-size:11.5px;font-weight:700}
+.att-hot{fill:#ffd18a!important}
+.att-foot{fill:#6d8496;font-size:10px}
+.att-tab{cursor:pointer}
+.att-tab>rect{fill:#122738;stroke:#2b4860;stroke-width:1}
+.att-tab-text{fill:#cfe3f1;font-size:12px;font-weight:700}
+.att-tab.is-query>rect{fill:#0f3a4a;stroke:#6ad6e8;stroke-width:1.6}
+.att-tab.is-query .att-tab-text{fill:#9ff0ff}
+.att-tab:focus{outline:none}
+.att-tab:focus>rect{stroke:#f2b45c;stroke-width:2.4}
+.att-panel{fill:#0e1d2c;stroke:#223b50;stroke-width:1}
+.att-qcard{fill:#0b2633;stroke:#35707d;stroke-width:1.2}
+.att-rowbg{fill:#0e1d2c;stroke:#1c3245;stroke-width:1}
+.att-rowbg.is-query{fill:#0f2a34;stroke:#3e8994;stroke-width:1.4}
+.att-rowbg.is-future{fill:#0b1520;stroke:#27394a;stroke-dasharray:3 3;opacity:.72}
+.att-rowbg.is-scan{stroke:#6ad6e8;stroke-width:1.5}
+.att-colhead{fill:#748c9e;font-size:11px;letter-spacing:.02em}
+.att-colhead.is-active{fill:#9ff0ff}
+.att-track{fill:#172a3b;stroke:none}
+.att-track.is-future{opacity:.4}
+.att-wbar{fill:#7fe0c3;stroke:none}
+.att-wbar.is-future{opacity:.2}
+.att-contrib{stroke:none}
+.att-chain{stroke:#29445a;stroke-width:1;stroke-dasharray:3 3}
+.att-chain-dot{fill:#172a3b;stroke:#4c7183;stroke-width:1.2}
+.att-chain-dot.is-active{fill:#6ad6e8;stroke:#9ff0ff}
+.att-pulse{fill:#9ff0ff;stroke:none}
+.att-maskcell{fill:#122435;stroke:#2b465a;stroke-width:.8}
+.att-maskcell.is-open{fill:#164052;stroke:#3f8ea0}
+.att-maskcell.is-current{fill:#1b5263;stroke:#7fe0e8;stroke-width:1.6}
+.att-maskcell.is-future{fill:#241d29;stroke:#6e3d49;stroke-dasharray:2 2}
+.att-maskrow{fill:#91a9bb;font-size:12px;font-weight:700}
+.att-maskrow.is-clickable{cursor:pointer}
+.att-maskrow.is-clickable:focus{outline:none;fill:#f2b45c}
+.att-matrix-current{fill:none;stroke:#6ad6e8;stroke-width:1.4}
+.att-maskmark{stroke:#f0808b;stroke-width:1.4;fill:none}
+.att-openmark{fill:#7fe0c3;stroke:none}
+
+.motion-attention-concepts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:2px 0 16px}
+.motion-attention-concepts button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:56px;padding:8px 10px;border:1px solid var(--border,#cad5df);border-radius:9px;background:var(--surface,#fff);color:var(--fg,#173c47);text-align:left;cursor:pointer;font:inherit}
+.motion-attention-concepts button:hover{border-color:#6c9aab;background:#f1f8fa}
+.motion-attention-concepts button[aria-pressed=true]{border-color:#155e75;background:#155e75;color:#fff;box-shadow:0 0 0 1px #155e75 inset}
+.motion-attention-concepts button:focus-visible{outline:3px solid #e58a30;outline-offset:2px}
+.motion-attention-concepts strong{font-size:13.5px;line-height:1.35}
+.motion-attention-concepts small{font-size:11px;line-height:1.35;color:var(--muted,#536878)}
+.motion-attention-concepts button[aria-pressed=true] small{color:#d7f6ff}
+.motion-attention-concept-num{font:11px/1 ui-monospace,SFMono-Regular,monospace;color:#6b8798;letter-spacing:.06em}
+.motion-attention-concepts button[aria-pressed=true] .motion-attention-concept-num{color:#9ff0ff}
+
+.motion-attention-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:8px 0 0}
+.motion-attention-facts>div{min-width:0;padding:5px 7px;border:1px solid var(--border,#dbe3e8);border-radius:6px;background:var(--soft,#f3f7f9)}
+.motion-attention-facts span{display:block;font-size:10px;line-height:1.35;color:var(--muted,#536878)}
+.motion-attention-facts strong{display:block;font-size:12.5px;line-height:1.35;font-variant-numeric:tabular-nums;color:var(--fg,#173c47);overflow-wrap:anywhere}
+
+.motion-attention-data{margin-top:10px;border-top:1px solid var(--border,#dbe3e8);padding-top:10px}
+.motion-attention-data>summary{cursor:pointer;font-weight:650;font-size:14px}
+.motion-attention-data-note{font-size:12px;line-height:1.7;color:var(--muted,#536878);margin:7px 0}
+.motion-attention-table-wrap{overflow-x:auto;margin:8px 0;border:1px solid var(--border,#dbe3e8);border-radius:7px}
+.motion-attention-table{min-width:660px;font-size:12px}
+.motion-attention-table caption{caption-side:top;text-align:left;padding:8px 10px;font-size:12px;color:var(--muted,#536878)}
+.motion-attention-table th,.motion-attention-table td{padding:7px 6px;white-space:nowrap}
+.motion-attention-table tr.masked{color:var(--muted,#536878);background:var(--soft,#f3f7f9)}
+@media(max-width:650px){
+ .att-mode-title{font-size:19px}
+ .att-mode-sub{font-size:12.5px}
+ .att-stage-title{font-size:14.5px}
+ .att-note{font-size:13px}
+ .att-dim{font-size:12.5px}
+ .att-num{font-size:14px}
+ .att-score{font-size:13.5px}
+ .att-strong{font-size:14px}
+ .att-out{font-size:17px}
+ .att-colhead{font-size:11.5px}
+ .att-foot{font-size:10px}
+ .motion-attention-concepts{gap:6px;margin-bottom:12px}
+ .motion-attention-concepts button{min-height:48px;padding:7px 7px;gap:1px}
+ .motion-attention-concepts strong{font-size:12.5px}
+ .motion-attention-concepts small{display:none}
+ .motion-attention-facts{gap:4px}
+ .motion-attention-facts strong{font-size:11.5px}
+ .motion-attention-table{min-width:620px;font-size:11.5px}
+}
+
+/* EP: the adoption switch is part of the drawing. Both placements stay
+   readable; the active one gets the same outline at every playback frame. */
+.ep-mode{cursor:pointer}
+.ep-mode:not(.is-active){opacity:.8}
+.ep-mode:not(.is-active):hover{opacity:1}
+.ep-mode.is-active .ep-mode-panel{stroke:#277f7a;stroke-width:2.2}
+.ep-mode-chip>rect,.ep-owner-chip>rect{fill:#eef4f7;stroke:#9db2bf}
+.ep-mode-chip>text,.ep-owner-chip>text{fill:#294653;font-weight:700}
+.ep-expert.is-selected{stroke:#277f7a;stroke-width:2.2}
+.ep-expert.is-selected .ep-expert-name{fill:#145a56;font-weight:700}
+.ep-divider{fill:none;stroke:#93a9b6;stroke-width:1.2;stroke-dasharray:5 4}
+.ep-lane{fill:none;stroke:#b9cbd6;stroke-width:1;stroke-dasharray:2 4}
+.ep-cost{fill:#9a611f;font-weight:700}
+[data-theme=dark] .ep-mode.is-active .ep-mode-panel{stroke:#79b8c4}
+[data-theme=dark] .ep-mode-chip>rect,[data-theme=dark] .ep-owner-chip>rect{fill:#243b4b;stroke:#6f8a9b}
+[data-theme=dark] .ep-mode-chip>text,[data-theme=dark] .ep-owner-chip>text{fill:#deebf3}
+[data-theme=dark] .ep-expert.is-selected{stroke:#79b8c4}
+[data-theme=dark] .ep-expert.is-selected .ep-expert-name{fill:#c9e6e2}
+[data-theme=dark] .ep-divider{stroke:#6f8797}
+[data-theme=dark] .ep-lane{stroke:#556e7e}
+[data-theme=dark] .ep-cost{fill:#e0b272}

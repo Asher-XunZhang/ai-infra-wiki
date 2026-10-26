@@ -25,15 +25,16 @@
 <a href="foundations/tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
 <a href="foundations/generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
 <a href="foundations/attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
-<a href="foundations/cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
-<a href="foundations/batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
-<a href="foundations/hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
-<a href="foundations/parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
-<a href="foundations/communication.html">08 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
-<a href="foundations/deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
-<a href="foundations/speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
-<a href="foundations/serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
-<a href="foundations/metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+<a href="foundations/components.html">04 Transformer 基础部件：一层内部怎样计算？</a>
+<a href="foundations/cache.html">05 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="foundations/batching.html">06 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="foundations/hardware.html">07 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="foundations/parallel.html">08 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="foundations/communication.html">09 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
+<a href="foundations/deployment.html">10 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="foundations/speculation.html">11 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="foundations/serving.html">12 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="foundations/metrics.html">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
 </nav></details>
 <details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
@@ -139,19 +140,20 @@
 <div class="chapter-choice"><a href="#chapter-foundations"><span>第一章</span><strong>推理基础</strong><p>从一句话怎样变成数字开始，逐步认识生成、缓存、调度与多卡协作。</p><span>先建立直觉，再进入实现</span></a>
 <a href="#chapter-sglang"><span>第二章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十二模块 · 二十节实现课程</span></a></div></section>
 <section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>
-<p>前五课建立请求生成的主线；后七课解释硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">
+<p>第一章从文字、生成、Attention 与基础部件，走向缓存、调度、硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">
 <li><a href="foundations/tokens.html"><span class="lesson-no">01</span><span><strong>Tokenization 与 Embedding：文字怎样变成模型输入？</strong><small>能把一句话的文字片段、词表编号和输入向量对应起来。</small></span></a></li>
 <li><a href="foundations/generation.html"><span class="lesson-no">02</span><span><strong>自回归生成：Prefill 与 Decode 怎样接续？</strong><small>能区分输入处理、候选打分、选择、可见文字和停止。</small></span></a></li>
-<li><a href="foundations/attention.html"><span class="lesson-no">03</span><span><strong>Attention 与 Q/K/V：模型怎样参考上下文？</strong><small>能说明 Q、K、V 各自参与哪一步，以及未来位置为什么被挡住。</small></span></a></li>
-<li><a href="foundations/cache.html"><span class="lesson-no">04</span><span><strong>KV Cache 与前缀复用：为什么保存历史 K/V？</strong><small>能区分模型权重、历史 K/V、请求映射和可复用前缀。</small></span></a></li>
-<li><a href="foundations/batching.html"><span class="lesson-no">05</span><span><strong>Batch 调度：动态组批、连续批处理与 Chunked Prefill</strong><small>能区分等候组批与轮次间补位，并解释等待上限、整批结束和空位各自控制什么。</small></span></a></li>
-<li><a href="foundations/hardware.html"><span class="lesson-no">06</span><span><strong>GPU 计算与访存：算力、带宽和 CUDA Graph</strong><small>能说明算力、带宽与执行提交分别影响哪一段。</small></span></a></li>
-<li><a href="foundations/parallel.html"><span class="lesson-no">07</span><span><strong>TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</strong><small>能区分七类并行的切分对象、通信载荷与适用场景，并解释 PCP / DCP 的成本。</small></span></a></li>
-<li><a href="foundations/communication.html"><span class="lesson-no">08</span><span><strong>通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</strong><small>能够根据所需输出选择通信语义，并说明参与者、载荷、顺序与完成条件。</small></span></a></li>
-<li><a href="foundations/deployment.html"><span class="lesson-no">09</span><span><strong>PD Disaggregation：Prefill 与 Decode 为什么分离？</strong><small>能区分 PD 角色分离与 PP 模型切层，并指出交接成本。</small></span></a></li>
-<li><a href="foundations/speculation.html"><span class="lesson-no">10</span><span><strong>Speculative Decoding：草稿候选怎样验证和接受？</strong><small>能解释连续接受前缀，以及错误候选之后的状态为何不能直接保留。</small></span></a></li>
-<li><a href="foundations/serving.html"><span class="lesson-no">11</span><span><strong>请求路由与取消：服务在线为何还没收到回答？</strong><small>能区分健康探测、接纳、执行、客户端可见和安全收尾。</small></span></a></li>
-<li><a href="foundations/metrics.html"><span class="lesson-no">12</span><span><strong>TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</strong><small>能指出首输出等待、后续间隔、总体完成和百分位的测量边界。</small></span></a></li>
+<li><a href="foundations/attention.html"><span class="lesson-no">03</span><span><strong>Attention 与 Q/K/V：模型怎样参考上下文？</strong><small>能说明 Q、K、V 各自参与哪一步、未来位置为什么被挡住，以及同一个 Query 在两个头中怎样得到不同结果并合并。</small></span></a></li>
+<li><a href="foundations/components.html"><span class="lesson-no">04</span><span><strong>Transformer 基础部件：一层内部怎样计算？</strong><small>能说明六种部件各自改变什么、读取什么，并把它们接成一层。</small></span></a></li>
+<li><a href="foundations/cache.html"><span class="lesson-no">05</span><span><strong>KV Cache 与前缀复用：为什么保存历史 K/V？</strong><small>能区分模型权重、历史 K/V、请求映射和可复用前缀。</small></span></a></li>
+<li><a href="foundations/batching.html"><span class="lesson-no">06</span><span><strong>Batch 调度：动态组批、连续批处理与 Chunked Prefill</strong><small>能区分等候组批与轮次间补位，并解释等待上限、整批结束和空位各自控制什么。</small></span></a></li>
+<li><a href="foundations/hardware.html"><span class="lesson-no">07</span><span><strong>GPU 计算与访存：算力、带宽和 CUDA Graph</strong><small>能说明算力、带宽与执行提交分别影响哪一段。</small></span></a></li>
+<li><a href="foundations/parallel.html"><span class="lesson-no">08</span><span><strong>TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</strong><small>能区分七类并行的切分对象、通信载荷与适用场景，并解释 PCP / DCP 的成本。</small></span></a></li>
+<li><a href="foundations/communication.html"><span class="lesson-no">09</span><span><strong>通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</strong><small>能够根据所需输出选择通信语义，并说明参与者、载荷、顺序与完成条件。</small></span></a></li>
+<li><a href="foundations/deployment.html"><span class="lesson-no">10</span><span><strong>PD Disaggregation：Prefill 与 Decode 为什么分离？</strong><small>能区分 PD 角色分离与 PP 模型切层，并指出交接成本。</small></span></a></li>
+<li><a href="foundations/speculation.html"><span class="lesson-no">11</span><span><strong>Speculative Decoding：草稿候选怎样验证和接受？</strong><small>能解释连续接受前缀，以及错误候选之后的状态为何不能直接保留。</small></span></a></li>
+<li><a href="foundations/serving.html"><span class="lesson-no">12</span><span><strong>请求路由与取消：服务在线为何还没收到回答？</strong><small>能区分健康探测、接纳、执行、客户端可见和安全收尾。</small></span></a></li>
+<li><a href="foundations/metrics.html"><span class="lesson-no">13</span><span><strong>TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</strong><small>能指出首输出等待、后续间隔、总体完成和百分位的测量边界。</small></span></a></li>
 </ol></section><!-- learning-start:end -->
 
       <span id="chapter-sglang"></span><section id="learning-path" class="home-section" aria-labelledby="learning-path-title">

@@ -10,15 +10,16 @@
 <a href="tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
 <a href="generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
 <a href="attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
-<a href="cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
-<a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
-<a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
-<a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
-<a href="communication.html">08 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
-<a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
-<a href="speculation.html" aria-current="page">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
-<a href="serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
-<a href="metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+<a href="components.html">04 Transformer 基础部件：一层内部怎样计算？</a>
+<a href="cache.html">05 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="batching.html">06 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="hardware.html">07 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="parallel.html">08 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="communication.html">09 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
+<a href="deployment.html">10 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="speculation.html" aria-current="page">11 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="serving.html">12 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="metrics.html">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
 </nav></details>
 <details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
@@ -114,14 +115,25 @@
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside><div class="site-content"><main id="main-content">
 <nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">Speculative Decoding：草稿候选怎样验证和接受？</span></nav>
-<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 10 / 12</a><span class="lesson-count">通用原理</span></div><h1>Speculative Decoding：草稿候选怎样验证和接受？</h1><p>在普通逐 token 生成之上，增加候选、验证和回退。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 11 / 13</a><span class="lesson-count">通用原理</span></div><h1>Speculative Decoding：草稿候选怎样验证和接受？</h1><p>在普通逐 token 生成之上，增加候选、验证和回退。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
 <p class="foundation-prereqs">先看：<a href="generation.html">自回归生成：Prefill 与 Decode 怎样接续？</a> · <a href="cache.html">KV Cache 与前缀复用：为什么保存历史 K/V？</a></p>
 <p class="foundation-intro">先回想普通生成：已有内容决定下一 token。投机方法尝试先提出多个候选，再由目标模型验证。下面用单链、贪心规则，追踪候选怎样变成正式输出。</p>
 <section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>普通生成要等待本轮结果才能选下一 token。投机解码先用较便宜的方法猜出一小段，再让目标模型检查；目的是让一次较昂贵的目标调用有机会确认多个输出。</p></section>
-<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>
+
+<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#speculation-adoption">调用对照</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav><section class="speculation-adoption-static" id="speculation-adoption" aria-labelledby="speculation-adoption-title">
+<h2 id="speculation-adoption-title">草稿与验证速览：同一最终提交序列，调用组合不同</h2>
+<p>三种条件使用同一组草稿候选和同一条贪心验证规则。下表把“普通目标逐 token 调用”与“4 次草稿 + 1 次目标验证”并排；两种方式最终提交的序列相同，但目标调用、草稿调用和验证调用的成本并不相等，表中次数不是速度比。</p>
+<table class="fd-table"><caption>接受 2 / 0 / 4 个候选时的调用与有效状态</caption><thead><tr><th scope="col">条件</th><th scope="col">最终提交序列</th><th scope="col">调用次数</th><th scope="col">有效 KV（根 + 接受前缀）</th></tr></thead><tbody>
+<tr><th scope="row">接受 2 个（第 3 个分歧）</th><td>我 想 吃</td><td>普通目标 3 次；采用后 4 次草稿 + 1 次验证，1 次验证覆盖 5 个输入位置</td><td>根 我 想</td></tr>
+<tr><th scope="row">接受 0 个（第 1 个分歧）</th><td>你</td><td>普通目标 1 次；采用后 4 次草稿 + 1 次验证，目标调用没有减少，另多 4 次草稿</td><td>根</td></tr>
+<tr><th scope="row">接受 4 个（全部一致）</th><td>我 想 喝 茶 。</td><td>普通目标 5 次；采用后 4 次草稿 + 1 次验证，1 次验证覆盖 5 个输入位置</td><td>根 我 想 喝 茶</td></tr>
+</tbody></table>
+<p class="parallel-adoption-static-note">有效 KV 只含根 token 与接受的连续前缀；替代或补出的 token 尚未作为输入，不计入。1 次验证覆盖 5 个输入位置，不是 5 次单 token 调用；普通目标调用与草稿/验证调用的成本不相等，不能把次数差折算成速度比。</p>
+</section>
 <div id="lesson-animation"></div>
 
 <section class="foundation-lab" data-foundation-lab="speculation" data-full="true" data-title="Speculative Decoding：草稿候选怎样验证和接受？"><h2>走一遍具体过程</h2><p>能解释连续接受前缀，以及错误候选之后的状态为何不能直接保留。</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>
+
 <section id="understand" class="concept-guide"><h2>理解设计：为什么需要这些机制？</h2><nav class="concept-nav" aria-label="按概念问题阅读"><a href="#why-known-input">未来未知，为什么验证时又能一起算？</a><a href="#why-correctness">怎样在减少调用时保持目标模型的输出规则？</a><a href="#why-economics">为什么接受率高也不等于一定快？</a></nav><section id="why-known-input" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">01</span><h3>未来未知，为什么验证时又能一起算？</h3></div><p>草稿不是已确认答案，但它已经提供了候选输入序列。目标模型可以对这些已知候选位置组织一次因果计算，得到各位置对应的条件分布；这和逐步凭空确定未知未来不同。</p><p>验证结果仍依赖候选前缀。贪心例中遇到第一处分歧之后，后续列是在错误候选条件下算出的，必须停止连续接受，使用正确前缀继续。</p><ul class="concept-links"><li><a href="attention.html#why-structure">先理解因果遮罩 →</a></li></ul><p class="concept-refs">依据：<a href="https://arxiv.org/abs/2211.17192">Leviathan 等 · Speculative Decoding</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-correctness" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">02</span><h3>怎样在减少调用时保持目标模型的输出规则？</h3></div><p>本课动画采用贪心规则，逐位置检查候选是否与目标选择相同。随机采样要保持目标分布，则需要相应的接受概率和拒绝后的修正采样，不能直接套用“候选等于最高分就接受”。</p><p>例如标准投机采样先从草稿分布 q 抽出候选 x，再以 min(1, p(x)/q(x)) 的概率接受；p(x) 是目标模型对同一候选、同一前缀的概率。拒绝后要从 max(0, p−q) 归一化得到的修正分布采样。严格的分布保持结论依赖完整算法条件，不代表任意草稿验证方案都等价。</p><p class="concept-refs">依据：<a href="https://proceedings.mlr.press/v202/leviathan23a/leviathan23a.pdf">Leviathan 等 · 算法 1 与概率修正</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-economics" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">03</span><h3>为什么接受率高也不等于一定快？</h3></div><p>还要支付草稿生成、目标验证和状态整理的成本。一次验证接受的 token 越多，越可能摊薄目标调用开销；但草稿太贵、验证过长或目标执行本来已很高效时，收益会缩小。</p><p>因此既要观察连续接受长度，也要测量完整生成时间。动画里的候选数量只说明一次确认了什么，不直接报告吞吐提升。</p><p class="concept-refs">依据：<a href="https://arxiv.org/abs/2211.17192">Leviathan 等 · Speculative Decoding</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><aside class="concept-check"><h3>试着解释</h3><p>草稿第四个 token 恰好正确，但第三个被拒绝，能直接提交第四个吗？</p><details><summary>展开解释</summary><p>本课的单链验证不能这样做。第四个位置的验证使用了包含第三个候选的前缀；前缀改变后，必须重新验证后续条件。</p></details></aside></section>
 <section id="lesson-glossary"><h2>术语速查</h2><dl class="foundation-terms" aria-label="这课用到的词"><div><dt>草稿</dt><dd>尚未确认的候选序列；可以来自小模型或其他提议方法。</dd></div><div><dt>验证与提交</dt><dd>验证检查候选是否符合目标规则；提交后才成为有效输出及相关状态。</dd></div><div><dt>回退</dt><dd>撤销未被接受的部分，保留有效前缀；不是把用户已看到的任意文字偷偷删掉。</dd></div></dl></section>
 <section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2><div class="foundation-copy"><section id="concept-0"><h2>Accepted Prefix：为什么只能连续接受候选</h2><p>第四个候选是在包含第三个候选的前缀下提出的。第三个一旦被替换，第四个依赖的上下文就变了。这个例子的接受范围必须从开头连续延伸，到第一个分歧为止。 本例草稿是“我、想、喝、茶”，目标在第三个位置选择“吃”。即使验证第四列碰巧也给出“茶”，那是沿包含“喝”的输入前缀算出的结果，不能跳过分歧把它提交。</p></section><section id="concept-1"><h2>Root / Bonus Token：正式输出与有效 KV 的偏移</h2><p>验证输入包含上一轮已输出的根 token。新补出的 token 尚未作为输入计算，因此输出列表和有效 KV 列表即使长度相同，成员也不一定一样。本例正式输出为“我、想、吃”，若继续跟踪 KV，它对应“根、我、想”；主图先看接受和输出，第二章再展开 KV 提交与 EAGLE 的实现边界。</p></section><section id="concept-2"><h2>Acceptance Rate 与开销：何时可能获得收益</h2><p>提出草稿、验证、整理状态都有成本。接受得多可能摊薄逐步调用开销，接受得少则未必有收益。随机采样下的正确验证还涉及概率分布，不能照搬本例的逐 token 相等判断。</p></section></div></section>

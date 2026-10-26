@@ -10,15 +10,16 @@
 <a href="tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
 <a href="generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
 <a href="attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
-<a href="cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
-<a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
-<a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
-<a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
-<a href="communication.html">08 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
-<a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
-<a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
-<a href="serving.html">11 请求路由与取消：服务在线为何还没收到回答？</a>
-<a href="metrics.html" aria-current="page">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+<a href="components.html">04 Transformer 基础部件：一层内部怎样计算？</a>
+<a href="cache.html">05 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="batching.html">06 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="hardware.html">07 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="parallel.html">08 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="communication.html">09 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
+<a href="deployment.html">10 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="speculation.html">11 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="serving.html">12 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="metrics.html" aria-current="page">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
 </nav></details>
 <details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
@@ -114,14 +115,16 @@
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside><div class="site-content"><main id="main-content">
 <nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</span></nav>
-<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 12 / 12</a><span class="lesson-count">通用原理</span></div><h1>TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</h1><p>先把秒表放在图上，再给它命名；不要先背一排缩写。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 13 / 13</a><span class="lesson-count">通用原理</span></div><h1>TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</h1><p>先把秒表放在图上，再给它命名；不要先背一排缩写。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
 <p class="foundation-prereqs">先看：<a href="serving.html">请求路由与取消：服务在线为何还没收到回答？</a></p>
 <p class="foundation-intro">同一条请求可以有多个时间数字。下面从客户端发出请求开始，画出三个输出到达时刻；再把相应区间命名为 TTFT、ITL 和 TPOT。最后用排好序的样本理解 P95。</p>
 <section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>“快”可以指很快看到第一个字、后续输出连续，也可以指系统同时处理很多请求。不同指标回答不同问题；先确定读者体验或服务目标，再选统计方法。</p></section>
+
 <nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>
 <div id="lesson-animation"></div>
 
 <section class="foundation-lab" data-foundation-lab="metrics" data-full="true" data-title="TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？"><h2>走一遍具体过程</h2><p>能指出首输出等待、后续间隔、总体完成和百分位的测量边界。</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>
+
 <section id="understand" class="concept-guide"><h2>理解设计：为什么需要这些机制？</h2><nav class="concept-nav" aria-label="按概念问题阅读"><a href="#why-experience">为什么要分别看 TTFT、ITL 和总时间？</a><a href="#why-distribution">为什么平均值会遮住问题？</a><a href="#why-goal">吞吐提高了，为什么用户体验仍可能下降？</a></nav><section id="why-experience" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">01</span><h3>为什么要分别看 TTFT、ITL 和总时间？</h3></div><p>TTFT（Time to First Token，首 token 延迟）描述从约定起点到首个输出的等待；ITL（Inter-Token Latency，token 间延迟）描述后续输出间隔；端到端时间覆盖整条请求。一个请求开头等很久、之后很流畅，与开头很快、之后频繁停顿，是不同体验。</p><p>客户端计时还会包含网络和消息合并影响。一条消息携带多个 token 时，不能把消息间隔直接当作每个 token 的引擎计算耗时。记录指标必须写清在哪一侧、从哪个事件开始计时。</p><aside class="concept-example" aria-labelledby="example-experience"><h4 id="example-experience">沿用本课的一条客户端时间线</h4><ol><li>请求在 0 ms 发出，输出在 100、140、180 ms 到达。</li><li>首个输出等待为 100 ms；两个后续间隔都是 40 ms；最后一个输出到达用时 180 ms。</li></ol><p class="concept-note">是假设时间线。这里每次到达按一个 token 计；结束消息或连接收尾若另有延迟，需要单独说明。</p></aside><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-distribution" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">02</span><h3>为什么平均值会遮住问题？</h3></div><p>少数请求等待特别久，可能被许多很快的请求稀释。除了平均值，还应观察延迟分布与分位数；例如 P99 表示样本中约 99% 的观测值不高于该水平，仍需注明样本和计算方法。</p><p>比较两个配置时，输入长度、输出长度、到达负载、并发和成功请求范围都要尽量一致。否则一次结果变化可能来自工作量变化，而不是优化本身。</p><p class="concept-refs">依据：<a href="https://sre.google/sre-book/monitoring-distributed-systems/">Google SRE · 延迟分布与服务监测</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-goal" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">03</span><h3>吞吐提高了，为什么用户体验仍可能下降？</h3></div><p>更大的批次可能提高单位时间内完成的工作量，也可能让请求多等待。Goodput（有效吞吐）进一步关注满足指定服务目标的工作量；计算时要写清目标阈值和计数单位。</p><p>例如要求首 token 和输出间隔都达标，就不能仅凭输出 token 总数增加宣布优化成功。排队延迟、错误率和资源饱和度需要一起看；动画中的理想数字也不能替代固定负载下的测量。</p><p class="concept-refs">依据：<a href="https://arxiv.org/abs/2401.09670">DistServe · Prefill / Decode 分离的动机</a> · <a href="https://sre.google/sre-book/monitoring-distributed-systems/">Google SRE · 延迟、流量、错误与饱和度</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><aside class="concept-check"><h3>试着解释</h3><p>吞吐翻倍但 P99 延迟也翻倍，是否可以宣布优化成功？</p><details><summary>展开解释</summary><p>需要先看目标。若服务要求尾延迟达标，就必须检查新结果是否满足阈值；吞吐和延迟不能互相替代。</p></details></aside></section>
 <section id="lesson-glossary"><h2>术语速查</h2><dl class="foundation-terms" aria-label="这课用到的词"><div><dt>TTFT</dt><dd>从规定起点到首个输出可见的时间。测量工具的具体起点必须说明。</dd></div><div><dt>ITL / TPOT</dt><dd>ITL 关注相邻输出间隔；TPOT 通常概括首个输出之后每个后续 token 的平均时间。</dd></div><div><dt>吞吐与百分位</dt><dd>吞吐是单位时间完成的工作量；百分位描述样本分布中的位置，两者都依赖统计范围。</dd></div><div><dt>QPS / 输出 token 吞吐</dt><dd>同一统计窗口内，成功请求数 / 输出 token 总数分别除以窗口秒数。</dd></div></dl></section>
 <section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2><nav class="parallel-reading-nav" aria-label="算例与机制入口"><a href="#concept-0">TTFT / ITL / TPOT / E2E</a><a href="#concept-1">Streaming Chunk</a><a href="#concept-2">P95 与失败样本</a><a href="#concept-3">Throughput</a></nav><div class="foundation-copy"><section id="concept-0"><h2>TTFT / ITL / TPOT / E2E：各自测量哪个区间</h2><p>本例在 0 ms 发出，100、140、180 ms 收到三个输出。首输出等待是 100 ms，后续两个间隔都是 40 ms，TPOT 是 (180−100)/(3−1)=40 ms。只输出一个 token 时，不能用这个式子除以零。</p></section><section id="concept-1"><h2>Streaming Chunk：网络分包与 token 间隔</h2><p>如果后两个 token 在 180 ms 的同一包里到达，就没有观察到它们各自的生成时刻。包间隔不能直接当作模型的逐 token 计算耗时。第二章会结合实际工具的口径进一步拆开。</p></section><section id="concept-2"><h2>P95 与失败样本：统计口径怎样影响结论</h2><p>教学样本是 20 个成功请求，采用 nearest-rank：排序后第 19 个值是 P95。把最慢的一组变成失败再排除，成功样本的 P95 可以下降，但服务并没有因此更可靠。不同库的百分位插值约定可能不同。</p></section><section id="concept-3"><h2>Throughput：请求吞吐与 token 吞吐</h2><p>最后一个场景固定观察 10 秒，窗口内成功完成 4 条请求，共产生 10 个输出 token。请求吞吐是 4÷10=0.4 请求/秒，输出吞吐是 10÷10=1 token/秒；不是对四条请求各自的速度求平均。本例只计成功完成请求的输出，不含输入 token；实际测量也必须写清样本和窗口约定。</p></section></div></section>

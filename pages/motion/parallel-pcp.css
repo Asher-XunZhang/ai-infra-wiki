@@ -1,0 +1,149 @@
+/* PCP is one integrated mechanism board: causal matrix, Query ownership,
+ * K/V copy lanes, data-readiness gate, O_i ownership and the three split
+ * totals. These selectors are scoped to this board only. */
+svg[data-teaching-kind=parallel-pcp]{color:#203c4b}
+svg[data-teaching-kind=parallel-pcp] .pcpv-panel{fill:#fff;stroke:#cbd8df;stroke-width:1}
+svg[data-teaching-kind=parallel-pcp] .pcpv-title{fill:#163c48;font-size:17px;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-sub{fill:#4b6472;font-size:11px}
+svg[data-teaching-kind=parallel-pcp] .pcpv-section-title{fill:#163c48;font-size:12.5px;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-col-label{fill:var(--pcpv-deep,#1e5f5a);font-size:10px;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-row-label{fill:var(--pcpv-deep,#1e5f5a);font-size:11px;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-row-label.is-focus{fill:#a15a16}
+svg[data-teaching-kind=parallel-pcp] .pcpv-count{fill:#436272;font-size:10.5px;font-variant-numeric:tabular-nums}
+svg[data-teaching-kind=parallel-pcp] .pcpv-count.is-focus{fill:#a15a16;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-owner-0{--pcpv-ink:#277f7a;--pcpv-tint:#e3f1ed;--pcpv-deep:#1e5f5a}
+svg[data-teaching-kind=parallel-pcp] .pcpv-owner-1{--pcpv-ink:#4d6cba;--pcpv-tint:#e6edfc;--pcpv-deep:#3c5596}
+svg[data-teaching-kind=parallel-pcp] .pcpv-owner-text{fill:var(--pcpv-deep,#1e5f5a)}
+svg[data-teaching-kind=parallel-pcp] .pcpv-cell{fill:#fbfdfe;stroke:#cbd8df;stroke-width:1}
+svg[data-teaching-kind=parallel-pcp] .pcpv-cell.is-masked{fill:#edf1f4;stroke:#d8e0e6;stroke-dasharray:2 2}
+svg[data-teaching-kind=parallel-pcp] .pcpv-cell.is-local{fill:#f4faf8;stroke:#b7d6cf}
+svg[data-teaching-kind=parallel-pcp] .pcpv-cell.is-remote{fill:#fffaf2;stroke:#c08a43;stroke-dasharray:3 2}
+svg[data-teaching-kind=parallel-pcp] .pcpv-cell.is-waiting{opacity:.62}
+svg[data-teaching-kind=parallel-pcp] .pcpv-cell.is-ready{fill:#fdf1dc;stroke:#b07a35}
+svg[data-teaching-kind=parallel-pcp] .pcpv-cell.is-computed{fill:var(--pcpv-tint,#e3f1ed);stroke:var(--pcpv-ink,#277f7a);stroke-width:1.5;stroke-dasharray:none;opacity:1}
+svg[data-teaching-kind=parallel-pcp] .pcpv-focus-row{stroke:#b66b13;stroke-width:1.6;pointer-events:none}
+svg[data-teaching-kind=parallel-pcp] .pcpv-legend-swatch{fill:var(--pcpv-tint,#e3f1ed);stroke:var(--pcpv-ink,#277f7a);stroke-width:1}
+svg[data-teaching-kind=parallel-pcp] .pcpv-legend-swatch.is-remote{fill:#fffaf2;stroke:#c08a43;stroke-dasharray:3 2}
+svg[data-teaching-kind=parallel-pcp] .pcpv-legend-swatch.is-masked{fill:#edf1f4;stroke:#d8e0e6;stroke-dasharray:2 2}
+svg[data-teaching-kind=parallel-pcp] .pcpv-legend-swatch.is-computed{fill:var(--pcpv-tint,#e3f1ed);stroke:var(--pcpv-ink,#277f7a)}
+svg[data-teaching-kind=parallel-pcp] .pcpv-legend-label{fill:#536b7b;font-size:9px}
+svg[data-teaching-kind=parallel-pcp] .pcpv-formula{fill:#375766;font-size:10px}
+svg[data-teaching-kind=parallel-pcp] .pcpv-note{fill:#536b7b;font-size:9.5px}
+svg[data-teaching-kind=parallel-pcp] .pcpv-source rect{fill:var(--pcpv-tint,#e3f1ed);stroke:var(--pcpv-ink,#277f7a);stroke-width:1.2}
+svg[data-teaching-kind=parallel-pcp] .pcpv-source text{fill:var(--pcpv-deep,#1e5f5a);font-size:9px;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-subcard{fill:#f8fbfc;stroke:#d7e2e8;stroke-width:1}
+svg[data-teaching-kind=parallel-pcp] .pcpv-card-title{fill:#163c48;font-size:12px;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-card-line{fill:#375766;font-size:10.5px}
+svg[data-teaching-kind=parallel-pcp] .pcpv-card-line.is-waiting{fill:#8a5a1f}
+svg[data-teaching-kind=parallel-pcp] .pcpv-card-line.is-local{fill:#256f59}
+svg[data-teaching-kind=parallel-pcp] .pcpv-gather-label{fill:#536b7b;font-size:9.5px}
+svg[data-teaching-kind=parallel-pcp] .pcpv-gather-track{fill:#e2eaf0;stroke:none}
+svg[data-teaching-kind=parallel-pcp] .pcpv-gather-fill{fill:#2f8a72;stroke:none}
+svg[data-teaching-kind=parallel-pcp] .pcpv-gather-tick{fill:#fff;opacity:.85}
+svg[data-teaching-kind=parallel-pcp] .pcpv-lane{fill:#f6fafb;stroke:#d7e2e8;stroke-width:1}
+svg[data-teaching-kind=parallel-pcp] .pcpv-lane-label{fill:#1e4b5e;font-size:9.5px;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-lane-note{fill:#536b7b;font-size:9.5px}
+svg[data-teaching-kind=parallel-pcp] .pcpv-lane-status{fill:#256f59;font-size:9.5px;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-chip rect{fill:var(--pcpv-tint,#e3f1ed);stroke:var(--pcpv-ink,#277f7a);stroke-width:1.2}
+svg[data-teaching-kind=parallel-pcp] .pcpv-chip text{fill:var(--pcpv-deep,#1e5f5a);font-size:9px;font-weight:600}
+svg[data-teaching-kind=parallel-pcp] .pcpv-chip.is-copy rect{stroke-dasharray:3 2}
+svg[data-teaching-kind=parallel-pcp] .pcpv-chip.is-needed rect{stroke-width:1.6}
+svg[data-teaching-kind=parallel-pcp] .pcpv-chip.is-extra text{font-weight:500}
+svg[data-teaching-kind=parallel-pcp] .pcpv-chip.is-arrived rect{stroke-dasharray:none}
+svg[data-teaching-kind=parallel-pcp] .pcpv-chip-dot{fill:#c3d0d8;stroke:none}
+svg[data-teaching-kind=parallel-pcp] .pcpv-chip.is-arrived .pcpv-chip-dot{fill:#2f8a72}
+svg[data-teaching-kind=parallel-pcp] .pcpv-out rect{fill:var(--pcpv-tint,#e3f1ed);stroke:var(--pcpv-ink,#277f7a);stroke-width:1;stroke-dasharray:3 2}
+svg[data-teaching-kind=parallel-pcp] .pcpv-out text{fill:var(--pcpv-deep,#1e5f5a);font-size:9px;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-out.is-final rect{stroke-dasharray:none}
+svg[data-teaching-kind=parallel-pcp] .pcpv-split-card.is-interactive{cursor:pointer;outline:none}
+svg[data-teaching-kind=parallel-pcp] .pcpv-card{fill:#fbfdfe;stroke:#d5e0e7;stroke-width:1}
+svg[data-teaching-kind=parallel-pcp] .pcpv-split-card.is-current .pcpv-card{fill:#f3faf7;stroke:#2c8176;stroke-width:2}
+svg[data-teaching-kind=parallel-pcp] .pcpv-split-card.is-interactive:focus .pcpv-card{stroke:#e58a30;stroke-width:3}
+svg[data-teaching-kind=parallel-pcp] .pcpv-card-title{fill:#163c48;font-size:12px;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-badge{fill:#456171;font-size:8.5px;font-weight:700}
+svg[data-teaching-kind=parallel-pcp] .pcpv-split-card.is-current .pcpv-badge{fill:#145a63}
+svg[data-teaching-kind=parallel-pcp] .pcpv-card-formula{fill:#536b7b;font-size:9.5px;font-variant-numeric:tabular-nums}
+svg[data-teaching-kind=parallel-pcp] .pcpv-mini rect{fill:var(--pcpv-tint,#e3f1ed);stroke:var(--pcpv-ink,#277f7a);stroke-width:.8}
+svg[data-teaching-kind=parallel-pcp] .pcpv-mini text{fill:var(--pcpv-deep,#1e5f5a);font-size:8px;font-weight:600}
+svg[data-teaching-kind=parallel-pcp] .pcpv-split-card.is-current .pcpv-mini rect{stroke-width:1.2}
+svg[data-teaching-kind=parallel-pcp] .pcpv-status{fill:#17495a;font-size:10.5px;font-weight:600}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-panel{fill:#1d3140;stroke:#476171}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-title,
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-section-title,
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-card-title{fill:#e0edf5}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-sub,
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-note,
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-formula,
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-count,
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-card-line,
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-lane-note,
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-gather-label,
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-card-formula,
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-legend-label{fill:#b9cddc}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-owner-0{--pcpv-ink:#7ac4a5;--pcpv-tint:#1f443d;--pcpv-deep:#d8f1e9}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-owner-1{--pcpv-ink:#93a9e0;--pcpv-tint:#273752;--pcpv-deep:#dfe7ff}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-cell{fill:#203441;stroke:#4a6274}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-cell.is-masked{fill:#2b3d4b;stroke:#526c7d}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-legend-swatch.is-masked{fill:#2b3d4b;stroke:#526c7d}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-cell.is-local{fill:#1e3a35;stroke:#4b7d70}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-cell.is-remote{fill:#3a3227;stroke:#c59a4c}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-cell.is-ready{fill:#4a3b26;stroke:#d0a35a}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-cell.is-computed{fill:var(--pcpv-tint,#1f443d);stroke:var(--pcpv-ink,#7ac4a5);stroke-width:1.5;stroke-dasharray:none;opacity:1}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-legend-swatch.is-computed{fill:var(--pcpv-tint,#1f443d);stroke:var(--pcpv-ink,#7ac4a5);stroke-width:1.2}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-focus-row{stroke:#d9a75f}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-row-label.is-focus,
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-count.is-focus{fill:#e0b272}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-subcard{fill:#203441;stroke:#3c5565}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-gather-track{fill:#2a3d4c}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-gather-fill{fill:#6cb59d}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-lane{fill:#1b2e3c;stroke:#3f5666}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-lane-label{fill:#d6e9f3}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-lane-status{fill:#7ac4a5}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-card{fill:#1e3341;stroke:#3c5565}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-split-card.is-current .pcpv-card{fill:#203b38;stroke:#6cb59d}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-badge{fill:#c4d7e3}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-split-card.is-current .pcpv-badge{fill:#a9e0d4}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-status{fill:#deebf3}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-chip-dot{fill:#6b8496}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-chip.is-arrived .pcpv-chip-dot{fill:#7ac4a5}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-card-line.is-waiting{fill:#e0b272}
+[data-theme=dark] svg[data-teaching-kind=parallel-pcp] .pcpv-card-line.is-local{fill:#7ac4a5}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-title{font-size:15px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-sub{font-size:9.5px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-section-title{font-size:11.5px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-col-label{font-size:10px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-row-label{font-size:10.5px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-count{font-size:9px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-out text{font-size:8px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-source text,
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-chip text{font-size:8px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-card-title{font-size:10.5px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-card-line{font-size:9px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-formula{font-size:8.5px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-card-formula{font-size:8px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-lane-label,
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-lane-note,
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-lane-status{font-size:8.5px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-gather-label{font-size:8.5px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-status{font-size:9px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-note{font-size:8.5px}
+svg[data-teaching-kind=parallel-pcp][data-pcp-layout=narrow] .pcpv-legend-label{font-size:8px}
+
+
+/* PCP's integrated board is 720x622 units. With the default 300px evidence
+   rail the 1280px page leaves only ~588px for the stage, so the renderer
+   picks its 360-unit phone viewBox and then fits that tall drawing by height
+   (~200px wide). Give only this board the SP/PP full-width treatment: the
+   stage gets the whole theater width, the wide viewBox is selected on desktop
+   and the evidence rail moves below it. Other parallel canvases are untouched. */
+.mechanism-film.is-pcp .motion-theater{grid-template-columns:minmax(0,1fr);height:auto;gap:10px}
+.mechanism-film.is-pcp .motion-stage{height:clamp(680px,86vh,740px);min-height:0}
+.mechanism-film.is-pcp .motion-panel{max-height:none;overflow:visible}
+@media(max-width:900px){
+ .mechanism-film.is-pcp .motion-theater{display:flex;flex-direction:column;height:auto}
+ .mechanism-film.is-pcp .motion-stage{height:clamp(620px,84vh,720px);min-height:560px}
+ .mechanism-film.is-pcp .motion-panel{max-height:230px}
+}
+@media(max-width:650px){
+ .mechanism-film.is-pcp .motion-stage{height:min(94vh,780px);min-height:560px}
+}

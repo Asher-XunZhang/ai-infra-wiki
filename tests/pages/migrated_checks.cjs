@@ -1,11 +1,11 @@
 /* Assertions follow mechanisms moved out of the former parameter players. */
 const assert=require('node:assert/strict');
 module.exports=async(page,key)=>{
- const film=page.locator('.mechanism-film'),choice=film.getByLabel('连续演示条件');
- const seek=async p=>film.locator('input[type=range]').evaluate((e,p)=>{e.value=p;e.dispatchEvent(new Event('input',{bubbles:true}));},p);
+ const film=page.locator('.mechanism-film'),choice=film.getByLabel('连续演示条件'),scrub=film.locator('.motion-scrub input[type=range]');
+ const seek=async p=>scrub.evaluate((e,p)=>{e.value=p;e.dispatchEvent(new Event('input',{bubbles:true}));},p);
  const variants=await require('./choose_motion_scene.cjs').count(page);
  for(let v=0;v<variants;v++){
-  if(variants>1)await require('./choose_motion_scene.cjs')(page,v);const max=Number(await film.locator('input[type=range]').getAttribute('max'));
+  if(variants>1)await require('./choose_motion_scene.cjs')(page,v);const max=Number(await scrub.getAttribute('max'));
   for(let p=0;p<=max;p++){await seek(p);assert.doesNotMatch(await film.textContent(),/undefined|NaN/);if(key==='scheduling'&&v<12){
    const expected=await page.evaluate(({v,p})=>window.TeachingLessons.scheduling[v].events[p].admitted,{v,p});
    assert.deepEqual(await film.locator('[data-motion-id^="plan-"][data-committed="1.000"]').evaluateAll(es=>es.sort((a,b)=>Number(a.dataset.x)-Number(b.dataset.x)).map(e=>e.textContent)),expected);

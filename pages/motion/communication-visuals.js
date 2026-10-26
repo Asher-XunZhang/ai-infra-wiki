@@ -98,6 +98,9 @@ function reductions(svg,viewport,s){const d=s.data,scan=['Scan','Exscan'].includ
  const columns=[0,1,2].map(r=>txt('来自 '+r,'teach-small'));
  const outputLabels=[0,1,2].map(r=>txt('Rank '+r,'teach-small'));
  const results=d.math.flatMap((line,i)=>line.destinations.filter(()=>line.value!==null).map(dest=>({i,...dest,t:token('comm-result-'+dest.dst+'-'+dest.di,line.value===null?'未定义':String(line.value),50,'teach-token teach-color-3')})));
+ const resultIndex=new Map();
+ if(d.op==='ReduceScatter')results.forEach(a=>{if(!resultIndex.has(a.dst))resultIndex.set(a.dst,a.i);});
+ const outputIndex=[0,1,2].map(()=>txt('','teach-small'));
  const outputPanels=[0,1,2].map(()=>rect());
  const empties=d.output.map((a,r)=>({r,out:a,t:txt(a[0]===null?'未定义':a.length?'':'无归约输出','teach-small')}));
  const equals=d.math.map(()=>txt('＝','teach-number'));
@@ -141,7 +144,13 @@ function reductions(svg,viewport,s){const d=s.data,scan=['Scan','Exscan'].includ
    }
   });
   outputPanels.forEach((b,r)=>{if(mobile)box(b,18+r*108,338,100,114);else box(b,18+r*228,350,220,120);b.parentNode.insertBefore(b,heads[0]);});
-  outputLabels.forEach((e,r)=>text(e,mobile?24+r*108:30+r*228,mobile?442:452,`Rank ${r}${d.op==='Reduce'&&r===d.root?' ★':''}`));
+  outputLabels.forEach((e,r)=>{
+   const sub=resultIndex.get(r);
+   if(d.op==='ReduceScatter'&&sub!==undefined){
+    if(mobile){text(e,24+r*108,414,`Rank ${r}`);text(outputIndex[r],24+r*108,438,`← 下标 ${sub}`);show(outputIndex[r],1);}
+    else{text(e,30+r*228,452,`Rank ${r} ← 下标 ${sub}`);show(outputIndex[r],0);}
+   }else{text(e,mobile?24+r*108:30+r*228,mobile?442:452,`Rank ${r}${d.op==='Reduce'&&r===d.root?' ★':''}`);show(outputIndex[r],0);}
+  });
   empties.forEach(a=>text(a.t,mobile?24+a.r*108:30+a.r*228,mobile?382:386,a.out[0]===null?'未定义':a.out.length?'':d.op==='Reduce'&&a.r!==d.root?'非 root：不写回':'无归约输出'));
   // Deliver one equation row at a time. Rows carry different values, so they
   // must not share the lane at the same instant. Copies of one row are the same

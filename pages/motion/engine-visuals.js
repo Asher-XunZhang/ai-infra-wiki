@@ -87,33 +87,155 @@ V['kv-memory']=(svg,viewport,s)=>board(svg,viewport,'memory',m=>m?1010:650,H=>{
  }
  return draw;
 });
-V.scheduling=(svg,viewport,s)=>s.kind==='chunk'?window.ChunkPrefillVisual(svg,viewport,s):board(svg,viewport,'admission',m=>m?1130:760,H=>{
- const {txt,rect,path,text,box,show,wire,token,move,set}=H,S=s.model;
- const title=txt('候选请求 · 深色为命中历史，浅色为新输入','teach-heading'),orderText=txt('','teach-small');
- const reqs=S.requests.map((r,i)=>({r,label:token(r.id,r.id,56,'teach-token teach-color-'+i),pieces:Array.from({length:r.input},(_,j)=>rect(j<r.hit?'teach-read':'teach-contribution teach-color-'+i)),note:txt('','teach-small'),status:txt('','teach-small')}));
- const meterNames=['本轮输入额度','KV 预算账本','请求行'];
- const meters=meterNames.map(x=>({panel:rect(),title:txt(x,'teach-heading'),track:rect('teach-track'),fill:rect('teach-value'),value:txt('','teach-number')}));
- const check=rect('teach-check'),checkTitle=txt('','teach-heading'),formula=txt('','teach-number'),prefix=txt('','teach-small');
- const plan=rect('teach-plan'),planTitle=txt('can_run_list · 本轮计划，尚未执行','teach-heading');
- const members=S.requests.map((r,i)=>token('plan-'+r.id,r.id,64,'teach-token teach-color-'+i));
- return(p,m)=>{
-  const index=Math.floor(p),a=s.events[index],b=s.events[Math.min(index+1,s.events.length-1)],u=phase(p,index),current=u>0?b:a;
-  text(title,18,28);text(orderText,18,54,'本轮检查顺序：'+a.order.join(' → '));if(m)title.setAttribute('font-size','12');
-  reqs.forEach(({r,label,pieces,note,status},i)=>{const y=80+i*108,x=24,last=s.events.slice(0,index+1).reverse().find(e=>e.current===r.id),rejected=last?.kind==='blocked';
-   move(label,x,y);pieces.forEach((cell,j)=>box(cell,x+72+j*28,y+4,23,26));text(note,x+72,y+53,`输入 ${r.input} · 命中 ${r.hit} · 新算 ${r.input-r.hit}`);text(status,x,y+84,a.admitted.includes(r.id)?'✓ 已提交计划':b.admitted.includes(r.id)&&u>0?'正在提交计划':rejected?'未加入：'+({kv:'KV 检查未过',input:'输入额度不足',rows:'请求行不足'}[last.reason]||last.reason):current.current===r.id?'正在检查 / 处理':a.kind==='ready'?'本轮未轮到':'等待检查');
-   label.g.dataset.admitted=String(a.admitted.includes(r.id));
-  });
-  const mx=m?18:378,my=m?436:70,mw=m?324:324;
-  const values=[lerp(a.usedInput,b.usedInput,u),lerp(a.offset+a.protectedTokens+a.trial,b.offset+b.protectedTokens+b.trial,u),lerp(a.admitted.length,b.admitted.length,u)],limits=[a.config.input,a.config.kv,a.config.rows];
-  meters.forEach((meter,i)=>{const y=my+i*102;box(meter.panel,mx,y,mw,88);text(meter.title,mx+12,y+25);box(meter.track,mx+12,y+44,mw-24,16);box(meter.fill,mx+12,y+44,(mw-24)*clamp(values[i]/limits[i]),16);const before=[a.usedInput,a.offset+a.protectedTokens+a.trial,a.admitted.length][i],after=[b.usedInput,b.offset+b.protectedTokens+b.trial,b.admitted.length][i];text(meter.value,mx+12,y+80,u>0&&u<1&&before!==after?`${before} → ${after} / ${limits[i]}（变更中）`:`${u>=1?after:before} / ${limits[i]}`);meter.fill.dataset.used=values[i].toFixed(3);});
-  const display=current.current?current:s.events.slice(0,index+1).reverse().find(e=>e.current&&['blocked','commit','stop'].includes(e.kind))||current;
-  const cy=m?766:416;box(check,18,cy,m?324:684,114);text(checkTitle,30,cy+26,display.current?`${display.current} 的${current.kind==='ready'?'最后':'本次'}检查`:'等待下一次检查');
-  const request=S.requests.find(r=>r.id===display.current),need=request?request.input-request.hit+request.maxNew+1:0;
-  text(formula,30,cy+55,request?`KV：${request.input-request.hit} + 2 + 1 = ${need}`:'先排序，再逐条核对条件');
-  text(prefix,30,cy+84,request?display.reason==='kv'?`要求 ${need} < ${display.checkAvailable}；不成立，未加入计划`:`临时保护 ${display.trial}；可用 ${display.checkAvailable??display.available}；${display.kind==='commit'?'检查已通过':display.kind==='blocked'?'未通过 '+({rows:'请求行',input:'输入额度'}[display.reason]||display.reason):'需求须严格小于可用量'}`:'输入、KV 和请求行是不同的约束');if(m)prefix.setAttribute('font-size','11');
-  const py=m?926:578;box(plan,18,py,m?324:684,116);text(planTitle,30,py+28);if(m)planTitle.setAttribute('font-size','14');
-  members.forEach((t,i)=>{const start=a.admitted.includes(S.requests[i].id)?1:0,end=b.admitted.includes(S.requests[i].id)?1:0,amount=lerp(start,end,u);const ai=a.admitted.indexOf(S.requests[i].id),bi=b.admitted.indexOf(S.requests[i].id),position=ai<0?(bi<0?i:bi):lerp(ai,bi<0?ai:bi,u);move(t,38+position*96,py+56,amount);t.g.dataset.committed=amount.toFixed(3);});
- };
+V.scheduling=(svg,viewport,s)=>s.kind==='chunk'?window.ChunkPrefillVisual(svg,viewport,s):board(svg,viewport,'admission',m=>m?910:520,H=>{
+  const {txt,rect,text,box,show,token,move,set}=H,S=s.model;
+  const title=txt('候选请求 · 深色为命中历史，浅色为新输入','teach-heading'),orderText=txt('','teach-small');
+  const reqs=S.requests.map((r,i)=>({r,label:token(r.id,r.id,56,'teach-token teach-color-'+i),pieces:Array.from({length:r.input},(_,j)=>rect(j<r.hit?'teach-read':'teach-contribution teach-color-'+i)),note:txt('','teach-small'),status:txt('','schedule-status teach-small is-unchecked')}));
+  const budget=rect(),budgetTitle=txt('本轮预算账本','teach-heading'),budgetNote=txt('KV 预留含命中保护；尚未写入物理 KV','teach-small');
+  const meters=['本轮输入','KV 账本','请求行'].map(name=>({title:txt(name,'teach-heading'),track:rect('teach-track'),fill:rect('teach-value'),value:txt('','teach-number')}));
+  const check=rect('teach-check'),checkTitle=txt('','teach-heading schedule-check-title'),formula=txt('','teach-number schedule-formula');
+  const details=[0,1,2].map(()=>txt('','teach-small schedule-detail'));
+  const plan=rect('teach-plan'),planTitle=txt('本轮计划','teach-heading schedule-plan-title');
+  const decisions=[0,1].map(()=>txt('','schedule-decision'));
+  const reasons=[0,1].map(()=>txt('','teach-small schedule-reason'));
+  const members=S.requests.map((r,i)=>{const t=token('plan-'+r.id,r.id,44,'teach-token teach-color-'+i);set(t.r,{width:44,height:26});set(t.t,{x:22,y:18,'font-size':12});return t;});
+  const shortReason={kv:'KV 检查未通过',input:'输入追加未通过',rows:'请求行准入未通过'};
+  const needOf=r=>r.input-r.hit+r.maxNew+1;
+  const list=ids=>ids.length?ids.join('、'):'无';
+  function checkFor(event){
+    if(!event?.current)return null;
+    if(event.kind==='check'||(event.kind==='blocked'&&event.reason!=='rows'))return event;
+    const at=s.events.indexOf(event);
+    for(let i=at-1;i>=0;i--){const e=s.events[i];if(e.kind==='check'&&e.current===event.current)return e;if(e.kind==='blocked'&&e.reason==='rows')break;}
+    return null;
+  }
+  function charWidth(ch,size){
+    if(ch===' ')return size*.34;
+    if(/[A-Za-z0-9_.+\/%]/.test(ch))return size*.56;
+    if(/[≥→]/.test(ch))return size*.96;
+    return size;
+  }
+  function measure(value,size){let total=0;for(const ch of value)total+=charWidth(ch,size);return total;}
+  // SVG text has no automatic wrapping. Split on ASCII words and CJK characters,
+  // leaving enough width for the punctuation that follows a line.
+  function wrapLines(value,size,maxWidth,limit=3){
+    const lines=[];
+    for(const paragraph of String(value).split('\n')){
+      const units=paragraph.match(/[A-Za-z0-9_.+\/%≥→]+| +|./gu)||[];let current='';
+      for(let i=0;i<units.length;i++){
+        const unit=units[i];
+        if(current&&measure(current+unit,size)>maxWidth){
+          lines.push(current.trimEnd());if(lines.length>=limit)return lines;
+          current=unit.trimStart();
+        }else current+=unit;
+      }
+      if(current)lines.push(current.trim());
+      if(lines.length>=limit)return lines;
+    }
+    if(!lines.length)lines.push('');
+    return lines.slice(0,limit);
+  }
+  function putLines(nodes,lines,x,y,lineHeight){
+    nodes.forEach((node,i)=>{const value=lines[i];if(value){text(node,x,y+i*lineHeight,value);show(node,1);}else{node.textContent='';show(node,0);}});
+  }
+  function afterOf(event){
+    if(!event?.current)return [];
+    return event.order.slice(event.order.indexOf(event.current)+1).filter(id=>!event.admitted.includes(id));
+  }
+  function blockedLine(event){
+    const r=S.requests.find(x=>x.id===event.current),after=afterOf(event),tail=after.length?`。\n${after.join('、')} 未检查。`:'。';
+    if(event.reason==='rows')return `请求行已满（${event.admitted.length}/${event.config.rows}）；${event.current} 未入计划${tail}`;
+    if(event.reason==='kv')return `KV 检查未通过；${event.current} 未入计划${tail}`;
+    return `${event.current} 新输入 ${r.input-r.hit} ≥ 剩余 ${event.config.input-event.usedInput}；未入计划${tail}`;
+  }
+  function stopLine(event,before){
+    const after=afterOf(event),tail=after.length?`。\n${after.join('、')} 未检查。`:'。';
+    return before?`首条提交后新输入 ${event.usedInput}/${event.config.input} 已超额度${tail}`:`提交后新输入 ${event.usedInput}/${event.config.input} 用完${tail}`;
+  }
+  return(p,m)=>{
+    const index=Math.min(Math.floor(p+1e-8),s.events.length-1),a=s.events[index],b=s.events[Math.min(index+1,s.events.length-1)],u=phase(p,index);
+    const gate=s.events.slice(0,index+1).reverse().find(e=>e.kind==='blocked'||e.kind==='stop');
+    const gatePos=gate?a.order.indexOf(gate.current):-1;
+    text(title,18,28);text(orderText,18,52,'本轮检查顺序：'+a.order.join(' → '));
+    reqs.forEach(({r,label,pieces,note,status},i)=>{
+      const x=m?16:18,y=(m?62:64)+i*(m?88:94),admitted=a.admitted.includes(r.id),isCurrent=a.kind==='check'&&a.current===r.id,pos=a.order.indexOf(r.id);
+      let cls='is-unchecked',copy='未检查 · 等待轮次';
+      if(admitted){cls='is-committed';copy='✓ 已提交计划'+(gate?.kind==='stop'&&gate.current===r.id?' · 触发停止':'');}
+      else if(gate?.kind==='blocked'&&gate.current===r.id){cls='is-blocked';copy=shortReason[gate.reason];}
+      else if(gate&&pos>gatePos){copy=gate.kind==='stop'?'本轮未检查 · 前序已停止':'本轮未检查 · 前序未通过';}
+      else if(isCurrent){cls='is-checking';copy='正在检查 · 尚未决定';}
+      else if(a.kind==='ready'){copy='本轮未检查 · 未入计划';}
+      move(label,x,y);pieces.forEach((cell,j)=>box(cell,x+68+j*26,y+5,23,26));
+      text(note,x+68,y+47,`输入 ${r.input} · 命中 ${r.hit} · 新算 ${r.input-r.hit}`);
+      text(status,x,y+72,copy);status.setAttribute('class','schedule-status teach-small '+cls);
+      status.dataset.status=cls.replace('is-','');label.g.dataset.admitted=String(admitted);label.g.dataset.status=cls.replace('is-','');label.g.dataset.needInput=String(r.input-r.hit);
+    });
+    const bx=m?16:414,by=m?330:64,bw=m?328:288,bh=m?236:276;
+    box(budget,bx,by,bw,bh);text(budgetTitle,bx+12,by+22);
+    const values=[lerp(a.usedInput,b.usedInput,u),lerp(a.offset+a.protectedTokens+a.trial,b.offset+b.protectedTokens+b.trial,u),lerp(a.admitted.length,b.admitted.length,u)];
+    const limits=[a.config.input,a.config.kv,a.config.rows];
+    meters.forEach((meter,i)=>{
+      const y=by+(m?38:42)+i*(m?66:74),before=[a.usedInput,a.offset+a.protectedTokens+a.trial,a.admitted.length][i],after=[b.usedInput,b.offset+b.protectedTokens+b.trial,b.admitted.length][i];
+      text(meter.title,bx+12,y+12);
+      meter.value.setAttribute('text-anchor','end');
+      text(meter.value,bx+bw-12,y+13,`${['已用','预留','已用'][i]} ${u>0&&u<1&&before!==after?`${before} → ${after}`:`${u>=1?after:before}`} / ${limits[i]}`);
+      box(meter.track,bx+12,y+24,bw-24,10);box(meter.fill,bx+12,y+24,(bw-24)*clamp(values[i]/limits[i]),10);
+      meter.fill.dataset.used=values[i].toFixed(3);
+    });
+    text(budgetNote,bx+12,by+bh-10);
+    const display=a.current?a:(a.kind==='ready'?(gate||s.events.slice(0,index).reverse().find(e=>e.kind==='commit')||a):a);
+    const rowsBlocked=display?.kind==='blocked'&&display.reason==='rows';
+    const isFinal=a.kind==='ready';
+    let checkHead='等待下一次检查';
+    if(display?.current){
+      if(rowsBlocked)checkHead=`${isFinal?'最后准入':'请求行准入'} · ${display.current} 未通过`;
+      else if(isFinal)checkHead=`最后检查 · ${display.current} ${display.kind==='blocked'?'未通过':'通过'}`;
+      else if(display.kind==='check')checkHead=`${display.current} 的准入检查 · 进行中`;
+      else checkHead=`${display.current} 的准入检查 · ${display.kind==='blocked'?'未通过':'通过'}`;
+    }
+    text(checkTitle,30,(m?578:352)+24,checkHead);
+    let formulaText='先排序，再核对请求行、KV 与输入';
+    if(display?.current){
+      if(rowsBlocked)formulaText=`请求行 ${display.admitted.length} / ${display.config.rows} 已占，需再加 1 行`;
+      else{const r=S.requests.find(x=>x.id===display.current),ce=checkFor(display),avail=ce?ce.checkAvailable:display.available;formulaText=`KV：${r.input-r.hit} + ${r.maxNew} + 1 = ${needOf(r)}（可用 ${avail}）`;}
+    }
+    text(formula,30,(m?578:352)+50,formulaText);
+    let lines=[];
+    if(!display?.current)lines=['排序只决定检查顺序，不改变预算。','请求行、KV 与输入额度是三道独立条件。'];
+    else if(rowsBlocked)lines=[`请求行已占 ${display.admitted.length}/${display.config.rows}，还需 1 行。`,'请求行检查未通过；未进行 KV 计算。',`${list(afterOf(display))} 未检查、未入计划。`];
+    else{
+      const r=S.requests.find(x=>x.id===display.current),ce=checkFor(display),avail=ce?ce.checkAvailable:display.available,need=needOf(r),extend=r.input-r.hit,after=afterOf(display);
+      if(display.kind==='check')lines=[`请求行已通过；KV 要求 ${need} < ${avail}。`,'比较尚未完成；下一步才提交或停止。'];
+      else if(display.kind==='commit')lines=[`要求 ${need} < ${avail} 成立。`,'已加入计划；尚未分配物理 KV。','提交不等于执行模型。'];
+      else if(display.kind==='stop'){const over=display.usedInput>display.config.input;lines=[`KV 检查通过：${need} < ${avail}。`,`提交后输入 ${display.usedInput}/${display.config.input} ${over?'已超额度':'用完'}，停止追加。`,`${list(after)} 未检查；已提交请求仍会执行。`];}
+      else if(display.reason==='kv')lines=[`要求 ${need} < ${avail} 不成立。`,'临时保护已退回；未加入计划。',`${list(after)} 未检查。`];
+      else if(display.reason==='input')lines=[`KV 检查通过：${need} < ${avail}。`,`追加输入 ${extend} ≥ 剩余 ${display.config.input-display.usedInput}（已用 ${display.usedInput}/${display.config.input}）。`,`${display.current} 未入计划；${list(after)} 未检查。`];
+      else lines=['检查已通过；尚未执行模型。'];
+    }
+    putLines(details,lines,30,(m?578:352)+78,m?22:20);
+    text(planTitle,(m?16:360)+12,(m?734:352)+22);
+    members.forEach((t,i)=>{
+      const start=a.admitted.includes(S.requests[i].id)?1:0,end=b.admitted.includes(S.requests[i].id)?1:0,amount=lerp(start,end,u);
+      const ai=a.admitted.indexOf(S.requests[i].id),bi=b.admitted.indexOf(S.requests[i].id),position=ai<0?(bi<0?i:bi):lerp(ai,bi<0?ai:bi,u);
+      move(t,(m?16:360)+112+position*50,(m?734:352)+7,amount);t.g.dataset.committed=amount.toFixed(3);
+    });
+    let d1,d2;
+    if(a.kind==='waiting'){d1='尚未开始准入检查';d2=`等待顺序：${S.requests.map(r=>r.id).join(' → ')}；尚未占用预算。`;}
+    else if(a.kind==='sorted'){d1='检查顺序已确定';d2=`${a.order.join(' → ')}；排序本身不占用预算。`;}
+    else if(a.kind==='check'){d1=`正在检查 ${a.current}，尚未提交`;d2='通过后才加入本轮计划；提交不等于执行。';}
+    else if(a.kind==='commit'){d1=`已提交 ${a.current}，继续检查后续`;d2=`输入 ${a.usedInput}/${a.config.input} · KV 预留 ${a.offset+a.protectedTokens+a.trial}/${a.config.kv} · 请求行 ${a.admitted.length}/${a.config.rows}`;}
+    else if(a.kind==='blocked'){d1=`本轮计划：${list(a.admitted)}；已停止追加`;d2=blockedLine(a);}
+    else if(a.kind==='stop'){d1=`本轮计划：${list(a.admitted)}；已停止追加`;d2=stopLine(a,a.usedInput>a.config.input);}
+    else{d1=`本轮计划：${list(a.admitted)}`;d2=gate?.kind==='blocked'?blockedLine(gate):gate?.kind==='stop'?stopLine(gate,gate.usedInput>gate.config.input):'输入、KV 与请求行均未阻止；模型尚未执行。';}
+    const px=m?16:360,py=m?734:352,pw=m?328:342;
+    putLines(decisions,wrapLines(d1,15,pw-32,2),px+12,py+48,18);
+    const decisionCount=Math.max(1,wrapLines(d1,15,pw-32,2).length);
+    putLines(reasons,wrapLines(d2,m?14:12,pw-34,3),px+12,py+48+decisionCount*18+6,m?20:16);
+    check.dataset.state=display?.kind||'none';check.dataset.reason=display?.reason||'';check.dataset.request=display?.current||'';
+    plan.dataset.admitted=a.admitted.join(',');plan.dataset.remaining=a.waiting.join(',');
+    box(check,18,m?578:352,m?324:330,m?144:150);
+    box(plan,px,py,pw,m?160:150);
+  };
 });
 })();
 

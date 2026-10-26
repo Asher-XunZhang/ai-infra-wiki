@@ -12,7 +12,7 @@ class MotionCamera{
   root.addEventListener('pointermove',this.onMove);root.addEventListener('pointerup',this.onUp);root.addEventListener('pointercancel',this.onUp);
   this.zoomOut?.addEventListener('click',()=>this.setZoom(this.zoom-.25));this.zoomIn?.addEventListener('click',()=>this.setZoom(this.zoom+.25));this.zoomFit?.addEventListener('click',()=>this.fit());
   if('ResizeObserver'in root){this.ro=new ResizeObserver(()=>this.refresh());this.ro.observe(this.camera);this.ro.observe(this.svg);}else root.addEventListener('resize',this.refresh,{passive:true});
-  if('MutationObserver'in root){this.mo=new MutationObserver(()=>this.refresh());this.mo.observe(this.svg,{attributes:true,attributeFilter:['viewBox']});}
+  if('MutationObserver'in root){this.mo=new MutationObserver(()=>this.refresh());this.mo.observe(this.svg,{attributes:true,attributeFilter:['viewBox']});const film=this.camera.closest('.mechanism-film');if(film)this.mo.observe(film,{attributes:true,attributeFilter:['class']});}
   this.refresh();
  }
  measure(){
@@ -29,7 +29,22 @@ class MotionCamera{
   // there keeps their 10.5px small type readable at tablet widths without
   // inflating labels in lessons that still use the taller boards.
   const key=this.camera.closest('.mechanism-film')?.dataset.motion;
-  const boost=Math.min(key==='f-parallel'?2:1.7,1/m.scale);
+  const kind=this.svg.dataset.teachingKind;
+  // S01/C01 were enlarged to carry their ledgers. Their font compensation must
+  // follow the rectangle the SVG actually occupies: the camera keeps 12px of
+  // plane inset on each side, so using the camera box alone leaves type below
+  // 12px. Keep the correction scoped to these two tall boards.
+  const tallBoard=(key==='f-speculation'&&kind==='speculative-prefix')||(key==='f-cache'&&kind==='cache');
+  // The shared-canvas theater keeps 12px of plane inset on every side. Measure
+  // the rectangle the SVG really occupies for these boards too, otherwise the
+  // compensated type is a few percent smaller than its target. Sampling and
+  // streaming share the section but own their accepted layout and type scale,
+  // so exclude them dynamically as the player switches concepts.
+  const film=this.camera.closest('.mechanism-film');
+  const sharedCanvas=!!film?.classList.contains('is-shared-canvas')&&!film.classList.contains('is-generation-sampling');
+  const fitW=Math.max(1,m.r.width-24),fitH=Math.max(1,m.r.height-24);
+  const scale=(tallBoard||sharedCanvas)?Math.min(fitW/m.vb.width,fitH/m.vb.height):m.scale;
+  const boost=Math.min(key==='f-parallel'?2:1.7,1/scale);
   const f=(target)=>`${(target*boost).toFixed(3)}px`;
   const set=(name,value)=>{if(this.camera.style.getPropertyValue(name)!==value)this.camera.style.setProperty(name,value);};
   const narrow=innerWidth<=760,veryNarrow=innerWidth<=340;const batching=key==='f-batching'&&!!this.svg.dataset.teachingKind;
@@ -40,9 +55,15 @@ class MotionCamera{
   const hardware=key==='f-hardware';
   // Hardware keeps its own type scale: the 390px stage is height-limited, and the
   // old dense-graph reduction made axis and formula labels unreadable.
-  const heading=hardware?(narrow?(veryNarrow?15:16.5):16):attention?(narrow?(veryNarrow?15.2:15.6):15.8):basics?(veryNarrow?13.6:narrow?16:15):batching?(narrow?(veryNarrow?14.5:15.5):16):tp?(narrow?13.2:15.2):compact?13.2:(narrow?12:15);
-  const text=hardware?(narrow?(veryNarrow?12.8:13.8):13):attention?(narrow?(veryNarrow?13.2:13.4):13.2):basics?(veryNarrow?11.2:narrow?12.8:12.2):batching?(narrow?(veryNarrow?12.8:13.8):13.5):tp?(narrow?12.2:12.8):compact?12.2:12.2;
-  const small=hardware?(narrow?(veryNarrow?11.8:12.8):12):attention?(narrow?(veryNarrow?12.4:12.6):11.8):basics?(veryNarrow?10.8:narrow?11.2:10.5):batching?(narrow?(veryNarrow?11.6:12.4):12.2):tp?(narrow?10.8:11.4):compact?10.6:10.5;
+  let heading=tallBoard?(narrow?(veryNarrow?15.4:16.4):16):hardware?(narrow?(veryNarrow?15:16.5):16):attention?(narrow?(veryNarrow?15.2:15.6):15.8):basics?(veryNarrow?13.6:narrow?16:15):batching?(narrow?(veryNarrow?14.5:15.5):16):tp?(narrow?13.2:15.2):compact?13.2:(narrow?12:15);
+  let text=tallBoard?12.4:hardware?(narrow?(veryNarrow?12.8:13.8):13):attention?(narrow?(veryNarrow?13.2:13.4):13.2):basics?(veryNarrow?11.2:narrow?12.8:12.2):batching?(narrow?(veryNarrow?12.8:13.8):13.5):tp?(narrow?12.2:12.8):compact?12.2:12.2;
+  let small=tallBoard?11.6:hardware?(narrow?(veryNarrow?11.8:12.8):12):attention?(narrow?(veryNarrow?12.4:12.6):11.8):basics?(veryNarrow?10.8:narrow?11.2:10.5):batching?(narrow?(veryNarrow?11.6:12.4):12.2):tp?(narrow?10.8:11.4):compact?10.6:10.5;
+  // The three reviewed default boards get a PC-only readability floor. The
+  // accepted sampling/streaming sections are not sharedCanvas, so they keep
+  // their own type scale.
+  if(sharedCanvas&&innerWidth>=900&&(key==='f-hardware'||key==='f-metrics'||key==='f-generation')){
+   heading=Math.max(heading,16);text=Math.max(text,13);small=Math.max(small,12);
+  }
   // Align tall mobile drawings to the left so labels can use the stage margin
   // instead of being clipped by the centered viewBox. Desktop remains centered.
   this.svg.setAttribute('preserveAspectRatio',narrow?'xMinYMid meet':'xMidYMid meet');

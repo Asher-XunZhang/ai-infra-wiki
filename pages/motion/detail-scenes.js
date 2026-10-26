@@ -106,11 +106,11 @@ function create(F,C,G,R,O){
 function speculation(make,name,d,engine,scope){const scenario=make(name,engine?'EAGLE 验证与提交：输出和有效 KV 为何错位？':'Speculative Decoding：为什么只接受连续前缀？','固定验证输入与对应预测。逐列核对候选来自哪个前缀，再将接受的连续前缀与补出的 token 分开提交。'+(engine?' r 表示根 token，a–d 是四个草稿候选，z 是本例补出的 token；这些字母是教学标识。':'“根”表示上一轮已输出的 token，用作本轮验证输入起点；“我、想、喝、茶”是草稿候选。'),scope+(engine?' 沿用本课 EAGLE 线性教学算例；真实 tree 与概率接受算法未展开。':' 使用确定性贪心教学规则，不能套用到所有随机验证算法。')+' 每列预测依赖该列及之前的验证输入；补出的 token 尚未作为新输入。',[
  ['根位置已经输出','根 token（root token）是上一轮已生成、用于启动本轮验证的 token；不是一句话的第一个词。草稿候选尚未提交为正式输出。'],
  ['形成四个候选','候选的输入顺序为 [根, 候选1, 候选2, 候选3, 候选4]。后一个预测依赖前面的输入。'],
- ['目标模型给出逐位置预测','一轮验证可对多个位置计算预测；图按顺序揭示接受判断，不表示逐个发起五次模型调用。'],
+ ['目标模型给出逐位置预测','只发起 1 次目标验证调用，覆盖根与 4 个候选共 5 个输入位置；图按顺序揭示接受判断，不表示逐个位置各调用一次。'],
  ['核对连续前缀',d.accepted===4?'四个都符合本例规则；最后验证位置还给出一个补出 token。':`前 ${d.accepted} 个通过，第 ${d.accepted+1} 个分歧。即使后面碰巧相同，也不能沿已被拒绝的前缀继续接受。`],
  ['提交正式输出','接受的候选前缀加上补出 token 成为输出；候选没有通过时不能直接发给用户。'],
  ['只保留有效输入对应的 KV','有效 KV 是根位置加接受前缀；输出是接受前缀加补出 token。两行长度相同，成员却不同。拒绝分支的临时状态不能当作有效历史。']
- ],d,engine?'engine-speculation':'speculation');if(!engine){scenario.frames.pop();scenario.intro='草稿模型先提出多个候选，目标模型一次验证多个位置。看清三个动作：保留连续通过的前缀、停止接受分歧后的候选、补出一个 token。';scenario.stepDurations=[1.8,1.4,2.4,1.6];}return scenario;}
+ ],d,engine?'engine-speculation':'speculation');if(!engine){scenario.frames.pop();scenario.intro='草稿模型先提出多个候选，目标模型一次验证多个位置。看清三个动作：保留连续通过的前缀、停止接受分歧后的候选、补出一个 token。';scenario.boundary+=' 同一最终序列还要与逐 token 目标调用比较：本例草稿 4 次调用；1 次目标验证覆盖根与 4 个候选共 5 个位置，和一次单 token 调用不是等成本。';scenario.stepDurations=[1.8,1.4,2.4,1.6];}return scenario;}
 if(typeof module==='object'&&module.exports)module.exports={create,graphSchedule};
 root.TeachingLessons={...(root.TeachingLessons||{}),...create(root.FoundationModel,root.CommunicationModel,root.GenerationModel,root.RequestRuntimeModel,root.ServingModel)};
 })(typeof globalThis==='object'?globalThis:this);

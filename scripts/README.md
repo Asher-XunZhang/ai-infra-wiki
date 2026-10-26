@@ -5,7 +5,7 @@
 | 文件 | 复用范围 | 用法 |
 | --- | --- | --- |
 | [check_learning_docs.py](check_learning_docs.py) | 全仓本地链接、锚点、图片目录和学习导航覆盖 | `python3 -B scripts/check_learning_docs.py` |
-| [build_foundations.py](build_foundations.py) | 推理基础十二课正文、先修、自测与来源 | `python3 -B scripts/build_foundations.py`；检查用 `--check` |
+| [build_foundations.py](build_foundations.py) | 推理基础十三课正文、先修、自测与来源 | `python3 -B scripts/build_foundations.py`；检查用 `--check` |
 | [build_learning_navigation.py](build_learning_navigation.py) | 全部 Pages 共用的课程映射、侧栏、面包屑与翻页 | `python3 -B scripts/build_learning_navigation.py`；检查用 `--check` |
 | [build_pages.py](build_pages.py) | 全站发布构建与内容哈希资源名 | `python3 -B scripts/build_pages.py`；输出为 `.pages-dist/` |
 

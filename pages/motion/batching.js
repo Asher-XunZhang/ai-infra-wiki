@@ -20,6 +20,67 @@
     // than a 360x520 foundation board, so the generic scale is too small.
     svg.dataset.teachingKind = 'batching';
     const totals = [1, 3, 1], letters = ['A', 'B', 'C'];
+    // The same requests and arrival condition are shown for both policies, so
+    // the reader does not have to remember one schedule while watching the other.
+    const CONTRAST = {
+      fixed: { label: '固定批次', rounds: ['A + B', 'B', 'B', 'C'], entry: 'C 第 4 轮' },
+      continuous: { label: '连续批处理', rounds: ['A + B', 'B + C', 'B', '已完成'], entry: 'C 第 2 轮' }
+    };
+    const currentMode = scenario.name === '固定批次' ? 'fixed' : 'continuous';
+    function contrastPanel() {
+      const box = document.createElement('section'), head = document.createElement('div');
+      box.className = 'batch-contrast';
+      box.setAttribute('aria-label', '同一输入的固定批次与连续批处理逐轮对照');
+      head.className = 'batch-contrast-head';
+      head.append(
+        Object.assign(document.createElement('strong'), { textContent: '同一输入 · 两种批次成员表' }),
+        Object.assign(document.createElement('span'), { textContent: 'A 输出 1 · B 输出 3 · C 输出 1；C 在第 1 轮期间到达；最多同时 2 条' })
+      );
+      const table = document.createElement('table');
+      table.setAttribute('aria-label', '逐轮成员对照；两种策略使用同一组请求');
+      const thead = document.createElement('thead'), headRow = document.createElement('tr');
+      for (const text of ['策略', '第 1 轮', '第 2 轮', '第 3 轮', '第 4 轮']) {
+        const th = document.createElement('th'); th.scope = 'col'; th.textContent = text; headRow.append(th);
+      }
+      thead.append(headRow);
+      const tbody = document.createElement('tbody'), rows = {};
+      for (const key of ['fixed', 'continuous']) {
+        const data = CONTRAST[key], tr = document.createElement('tr'), th = document.createElement('th');
+        tr.dataset.batchRow = key; th.scope = 'row';
+        th.append(Object.assign(document.createElement('strong'), { textContent: data.label }),
+          Object.assign(document.createElement('small'), { textContent: data.entry }));
+        const cells = data.rounds.map((text, i) => {
+          const td = document.createElement('td');
+          td.textContent = text; td.dataset.round = String(i + 1);
+          if (text.includes('C')) td.classList.add('is-c');
+          return td;
+        });
+        tr.append(th, ...cells); tbody.append(tr); rows[key] = { tr, cells };
+      }
+      table.append(thead, tbody);
+      const scale = document.createElement('p');
+      scale.className = 'batch-contrast-scale'; scale.textContent = '生成轮次，不代表实际耗时';
+      const note = document.createElement('p');
+      note.className = 'batch-contrast-note'; note.setAttribute('aria-live', 'polite');
+      box.append(head, scale, table, note);
+      let shown = '';
+      return {
+        box,
+        update(round) {
+          const current = Math.max(1, Math.min(4, round)), key = current + ':' + currentMode;
+          if (key === shown) return;
+          shown = key;
+          for (const [rowKey, row] of Object.entries(rows)) {
+            row.tr.classList.toggle('is-active', rowKey === currentMode);
+            row.cells.forEach((cell, i) => cell.classList.toggle('is-current', i === current - 1));
+          }
+          const otherKey = currentMode === 'fixed' ? 'continuous' : 'fixed';
+          note.textContent = `当前 ${CONTRAST[currentMode].label} · 第 ${current} 轮：${CONTRAST[currentMode].rounds[current - 1] || '已完成'}；同轮 ${CONTRAST[otherKey].label}：${CONTRAST[otherKey].rounds[current - 1] || '已完成'}。`;
+        }
+      };
+    }
+    const contrast = contrastPanel();
+    (viewport.closest('.motion-theater') || viewport).before(contrast.box);
     const actors = letters.map((id, i) => {
       const g = el('g', { 'data-motion-id': id, class: `batch-request batch-request-${id}` });
       g.append(el('text', { x: 0, y: 22, class: 'batch-request-name' }, id));
@@ -146,6 +207,8 @@
       gateNote.textContent = p < 2 ? '先让 A、B 执行；C 还没就绪。' : p < 3 ? 'A 正在退出；B 继续保留自己的历史。' : !cEntered ? (fixed ? (frame.actors[1].x === 648 ? 'A、B 均已退出 → C 现在可加入下一批。' : 'B 还未退出 → 即使有空位，C 也继续等。') : '本例资源满足 → C 可在下一轮加入。') : frame.actors[2].count < 1 ? (fixed ? 'C 已入批，将在第 4 轮参与生成。' : 'C 已入批，将在第 2 轮与 B 一起生成。') : fixed ? '结果：C 等 A、B 全部退出，第 4 轮才参与。' : '结果：C 第 2 轮参与；B 没有重新开始。';
       const completedRounds = rounds.filter(r => p >= r.endpoint - 1e-6).length;
       const growing = rounds.findIndex(r => p > r.endpoint - 1 && p < r.endpoint);
+      const roundNow = growing >= 0 ? growing + 1 : Math.max(1, completedRounds);
+      contrast.update(roundNow);
       iterationLabel.textContent = growing >= 0 ? `第 ${growing + 1} 轮正在生成 · 新方块从右侧长出` : innerWidth <= 340 ? `已执行 ${completedRounds} 轮 · Decode 轮次，不是等待时间` : `已执行 ${completedRounds} 轮 · 这是 Decode 轮次，不是等待时间`;
       ledger.forEach(({ cell, members }, i) => {
         const visible = p > rounds[i].endpoint - 1;
@@ -156,6 +219,6 @@
     }
     const observer = new ResizeObserver(() => { layout(); if (last) paint(...last); });
     layout();observer.observe(viewport);
-    return { paint, destroy() { observer.disconnect(); } };
+    return { paint, destroy() { observer.disconnect(); contrast.box.remove(); } };
   };
 })();

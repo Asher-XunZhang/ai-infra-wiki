@@ -1,0 +1,15 @@
+/* Generation lesson: the token ID has one local model path and one visible
+ * path. These rules only add the transfer lane and the client bubble; the
+ * shared teaching palette still owns labels, panels and token chips. */
+.stream-lane{fill:#f7fafb;stroke:#b9cbd6;stroke-width:1;stroke-dasharray:4 3}
+.stream-client-bubble{fill:#f7fafb;stroke:#cbd8df;stroke-width:1}
+.stream-client-word{fill:#163c48;font-size:22px;font-weight:700;text-anchor:middle}
+.stream-client-empty{fill:#6b8290;font-size:14px;text-anchor:middle}
+[data-theme=dark] .stream-lane{fill:#1b2e3c;stroke:#526b7b}
+[data-theme=dark] .stream-client-bubble{fill:#1d3140;stroke:#476171}
+[data-theme=dark] .stream-client-word{fill:#deebf3}
+[data-theme=dark] .stream-client-empty{fill:#b9cddc}
+@media(max-width:650px){
+ .stream-client-word{font-size:20px}
+ .stream-client-empty{font-size:14px}
+}

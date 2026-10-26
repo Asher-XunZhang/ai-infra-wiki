@@ -144,7 +144,7 @@ V['f-generation'] = (svg, viewport, s) => board(svg, viewport, 'generation', () 
     box(outputZone, 16, m ? 336 : 236, m ? 328 : 300, m ? 80 : 96); box(kvZone, 16, m ? 422 : 344, m ? 328 : 300, m ? 86 : 100);
     text(inputTitle, 28, m ? 70 : 76, round2 ? '本轮送入前向：1 个新 token' : '本轮输入：2 个位置'); text(modelTitle, 28, m ? 174 : 200); text(modelNote, 28, m ? 196 : 218, round2 ? '读取历史，只算新位置' : '处理输入，留下 K/V');
     text(candTitle, m ? 28 : 350, m ? 214 : 80, innerWidth <= 340 ? '下一 token 候选' : '下一 token 候选（手工分布）'); text(candNote, 0, 0, '');
-    text(outputTitle, 28, m ? 346 : 258); text(client, m ? (innerWidth <= 340 ? 190 : 170) : 430, m ? 410 : 288, p >= 6 ? '客户端已见：' + d.visible : p >= 3 ? '客户端已见：' + first : '客户端尚未收到文字');
+    text(outputTitle, 28, m ? 346 : 258, '模型侧输出序列'); text(client, m ? (innerWidth <= 340 ? 190 : 170) : 430, m ? 410 : 288, p >= 6 ? (m ? '文字另经反分词与传输' : '客户端文字另经反分词与传输') : p >= 3 ? (m ? '客户端尚未收到' : '客户端尚未收到：ID 还要反分词与传输') : '客户端尚未收到文字');
     text(kvTitle, 28, m ? 434 : 366); text(kvEmpty, 28, m ? 466 : 386, '尚无历史；Prefill 完成后才出现'); show(kvEmpty, p < 2);
     text(boundary, 16, 500); show(boundary, m ? 0 : 1); text(shape, 16, m ? 480 : 480, round2 ? '本轮新输入 1 个位置；历史仍需读取' : '本轮输入 2 个位置'); show(shape, p >= 7 || m ? 0 : 1);
     move(inputA, inX[0], inY, 1); move(inputB, inX[1], inY, 1);
@@ -178,9 +178,18 @@ V['f-generation'] = (svg, viewport, s) => board(svg, viewport, 'generation', () 
       text(r.name, m ? 28 : 350, y + 13, item ? item.word : ''); show(r.name, visible ? 1 : 0);
       box(r.track, bx, y, bw, 13); show(r.track, visible ? 1 : 0);
       box(r.bar, bx, y, bw * (item ? item.p : 0) * grow, 13); show(r.bar, visible ? 1 : 0);
-      text(r.value, m ? 250 : 598, y + 12, item ? pct(item.p) : ''); show(r.value, visible ? 1 : 0);
+      text(r.value, m ? 250 : 598, y + 12, item ? pct(item.p) + (m ? ' z=' : ' · z=') + item.z.toFixed(2) : ''); show(r.value, visible ? 1 : 0);
     });
-    show(candNote, 0);
+    // Keep the raw-score step next to the probability bars. The bars are p,
+    // not z; the chain makes that distinction visible without changing the
+    // existing sampling/interval model.
+    const chain = showDist2
+      ? 'z=[ln4,0] → e^z=[4,1] → p=[.8,.2]（÷5）'
+      : 'z=[ln6,ln3,0] → e^z=[6,3,1] → p=[.6,.3,.1]（÷10）';
+    // Put the raw-score chain above the probability bars so it clears both the
+    // sampling note below the bars and the client text further down.
+    text(candNote, 350, 204, chain);
+    show(candNote, (showDist1 || showDist2) && !m ? 1 : 0);
     box(waitBox, m ? 28 : 350, m ? 252 : 140, m ? 300 : 340, 38); show(waitBox, p >= 4 && p < 5 ? 1 : 0);
     text(waitText, m ? 40 : 362, m ? 276 : 164, p < 4.5 ? '等待模型计算新输入' : '正在计算新输入，候选尚未产生'); show(waitText, p >= 4 && p < 5 ? 1 : 0);
     const intervals = choice ? choice.intervals : [], start = m ? 28 : 350, iw = m ? 304 : 340, iy = m ? 300 : 214;
@@ -374,74 +383,120 @@ V['f-attention'] = (svg, viewport, s) => board(svg, viewport, 'attention', m => 
 
 /* -------------------------------------------------------------- 04 KV cache */
 function cacheCompare(svg, viewport) {
-  return board(svg, viewport, 'cache', () => 520, H => {
+  return board(svg, viewport, 'cache', m => m ? 990 : 642, H => {
     const {txt, rect, text, box, show, move, set, node} = H;
     const M = window.FoundationModel;
+    const data = M && M.cacheHistory ? M.cacheHistory() : {calls:[4,5,6],saved:[4,5,6],readCounts:[0,4,5],computedNoCache:15,computedCache:6,readTotal:9};
     const leftCounts = M ? M.snapshot('cache', 0, 3).computed : [4, 5, 6];
     const rightCounts = M ? M.snapshot('cache', 1, 3).computed : [4, 1, 1];
-    const titles = ['不保存历史：每轮重算', '保存历史：旧位置读取，新位置计算'];
-    const subs = ['没有可跨轮复用的 K/V', '一份历史随序列增长，不复制整份缓存'];
+    const titles = ['不保存：每轮重算', '保存：旧读新算'];
+    const subs = ['没有跨轮可复用 K/V', '只存一份历史；位置随调用增长'];
     const panels = [rect(), rect()], titleNodes = titles.map(x => txt(x, 'teach-heading')), subNodes = subs.map(x => txt(x, 'teach-small'));
-    const legend = txt('橙 = 本轮新算；绿 = 读取历史；浅色 = 尚未发生', 'teach-small');
-    function chip(id, label, color) {
+    const legend = txt('', 'teach-small'), legend2 = txt('', 'teach-small');
+    function chip(id, label, color, w = 38, h = 26) {
       const g = node('g', {'data-motion-id': id, class: 'teach-token teach-color-' + color});
-      const r = node('rect', {width: 40, height: 24, rx: 5});
-      const t = node('text', {x: 20, y: 16, 'text-anchor': 'middle'});
-      t.textContent = label; g.append(r, t); return {g, r, t, width: 40};
+      const r = node('rect', {width: w, height: h, rx: 5});
+      const t = node('text', {x: w / 2, y: h - 8, 'text-anchor': 'middle'});
+      t.textContent = label; g.append(r, t); return {g, r, t, width: w};
     }
     const sides = [0, 1].map(side => ({
       counts: side ? rightCounts : leftCounts,
-      rounds: [0, 1, 2].map(r => ({
-        label: txt('第 ' + (r + 1) + ' 次调用', 'teach-small'),
-        cells: Array.from({length: r + 4}, (_, i) => ({node: chip(`cmp-${side}-${r}-${i}`, i < 4 ? 'p' + (i + 1) : 'y' + (i - 3), i % 5), note: txt('', 'teach-small'), fill: rect('teach-compute')}))
-      }))
+      rounds: [0, 1, 2].map(r => {
+        const status = txt('', 'teach-small');
+        status.setAttribute('text-anchor', 'end');
+        return {
+          label: txt('第 ' + (r + 1) + ' 次调用', 'teach-small'),
+          status,
+          cells: Array.from({length: r + 4}, (_, i) => ({
+            node: chip(`cmp-${side}-${r}-${i}`, i < 4 ? 'p' + (i + 1) : 'y' + (i - 3), i % 5),
+            fill: rect('teach-compute')
+          }))
+        };
+      })
     }));
     const totals = [txt('', 'teach-heading'), txt('', 'teach-heading')], reads = [txt('', 'teach-small'), txt('', 'teach-small')];
-    const summary = txt('', 'teach-heading'), summaryNote = txt('左侧新算 4+5+6=15；右侧 4+1+1=6。读取历史仍要访问 K/V，不能把 15/6 当作耗时或加速比。', 'teach-small');
-    const poolTitle = txt('右侧只保留一份持续增长的历史；读取不是复制整份缓存', 'teach-small');
-    const pool = Array.from({length: 6}, (_, i) => chip('cmp-store-' + i, i < 4 ? 'p' + (i + 1) : 'y' + (i - 3), i % 5));
+    const summary = txt('', 'teach-heading'), summaryNote = txt('', 'teach-small'), summaryNote2 = txt('', 'teach-small'), summaryNote3 = txt('', 'teach-small');
+    const historyTitle = txt('', 'teach-small');
+    const historyCount = txt('', 'teach-small');
+    const historySlots = ['p1', 'p2', 'p3', 'p4', 'y1', 'y2'].map((label, i) => chip('cmp-store-' + i, label, i % 5, 36, 25));
+    const barsTitle = txt('', 'teach-small');
+    const newLabel = txt('新算合计', 'teach-small'), readLabel = txt('跨轮读取', 'teach-small');
+    const noHead = txt('不保存', 'teach-small'), saveHead = txt('保存', 'teach-small');
+    const newTracks = [rect('teach-track'), rect('teach-track')], newFills = [rect('teach-compute'), rect('teach-compute')];
+    const readTracks = [rect('teach-track'), rect('teach-track')], readFills = [rect('teach-read'), rect('teach-read')];
+    const newValues = [txt('', 'teach-number'), txt('', 'teach-number')], readValues = [txt('', 'teach-number'), txt('', 'teach-number')];
     return (p, m) => {
-      const panelY = [m ? 40 : 42, m ? 272 : 42], panelX = 16, panelW = m ? 328 : 340;
-      panels.forEach((v, side) => { box(v, side ? (m ? 16 : 364) : 16, panelY[side], panelW, m ? 226 : 318); });
-      text(legend, m ? 16 : 364, m ? 20 : 20); show(legend, m ? 1 : 0);
+      const panelH = m ? 314 : 328;
+      const panelY = m ? [56, 382] : [42, 42];
+      const panelX = m ? [12, 12] : [12, 364], panelW = m ? 336 : 344;
+      const rowStart = m ? 54 : 72, rowH = m ? 74 : 72, chipW = m ? 36 : 38, chipGap = m ? 45 : 44;
+      const historyY = m ? 724 : 400, summaryY = m ? 793 : 469, barsY = m ? 889 : 543;
+      const barX = m ? [96, 268] : [110, 474], barW = m ? 64 : 190;
+      panels.forEach((v, side) => box(v, panelX[side], panelY[side], panelW, panelH));
+      text(titleNodes[0], panelX[0] + 12, panelY[0] + 24);
+      text(titleNodes[1], panelX[1] + 12, panelY[1] + 24);
+      text(subNodes[0], panelX[0] + 12, panelY[0] + 44); show(subNodes[0], m ? 0 : 1);
+      text(subNodes[1], panelX[1] + 12, panelY[1] + 44); show(subNodes[1], m ? 0 : 1);
+      text(legend, 16, 24, m ? '橙/绿 = 进度条：新算/跨轮读取' : '进度条：橙 = 本轮新算 · 绿 = 跨轮缓存读取 · 灰 = 尚未发生；色块 = 位置身份');
+      text(legend2, 16, 44, m ? '灰 = 未发生；色块 = 位置身份' : ''); show(legend2, m ? 1 : 0);
       [0, 1].forEach(side => {
-        const x = side ? (m ? 16 : 364) : 16, y = panelY[side];
-        text(titleNodes[side], x + 12, y + 22);
-        text(subNodes[side], x + 12, y + 38); show(subNodes[side], m ? 0 : 1);
-        const rowStart = y + (m ? 44 : 62), rowH = m ? 44 : 72;
+        const x = panelX[side], y = panelY[side];
         sides[side].rounds.forEach((row, r) => {
-          const active = p >= r, done = p >= r + 1;
-          text(row.label, x + 12, rowStart + r * rowH + 8); show(row.label, active ? 1 : .35);
+          const active = p >= r, done = p >= r + 1, labelY = y + rowStart + r * rowH;
+          const rowStatus = !active ? '待算' : !done ? '进行中' : side === 0 || r === 0 ? `重算 ${row.cells.length}` : `读取 ${data.readCounts[r]} · 新算 1`;
+          text(row.label, x + 12, labelY); show(row.label, active ? 1 : .35);
+          text(row.status, x + panelW - 12, labelY, rowStatus); show(row.status, active ? 1 : .35);
           row.cells.forEach((cell, i) => {
-            const cx = x + (m ? 10 : 14) + i * (m ? 42 : 54), cy = rowStart + r * rowH + (m ? 12 : 14);
+            const cx = x + 12 + i * chipGap, cy = labelY + 12;
             const reuse = side === 1 && ((r === 1 && i < 4) || (r === 2 && i < 5));
             const planned = side === 0 ? '重算' : reuse ? '复用' : '新算';
-            move(cell.node, cx, cy, active ? (done ? 1 : .8) : .22);
-            set(cell.node.g, {class: 'teach-token teach-color-' + (i % 5)});
+            move(cell.node, cx, cy, active ? (done ? 1 : .82) : .2);
+            set(cell.node.r, {width: chipW, height: 26});
+            text(cell.node.t, chipW / 2, 18);
             cell.node.r.dataset.state = planned;
-            text(cell.note, cx + 2, cy + (m ? 31 : 42), active ? (done ? planned : (side === 1 ? planned : '进行中')) : '待算'); show(cell.note, m ? 0 : active ? 1 : .25);
-            box(cell.fill, cx + 2, cy + 27, 36 * (done ? 1 : active ? .45 : 0), 3);
+            box(cell.fill, cx + 2, cy + 30, (chipW - 4) * (done ? 1 : active ? .45 : 0), 3);
             set(cell.fill, {class: side === 1 && reuse ? 'teach-read' : 'teach-compute'});
             show(cell.fill, active ? 1 : 0);
           });
         });
         const doneTerms = sides[side].counts.filter((_, r) => p >= r + 1);
-        const partial = p > 0 && p < 3 && p > Math.floor(p) ? '（进行中）' : '';
-        text(reads[side], x + 12, y + (m ? 194 : 286), side === 0 ? '读取历史：0 个位置' : p >= 3 ? '读取历史：4 + 5 = 9' : p >= 2 ? '读取历史：4' : '读取历史：0'); show(reads[side], 1);
-        text(totals[side], x + 12, y + (m ? 214 : 304), `累计新算：${doneTerms.join(' + ') || '0'}${doneTerms.length ? ' = ' + doneTerms.reduce((a, b) => a + b, 0) : ''}${partial}`); show(totals[side], 1);
+        const computed = doneTerms.reduce((a, b) => a + b, 0);
+        text(reads[side], x + 12, y + panelH - 46, side === 0 ? '跨轮缓存读取 0' : p >= 3 ? `跨轮缓存读取 ${data.readCounts[1]} + ${data.readCounts[2]} = ${data.readTotal}` : p >= 2 ? `跨轮缓存读取 ${data.readCounts[1]}` : '跨轮缓存读取 0');
+        text(totals[side], x + 12, y + panelH - 16, `新算 ${doneTerms.join(' + ') || '0'}${doneTerms.length ? ' = ' + computed : ''}`);
+        totals[side].dataset.computed = String(computed);
       });
-      text(summary, 16, 376, '新算位置数：15（不保存） vs 6（保存）；读取历史：0 vs 9'); show(summary, m ? 0 : p >= 3 ? 1 : 0);
-      text(summaryNote, 16, 400); show(summaryNote, m ? 0 : p >= 3 ? 1 : 0);
-      text(poolTitle, 16, 434); show(poolTitle, m ? 0 : 1);
-      pool.forEach((a, i) => {
-        const start = i < 4 ? 1 : i === 4 ? 2 : 3;
-        move(a, 24 + i * 48, 458, m ? 0 : p >= start ? 1 : 0);
+      const saved = p >= 3 ? 6 : p >= 2 ? 5 : p >= 1 ? 4 : 0;
+      text(historyTitle, 16, historyY, m ? '保存历史位置' : '保存历史的位置（右侧）');
+      text(historyCount, m ? 132 : 220, historyY, m ? `0→4→5→6 · 当前 ${saved}/6` : `0 → 4 → 5 → 6：当前 ${saved} 个位置`);
+      historySlots.forEach((a, i) => {
+        move(a, 16 + i * 46, historyY + 12, i < saved ? 1 : .22);
+        set(a.g, {class: 'teach-token ' + (i < saved ? 'teach-color-' + (i % 5) : 'teach-empty')});
+        a.g.dataset.saved = String(i < saved);
       });
+      text(summary, 16, summaryY, m ? '三次调用完成后的对照' : `三次调用完成后的对照：新算 ${data.computedNoCache} vs ${data.computedCache}（不保存 vs 保存）· 跨轮缓存读取 0 vs ${data.readTotal}`);
+      text(summaryNote, 16, summaryY + 24, m ? `新算 ${data.computedNoCache}/${data.computedCache} · 跨轮缓存读取 0/${data.readTotal}` : `${data.computedNoCache}/${data.computedCache} 是 K/V 投影位置数，不是总工作量、耗时或加速比。`);
+      text(summaryNote2, 16, summaryY + 46, m ? `${data.computedNoCache}/${data.computedCache} 是位置数，非耗时或加速比` : `跨轮缓存读取 0 = 未复用上一轮缓存；Attention 仍读取本轮所需 K/V。`);
+      text(summaryNote3, 16, summaryY + 68, m ? '跨轮读取 0 = 未复用；Attention 仍读 K/V' : ''); show(summaryNote3, m ? 1 : 0);
+      text(barsTitle, 16, barsY, m ? '资源条 · 三次调用完成后的累计' : '资源条 · 三次调用完成后的累计（不是时间）');
+      text(noHead, 18, barsY + 24); text(saveHead, m ? 190 : 382, barsY + 24);
+      text(newLabel, 16, barsY + 52); text(readLabel, 16, barsY + 84);
+      [0, 1].forEach(side => {
+        const value = side ? data.computedCache : data.computedNoCache;
+        box(newTracks[side], barX[side], barsY + 44, barW, 9);
+        box(newFills[side], barX[side], barsY + 44, barW * value / data.computedNoCache, 9);
+        text(newValues[side], barX[side] + barW + 4, barsY + 54, String(value));
+        const read = side ? data.readTotal : 0;
+        box(readTracks[side], barX[side], barsY + 76, barW, 9);
+        box(readFills[side], barX[side], barsY + 76, barW * read / data.readTotal, 9);
+        text(readValues[side], barX[side] + barW + 4, barsY + 86, String(read));
+      });
+      show(summary, 1); show(summaryNote, 1); show(barsTitle, 1); show(newLabel, 1); show(readLabel, 1);
     };
   });
 }
 function cachePages(svg, viewport) {
-  return board(svg, viewport, 'cache-pages', () => 430, H => {
+  const panel = window.CacheAdoption?.mount('pages', viewport) || null;
+  const inner = board(svg, viewport, 'cache-pages', () => 430, H => {
     const {txt, rect, path, text, box, show, wire, token, move, set} = H;
     const title = txt('逻辑位置 → 页表 → 物理页', 'teach-heading'), logicTitle = txt('R1 的逻辑位置', 'teach-small'), tableTitle = txt('页表：位置 → 页 / 槽', 'teach-small');
     const poolTitle = txt('物理页池（每页 2 槽）', 'teach-small'), note = txt('页号 7、2 是教学物理页号；p1…p3 是请求位置。逻辑顺序连续，物理页可以不连续。', 'teach-small'), note2 = txt('逻辑顺序连续，物理页可以不连续。', 'teach-small');
@@ -503,16 +558,18 @@ function cachePages(svg, viewport) {
           box(s.box, x, y, 78, 40); set(s.box, {class: 'teach-memory-slot' + (reserved && !written ? ' is-reserved' : written ? ' is-written' : '')});
           text(s.label, x + 6, y + 16, written ? 'p' + (i + 1) : reserved ? '预留' : '空闲'); text(s.sub, x + 6, y + 32, '槽 ' + (i % 2)); show(s.sub, 1);
         });
-        text(mapLine, 16, 296, 'p1 → 页 7 / 槽 0；p2 → 页 7 / 槽 1；p3 → 页 2 / 槽 0'); show(mapLine, p >= 2 ? 1 : 0);
+        text(mapLine, 16, 296, 'p1、p2 → 页 7；p3 → 页 2。'); show(mapLine, p >= 2 ? 1 : 0);
         text(pageState, 16, 318, p >= 3 ? '映射完成：逻辑位置连续，物理页可以跳号。' : p >= 1 ? '页 7 已预留；地址还不等于可读 K/V。' : '空池：先分配，再写入。');
         text(note, 16, 340, '页号 7、2 是教学物理页号；p1…p3 是请求位置。'); note.setAttribute('font-size', '11');
         text(note2, 16, 356, '逻辑顺序连续，物理页可以不连续。'); note2.setAttribute('font-size', '11');
       }
     };
   });
+  return {paint(...args){inner.paint(...args);}, destroy(){panel?.destroy();inner.destroy();}};
 }
 function cacheShared(svg, viewport) {
-  return board(svg, viewport, 'cache-shared', () => 430, H => {
+  const panel = window.CacheAdoption?.mount('prefix', viewport) || null;
+  const inner = board(svg, viewport, 'cache-shared', () => 430, H => {
     const {txt, rect, path, text, box, show, wire, token, move, set} = H;
     const title = txt('两条请求引用同一份物理 K/V', 'teach-heading'), r1 = txt('R1', 'teach-heading'), r2 = txt('R2', 'teach-heading');
     const r1Box = rect('teach-panel'), r2Box = rect('teach-panel'), sharedBox = rect('teach-panel');
@@ -537,7 +594,7 @@ function cacheShared(svg, viewport) {
       text(r2State, m ? 196 : 282, m ? 92 : 104, r2Held ? '持有共享前缀' : p >= 4 ? 'R2 已结束' : '尚未建立');
       box(sharedBox, 16, m ? 150 : 180, m ? 328 : 454, m ? 96 : 106);
       text(sharedLabel, 28, m ? 174 : 204, !established ? '尚未建立共享历史' : p >= 4 ? '共享历史：仍被缓存保留' : '共享历史：同一份 K/V');
-      text(sharedNote, 28, m ? 194 : 226, !established ? '先有可复用前缀，才谈引用。' : refs === 2 ? 'R1、R2 指向同一份数据；没有复制第二份。' : r1Held ? 'R1 指向这份数据；R2 尚未接入。' : r2Held ? 'R1 已结束；R2 仍指向同一份数据。' : '没有请求持有；缓存仍保留同一份数据，等待驱逐。');
+      text(sharedNote, 28, m ? 194 : 226, !established ? '先有可复用前缀，才谈引用。' : refs === 2 ? 'R1、R2 指向同一份数据；没有复制第二份。' : r1Held ? 'R1 指向这份数据；R2 尚未接入。' : r2Held ? 'R1 已结束；R2 仍指向同一份数据。' : m ? '无请求持有；缓存仍保留。' : '没有请求持有；缓存仍保留同一份数据，等待驱逐。');
       kv.forEach((a, i) => move(a, 28 + i * (m ? 78 : 92), m ? 204 : 246, p >= 1 ? 1 : 0));
       wire(link1, m ? 'M96 120 V150' : 'M120 138 V180', r1Held ? 1 : 0);
       wire(link2, m ? 'M264 120 V150' : 'M370 138 V180', r2Held ? 1 : 0);
@@ -545,14 +602,16 @@ function cacheShared(svg, viewport) {
       text(ref1, m ? 64 : 134, m ? 138 : 164); show(ref1, r1Held ? 1 : 0);
       text(ref2, m ? 232 : 384, m ? 138 : 164); show(ref2, r2Held ? 1 : 0);
       text(holder, m ? 16 : 490, m ? 270 : 206, `持有者：${refs}`); holder.dataset.holder = String(refs); show(holder, established ? 1 : 0);
-      text(note1, 16, m ? 298 : 318, '共享是引用，不是复制；R1 结束后 R2 仍持有，不能覆盖。');
-      text(note2, 16, m ? 318 : 338, '两条请求都结束后，缓存仍可按策略保留；');
-      text(note2b, 16, m ? 336 : 354, '驱逐是另一个条件。');
+      text(note1, 16, m ? 298 : 318, m ? '共享是引用，不是复制；' : '共享是引用，不是复制；R1 结束后 R2 仍持有，不能覆盖。');
+      text(note2, 16, m ? 318 : 338, m ? 'R1 结束，R2 仍持有，不可覆盖。' : '两条请求都结束后，缓存仍可按策略保留；');
+      text(note2b, 16, m ? 336 : 354, m ? '无请求时缓存保留；驱逐另判。' : '驱逐是另一个条件。');
       show(note1, 1); show(note2, 1); show(note2b, 1);
-      text(retain, 16, m ? 360 : 370, p >= 4 ? '引用 0：没有活跃请求，缓存仍被保留' : p >= 3 ? 'R1 引用消失，R2 仍持有 → 不可覆盖' : p >= 2 ? '两个引用指向同一份物理数据' : p >= 1 ? 'R1 持有共享前缀；R2 尚未接入' : '');
+      // Keep the dynamic holder line clear of the three fixed notes above it.
+      text(retain, 16, m ? 360 : 386, p >= 4 ? '引用 0：没有活跃请求，缓存仍被保留' : p >= 3 ? 'R1 引用消失，R2 仍持有 → 不可覆盖' : p >= 2 ? '两个引用指向同一份物理数据' : p >= 1 ? 'R1 持有共享前缀；R2 尚未接入' : '');
       retain.dataset.retain = p >= 4 ? 'true' : 'false'; show(retain, p >= 1 ? 1 : 0);
     };
   });
+  return {paint(...args){inner.paint(...args);}, destroy(){panel?.destroy();inner.destroy();}};
 }
 V['f-cache'] = (svg, viewport, s) => s.kind === 'cache-pages' ? cachePages(svg, viewport) : s.kind === 'cache-shared' ? cacheShared(svg, viewport) : cacheCompare(svg, viewport);
 

@@ -3,27 +3,20 @@
  * drawing is a pure function of the seekable position p (0…9). */
 (() => {
 'use strict';
-const root = document.querySelector('[data-layer-journey]');
-if (!root) return;
+const root = typeof document !== 'undefined' ? document.querySelector('[data-layer-journey]') : null;
 const NS = 'http://www.w3.org/2000/svg';
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const lerp = (a, b, t) => a + (b - a) * t;
 const smooth = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
 const phase = (p, a, b) => smooth((p - a) / (b - a));
-const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-const STEPS = [
-  ['输入位置就位', 'p1…p4 是四个输入位置，不是分词片段，也不是四条请求；三层是教学假设。此时还没有任何 KV。'],
-  ['Prefill · 第 1 层', '四个位置一起进入层 1。层 1 写入自己的 p1…p4 K/V，隐藏状态交给层 2。'],
-  ['Prefill · 第 2 层', '层 2 写入另一份 p1…p4 K/V，与层 1 的那份独立。仍是同一次前向，不是第二轮请求。'],
-  ['Prefill · 第 3 层', '层 3 写入第三份 K/V。最后一个位置 p4 的最终隐藏状态送往输出头。'],
-  ['采样 y1', '输出头只取 p4 的最终隐藏状态，得到 logits 并采样 y1。y1 刚选出，还没有作为输入，所以三层都没有 y1 的 KV。'],
-  ['y1 成为下一轮输入', '把同一个 y1 送回输入区，成为下一轮唯一的新位置。此时仍没有 y1 的 KV，前向尚未开始。'],
-  ['Decode · 第 1 层', '只计算 y1，读取本层 p1…p4 的历史 K/V，并写入 y1 的层 1 K/V；p1…p4 不重算。'],
-  ['Decode · 第 2 层', 'y1 的隐藏状态继续经过层 2，写入 y1 的层 2 K/V。只处理新位置，不等于跳过层。'],
-  ['Decode · 第 3 层', '层 3 写入 y1 的 K/V。到这里 y1 才遍历完完整模型，输出头将用它采样 y2。'],
-  ['采样 y2', 'y2 被采样出来；输出序列保留 y1 和 y2。y2 尚无 KV，要等它作为下一轮输入再逐层写入。']
-];
+const reduced = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+const STEP_TOTAL = 10;
 const LAYERS = [1, 2, 3];
+// Processing occupies the first half of each integer step; completion is the
+// integer boundary itself. Prefill and Decode therefore have separate clocks.
+const PF_START = l => l + 0.5, PF_END = l => l + 1;
+const DEC_START = l => l + 5.5, DEC_END = l => l + 6;
+const y1Phase = (q, l) => phase(q, DEC_START(l), DEC_END(l));
 const positions = ['p1', 'p2', 'p3', 'p4'];
 const esc = x => String(x);
 let W = 0, H = 0, narrow = true, mounted = false, p = 0, playing = false, raf = 0, last = 0;
@@ -177,13 +170,95 @@ function setState(c, state) {
   if (c.g.dataset.state !== state) c.g.dataset.state = state;
   c.g.classList.toggle('is-read', state === 'read');
 }
-function gs(p, l) { return phase(p, 5 + l + 0.4, 5 + l + 0.9); }
+// Visible wording follows q, never the rounded step index. Each processing
+// interval has its own "writing" and "already written" halves so a paused frame
+// cannot claim a layer (or a sampled token) that has not happened yet.
+function narrative(q) {
+  if (q < 0.5) return ['输入位置就位', 'p1…p4 是四个输入位置，不是分词片段，也不是四条请求；三层是教学假设。此时还没有任何 KV。'];
+  if (q < 1) return ['Prefill · 第 1 层 · 写入中', '四个位置一起进入层 1；层 1 正在写入自己的 p1…p4 K/V。写完才把隐藏状态交给层 2。'];
+  if (q < 1.5) return ['Prefill · 第 1 层 · 已写完', '层 1 已写入 p1…p4 的 K/V；隐藏状态正交给层 2，层 2 尚未开始写。三层各有一份独立 K/V。'];
+  if (q < 2) return ['Prefill · 第 2 层 · 写入中', '层 2 正在写入另一份 p1…p4 K/V，与层 1 的那份独立。仍是同一次前向，不是第二轮请求。'];
+  if (q < 2.5) return ['Prefill · 第 2 层 · 已写完', '层 2 已写入 p1…p4 的 K/V；隐藏状态正交给层 3，层 3 尚未开始写。'];
+  if (q < 3) return ['Prefill · 第 3 层 · 写入中', '层 3 正在写入第三份 p1…p4 K/V；这 4 个位置仍需在本层计算。第三层完成后，取 p4 的最终隐藏状态送往输出头。'];
+  if (q < 3.5) return ['Prefill · 第 3 层 · 已写完', '三层都已写入 p1…p4 的 K/V。只取最后一个位置 p4 的最终隐藏状态，送往输出头形成 logits。'];
+  if (q < 4) return ['输出头 · 形成 y1 logits', '输出头只取 p4 的最终隐藏状态，正在得到 logits；y1 尚未选出，输出序列仍为空。'];
+  if (q < 4.5) return ['采样 y1', '输出头只取 p4 的最终隐藏状态，得到 logits 并采样 y1。y1 刚选出，还没有作为输入，所以三层都没有 y1 的 KV。'];
+  if (q < 5.5) return ['y1 成为下一轮输入', '把同一个 y1 送回输入区，成为下一轮唯一的新位置。此时仍没有 y1 的 KV，前向尚未开始。'];
+  if (q < 6) return ['Decode · 第 1 层 · 写入中', '只计算 y1：层 1 读取本层 p1…p4 的历史 K/V，并写入 y1 的层 1 K/V；p1…p4 不重算。'];
+  if (q < 6.5) return ['Decode · 第 1 层 · 已写完', '层 1 已写入 y1 的 K/V；y1 的隐藏状态正交给层 2，层 2 尚未开始读历史。'];
+  if (q < 7) return ['Decode · 第 2 层 · 写入中', 'y1 的隐藏状态继续经过层 2：读取层 2 的 p1…p4 历史 K/V，并写入 y1 的层 2 K/V。只处理新位置，不等于跳过层。'];
+  if (q < 7.5) return ['Decode · 第 2 层 · 已写完', '层 1、层 2 都已写入 y1 的 K/V；y1 的隐藏状态正交给层 3，层 3 尚未开始读历史。'];
+  if (q < 8) return ['Decode · 第 3 层 · 写入中', '层 3 正在写 y1 的 K/V。写完这一层，y1 才遍历完完整模型，输出头才能用它采样 y2。'];
+  if (q < 8.5) return ['Decode · 第 3 层 · 已写完', '层 3 已写入 y1 的 K/V；到这里 y1 才遍历完完整模型，输出头将用它形成 logits 并采样 y2。'];
+  if (q < 9) return ['输出头 · 形成 y2 logits', 'y1 已走完三层；输出头正在用 y1 的最终隐藏状态得到 logits，y2 尚未选出。'];
+  return ['采样 y2', 'y2 被采样出来；输出序列保留 y1 和 y2。y2 尚无 KV，要等它作为下一轮输入再逐层写入。'];
+}
+
+function deriveState(value) {
+  const q = clamp(Number(value) || 0, 0, 9);
+  const phaseName = q < 4.5 ? 'Prefill' : 'Decode';
+  const posName = q < 4.5 ? '4 个位置' : '1 个新位置';
+  const done = q < 4.5 ? clamp(Math.floor(q), 0, 3) : clamp(Math.floor(q - 5), 0, 3);
+  const layers = LAYERS.map((layer, l) => {
+    const y1Fill = y1Phase(q, l);
+    let status = '空', state = 'empty', active = false;
+    if (q >= PF_START(l)) {
+      if (q < PF_END(l)) { state = 'written'; status = '写 p1…p4'; active = true; }
+      else if (q < DEC_START(l)) { state = 'written'; status = '4 个位置'; }
+      else if (q < DEC_END(l)) { state = 'read'; status = '读4 · 写y1'; active = true; }
+      else { state = 'read'; status = '5 个位置'; }
+    }
+    return { layer, state, status, active, y1Fill, y1Written: q >= DEC_END(l) };
+  });
+  let y1Status = '尚未选出';
+  if (q >= 4 && q < 4.5) y1Status = '刚选出 · 尚无 KV';
+  else if (q >= 4.5 && q < 5.5) y1Status = '待进层1';
+  else if (q >= 5.5 && q < 6) y1Status = '层1 写入中';
+  else if (q >= 6 && q < 6.5) y1Status = '层 1 已写 KV';
+  else if (q >= 6.5 && q < 7) y1Status = '层2 写入中';
+  else if (q >= 7 && q < 7.5) y1Status = '层 1–2 已写 KV';
+  else if (q >= 7.5 && q < 8) y1Status = '层3 写入中';
+  else if (q >= 8) y1Status = '三层 KV 已写';
+  const y2Status = q >= 9 ? '刚选出 · 无 KV' : '尚未选出';
+
+  const headActive = (q >= 3.4 && q < 4.6) || q >= 8;
+  let headLine1 = '等待 p4 的最终隐藏状态', headLine2 = '';
+  if (q >= 3.4 && q < 4.6) {
+    headLine1 = '只取 p4 的 h³';
+    headLine2 = q < 4 ? '→ logits · 尚未采样' : '→ 采样 y1 · y1 尚无 KV';
+  } else if (q >= 4.6 && q < 8) {
+    headLine1 = '等待 y1 走完三层';
+    headLine2 = 'Decode 仍遍历完整模型';
+  } else if (q >= 8) {
+    headLine1 = '只取 y1 的最终隐藏状态';
+    headLine2 = q < 9 ? '→ logits · 待采样 y2' : '→ 采样 y2 · y2 尚无 KV';
+  }
+  const [stepName, stepCaption] = narrative(q);
+  return {
+    q, phaseName, posName, done, layers, y1Status, y2Status,
+    headActive, headLine1, headLine2, stepName, stepCaption,
+    prefillTitle: q < 1 ? '输入 ×4' : q < 2 ? 'h¹ ×4' : q < 3 ? 'h² ×4' : 'h³ ×4',
+    decodeTitle: q < 5.5 ? '同一 y1' :
+      q < 6 ? 'y1→层1' :
+      q < 6.5 ? 'h¹(y1)' :
+      q < 7 ? 'h¹→层2' :
+      q < 7.5 ? 'h²(y1)' :
+      q < 8 ? 'h²→层3' : 'h³(y1)',
+    output: q >= 9 ? 'y1,y2' : q >= 4 ? 'y1' : ''
+  };
+}
+
+// Node-side semantic regression tests can read the pure state function without
+// a DOM or a browser. In the page, root exists and the figure mounts as before.
+if (!root) {
+  if (typeof module !== 'undefined' && module.exports) module.exports = { deriveState };
+  return;
+}
 
 function render() {
   if (!el || !geom) return;
   const q = reduced.matches ? Math.round(p) : p;
-  const i = Math.round(q);
-  const prefill = q < 4.45;
+  const state = deriveState(q);
   const railX = geom.pad + geom.railW / 2;
   // Packet rects are authored at x=0 with their full width to the right.
   // Shift the translate left by half the width so the card straddles the
@@ -204,7 +279,7 @@ function render() {
   el.pre.setAttribute('transform', `translate(${packetX} ${py - pbgH / 2})`);
   el.pre.style.opacity = preOp.toFixed(3);
   el.pre.style.display = preOp <= 0.01 ? 'none' : '';
-  setText(el.preTitle, q < 1 ? '输入 ×4' : q < 2 ? 'h¹ ×4' : q < 3 ? 'h² ×4' : 'h³ ×4');
+  setText(el.preTitle, state.prefillTitle);
   preChips.forEach((c, j) => { c.g.style.opacity = q >= 3.55 && j < 3 ? '.35' : '1'; });
 
   // decode packet: the y1 copy lifts out of the output row *above* its top
@@ -228,7 +303,7 @@ function render() {
   el.dec.setAttribute('transform', `translate(${dx} ${dy - dbgH / 2})`);
   el.dec.style.opacity = dop.toFixed(3);
   el.dec.style.display = dop ? '' : 'none';
-  setText(el.decTitle, q < 5.5 ? '同一 y1' : q < 6.5 ? 'h¹(y1)' : q < 7.5 ? 'h²(y1)' : 'h³(y1)');
+  setText(el.decTitle, state.decodeTitle);
 
   // Dashed copy route from the original y1 slot, around the row's left
   // padding to the card's current takeoff corner above the row. Tracking the
@@ -242,81 +317,60 @@ function render() {
     `M${el.slots[0].x - 2} ${slotMidY} H${laneX + 3} Q${laneX} ${slotMidY} ${laneX} ${slotMidY - 3} ` +
     `V${cardBottom + 3} Q${laneX} ${cardBottom} ${laneX + 3} ${cardBottom} H${packetX}`);
 
-  // per-layer KV shelves
+  // per-layer KV shelves: Prefill writes p1…p4, Decode reads those four and
+  // writes only y1. The read/highlight/label all use Decode's own completion.
   cells.forEach((L, l) => {
-    let state = 'empty', status = '空';
-    const pf = u(l + 0.35, l + 0.95);
-    if (pf > 0) { state = 'written'; status = pf < .98 ? '写 p1…p4' : '4 个位置'; }
-    if (q >= l + 1) status = '4 个位置';
-    // A layer starts reading p1…p4 and writing y1 only when the packet has
-    // left the previous layer and this layer's step is current. At p=6 that
-    // means layer 1 is complete but layer 2 has not started yet.
-    const read = q >= 5.5 + l;
-    const y1f = gs(q, l);
-    if (read) { state = 'read'; status = y1f < .98 ? '读4 · 写y1' : '5 个位置'; }
+    const layerState = state.layers[l];
+    const decodeStarted = q >= DEC_START(l);
     L.list.slice(0, 4).forEach((c, j) => {
-      const f = phase(q, l + 0.4 + j * 0.04, l + 0.9 + j * 0.04);
-      c.fill.style.opacity = (q >= l + 1 ? 1 : f).toFixed(3);
-      setState(c, read ? 'read' : q >= l + 1 || f > .5 ? 'written' : 'empty');
+      const f = phase(q, PF_START(l) + j * 0.03, PF_END(l) - 0.05 + j * 0.03);
+      c.fill.style.opacity = (q >= PF_END(l) ? 1 : f).toFixed(3);
+      setState(c, decodeStarted ? 'read' : q >= PF_END(l) || f > .5 ? 'written' : 'empty');
     });
     const yc = L.list[4];
-    yc.fill.style.opacity = (read ? y1f : 0).toFixed(3);
-    setState(yc, y1f > .5 ? 'written' : 'empty');
-    L.status.textContent = status;
-    L.g.classList.toggle('is-active', (prefill && i === l + 1) || (read && i === l + 6));
-    L.band.setAttribute('stroke-width', (prefill && i === l + 1) || (read && i === l + 6) ? 2 : 1);
+    yc.fill.style.opacity = (decodeStarted ? layerState.y1Fill : 0).toFixed(3);
+    setState(yc, layerState.y1Written ? 'written' : 'empty');
+    L.status.textContent = layerState.status;
+    L.g.classList.toggle('is-active', layerState.active);
+    L.band.setAttribute('stroke-width', layerState.active ? 2 : 1);
   });
 
   // output head wording
-  const activeHead = (q >= 3.4 && q < 4.6) || (q >= 8.4);
-  el.oh.classList.toggle('is-active', activeHead);
+  el.oh.classList.toggle('is-active', state.headActive);
   const hb = el.oh.querySelector('.jl-head-box');
-  hb.setAttribute('stroke-width', activeHead ? 2 : 1);
-  let h1 = '等待 p4 的最终隐藏状态', h2 = '';
-  if (q >= 3.4 && q < 4.6) { h1 = '只取 p4 的 h³'; h2 = q < 4 ? '→ logits' : '→ 采样 y1 · y1 尚无 KV'; }
-  if (q >= 4.6 && q < 8.4) { h1 = '等待 y1 走完三层'; h2 = 'Decode 仍遍历完整模型'; }
-  if (q >= 8.4) { h1 = '只取 y1 的最终隐藏状态'; h2 = q < 9 ? '→ logits → 采样 y2' : '→ 采样 y2 · y2 尚无 KV'; }
-  setText(el.ohSub, h1); setText(el.ohSub2, h2);
+  hb.setAttribute('stroke-width', state.headActive ? 2 : 1);
+  setText(el.ohSub, state.headLine1); setText(el.ohSub2, state.headLine2);
 
   // retained output sequence
   const y1 = q >= 4 ? 1 : 0, y2 = q >= 9 ? 1 : 0;
   el.slots[0].g.style.opacity = y1.toFixed(3);
   el.slots[1].g.style.opacity = y2.toFixed(3);
-  let s1 = '尚未选出';
-  if (q >= 4 && q < 5) s1 = '刚选出 · 尚无 KV';
-  else if (q >= 5 && q < 6) s1 = '等待作为输入';
-  else if (q >= 6 && q < 7) s1 = '层 1 已写 KV';
-  else if (q >= 7 && q < 8) s1 = '层 1–2 已写 KV';
-  else if (q >= 8) s1 = '三层 KV 已写';
-  setText(el.slots[0].s, s1);
-  setText(el.slots[1].s, y2 ? '刚选出 · 无 KV' : '尚未选出');
+  setText(el.slots[0].s, state.y1Status);
+  setText(el.slots[1].s, state.y2Status);
 
   // HTML status and caption
-  const phaseName = q < 4.5 ? 'Prefill' : 'Decode';
-  const posName = q < 4.5 ? '4 个位置' : '1 个新位置';
-  const done = q < 4.5 ? clamp(Math.floor(q), 0, 3) : clamp(Math.floor(q - 5), 0, 3);
   const qPhase = root.querySelector('[data-jl-phase]');
   const qPos = root.querySelector('[data-jl-positions]');
   const qLayers = root.querySelector('[data-jl-layers]');
-  if (qPhase) qPhase.textContent = phaseName;
-  if (qPos) qPos.textContent = posName;
-  if (qLayers) qLayers.textContent = done + ' / 3';
-  setText(root.querySelector('[data-jl-caption]'), STEPS[i][1]);
-  setText(root.querySelector('[data-jl-stepname]'), STEPS[i][0]);
+  if (qPhase) qPhase.textContent = state.phaseName;
+  if (qPos) qPos.textContent = state.posName;
+  if (qLayers) qLayers.textContent = state.done + ' / 3';
+  setText(root.querySelector('[data-jl-caption]'), state.stepCaption);
+  setText(root.querySelector('[data-jl-stepname]'), state.stepName);
   const count = root.querySelector('[data-jl-count]');
-  if (count) count.textContent = (i + 1) + ' / ' + STEPS.length;
+  if (count) count.textContent = (Math.round(q) + 1) + ' / ' + STEP_TOTAL;
   const range = root.querySelector('[data-jl-range]');
   if (range && document.activeElement !== range) range.value = String(q);
   root.dataset.jlStep = q.toFixed(2);
-  root.dataset.jlPhase = phaseName;
-  root.dataset.jlLayers = String(done);
-  root.dataset.jlOutput = q >= 9 ? 'y1,y2' : q >= 4 ? 'y1' : '';
+  root.dataset.jlPhase = state.phaseName;
+  root.dataset.jlLayers = String(state.done);
+  root.dataset.jlOutput = state.output;
   const play = root.querySelector('[data-jl-play]');
   if (play) {
     play.textContent = playing ? '暂停' : '▶ 播放';
     play.setAttribute('aria-pressed', playing ? 'true' : 'false');
   }
-  const desc = `阶段 ${phaseName}；本轮 ${posName}；已经过 ${done} / 3 层。${STEPS[i][1]}`;
+  const desc = `阶段 ${state.phaseName}；本轮 ${state.posName}；已经过 ${state.done} / 3 层。${state.stepCaption}`;
   svg.setAttribute('aria-label', desc);
   const d = root.querySelector('desc');
   if (d) d.textContent = desc;
@@ -358,7 +412,7 @@ function controls() {
   <p class="jl-caption" data-jl-caption aria-live="polite"></p>
   <div class="jl-canvas"></div>
   <label class="jl-scrub">教学进度（不是实测耗时）<input type="range" min="0" max="9" step="0.01" value="0" data-jl-range aria-label="教学进度，可回看中间过程"></label>
-  <p class="jl-note">3 层与 4 个输入位置是教学假设；p1…p4 是位置编号，不是分词片段。每一层各有一份 K/V；层是模型内部顺序，不是三轮请求调度。y1 与 y2 的「尚无 KV」表示它们还没有作为输入经过前向。</p>`;
+  <p class="jl-note">3 层与 4 个输入位置是教学假设；p1…p4 是位置编号，不是分词片段。每一层各有一份 K/V；层是模型内部顺序，不是三轮请求调度。「读4 · 写y1」表示本层正在读取历史并写入当前新位置，「5 个位置」表示该层 y1 已写完。y1 与 y2 的「尚无 KV」表示它们还没有作为输入经过前向。</p>`;
   svg = node('svg', { role: 'img', 'aria-label': '逐层前向：三层模型的 Prefill / Decode 与 KV 写入' });
   const title = node('title', {}, svg); title.textContent = '逐层前向：三层模型的 Prefill / Decode 与 KV 写入';
   node('desc', {}, svg);

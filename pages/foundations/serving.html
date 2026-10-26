@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>请求路由与取消：服务在线为何还没收到回答？ · 推理基础</title><meta name="description" content="从用户发出一句话开始，逐步加入接收、等待、执行、返回和取消。"><link rel="icon" href="data:,"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/detail-scenes.js" defer></script><script src="../motion/detail-visuals.js" defer></script><script src="../motion/camera.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>请求路由与取消：服务在线为何还没收到回答？ · 推理基础</title><meta name="description" content="从用户发出一句话开始，逐步加入接收、等待、执行、返回和取消。"><link rel="icon" href="data:,"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script><link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/detail-scenes.js" defer></script><link rel="stylesheet" href="../motion/serving-adoption.css"><script src="../motion/serving-adoption.js" defer></script><script src="../motion/detail-visuals.js" defer></script><script src="../motion/camera.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script></head>
 <body data-page="foundations" data-lesson="serving"><a class="skip-link" href="#main-content">跳到正文</a>
 <header class="site-header"><a class="site-brand" href="../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub ↗</a><button class="theme-toggle" type="button" aria-label="切换配色">配色：系统</button></div></header>
 <div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
@@ -10,15 +10,16 @@
 <a href="tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
 <a href="generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
 <a href="attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
-<a href="cache.html">04 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
-<a href="batching.html">05 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
-<a href="hardware.html">06 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
-<a href="parallel.html">07 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
-<a href="communication.html">08 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
-<a href="deployment.html">09 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
-<a href="speculation.html">10 Speculative Decoding：草稿候选怎样验证和接受？</a>
-<a href="serving.html" aria-current="page">11 请求路由与取消：服务在线为何还没收到回答？</a>
-<a href="metrics.html">12 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+<a href="components.html">04 Transformer 基础部件：一层内部怎样计算？</a>
+<a href="cache.html">05 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="batching.html">06 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="hardware.html">07 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="parallel.html">08 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="communication.html">09 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
+<a href="deployment.html">10 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="speculation.html">11 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="serving.html" aria-current="page">12 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="metrics.html">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
 </nav></details>
 <details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
@@ -114,14 +115,26 @@
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside><div class="site-content"><main id="main-content">
 <nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">请求路由与取消：服务在线为何还没收到回答？</span></nav>
-<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 11 / 12</a><span class="lesson-count">通用原理</span></div><h1>请求路由与取消：服务在线为何还没收到回答？</h1><p>从用户发出一句话开始，逐步加入接收、等待、执行、返回和取消。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 12 / 13</a><span class="lesson-count">通用原理</span></div><h1>请求路由与取消：服务在线为何还没收到回答？</h1><p>从用户发出一句话开始，逐步加入接收、等待、执行、返回和取消。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
 <p class="foundation-prereqs">先看：<a href="generation.html">自回归生成：Prefill 与 Decode 怎样接续？</a> · <a href="batching.html">Batch 调度：动态组批、连续批处理与 Chunked Prefill</a></p>
 <p class="foundation-intro">先放大一次运行中取消：用户停止等待、后端收到取消、资源能够归还是三个边界。再到下方实验走完整接入路径，并观察双实例怎样选择请求的去向。</p>
 <section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>能够完成一次模型调用，只是在线服务的一部分。面对许多到达时刻和长度都不同的请求，还需要路由、排队、资源控制、输出传递与取消后的安全收尾。</p></section>
-<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>
+
+<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#serving-adoption">服务对照</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav><section class="serving-adoption-static" id="serving-adoption" aria-labelledby="serving-adoption-title">
+<h2 id="serving-adoption-title">服务多实例速览：同一个 R1、R2 落在哪</h2>
+<p>同一个 R1、R2 与同一个完整模型。一个实例让两条请求共享队列和一个执行槽；两个实例各接一条，各自拥有队列、执行槽和一份完整模型。两边的“执行”都必须先接纳并拿到本轮槽位。</p>
+<div class="sa-static-wrap"><table class="fd-table"><caption>接纳、等待/执行与副本成本（本例每个实例每轮 1 条请求）</caption><thead><tr><th scope="col">观察点</th><th scope="col">1 个实例 · 共享容量</th><th scope="col">2 个实例 · 各接一条</th></tr></thead><tbody>
+<tr><th scope="row">接纳与队列</th><td>R1、R2 都进入同一队列；两条都已接纳，但只有一个执行槽。</td><td>R1 进入实例 B，R2 进入实例 A；两条各有自己的队列和执行槽。</td></tr>
+<tr><th scope="row">等待 / 执行</th><td>R1 占用执行槽，R2 等待；R1 完成后 R2 才能进入同一槽位。</td><td>R1 在 B、R2 在 A 同时执行；各实例等待 0 条，但并行不是单条请求变快。</td></tr>
+<tr><th scope="row">参数副本</th><td>完整模型副本 1 份。</td><td>完整模型副本 2 份（+1 份权重驻留）。</td></tr>
+<tr><th scope="row">代价与边界</th><td>省去第二份模型；两条请求争同一份执行容量。</td><td>多一份完整模型、健康检查与路由协调；KV、激活和通信开销另计。</td></tr>
+</tbody></table></div>
+<p class="sa-static-note"><strong>容量假设：</strong>本例每个实例每轮只放 1 条请求，R1 先到先执行；真实推理实例可以把多条请求 batch（合批）在同一轮，单个实例不等于只能串行。<strong>health ✓ 只表示探活通过：</strong>它不等于实例空闲，也不等于请求已进入执行槽。主图只追踪 R1，所以双实例主图里的 A 不接 R1；对照补上的 R2→A 是同时到达的另一条请求。</p>
+</section>
 <div id="lesson-animation"></div>
 
 <section class="foundation-lab" data-foundation-lab="serving" data-full="true" data-title="请求路由与取消：服务在线为何还没收到回答？"><h2>走一遍具体过程</h2><p>能区分健康探测、接纳、执行、客户端可见和安全收尾。</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>
+
 <section id="understand" class="concept-guide"><h2>理解设计：为什么需要这些机制？</h2><nav class="concept-nav" aria-label="按概念问题阅读"><a href="#why-queue">为什么服务在线，请求还可能等很久？</a><a href="#why-cancel">用户停止等待，为什么服务还要继续收尾？</a></nav><section id="why-queue" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">01</span><h3>为什么服务在线，请求还可能等很久？</h3></div><p>接收请求的接口正常，说明入口能响应；执行资源可能仍被已有请求占满。路由负责选服务实例，实例内调度再决定何时进入批次，两处都可能产生等待。</p><p>突发流量超过持续处理能力时，队列会积累。限制并发、设置队列上限或拒绝超额请求，是防止无界等待的背压手段；不能只把“收到请求”记成“开始模型计算”。</p><aside class="concept-example" aria-labelledby="example-queue"><h4 id="example-queue">一条请求至少经过哪些不同状态？</h4><ol><li>已接收：服务记录了请求。</li><li>等待资源：还没进入本轮计算。</li><li>执行／传输中：模型或网络正在处理。</li><li>完成／取消收尾：确认后续不再使用相关资源，才能按规则释放。</li></ol><p class="concept-note">这是服务层状态区分，具体组件名和完成判据以实现课源码为准。</p></aside><ul class="concept-links"><li><a href="../sglang/request-runtime/index.html">SGLang：请求入口与运行时 →</a></li></ul><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><section id="why-cancel" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">02</span><h3>用户停止等待，为什么服务还要继续收尾？</h3></div><p>取消通知表达“不再需要这个结果”，但正在执行的计算或传输不一定即时停止。系统仍需确认哪些操作还可能写入资源，避免把尚在使用的块重新分配给其他请求。</p><p>例如用户取消 R1 后，若某个传输仍在向 R1 的缓存块写入，立即把该块交给 R2 就可能破坏 R2 的数据。具体等待什么事件、哪些步骤可中断，需要追踪实现。</p><ul class="concept-links"><li><a href="communication.html#why-ready">控制消息和载荷完成的区别 →</a></li></ul><p class="concept-refs">依据：<a href="https://grpc.io/docs/guides/cancellation/">gRPC · 取消与应用处理的责任（通用例，不表示 SGLang 使用 gRPC）</a></p><a class="concept-back" href="#understand">回到问题导航 ↑</a></section><aside class="concept-check"><h3>试着解释</h3><p>入口健康检查正常，是否说明新请求可以立即计算？</p><details><summary>展开解释</summary><p>不能。健康检查确认的是其定义的入口或组件状态，执行队列、KV 容量和计算资源仍可能繁忙。</p></details></aside></section>
 <section id="lesson-glossary"><h2>术语速查</h2><dl class="foundation-terms" aria-label="这课用到的词"><div><dt>网关</dt><dd>在服务入口选择请求去哪个实例；选中实例不等于实例已开始计算。</dd></div><div><dt>健康检查</dt><dd>按特定条件探测服务状态；它通常不能证明某一条具体请求已经完成。</dd></div><div><dt>超时与取消</dt><dd>超时是某方不再继续等；取消是需要传播并被处理的动作，不能假设后端瞬间停止。</dd></div></dl></section>
 <section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2><div class="foundation-copy"><section id="concept-0"><h2>请求生命周期：入口、执行与响应回程</h2><p>普通场景用同一个 R1 跟踪接入、排队、计算和回程。用户只在结果抵达时看到文字。图同时保留请求的位置与资源是否仍被持有，避免把返回响应等同于所有工作已经清理。</p></section><section id="concept-1"><h2>Request Routing：多实例怎样分担请求</h2><p>双实例场景先选择一个可用实例，再在它内部排队。另一个实例空闲或健康，不代表该请求被两边同时执行。真实路由还可能考虑模型、角色和缓存等条件。</p></section><section id="concept-2"><h2>Cancellation：取消通知与安全收尾</h2><p>用户断开连接时，执行中的工作可能尚未收到取消通知。示例先显示客户端停止等待，再显示后端收到取消，最后等在途操作安全结束后归还资源。实际路径以实现课的状态条件为准。</p></section></div></section>

@@ -1,0 +1,104 @@
+/* Lesson 01 only: a dark, quiet mechanism board. Each concept keeps its own
+ * geometry; the shared player remains responsible for playback and links. */
+/* The five new concepts use a dark SVG board. Legacy ?mv=0/1 keeps the old
+ * light-paper drawing, so it must fall back to the shared light stage instead
+ * of inheriting this dark paint. */
+.mechanism-film[data-motion=f-tokens]:not(.is-tokens-legacy) .motion-stage{background:#071522;border-color:#243d4d}
+.mechanism-film[data-motion=f-tokens]:not(.is-tokens-legacy) .motion-camera{background:#071522}
+.mechanism-film[data-motion=f-tokens]:not(.is-tokens-legacy) .motion-camera-tools{background:#0b1d2ae8;border-color:#365363}
+.mechanism-film[data-motion=f-tokens]:not(.is-tokens-legacy) .motion-camera-tools button{background:#102a39;border-color:#3c5b6c;color:#dff8ff}
+.mechanism-film[data-motion=f-tokens]:not(.is-tokens-legacy) .motion-camera-tools output{color:#9db3c5}
+.mechanism-film[data-motion=f-tokens]:not(.is-tokens-legacy) .motion-camera-hint{background:#0b1d2adc;border-color:#365363;color:#9db3c5}
+.mechanism-film[data-motion=f-tokens] .parallel-strategies{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:0 0 12px}
+.mechanism-film[data-motion=f-tokens] .parallel-strategies button{display:flex;align-items:center;justify-content:flex-start;min-width:0;min-height:42px;padding:7px 9px;border:1px solid #c7d5df;border-radius:8px;background:var(--surface,#fff);color:var(--fg,#173c47);font:650 12px/1.35 system-ui,sans-serif;text-align:left;cursor:pointer}
+.mechanism-film[data-motion=f-tokens] .parallel-strategies button:hover{border-color:#4b8b9b;background:#eef8fa}
+.mechanism-film[data-motion=f-tokens] .parallel-strategies button[aria-pressed=true]{background:#0e5363;border-color:#0e5363;color:#fff;box-shadow:0 0 0 1px #0e5363 inset}
+.mechanism-film[data-motion=f-tokens] .parallel-strategies button:focus-visible{outline:3px solid #d98d36;outline-offset:2px}
+@media(max-width:650px){.mechanism-film[data-motion=f-tokens] .parallel-strategies{grid-template-columns:repeat(2,minmax(0,1fr))}.mechanism-film[data-motion=f-tokens] .parallel-strategies button:last-child{grid-column:1/-1}}
+
+.tok-board{fill:#071522}
+.tok-band{fill:#0b1e2c}
+
+/* The dark board used to put fill/stroke on the whole card group. SVG text
+ * inherits stroke, so every glyph picked up a 1-2.4px dark outline. Keep the
+ * frame paint on the rectangle only, and explicitly keep glyphs unstroked. */
+.mechanism-film[data-motion=f-tokens] .motion-camera-plane text{stroke:none}
+.tok-card>rect{fill:#0d2230;stroke:#29485b;stroke-width:1}
+.tok-card.is-on>rect{fill:#10323f;stroke:#61d7e7;stroke-width:2.4}
+.tok-card.is-same:not(.is-on)>rect{stroke:#f2b45c;stroke-dasharray:3 3}
+.tok-block>rect{fill:#0d2230;stroke:#29485b;stroke-width:1}
+.tok-block.is-bad>rect{fill:#2b1c20;stroke:#f0808b;stroke-width:2}
+.tok-hit{cursor:pointer;outline:none}
+.tok-hit:focus>rect,.tok-hit:focus-visible>rect{stroke:#f2b45c;stroke-width:2.6}
+
+.tok-token>rect{fill:#102b3b;stroke:#3b8494;stroke-width:1.1}
+.tok-token>text{fill:#e4f8ff;font-weight:650}
+.tok-token.tok-amber>rect{fill:#2c2414;stroke:#d69a45}
+.tok-token.tok-amber>text{fill:#ffe3b2}
+.tok-token.tok-cyan>rect{fill:#0d2d36;stroke:#5fd6e8}
+.tok-token.tok-cyan>text{fill:#d9fbff}
+.tok-ghost{opacity:.6}
+.tok-tick{fill:#173344;stroke:none}
+.tok-tick.on{fill:#61d7e7}
+.tok-result-box{fill:#0d2230;stroke:#27485b;stroke-width:1}
+rect.tok-rule{fill:#0d2230;stroke:#27485b;stroke-width:1}
+rect.tok-rule.is-on{fill:#123340;stroke:#f2b45c;stroke-width:2}
+.tok-panel{fill:#0b1d2a;stroke:#29485b;stroke-width:1}
+.tok-stat-box{fill:#102a39;stroke:#3b7a89;stroke-width:1}
+.tok-stat-box.tok-stat-pos{stroke:#b4853d}
+.tok-link{stroke:#7893a4;stroke-width:1.6;fill:none}
+.tok-link-amber{stroke:#f2b45c}
+.tok-link-mint{stroke:#7fe0c3}
+.tok-link-coral{stroke:#f0808b}
+.tok-btn>rect{fill:#102b3b;stroke:#3c6377;stroke-width:1}
+.tok-btn>text{fill:#dff8ff;font-weight:650}
+.tok-btn[aria-pressed=true]>rect{fill:#155e75;stroke:#61d7e7;stroke-width:1.6}
+.tok-btn[aria-pressed=true]>text{fill:#fff}
+.tok-lock>rect{fill:#123b35;stroke:#7fe0c3}
+.tok-lock>text{fill:#7fe0c3;font-weight:700}
+.tok-template{fill:none;stroke:#b9a4f4;stroke-width:1.4;stroke-dasharray:5 4}
+
+/* The camera writes --motion-*-size already compensated for the SVG fit.
+ * Use that scale instead of fixed px, otherwise the old fixed sizes win the
+ * cascade and shrink on a 390px screen even after a font-size edit. */
+.foundation-theater .motion-camera-plane text.tok-title{fill:#edf8ff;font-weight:700;font-size:calc(var(--motion-heading-size, 15px) * 1)}
+.foundation-theater .motion-camera-plane text.tok-sub{fill:#9db3c5;font-size:calc(var(--motion-text-size, 12.2px) * .95)}
+.foundation-theater .motion-camera-plane text.tok-kicker{fill:#69d6e4;letter-spacing:.05em;font-size:calc(var(--motion-text-size, 12.2px) * .9)}
+.foundation-theater .motion-camera-plane text.tok-note{fill:#8fa7b9;font-size:calc(var(--motion-small-size, 10.5px) * .95)}
+.foundation-theater .motion-camera-plane text.tok-small{fill:#9db3c5;font-size:calc(var(--motion-small-size, 10.5px) * .95)}
+.foundation-theater .motion-camera-plane text.tok-count{fill:#f2b45c;font-weight:700;font-size:calc(var(--motion-heading-size, 15px) * 1.05)}
+.foundation-theater .motion-camera-plane text.tok-dim{fill:#6f899b;font-size:calc(var(--motion-small-size, 10.5px) * .95)}
+.foundation-theater .motion-camera-plane text.tok-result{fill:#eef8ff;font-weight:700;font-size:calc(var(--motion-text-size, 12.2px) * 1.1)}
+.foundation-theater .motion-camera-plane text.tok-result-sub{fill:#9db3c5;font-size:calc(var(--motion-small-size, 10.5px) * .98)}
+.foundation-theater .motion-camera-plane .tok-token>text{font-size:calc(var(--motion-text-size, 12.2px) * 1.15)}
+.foundation-theater .motion-camera-plane text.tok-rule-n{fill:#f2b45c;font-weight:700;font-size:calc(var(--motion-text-size, 12.2px) * 1)}
+.foundation-theater .motion-camera-plane text.tok-rule-t{fill:#dff8ff;font-size:calc(var(--motion-text-size, 12.2px) * 1.15)}
+.foundation-theater .motion-camera-plane text.tok-rule-s{fill:#7f9aac;font-size:calc(var(--motion-small-size, 10.5px) * .95)}
+.foundation-theater .motion-camera-plane text.tok-piece{fill:#e8f8ff;font-weight:700;font-size:calc(var(--motion-text-size, 12.2px) * 1.15)}
+.foundation-theater .motion-camera-plane text.tok-pos{fill:#f2b45c;font-size:calc(var(--motion-text-size, 12.2px) * 1)}
+.foundation-theater .motion-camera-plane text.tok-id{fill:#78d5e5;font-family:ui-monospace,SFMono-Regular,monospace;font-size:calc(var(--motion-text-size, 12.2px) * 1.15)}
+.foundation-theater .motion-camera-plane text.tok-panel-title{fill:#eef8ff;font-weight:700;font-size:calc(var(--motion-text-size, 12.2px) * 1.05)}
+.foundation-theater .motion-camera-plane text.tok-stat{fill:#dff8ff;font-size:calc(var(--motion-text-size, 12.2px) * 1.05)}
+.foundation-theater .motion-camera-plane text.tok-amber-text{fill:#f2b45c}
+.foundation-theater .motion-camera-plane text.tok-rowid{fill:#f2b45c;font-weight:700;font-size:calc(var(--motion-text-size, 12.2px) * 1.15)}
+.foundation-theater .motion-camera-plane text.tok-vec{fill:#dff8ff;font-family:ui-monospace,SFMono-Regular,monospace;font-size:calc(var(--motion-text-size, 12.2px) * 1.12)}
+.foundation-theater .motion-camera-plane text.tok-vec.tok-updated{fill:#f2b45c}
+.foundation-theater .motion-camera-plane text.tok-out{fill:#7fe0c3;font-weight:700;font-family:ui-monospace,SFMono-Regular,monospace;font-size:calc(var(--motion-text-size, 12.2px) * 1.15)}
+.foundation-theater .motion-camera-plane text.tok-big{fill:#f2b45c;font-weight:700;font-family:ui-monospace,SFMono-Regular,monospace;font-size:calc(var(--motion-heading-size, 15px) * 1)}
+.foundation-theater .motion-camera-plane text.tok-mono{fill:#cfe7f3;font-family:ui-monospace,SFMono-Regular,monospace;font-size:calc(var(--motion-text-size, 12.2px) * 1.12)}
+.foundation-theater .motion-camera-plane text.tok-input-line{fill:#e4f8ff;font-weight:700;letter-spacing:.16em;font-size:calc(var(--motion-text-size, 12.2px) * 1.15)}
+.foundation-theater .motion-camera-plane rect.tok-row{fill:#0d2230;stroke:#29485b;stroke-width:1}
+.foundation-theater .motion-camera-plane rect.tok-row.is-on{fill:#10323f;stroke:#61d7e7;stroke-width:2.4}
+.foundation-theater .motion-camera-plane rect.tok-row.is-updated{fill:#1c2a30;stroke:#f2b45c;stroke-width:2.2}
+.foundation-theater .motion-camera-plane text.tok-stat-label{fill:#9db3c5;font-size:calc(var(--motion-small-size, 10.5px) * .95)}
+.foundation-theater .motion-camera-plane text.tok-stat-value{fill:#eef8ff;font-weight:700;font-size:calc(var(--motion-heading-size, 15px) * 1)}
+.foundation-theater .motion-camera-plane text.tok-stat-note{fill:#9db3c5;font-size:calc(var(--motion-small-size, 10.5px) * .95)}
+.foundation-theater .motion-camera-plane .tok-btn>text{fill:#dff8ff;font-weight:650;font-size:calc(var(--motion-text-size, 12.2px) * 1.05)}
+.foundation-theater .motion-camera-plane .tok-lock>text{fill:#7fe0c3;font-weight:700;font-size:calc(var(--motion-small-size, 10.5px) * .95)}
+.foundation-theater .motion-camera-plane text.tok-block-t{fill:#eef8ff;font-weight:700;font-size:calc(var(--motion-text-size, 12.2px) * 1.1)}
+.foundation-theater .motion-camera-plane text.tok-block-s{fill:#9db3c5;font-size:calc(var(--motion-small-size, 10.5px) * .95)}
+.foundation-theater .motion-camera-plane text.tok-status{font-weight:700;font-size:calc(var(--motion-text-size, 12.2px) * 1.1)}
+.foundation-theater .motion-camera-plane text.tok-status.good{fill:#7fe0c3}
+.foundation-theater .motion-camera-plane text.tok-status.bad{fill:#f0808b}
+.foundation-theater .motion-camera-plane text.tok-input-word{fill:#eef8ff;font-weight:700;font-size:calc(var(--motion-heading-size, 15px) * 1.2)}
+.foundation-theater .motion-camera-plane text.tok-template-text{fill:#cbbdf3;font-size:calc(var(--motion-small-size, 10.5px) * .95)}

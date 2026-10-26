@@ -49,10 +49,13 @@ const chrome = process.env.CHROMIUM_EXECUTABLE || '/Applications/Google Chrome.a
     await page.goto(base + 'foundations/parallel.html');
     for (const width of [320, 390, 768, 1440, 1994]) {
       await page.setViewportSize({ width, height: 1100 });
-      // TP: the call-out must clear the local-contribution cells, and the
-      // numeric result must appear with the final grids while the check hides.
+      // TP: the call-out must clear the local-contribution cells. During the
+      // exchange (p5.45) the final grids and check are still hidden while the
+      // two numeric payloads are visible; the terminal frame must show both
+      // complete ranks and the same-coordinate check.
       for (const index of [0, 1]) {
         await choose(page, index);
+        const rangeMax = Number(await page.locator('.motion-scrub input').getAttribute('max'));
         await seek(3.5);
         const bad = await page.locator('.mechanism-film svg').evaluate(svg => {
           const texts = [...svg.querySelectorAll('text')].filter(e => !e.closest('g.teach-token') && /×.*=/.test(e.textContent));
@@ -65,15 +68,45 @@ const chrome = process.env.CHROMIUM_EXECUTABLE || '/Applications/Google Chrome.a
           return hit;
         });
         assert.deepEqual(bad, [], `TP scene ${index} width ${width}: call-out overlaps local cells`);
-        await seek(5.5);
-        const state = await page.locator('.mechanism-film svg').evaluate(svg => {
-          const values = [...svg.querySelectorAll('g[data-motion-id^="tp-final"] text')].map(e => e.textContent);
+        await seek(5.45);
+        const mid = await page.locator('.mechanism-film svg').evaluate(svg => {
+          const finals = [...svg.querySelectorAll('g[data-motion-id^="tp-final"]')];
+          const payloads = [...svg.querySelectorAll('g[data-motion-id^="tp-merge-chip-"]')]
+            .filter(g => Number(g.getAttribute('opacity') ?? 1) > .02)
+            .map(g => g.textContent.trim());
           const check = svg.querySelector('[data-tp-check="same-coord"]');
-          return { values, hasCheck: !!check, check: Number(check?.getAttribute('opacity') ?? 0) };
+          return {
+            finalVisible: finals.filter(g => Number(g.getAttribute('opacity') ?? 1) > .02).length,
+            values: finals.flatMap(g => [...g.querySelectorAll('text')].map(e => e.textContent)),
+            payloads,
+            hasCheck: !!check,
+            check: Number(check?.getAttribute('opacity') ?? 0),
+          };
         });
-        assert.ok(state.values.length === 8 && state.values.every(v => /^\d+$/.test(v)), 'TP final grid shows numbers before the check');
-        assert.ok(state.hasCheck, 'TP same-coordinate check exists');
-        assert.ok(state.check < .02, 'TP check waits for the completed grid');
+        assert.equal(mid.finalVisible, 0, 'TP final grid waits for the exchange');
+        assert.ok(mid.values.length === 8 && mid.values.every(v => v === ''), 'TP final values are not revealed during the exchange');
+        assert.equal(mid.payloads.length, 2, 'TP two merge payloads are visible');
+        assert.ok(mid.payloads.every(v => /\d/.test(v)), 'TP merge payloads carry numbers');
+        assert.ok(mid.hasCheck, 'TP same-coordinate check exists');
+        assert.ok(mid.check < .02, 'TP check waits for the completed grid');
+        await seek(rangeMax);
+        const done = await page.locator('.mechanism-film svg').evaluate(svg => {
+          const finals = [...svg.querySelectorAll('g[data-motion-id^="tp-final"]')];
+          const check = svg.querySelector('[data-tp-check="same-coord"]');
+          return {
+            rank0: [...svg.querySelectorAll('g[data-motion-id^="tp-final0-"] text')].map(e => e.textContent),
+            rank1: [...svg.querySelectorAll('g[data-motion-id^="tp-final1-"] text')].map(e => e.textContent),
+            finalVisible: finals.filter(g => Number(g.getAttribute('opacity') ?? 1) > .02).length,
+            hasCheck: !!check,
+            check: Number(check?.getAttribute('opacity') ?? 0),
+            checkText: check?.textContent ?? '',
+          };
+        });
+        for (const [rank, values] of [['0', done.rank0], ['1', done.rank1]]) {
+          assert.ok(values.length === 4 && values.every(v => /^\d+$/.test(v)), `TP rank ${rank} shows its four final numbers`);
+        }
+        assert.equal(done.finalVisible, 8, 'TP both final grids are visible at the end');
+        assert.ok(done.hasCheck && done.check >= .98 && /✓/.test(done.checkText), 'TP check appears with the completed grids');
       }
       await choose(page, 7); await seek(2.5);
       const gather = await page.locator('.mechanism-film svg').evaluate(svg => [...svg.querySelectorAll('[data-motion-id^="sp-gather-"]')]
