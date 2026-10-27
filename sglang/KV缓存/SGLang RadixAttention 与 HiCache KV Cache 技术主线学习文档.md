@@ -309,5 +309,5 @@ SGLang KV Cache 的主线不是单个缓存技巧，而是一套围绕共享前�
 - 原文：<https://mp.weixin.qq.com/s/BakRqb-l2IhHeQFc5TCp1Q>
 - 原文作者：Lychee & Ethan
 - 补充原文：[SGLang KV Cache演进：从RadixAttention到ShadowRadix，90万Token吞吐仅降10%](https://mp.weixin.qq.com/s/LudsqNrhZPjQwntQNeu6iQ)，读取于 2026-09-09；新增数字仅作来源记录。
-- 本文图片来自原文页面，已下载到 `../images/sglang-kv-cache-mainline/`。
+- 本文图片来自原文页面，已下载到 `../../images/sglang-kv-cache-mainline/`。
 - 本文基于原文整理，未做 SGLang 源码级复核；用于生产决策前需要再对照当前源码和实际负载验证。

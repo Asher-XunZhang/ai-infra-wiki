@@ -17,7 +17,7 @@
 
 **产物假设**
 
-文档以 Markdown 为核心，原文配图下载到 `../images/mooncake-articles/sglang/` 并用相对路径嵌入。图下说明是基于图片内容的二次理解，不复刻原文图注。
+文档以 Markdown 为核心，原文配图下载到 `../../images/mooncake-articles/sglang/` 并用相对路径嵌入。图下说明是基于图片内容的二次理解，不复刻原文图注。
 
 **怎么读本文**
 
@@ -343,5 +343,5 @@ SGLang 给 Mooncake 的位置是“更深的 L3 数据面”，不是“外包�
 
 - 原文：<https://mp.weixin.qq.com/s/DiwvpbFqXQk0_0PHA904zw>
 - 原文作者：Ethan
-- 本文图片来自原文页面，已下载到 `../images/mooncake-articles/sglang/`。
+- 本文图片来自原文页面，已下载到 `../../images/mooncake-articles/sglang/`。
 - 本文是图文整理和学习笔记，技术结论以原文描述为基础；若用于生产决策，需要再对照 SGLang 与 Mooncake 当前主线源码复核。

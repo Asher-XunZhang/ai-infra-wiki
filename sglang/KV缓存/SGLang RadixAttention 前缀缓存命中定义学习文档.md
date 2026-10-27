@@ -2,6 +2,12 @@
 
 本文面向第一次理解 SGLang prefix cache 命中语义的同学，整理原文《KV Cache 前缀匹配的设计分野》的 SGLang 相关内容。本文只关注 SGLang，不展开原文中的其他框架；本文是第三方资料整理型学习笔记，未做 SGLang 源码级复核。
 
+> **关联复核（2026-10-27）：** 下文保留 2026-07-17 第三方原文的概念模型，不能把“任意 token 边界命中”当成所有 SGLang 配置的保证。仓内 [KV 映射与共享回收](<SGLang KV 映射与共享回收学习文档.md#3-整页命中相同-token-还要满足页与身份条件>) 对固定提交 `279339f113b79af84f27fd3ac92d0a13bd3f4cbd` 的普通分页 Radix 说明：匹配长度按页大小向下对齐，`page_size=4` 时相同 6 个 token 只复用 4 个。本文关于 `child_key`、哈希和节点分裂的描述仍是原文转述；具体键实现、页粒度及混合状态约束请结合 [HiCache 前缀命中源码](<HiCache 前缀命中源码学习文档.md>) 阅读。本次补充为仓内证据对照，未重新审计引擎源码。
+
+
+整合阅读：[前缀缓存恢复条件与状态所有权](<../../大模型推理/KV缓存/前缀缓存命中后的恢复条件与状态所有权对比学习文档.md>)，分别比较身份、匹配粒度、恢复边界与可写性。
+
+
 ## 0. 阅读基线与范围
 
 | 项目 | 内容 |
@@ -209,5 +215,5 @@ SGLang 对 prefix cache “命中”的定义是 token 级的：压缩 Radix Tre
 
 - 原文：<https://mp.weixin.qq.com/s/GciJebFszheSqU-s3yZPMQ>
 - 原文作者：Lychee & Ethan
-- 本文图片来自原文页面，已下载到 `../images/prefix-cache-matching/`。
+- 本文图片来自原文页面，已下载到 `../../images/prefix-cache-matching/`。
 - 本文只整理 SGLang 相关内容，未做源码级复核；源码判断请再对照当前 SGLang 主线确认。

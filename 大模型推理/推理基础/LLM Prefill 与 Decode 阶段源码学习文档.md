@@ -665,7 +665,7 @@ SGLang 的旧地址 `https://docs.sglang.ai/advanced_features/pd_disaggregation.
 
 | 文件 / 图表 | 来源与用途 |
 | --- | --- |
-| `../images/prefill-decode-stages/01-kv-cache-prefill-decode.png` | R01 Figure 1；[原始图片地址](https://developer-blogs.nvidia.com/wp-content/uploads/2023/11/key-value-caching_.png)；原样保留；解释 P/D 的 Q/K/V 形状，不是性能图 |
+| `../../images/prefill-decode-stages/01-kv-cache-prefill-decode.png` | R01 Figure 1；[原始图片地址](https://developer-blogs.nvidia.com/wp-content/uploads/2023/11/key-value-caching_.png)；原样保留；解释 P/D 的 Q/K/V 形状，不是性能图 |
 | 第 1、3、4、6、7、8、9 节的 Mermaid | 整理者根据本地源码和基础计算关系绘制；分别表达请求流程、层内数据流、token/KV 时序、执行通路、部署交接、指标时间线和分块 Prefill |
 
 Mermaid 是可维护的机制示意，不是运行 trace、真实进程数或 GPU 拓扑证明。正文图片只使用本地相对路径；来源链接用于追溯。

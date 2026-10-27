@@ -19,6 +19,7 @@
 | 顺序 | 资料 | 阅读定位 | 学习重点 |
 | --- | --- | --- | --- |
 | 1 | [Chunked Prefill 与 Prefill-Decode 共推](<Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) | 主线 | 从批处理方式理解长输入怎样与逐 token 生成共享资源。 |
+| 2 | [SGLang Overlap 与 DeepInfer ZOS 的依赖和状态提交对比](<SGLang Overlap 与 DeepInfer ZOS 的依赖和状态提交对比学习文档.md>) | 整合深入：先修请求循环与 Prefill/Decode | 分开设备输入、CPU 提交、共享读写和资源存活，理解 Grammar、变长投机与收尾的依赖。 |
 
 ## 自测与下一步
 

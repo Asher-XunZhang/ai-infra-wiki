@@ -648,6 +648,11 @@ SGLang Scheduler 的主线是一个受 KV 预算约束的请求状态机：EXTEN
 
 ## 14. 参考与延伸
 
+对照案例：[DeepInfer ZOS 的前后步交接](<../../大模型推理/分布式服务/DeepInfer 专用推理引擎与生产系统边界学习文档.md#3-zos错开结果处理减少设备空等>)，可比较上一轮结果回收、下一轮执行和变长验证元数据的关系；相同的重叠目标不表示两套实现共享对象或同步协议。
+
+
+整合阅读：[SGLang Overlap 与 DeepInfer ZOS 的依赖和状态提交对比](<../../大模型推理/调度方法/SGLang Overlap 与 DeepInfer ZOS 的依赖和状态提交对比学习文档.md>)。比较设备中转、CPU 结果推进与资源保护，不把两个基线的对象和协议混写。
+
 - 《小进探索sglang：sglang中的scheduler调度原理和代码解析》：https://mp.weixin.qq.com/s/baB0ozQrVuaqZrTphSCUvg
 - 《从 KV Cache 到 Zero Overhead Scheduling，一文读懂 SGLang 的调度巧思》转载：https://mp.weixin.qq.com/s/-O5W_4CGD0XJMAtHckn3nw
 - 同文原始链接：https://zhuanlan.zhihu.com/p/1992587332189197731?share_code=XlfqtsjMrMgv&utm_psn=2064184295120548792

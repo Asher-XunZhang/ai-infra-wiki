@@ -17,7 +17,7 @@
 
 **产物假设**
 
-文档以 Markdown 为核心，原文配图下载到 `../images/mooncake-articles/vllm/` 并用相对路径嵌入。图下说明是基于图片内容的二次理解，不复刻原文图注。
+文档以 Markdown 为核心，原文配图下载到 `../../images/mooncake-articles/vllm/` 并用相对路径嵌入。图下说明是基于图片内容的二次理解，不复刻原文图注。
 
 **怎么读本文**
 
@@ -365,5 +365,5 @@ Mooncake 在 vLLM 里不是一整套接管调度的缓存系统，而是两个�
 
 - 原文：<https://mp.weixin.qq.com/s/I_YpLl3cMYYyPU33Pk7o2w>
 - 原文作者：Ethan
-- 本文图片来自原文页面，已下载到 `../images/mooncake-articles/vllm/`。
+- 本文图片来自原文页面，已下载到 `../../images/mooncake-articles/vllm/`。
 - 本文是图文整理和学习笔记，技术结论以原文描述为基础；若用于生产决策，需要再对照 vLLM 与 Mooncake 当前主线源码复核。
