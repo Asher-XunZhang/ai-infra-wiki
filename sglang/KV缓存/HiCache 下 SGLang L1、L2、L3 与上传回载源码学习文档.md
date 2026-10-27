@@ -51,6 +51,8 @@ HiCache 的标准 `cache` 模式包含一层真正由树管理的 Host KV 缓存
 
 同一逻辑前缀可能同时拥有设备和 Host 副本，也可能只留下 Host 或外部对象。层级是一种数据位置与管理关系，不是“每次请求都依次跑过三层”。
 
+**官方设计补充（读取于 2026-10-27）：** [HiCache 的 Tier Sharing Scope](https://docs.sglang.io/docs/advanced_features/hicache_design#tier-sharing-scope) 明确 L1/L2 属于单个推理实例；增大 Host pool 不会自动汇聚多机内存。跨实例复用依赖 L3 后端的实际共享范围、命名空间和配置，本地文件后端也不天然跨机。这是后续在线文档的范围说明，与本文固定源码基线分开记录；本次没有运行共享缓存实验。比较入口见 [三类引擎的交付与缓存边界](<../../大模型推理/分布式服务/DeepInfer、vLLM 与 SGLang 的交付范围与机制比较学习文档.md>)。
+
 ```mermaid
 flowchart LR
     G["L1：device KV pool"] -->|"① D2H backup"| H["L2：Host pool"]

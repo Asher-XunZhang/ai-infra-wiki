@@ -47,7 +47,7 @@
 | PagedAttention | 用块表把逻辑 token 映射到不连续物理 KV 块 | 主要解决物理分配和寻址 |
 | Prefix Cache | 跨请求复用已计算的相同前缀 | 需要匹配、所有权和回收策略 |
 | RadixAttention | SGLang 用 Radix Tree 组织和复用前缀 KV | 可以建立在分页物理池之上 |
-| APC | vLLM 的 Automatic Prefix Caching | 通常以完整 block 为复用粒度 |
+| APC | vLLM 的 Automatic Prefix Caching | 匹配粒度受版本和 Manager 条件约束，不总等于物理块大小 |
 | Chunked Prefill | 把长 prompt 的计算拆成多个调度片段 | chunk 是计算粒度，block/page 是存储粒度 |
 | Overlap Scheduling | CPU 准备下一批时，GPU 执行当前批 | “隐藏开销”不等于开销不存在 |
 | PD 分离 | Prefill 和 Decode 部署到不同 worker 池 | 要额外传输 KV 和管理生命周期 |
@@ -181,7 +181,9 @@ Attention kernel 需要知道“这个请求第 0、1、2……个逻辑位置�
 - 活跃请求引用的块如何防止被回收？
 - 请求结束后，哪些 KV 留作缓存，哪些立即释放？
 
-vLLM APC 常用链式 block hash 在完整 block 边界判断命中；SGLang RadixAttention 用压缩 Radix Tree 表达 token 序列分支。二者粒度与元数据结构不同，但都建立在“逻辑序列映射到物理 KV”之上。
+vLLM APC 用链式 block hash 组织前缀身份；SGLang RadixAttention 用压缩 Radix Tree 表达 token 序列分支。二者都建立在“逻辑序列映射到物理 KV”之上，但索引结构本身不能决定任意配置的命中粒度。
+
+**关联复核（2026-10-27）：** 原始第三方资料中的整块模型保留为历史理解入口。[vLLM 固定源码文档](<../../vllm/KV缓存/vLLM V1 KV Cache 管理全生命周期源码学习文档.md>)在提交 `f727951d3f0dbeb9acdb8a2f7ebfecaeb67090b3` 记录符合条件的部分尾块；[SGLang 固定源码文档](<../../sglang/KV缓存/SGLang KV 映射与共享回收学习文档.md>)在提交 `279339f113b79af84f27fd3ac92d0a13bd3f4cbd` 说明普通分页匹配受页大小约束。因此不能对照为“vLLM 永远完整物理块，SGLang 总是任意 token”。进一步见 [恢复条件与状态所有权](<../KV缓存/前缀缓存命中后的恢复条件与状态所有权对比学习文档.md>)；本次为仓内证据对照，未重新审计这两个缓存实现。
 
 详细机制分别见：
 
@@ -210,11 +212,13 @@ vLLM APC 常用链式 block hash 在完整 block 边界判断命中；SGLang Rad
 | 观察角度 | vLLM | SGLang |
 | --- | --- | --- |
 | 代表性抽象 | PagedAttention、block table、连续批处理 | RadixAttention、请求状态机、重叠调度 |
-| 前缀复用心智模型 | 以完整 block hash 为核心 | 以 token 序列的压缩 Radix Tree 为核心 |
+| 前缀复用心智模型 | 链式 block hash；匹配粒度需核对具体 Manager | 压缩 Radix Tree；匹配边界仍受页与状态类型约束 |
 | 学习入口 | 先理解 block/KV manager，再看 scheduler | 先理解 Req/ScheduleBatch，再看 radix 和 scheduler |
 | 适合重点压测 | 通用模型兼容与稳定吞吐 | 前缀密集、复杂调度和 SGLang 专项优化 |
 
 两边都在快速吸收彼此的优秀设计。把上表理解为“读代码时从哪里切入”，比理解为“谁有、谁没有”更可靠。
+
+比较专用核心与通用在线引擎时，继续读 [DeepInfer、vLLM 与 SGLang 的交付范围](<../分布式服务/DeepInfer、vLLM 与 SGLang 的交付范围与机制比较学习文档.md>)：分别核对发布范围、服务宿主和部署组合，不能根据代表性机制推断其他框架缺少相同能力。
 
 ### 4.3 “零开销”应怎样理解
 

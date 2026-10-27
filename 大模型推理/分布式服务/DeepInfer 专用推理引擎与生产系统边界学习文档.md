@@ -208,6 +208,10 @@ DFlash 产生候选 token，Confidence Head 估计接受概率，DSpark 根据�
 
 这些是官方给定工作点下的估算，未由本文复现，也不是任何输入上的稳定提升。它们说明应同时记录验证长度、接受长度、设备 step 耗时和并发；只看接受率或少算了多少 token，都不足以推断吞吐。
 
+**关联复核（2026-10-27）：** 置信度与成本共同选择验证预算，不应被描述为 DeepInfer 独占的能力。[vLLM Adaptive Verification](https://docs.vllm.ai/en/latest/features/speculative_decoding/adaptive_verification/) 在线文档和 [SGLang 固定 `DSparkVerifyPlanner`](https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/speculative/dspark_components/dspark_planner.py#L70) 提供其他实现入口；存在相关路径不表示默认配置、模型与组合条件相同。具体复核边界见 [三引擎比较笔记](<DeepInfer、vLLM 与 SGLang 的交付范围与机制比较学习文档.md#5-动态验证不是-deepinfer-独占的能力标签>)，本篇性能口径仍只属于 DeepInfer。
+
+进一步读 [动态验证预算的固定源码对比](<../高级生成/动态投机验证预算：DeepInfer、SGLang 与 vLLM 的取舍学习文档.md>)：本篇同一 DeepInfer 基线的 `MTPVarlen` 还包含运行时 forward/sampler 成本修正，以及用 N−2 轮历史选总预算的逻辑；启动耗时曲线不是唯一输入。专项将这些条件与 SGLang 的成本表、vLLM 的图档位成本分开比较，不改变上述官方估算口径。
+
 ## 7. Block KV、SWA 与有界重放
 
 ### 先把存储对象拆开

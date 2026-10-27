@@ -16,6 +16,7 @@
 | [KDA 检查点与投机回滚](<../模型架构/KDA Cache 检查点、前缀复用与投机回滚学习文档.md>) | 深入：特殊状态 | 理解递推状态恢复为何不同于删除 KV 尾页。 |
 | [SGLang 模型状态与高级生成](<../../sglang/高级生成/SGLang 模型状态与高级生成机制学习文档.md>) | 选读：引擎实现 | 继续追踪算法、Grammar 和 batch 的一致推进。 |
 | [DeepInfer 的 DSpark、ZOS 与 SWA 恢复](<../分布式服务/DeepInfer 专用推理引擎与生产系统边界学习文档.md>) | 案例：专用引擎协同 | 理解变长验证预算与异步调度的时序，区分近似重放、完整恢复和性能折算。 |
+| [动态投机验证预算：DeepInfer、SGLang 与 vLLM 的取舍](<动态投机验证预算：DeepInfer、SGLang 与 vLLM 的取舍学习文档.md>) | 整合深入：先修 Draft / Verify / Commit | 从 survival、成本曲线和历史概率走到实际布局与状态提交，解释为何减少验证不一定更快。 |
 
 ## 自测与下一步
 
