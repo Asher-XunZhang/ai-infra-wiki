@@ -210,6 +210,8 @@ consumer layers -> 自己算 Q，复用该组 shared KV
 
 容量近似与 `n_kv_producing_layers` 成正比，而不是与全部 `n_layers` 成正比。它比 GQA 更深入地改变模型容量分配，不能靠运行时 flag 给已有普通 Transformer 无损开启。
 
+**具体算例（2026-10-29 补充）：** [DeepSeek V4.1 Flash 的 CED、CSA2 与缓存分工](<../模型架构/DeepSeek V4.1 Flash 的 CED、CSA2 与缓存分工学习文档.md>)按独立的官方报告 v1，拆出“三组压缩率 2 + 一组压缩率 1”的全局记录，再分别计算 main KV 与 indexer K 的载荷和 scale，得到 890 B/token。该例把跨层共享、序列压缩与量化组合起来，也解释为什么只复用 Top-K 不会减少全部历史 KV；它不是本篇普通 MHA 公式的直接代入，也不是总显存口径。
+
 ## 7. DSA：先选位置，再做稀疏 Attention
 
 ![DSA 的 Indexer 与 Top-K 选择](../../images/kv-cache-capacity/06-dsa-topk.png)
