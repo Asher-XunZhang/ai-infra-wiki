@@ -160,6 +160,7 @@ flowchart TB
 
 ## 7. 继续阅读
 
+- [Engram 条件记忆与 KV 分层缓存](<../模型架构/Engram 条件记忆与 KV 分层缓存学习文档.md>)：把本篇三条路径与确定性参数查表对照，区分地址就绪、传输完成和消费窗口；本篇论文版本与性能条件保持不变。
 - [KV Cache 容量优化技术地图](<KV Cache 容量优化技术地图学习文档.md>)：区分改模型表示与改存储层级。
 - [Kimi K3 混合注意力缓存与 Mooncake 状态传输](<../模型架构/Kimi K3 混合注意力缓存与 Mooncake 状态传输学习文档.md>)：先确保搬运的是可恢复状态。
 - [SGLang RadixAttention 与 HiCache 技术主线](<../../sglang/KV缓存/SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>)：从跨请求复用理解到活动请求内稀疏换入。

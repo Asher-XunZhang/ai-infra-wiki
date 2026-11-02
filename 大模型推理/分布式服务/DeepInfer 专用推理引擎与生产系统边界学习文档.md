@@ -172,6 +172,8 @@ sequenceDiagram
 | HC / Engram | 中间状态和 hook 位置不能简化为普通残差层串联 |
 | DFlash | 草稿特征、验证长度、缓存与采样状态要同步推进 |
 
+**Engram 专项复核（2026-11-02）：** [条件记忆与 KV 分层缓存](<../模型架构/Engram 条件记忆与 KV 分层缓存学习文档.md>)沿本文同一 DeepInfer 提交及其固定 DeepEP 子模块，补齐层循环前的 hash / fetch、目标层的 wait hook、投影与 gate。它解释提前取数的依赖条件，没有把代码路径存在当作传输完全隐藏或端到端加速的证明。
+
 ### YoCo 里的 encoder / decoder 不等同于经典翻译模型
 
 ![原文的 V4.1 与经典 Transformer 对照](../../images/deepinfer-engine/05-architecture-comparison.png)

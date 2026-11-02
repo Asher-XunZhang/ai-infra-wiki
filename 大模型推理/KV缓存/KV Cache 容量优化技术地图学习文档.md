@@ -18,6 +18,8 @@
 | 不展开内容 | PagedAttention 分配、KV 量化、具体模型训练配方、生产 fused kernel |
 | 验证边界 | 只基于原文和其引用论文做机制整理；原文代码是教学简化版，本文未运行；模型名称、数字与质量结论不作跨模型外推 |
 
+**2026-11-02 补充来源：** [《大模型加速优化：Attention架构演进》](https://mp.weixin.qq.com/s/fJglfOaTUreYXjcIOdLH3A)，程序员Owen，公众号“AI修炼技术派”，发表于 2026-10-30 08:30:00（Asia/Shanghai，按页面时间戳换算）。完整阅读正文及 17 张技术图后，在第 3、4、7 节补充“缓存容量与主注意力计算不能按同一比例估算”的解释；CSA/HCA 的长度边界补在[架构对比文档](<../模型架构/混合注意力、索引压缩与残差流架构对比学习文档.md>)。原图带“知乎 @骑虎南下”水印，图像归属与页面署名分开记录，见[图源及核验基线](../../images/attention-cost-model/SOURCES.md)。补充部分只读取公开配置与参考实现，没有运行模型或复现性能；不把图中的错误形状照搬为实现事实。
+
 ### 一个重要校正
 
 原文用“KV Cache 让推理从 O(n²) 变成 O(n)”帮助建立直觉。更精确地说：KV Cache 消除了历史 token 的 K/V 投影重算，使这部分累计工作从随生成长度二次增长降为线性；但标准自回归 Attention 的新 query 仍要读取已有 K/V，单步 Attention 随历史长度增长，生成整段序列的 Attention 工作通常仍是 O(n²)。
@@ -127,6 +129,26 @@ Attention 计算时会按组把 K/V 视图提供给多个 Q heads。生产 kerne
 - 从 MHA 检查点直接改成 GQA 不是无损推理开关，通常涉及训练或结构转换。
 - MQA 共享最激进，容量最好，但质量与 kernel 行为必须按模型验证。
 
+### 共享 KV 头，为什么主注意力 FLOPs 没有同比下降
+
+**人话版：** 八个人可以共用一本资料，但八个人仍要分别提问、计算自己的答案。减少 KV 头数主要减少保存和读取的资料份数，Q 的工作不会因此自动合并。
+
+把补充文章的公式写得更一般：只计 `QKᵀ` 打分和 `softmax(QKᵀ)·V` 加权求和，乘与加各算 1 FLOP。B 为请求数，Hq 为 Q 头数，dk/dv 为两次乘法各自的通道维度；P 是**每个请求本次所有 query 的有效 query–key 配对数**。
+
+```text
+F_core ≈ 2 × B × Hq × P × (dk + dv)
+
+单步普通 Decode：P = T
+S 个 query 都可看 T 个位置的矩形计算：P = S × T
+无已缓存前缀的因果 Prefill：有效配对数 P = S × (S + 1) / 2
+```
+
+这是逻辑算术账目。实际 kernel 可能按 tile 做额外计算；它也不包含投影、位置编码、softmax、索引、通信或 FFN。不能把矩形 `S×T` 无条件当成因果 Prefill 的实际 FLOPs。
+
+**可复算例子：** 固定 B=1、Hq=64、dk=dv=128、T=8192，比较一个假想的 64 KV 头 MHA 和 8 KV 头 GQA。按 BF16、每层每 token 的 K/V 数值计算，缓存从 `2×64×128×2=32768 B` 降为 `4096 B`；但二者的这两次注意力乘法仍约为 `268435456 FLOPs`。KV 投影和读取成本可以变化，因此这也不表示两者实际耗时相同。
+
+**Qwen3 图的校正：** [Qwen3-32B 配置](https://huggingface.co/Qwen/Qwen3-32B/blob/9216db5781bf21249d130ec9da846c4624c16137/config.json)确为 Hq=64、Hkv=8、head_dim=128、hidden_size=5120。[`Qwen3Attention`](https://github.com/huggingface/transformers/blob/5f4ecf2d9f867a1255131d2461d75793c0cf1db2/src/transformers/models/qwen3/modeling_qwen3.py#L170)只给 Q、K 加 head-wise RMSNorm，V 支路没有这一步；RoPE 后 K 仍是 8 个头。输出先合并 `64×128=8192` 通道再投影到 5120，不应把原图的“每头 80 维”当成 Attention 的 value 维度。GQA 本身也不要求所有模型都使用 QK Norm。
+
 ## 4. MLA：缓存低维 latent
 
 ![MLA 的低维缓存直觉图](../../images/kv-cache-capacity/03-mla.png)
@@ -156,6 +178,21 @@ MLA 的真实成本还包括：
 - 模型训练时是否围绕该瓶颈设计。
 
 所以“latent_dim 是原维度 1/4”不自动等于端到端显存、带宽和延迟都精确缩小 4 倍。
+
+### MLA 的 576 维缓存，不等于两个乘法都用 576 维
+
+![补充文章的 MLA 投影与缓存路径](../../images/attention-cost-model/01-mla-projections.jpg)
+
+**图意解读：** 图中间保存的是 512 维内容 latent 加 64 维 RoPE key；右上方又展开成各头的 K、V。它帮助区分“长期保存什么”和“计算时展开成什么”。V3/R1 示例的展开后 Q/K 为 `128+64=192` 维，V 为 128 维；缓存中的 576 个数也不是两份各 576 维的 K/V。图很长，读者只需跟住下面这张维度表，无需在窄屏辨认全部算子。
+
+| 计算路径 | 打分维度 dk | 加权求和维度 dv | 还需计入的工作 |
+| --- | --- | --- | --- |
+| 展开 K/V 的 MHA 形式 | 192 | 128 | K/V 升维与其他投影 |
+| 矩阵吸收后的 latent MQA 形式 | `512+64=576` | 512 | Q 映射到 latent 空间、读出后的 value 投影等 |
+
+表中的“MQA”描述共享缓存的计算形式，不表示 V3/R1 架构退化成普通 MQA。代入上一节公式时必须分别使用 dk、dv；补充文章把两项都写成同一个 QHD，只适用于两者相等的特例，不能直接作为 MLA 的精确计算式。两条路径的矩阵乘法位置与中间尺寸不同，数学等价也不等于运行代价相同。
+
+依据：[V3.2 报告附录 A](https://arxiv.org/html/2512.02556v1#A1)给出 MLA 的两种形式；固定版本[参考实现的 `MLA.forward`](https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/a7e62ac04ecb2c0a54d736dc46601c5606cf10a6/inference/model.py#L555)可追踪缓存写入、展开与吸收分支。本节只核对维度与操作位置，未测量哪条路径更快。
 
 ## 5. SWA：减少每层保留的历史长度
 
@@ -220,7 +257,9 @@ consumer layers -> 自己算 Q，复用该组 shared KV
 
 ### 为什么它不是普通“KV 压缩”
 
-DSA 主要把全历史 Attention 从概念上的 `L × L` 交互缩成 `L × K`。但是为了未来 query 仍能选到旧位置，系统可能仍要在 Host 或分层缓存中保存相关状态。
+对具有 L 个 query 的序列，DSA 将**选中位置上的主 Attention**从全历史交互约束为每个 query 至多 K 项，常用 `L×K` 表示其规模；这不是整个 Attention 模块的复杂度。以 V3.2 的 K=2048 为例，短前缀还要取可见位置数与 K 的较小值。Indexer 打分、Top-K 和投影仍需单独计算；未来 query 仍可能选到旧位置，不能据此把完整历史缓存缩成 2048 项。
+
+**2026-11-02 核验：** V3.2 的 [`Indexer`](https://huggingface.co/deepseek-ai/DeepSeek-V3.2/blob/a7e62ac04ecb2c0a54d736dc46601c5606cf10a6/inference/model.py#L435)另存 128 维 indexer key 及量化 scale，用于选位置，不是另一套供主 Attention 加权求和的 K/V。增加这份索引状态，不等于不同模型部署中的总字节数必然变大，仍需固定 dtype、布局和分片。该官方 Python 参考实现的 `MLA.forward` 使用全范围 `einsum` 后叠加稀疏 mask 来表达语义；**mask 只保留 K 项，不证明代码实际只做 K 项乘法**。生产 sparse kernel 的执行量需另核验，本次没有运行它。
 
 需要分别问：
 
@@ -287,6 +326,8 @@ flowchart LR
 
 KV Cache 容量优化没有一颗银弹：GQA/MQA 砍头数，MLA 压表示，SWA 砍历史长度，跨层共享砍产 KV 层数，DSA 砍每步访问位置，DeltaNet 则替换状态机制；只有先明确自己受容量、带宽、计算还是质量约束，才能读懂它们为什么常被组合使用。
 
+**关联复核（2026-11-02）：** 同时检查 Transformer 基础、混合注意力比较、V4.1 缓存分工和 SGLang MLA/稀疏模型课程。前两类原有的容量/选择边界可保留，本次补足具体算式与 CSA/HCA 长度条件；V4.1 继续采用独立的 CED/CSA2 基线，不把 V4 的压缩率覆盖过去。现有两篇已能承载本次增量，没有证据支持另建性能排行或重复的六种架构综述，未新增整合选题。
+
 ## 12. 参考与延伸
 
 - 原文：<https://mp.weixin.qq.com/s/v6YYxCf_N4Q6c7qfD_lZDw>
@@ -295,3 +336,5 @@ KV Cache 容量优化没有一颗银弹：GQA/MQA 砍头数，MLA 压表示，SW
 - Gated DeltaNet：<https://arxiv.org/abs/2412.06464>
 - [LLM 推理系统心智模型与 SGLang、vLLM 选型边界学习文档](../%E6%8E%A8%E7%90%86%E5%9F%BA%E7%A1%80/LLM%20%E6%8E%A8%E7%90%86%E7%B3%BB%E7%BB%9F%E5%BF%83%E6%99%BA%E6%A8%A1%E5%9E%8B%E4%B8%8E%20SGLang%E3%80%81vLLM%20%E9%80%89%E5%9E%8B%E8%BE%B9%E7%95%8C%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
 - [vLLM V1 KV Cache 管理全生命周期源码学习文档](../../vllm/KV%E7%BC%93%E5%AD%98/vLLM%20V1%20KV%20Cache%20%E7%AE%A1%E7%90%86%E5%85%A8%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
+
+- [Attention 架构演进补充来源](https://mp.weixin.qq.com/s/fJglfOaTUreYXjcIOdLH3A)、[图源与固定核验基线](../../images/attention-cost-model/SOURCES.md)。
