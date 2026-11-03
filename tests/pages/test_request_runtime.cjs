@@ -58,3 +58,40 @@ if(process.env.SGLANG_SOURCE_DIR){
  console.log(`PASS: ${Object.keys(M.sources).length} source anchors checked against fixed Git objects.`);
 }
 console.log(`PASS: ${checked} request paths/configurations; ownership, dispatch, cancellation, output and KV invariants.`);
+
+// Continuous presentation must keep arrival, computation and cleanup separate.
+const F=require('../../pages/sglang/request-runtime/flow.js');
+for(const scenario of ['normal','queued-abort','running-abort','invalid'])for(const cache of [true,false])for(const outputs of [1,3,5]){
+ const timeline=F.build({scenario,cache,outputs}),frames=M.build({scenario,cache,outputs});
+ assert.deepEqual(F.at(timeline,0).state,F.initial);
+ assert.deepEqual(F.at(timeline,timeline.duration).state,frames.at(-1));
+ for(const p of timeline.phases){
+  assert.deepEqual(F.at(timeline,p.start+p.duration*.98).state,p.frame,'phase completes at its boundary');
+  for(const fraction of [.01,.2,.5,.7,.9]){
+   const v=F.at(timeline,p.start+p.duration*fraction),s=v.state;
+   assert.ok(s.visible<=s.sampled,'cannot deliver before sampling');
+   assert.ok(!s.cached||!s.slot,'cache handoff releases request row');
+   assert.ok(!s.finished||!s.toFinish,'pending cancellation is not finished');
+   if(scenario==='invalid'||scenario==='queued-abort')assert.equal(s.kv+s.cached+s.forwards,0);
+   assert.deepEqual(F.at(timeline,v.time),v,'seeking is deterministic');
+  }
+ }
+ const find=id=>timeline.phases.find(p=>p.id===id);
+ if(scenario==='normal'){
+  const p=find('prefill'),early=F.at(timeline,p.start+p.duration*.2).state;
+  assert.ok(early.slot&&!early.waiting,'admission reserves request row before forward');
+  assert.equal(early.kv,0);assert.equal(early.sampled,0);
+  const sample=F.at(timeline,p.start+p.duration*.7).state;
+  assert.equal(sample.kv,4);assert.equal(sample.sampled,1);assert.equal(sample.visible,0);
+  const final=find('final'),front=F.at(timeline,final.start+final.duration*.8).state;
+  assert.ok(front.frontFinished);assert.ok(front.visible<outputs,'frontend cleanup precedes client arrival');
+ }
+ for(const e of timeline.events){assert.ok(e.end>e.start);if(e.edge)assert.ok(F.edges[e.edge]);for(const n of e.nodes)assert.ok(F.nodes[n]);}
+}
+const used=new Set(['normal','queued-abort','running-abort','invalid'].flatMap(scenario=>F.build({scenario}).events.map(e=>e.edge).filter(Boolean)));
+assert.deepEqual([...used].sort(),Object.keys(F.edges).sort(),'every drawn connection carries a real event in some scenario');
+for(const e of Object.values(F.edges))for(const [id,p]of [[e.from,e.points[0]],[e.to,e.points.at(-1)]]){
+ const n=F.nodes[id],inside=p[0]>=n.x&&p[0]<=n.x+n.w&&p[1]>=n.y&&p[1]<=n.y+n.h;
+ assert.ok(inside&&(p[0]===n.x||p[0]===n.x+n.w||p[1]===n.y||p[1]===n.y+n.h),'wire meets node boundary');
+}
+console.log('PASS: continuous arrival/compute/release boundaries, 24 configurations, reverse-seek determinism and connected geometry.');
