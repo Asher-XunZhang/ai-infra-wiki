@@ -13,10 +13,15 @@ def render_architecture():
     def source_link(s):
         file, line, symbol = s
         return f'<a href="{base}blob/{rev}/{file}#L{line}"><code>{escape(file)}</code> · L{line}</a>'
-    parts = ['<!-- system-architecture:start -->', '<section class="architecture" id="architecture" aria-labelledby="architecture-title">',
-        '<h2 id="architecture-title">代码架构：先看全局，再进入模块</h2>',
+    opening = (ROOT / 'scripts/templates/sglang_pd_opening.html').read_text(encoding='utf-8').strip()
+    parts = ['<!-- system-architecture:start -->', opening,
+        '<p class="pd-opening-scope">开篇示例：Prefill 为 PP4 × CP4 × Attention-TP4，Decode 为逻辑接收与执行端；冷缓存、普通成功路径，展示两轮 Decode。动画时间用于讲解，不代表实测时延。<a href="https://github.com/sgl-project/sglang/tree/e00930c5489053f26d86b179cee0d087f846acbb">开篇源码 e00930c54890</a>（核对于 2026-11-03）；下方单实例参考保留独立基线 279339f113。</p>',
+        '<noscript><p>启用 JavaScript 可播放开篇。请求主线：HTTP / TokenizerManager → D 预分配 → P 调度与 PP 计算 → KV / metadata 交接 → D 解码 → DetokenizerManager / HTTP 返回。下方单实例图与模块源码索引可直接阅读。</p></noscript>',
+        '<section class="architecture" id="architecture" aria-labelledby="architecture-title">',
+        '<h2 id="architecture-title">单实例模块职责与源码索引</h2>',
         '<p>入口管理请求，Scheduler 组织本轮工作，执行层调用模型；KV 管理为两者提供可复用的历史和写入位置，反分词将输出送回入口。</p>',
         '<p class="arch-scope"><strong>图的范围</strong> 普通 Python 文本生成 · 单 tokenizer · 单卡合并部署 · 同一主机。用无 overlap（计算与调度重叠）的路径说明调用关系。</p>',
+        '<details class="arch-reference-map"><summary>查看单实例进程与调用关系图</summary>',
         '<div class="arch-views" role="group" aria-label="架构阅读视角" hidden><button type="button" data-arch-view="all" aria-pressed="true">完整架构</button><button type="button" data-arch-view="input" aria-pressed="false">请求进入</button><button type="button" data-arch-view="compute" aria-pressed="false">一轮计算</button><button type="button" data-arch-view="output" aria-pressed="false">结果返回</button></div>',
         '<p class="arch-hint">点选模块查看职责、固定源码与课程。窄屏可横向查看全图，或使用图下的模块索引。</p>',
         '<div class="arch-scroll" tabindex="0" role="region" aria-label="SGLang 代码架构图，可横向滚动"><svg class="arch-map" viewBox="0 0 1200 800" role="group" aria-labelledby="arch-svg-title arch-svg-desc">',
@@ -39,7 +44,7 @@ def render_architecture():
         parts.append(f'<a class="arch-node" href="#arch-{n["id"]}" data-arch-node="{n["id"]}" data-phase="{" ".join(n["phase"])}" aria-label="{escape(n["title"])}：查看职责与源码"><rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8"/>')
         parts.append(f'<text class="arch-name" x="{x+w/2}" y="{y+28}">{escape(n["title"])}</text><text class="arch-code" x="{x+w/2}" y="{y+52}">{escape(n["name"])}</text><text class="arch-directory" x="{x+w/2}" y="{y+74}">{escape(directory)}</text></a>')
     parts += ['<g class="arch-device"><rect x="675" y="570" width="205" height="100" rx="8"/><text class="arch-name" x="777" y="600">GPU 设备资源</text><text x="777" y="628">权重 · 激活 · 各层 KV</text><text class="arch-code" x="777" y="653">由当前进程调用与管理</text></g></svg></div>',
-        '<p class="arch-caption">外框表示所选配置的进程，GPU 框表示设备。进程内箭头是函数调用、返回或资源管理；标有 IPC 的箭头传递进程间消息。本图概括依赖关系，不规定各阶段的实测耗时或重叠时序。<a href="../communication/">深入通信边界</a></p>',
+        '<p class="arch-caption">外框表示所选配置的进程，GPU 框表示设备。进程内箭头是函数调用、返回或资源管理；标有 IPC 的箭头传递进程间消息。本图概括依赖关系，不规定各阶段的实测耗时或重叠时序。<a href="../communication/">深入通信边界</a></p></details>',
         '<nav class="arch-index" aria-label="架构模块索引">'+''.join(f'<a href="#arch-{n["id"]}" data-arch-select="{n["id"]}">{n["title"]}</a>' for n in data['nodes'])+'</nav>',
         '<p class="arch-view-note" role="status" hidden>完整架构：沿请求与返回闭环阅读，KV 管理与执行在同一调度进程内协作。</p>',
         '<div class="arch-details">']

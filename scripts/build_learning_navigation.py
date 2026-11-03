@@ -325,6 +325,12 @@ def rendered(page, module=None, lesson=None):
                 element = f'<link rel="stylesheet" href="{url}">' if tag == 'style' else f'<script src="{url}" defer></script>'
                 source = source.replace('</head>', element + '</head>', 1)
         if page.relative_to(PAGES).as_posix() == 'sglang/system-overview/index.html':
+            for asset, tag in [('sglang/system-overview/opening.css', 'style'), ('sglang/system-overview/opening.js', 'script')]:
+                url = href(page, asset)
+                if url not in source:
+                    element = f'<link rel="stylesheet" href="{url}">' if tag == 'style' else f'<script src="{url}" defer></script>'
+                    source = source.replace('</head>', element + '</head>', 1)
+            source = source.replace('<span>源码 279339f113</span>', '<span>开篇 e00930 · 单实例参考 279339</span>')
             source = re.sub(r'<!-- system-architecture:start -->.*?<!-- system-architecture:end -->', '', source, flags=re.S)
             source = source.replace('<!-- foundation-bridge:start -->', render_architecture() + '<!-- foundation-bridge:start -->', 1)
         source = lesson_reading_nav(source)

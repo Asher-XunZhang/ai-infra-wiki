@@ -1,0 +1,17 @@
+<section id="sglang-opening" aria-labelledby="pd-opening-title">
+  <div class="op-heading"><h2 id="pd-opening-title">SGLang SRT · PD 架构</h2><span class="op-caption">第二章 · 源码导览</span></div>
+  <div class="op-controls">
+    <button id="op-toggle" type="button">播放</button>
+    <button id="op-restart" type="button">从头播放</button>
+    <label class="op-speed" for="op-speed">倍速 <select id="op-speed" class="form-select" aria-label="播放倍速"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
+    <div class="op-track">
+      <div class="op-track-head"><label for="op-range">讲解进度 <span id="op-clock">0:00 / 1:16</span></label><output id="op-step">01 / 09 · 请求接入</output></div>
+      <input id="op-range" type="range" min="0" max="1000" step="1" value="0" aria-valuetext="请求接入，0%">
+    </div>
+  </div>
+  <div class="op-legend" aria-label="移动载荷图例"><span><i class="op-key"></i>请求 / token ID</span><span><i class="op-key act"></i>激活张量</span><span><i class="op-key kv"></i>KV 数据</span><span><i class="op-key meta"></i>元数据 / 控制</span><span><i class="op-key out"></i>文字响应</span></div>
+  <svg id="op-map" role="img" aria-labelledby="op-title op-desc"></svg>
+  <div class="op-current" aria-live="polite"><span>当前调用</span><p id="op-status"></p></div>
+  <div class="op-wire"><b>载荷 / 状态</b><p id="op-wire"></p></div>
+  <p class="op-foot"><span>嵌套：对象归属 · 虚线：引用 / 控制 · 时间仅用于讲解</span><a href="https://github.com/sgl-project/sglang/tree/e00930c5489053f26d86b179cee0d087f846acbb" target="_blank" rel="noopener noreferrer">源码 e00930c54890</a></p>
+</section>
