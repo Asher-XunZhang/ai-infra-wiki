@@ -23,6 +23,7 @@
 .teach-empty>text{fill:#647c8a;font-size:12px}
 .teach-track{fill:#e2eaf0;stroke:none}
 .teach-value{fill:var(--ink,#39798e);stroke:none}
+.teach-reference-bar{fill:none;stroke:#7d94a3;stroke-width:1.4;stroke-dasharray:5 3}
 .teach-mask{fill:#e4e8ec;stroke:#c1cbd3;stroke-dasharray:4 3}
 .teach-contribution{fill:var(--tint,#e3eeed);stroke:var(--ink,#277f7a);stroke-width:1}
 .teach-compute{fill:#c1893a;stroke:none}
@@ -38,6 +39,7 @@
 [data-theme=dark] .teach-row{fill:#243c4d;stroke:#4a6274}
 [data-theme=dark] .teach-track,[data-theme=dark] .teach-mask{fill:#2b3d4b;stroke:#526c7d}
 [data-theme=dark] .teach-value{fill:var(--ink,#79b8c4)}
+[data-theme=dark] .teach-reference-bar{stroke:#9fb8c8}
 [data-theme=dark] .teach-contribution{fill:var(--tint,#e3eeed)}
 [data-theme=dark] .teach-contribution-number{fill:#1e3b48}
 [data-theme=dark] .teach-write-cover{fill:#1d3140}
@@ -113,13 +115,45 @@
 .mechanism-film[data-motion=scheduling] svg[data-teaching-kind=chunk-prefill]{max-height:none;max-width:900px;margin:auto}
 
 /* Speculation: visible call ledger, not an equal-cost or speed model. */
+.spec-ledger{fill:#fbfcfd;stroke:#9fb4c0;stroke-width:1.2}
 .spec-call-card{fill:#f7fafb;stroke:#b9cbd6;stroke-width:1}
+.spec-call-card.is-pending{fill:#f8fbfc;stroke:#c3d2db;stroke-dasharray:4 3}
+.spec-call-card.is-running{fill:#fff7e8;stroke:#c58a2e;stroke-width:1.6}
+.spec-call-card.is-done{fill:#edf7f2;stroke:#2d8a7a;stroke-width:1.5}
 .spec-verify{fill:#e7f1ed;stroke:#2d8a7a;stroke-width:1.6}
+.spec-verify.is-pending{fill:#f8fbfc;stroke:#c3d2db;stroke-dasharray:5 3}
+.spec-verify.is-running{fill:#fff8e9;stroke:#c58a2e;stroke-width:1.6}
+.spec-pip{fill:#fff;stroke:#b9cbd6;stroke-width:1}
+.spec-pip.is-running{fill:#fff3d9;stroke:#c58a2e}
+.spec-pip.is-done{fill:#dcefe7;stroke:#2d8a7a}
+.spec-progress{fill:#2d8a7a;stroke:none}
+.spec-identity{fill:var(--ink,#277f7a);stroke:none}
+.spec-card-label{fill:#466070;letter-spacing:.02em}
+.spec-call-value{fill:#173c47;font-weight:700}
+.spec-call-state{fill:#617887}
+.spec-call-state.is-running{fill:#9a611f;font-weight:650}
+.spec-call-state.is-done{fill:#256f59;font-weight:650}
+.spec-pip-label{fill:#466070}
 .spec-keep{fill:#256f59;font-weight:700}
 .spec-drop{fill:#8a6a4f}
 .spec-alternate{fill:#9a611f;font-weight:700}
+[data-theme=dark] .spec-ledger{fill:#1b2e3b;stroke:#526b7b}
 [data-theme=dark] .spec-call-card{fill:#223644;stroke:#526b7b}
+[data-theme=dark] .spec-call-card.is-pending{fill:#1f3140;stroke:#48606f}
+[data-theme=dark] .spec-call-card.is-running{fill:#3b3321;stroke:#d2a15a}
+[data-theme=dark] .spec-call-card.is-done{fill:#1f3f37;stroke:#6cb59d}
 [data-theme=dark] .spec-verify{fill:#1f3f37;stroke:#6cb59d}
+[data-theme=dark] .spec-verify.is-pending{fill:#1f3140;stroke:#48606f}
+[data-theme=dark] .spec-verify.is-running{fill:#3b3321;stroke:#d2a15a}
+[data-theme=dark] .spec-pip{fill:#223644;stroke:#526b7b}
+[data-theme=dark] .spec-pip.is-running{fill:#4a3d26;stroke:#d2a15a}
+[data-theme=dark] .spec-pip.is-done{fill:#2a5348;stroke:#6cb59d}
+[data-theme=dark] .spec-progress{fill:#6cb59d}
+[data-theme=dark] .spec-card-label,[data-theme=dark] .spec-pip-label{fill:#b9cddc}
+[data-theme=dark] .spec-call-value{fill:#e6f0f6}
+[data-theme=dark] .spec-call-state{fill:#a9bdca}
+[data-theme=dark] .spec-call-state.is-running{fill:#e0b272}
+[data-theme=dark] .spec-call-state.is-done{fill:#7ac4a5}
 [data-theme=dark] .spec-keep{fill:#7ac4a5}
 [data-theme=dark] .spec-drop{fill:#d7b28c}
 [data-theme=dark] .spec-alternate{fill:#e0b272}
@@ -137,6 +171,7 @@
 .att-stage-title{fill:#e9f5ff;font-size:13.5px;font-weight:700}
 .att-note{fill:#9db4c6;font-size:12px}
 .att-dim{fill:#6d8496;font-size:11.5px}
+.att-purpose{fill:#9fc3d4;font-size:10.5px}
 .att-num{fill:#d6e9f5;font-size:13px;font-variant-numeric:tabular-nums}
 .att-score{fill:#f2b45c;font-size:13px;font-variant-numeric:tabular-nums}
 .att-q{fill:#62d8e9}
@@ -146,6 +181,7 @@
 .att-mask{fill:#f0808b}
 .att-strong{fill:#eef8ff;font-size:13.5px;font-weight:700}
 .att-out{fill:#dcfaee;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.att-out-ref{font-size:13.5px;letter-spacing:.01em}
 .att-stage-chip{fill:#9ff0ff;font-size:11.5px;font-weight:700}
 .att-hot{fill:#ffd18a!important}
 .att-foot{fill:#6d8496;font-size:10px}
@@ -168,7 +204,12 @@
 .att-track.is-future{opacity:.4}
 .att-wbar{fill:#7fe0c3;stroke:none}
 .att-wbar.is-future{opacity:.2}
-.att-contrib{stroke:none}
+.att-vref{fill:#f2b45c;fill-opacity:.07;stroke:#f2b45c;stroke-width:1;stroke-opacity:.8;stroke-dasharray:3 2}
+.att-vref-tick{stroke:#f2b45c;stroke-width:1.2;stroke-opacity:.9;stroke-linecap:round}
+.att-contrib{stroke:#08131f;stroke-width:.7}
+.att-contrib.is-self{stroke:#f5feff;stroke-width:1.2}
+.att-ref-val{fill:#a9c2d2;font-size:10.5px;font-variant-numeric:tabular-nums}
+.att-contrib-text.is-self{font-weight:700}
 .att-chain{stroke:#29445a;stroke-width:1;stroke-dasharray:3 3}
 .att-chain-dot{fill:#172a3b;stroke:#4c7183;stroke-width:1.2}
 .att-chain-dot.is-active{fill:#6ad6e8;stroke:#9ff0ff}
@@ -218,6 +259,8 @@
  .att-score{font-size:13.5px}
  .att-strong{font-size:14px}
  .att-out{font-size:17px}
+ .att-out-ref{font-size:12.5px}
+ .att-ref-val{font-size:9.5px}
  .att-colhead{font-size:11.5px}
  .att-foot{font-size:10px}
  .motion-attention-concepts{gap:6px;margin-bottom:12px}

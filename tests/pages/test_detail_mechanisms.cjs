@@ -11,6 +11,14 @@ for(const s of lessons.communication){const d=s.data;assert.equal(d.blocks.reduc
 for(const s of lessons['request-runtime']){assert.equal(s.data.kv,6);assert.equal(s.data.released.slot,false);assert.equal(s.data.released.cached,s.data.cache?6:0);assert.equal(s.data.released.kv,0);}
 for(const s of lessons['serving-operations']){assert.equal(s.data.states[2].queued,true);assert.equal(s.data.states[3].frontend,true);assert.equal(s.data.states[4].frontend,false);}
 for(const s of lessons['f-hardware'])assert.deepEqual(s.data.weights.map(r=>r.reduce((n,v,i)=>n+v*s.data.input[i],0)),s.data.output);
+const hardware=lessons['f-hardware'];
+assert.deepEqual(hardware.map(s=>s.kind),['hardware-roofline','hardware-roofline','hardware-roofline','hardware-dot','hardware-graph','hardware-graph'],'mv=0/1/2 stay roofline; mv=3 matrix; mv=4/5 graph');
+assert.equal(hardware.findIndex(s=>s.default),3,'the matrix lesson is the default entry');
+assert.deepEqual(hardware.filter(s=>s.kind==='hardware-roofline').map(s=>[s.data.move,s.data.compute,s.data.bound]),[[8,3,8],[4,3,4],[8,1.5,8]]);
+for(const s of hardware.filter(s=>s.kind==='hardware-roofline')){
+ assert.deepEqual(s.data.work,[8,6],'every condition uses the same input work');
+ assert.deepEqual(s.data.baseline,{work:[8,6],rates:[1,2]},'the original configuration stays available for direct comparison');
+}
 for(const s of lessons['f-hardware'].filter(s=>s.kind==='hardware-roofline')){
  assert.equal(s.data.work[0]/s.data.rates[0],s.data.move);
  assert.equal(s.data.work[1]/s.data.rates[1],s.data.compute);

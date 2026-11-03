@@ -85,7 +85,7 @@ window.ExpertParallelVisual=(svg,viewport,s)=>{
   }
   svg.append(g);modeGroups.push({key,g,bg,name,current,foot,chips});
  }
- const setMode=next=>{if(next===mode)return;mode=next;if(draw)draw(lastP,lastM);svg.dispatchEvent(new CustomEvent('parallel-ep-mode',{bubbles:true,detail:{mode}}));};
+ const setMode=next=>{if(next===mode)return;mode=next;lastP=0;if(draw)draw(0,lastM);svg.dispatchEvent(new CustomEvent('parallel-ep-mode',{bubbles:true,detail:{mode}}));};
  for(const m of modeGroups){
   m.g.addEventListener('click',()=>setMode(m.key));
   m.g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();setMode(m.key);}});

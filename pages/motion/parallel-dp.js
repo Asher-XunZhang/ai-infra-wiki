@@ -76,7 +76,8 @@ window.DPMechanismVisual=(svg,viewport)=>{
    replicas=n;
    try{const u=new URL(location.href);u.searchParams.set('dp',String(n));history.replaceState(null,'',u);}catch(error){}
    try{svg.dispatchEvent(new CustomEvent('parallel-dp-replicas',{bubbles:true,detail:{replicas:n}}));}catch(error){}
-   render(lastP,lastM);
+   lastP=0;
+   render(0,lastM);
   }
   tabs.forEach(tab=>{
    tab.g.addEventListener('click',()=>choose(tab.n));

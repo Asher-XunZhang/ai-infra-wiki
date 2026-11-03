@@ -74,9 +74,12 @@ function streamingBoard(svg,viewport,s){
   if(b&&b.getAttribute('aria-pressed')==='true')b.click();
  }
  function change(key){
+  const next=BRANCHES[key]?key:'learning';
+  if(next===branchKey)return;
   pauseFilm();
-  branchKey=BRANCHES[key]?key:'learning';
-  repaint();
+  branchKey=next;
+  lastP=0;repaint();
+  svg.dispatchEvent(new CustomEvent('motion-condition-reset',{bubbles:true}));
  }
 
  return board(svg,viewport,'generation-streaming',m=>m?656:570,H=>{
@@ -273,11 +276,8 @@ const streamingScene={
 
 const current=root.TeachingLessons?.['f-generation']||[];
 if(!current.some(x=>x.concept==='streaming')){
- const at=current.findIndex(x=>x.legacy);
- const next=current.slice();
- next.splice(at<0?next.length:at,0,streamingScene);
  root.TeachingLessons=root.TeachingLessons||{};
- root.TeachingLessons['f-generation']=next;
+ root.TeachingLessons['f-generation']=[...current,streamingScene];
 }
 
 const previous=V['f-generation'];

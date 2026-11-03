@@ -18,7 +18,10 @@ from build_foundations import build as check_foundations
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "pages"
 OUTPUT = ROOT / ".pages-dist"
+PUBLIC_IMAGES = ROOT / "images"
+PUBLIC_IMAGE_TOPICS = ("attention-variants",)
 REFERENCE = re.compile(r"(?P<prefix>\b(?:src|href)\s*=\s*)(?P<quote>[\"'])(?P<url>[^\"']+)(?P=quote)")
+PUBLIC_ROOT = re.compile(r'data-public-root="[^"]*"')
 
 
 def build():
@@ -28,11 +31,20 @@ def build():
     if OUTPUT.exists():
         shutil.rmtree(OUTPUT)
     shutil.copytree(SOURCE, OUTPUT)
+    # Pages are built one level shallower than their sources, so the repository
+    # image root becomes a public asset directory in the deployment output.
+    # Only topics referenced by the built pages are copied.
+    for topic in PUBLIC_IMAGE_TOPICS:
+        shutil.copytree(PUBLIC_IMAGES / topic, OUTPUT / "images" / topic)
     assets = {}
     release_hash = hashlib.sha256()
     for source in sorted(p for p in SOURCE.rglob("*") if p.is_file()):
         release_hash.update(str(source.relative_to(SOURCE)).encode() + b"\0")
         release_hash.update(source.read_bytes() + b"\0")
+    for topic in PUBLIC_IMAGE_TOPICS:
+        for source in sorted(p for p in (PUBLIC_IMAGES / topic).rglob("*") if p.is_file()):
+            release_hash.update(str(source.relative_to(ROOT)).encode() + b"\0")
+            release_hash.update(source.read_bytes() + b"\0")
     release = release_hash.hexdigest()[:16]
 
     def version_reference(match, page):
@@ -63,6 +75,8 @@ def build():
     pages = sorted(SOURCE.rglob("*.html"))
     for page in pages:
         rendered = REFERENCE.sub(lambda m: version_reference(m, page), page.read_text(encoding='utf-8'))
+        depth = len(page.relative_to(SOURCE).parent.parts)
+        rendered = PUBLIC_ROOT.sub(f'data-public-root="{"../" * depth}"', rendered)
         (OUTPUT / page.relative_to(SOURCE)).write_text(rendered, encoding='utf-8')
     print(f"Built {len(pages)} pages with {len(assets)} content-versioned assets in {OUTPUT}; release={release}")
 

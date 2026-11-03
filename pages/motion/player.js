@@ -40,7 +40,7 @@ function mount(host,key){
  // Lessons still on the shared 720/360-unit boards need the PC canvas fix.
  // Tokens, attention, components and parallel keep their accepted geometry;
  // sampling/streaming override this section's layout from their stylesheet.
- const sharedCanvas=['f-generation','f-cache','f-batching','f-hardware','f-deployment','f-speculation','f-serving','f-metrics','f-communication'];
+ const sharedCanvas=['f-generation','f-attention','f-cache','f-batching','f-hardware','f-deployment','f-speculation','f-serving','f-metrics','f-communication'];
  if(foundation&&sharedCanvas.includes(key))section.classList.add('is-shared-canvas');
  const head=node('div','motion-heading'),kicker=node('p','motion-kicker','观察过程 · 可以在途中暂停'),title=node('h2'),intro=node('p','motion-intro');
  head.append(kicker,title,intro);section.append(head);
@@ -127,13 +127,16 @@ function mount(host,key){
   readout.append(attentionFacts);
  }
  const scrollHint=node('p','motion-scroll-hint','画布较长；可在框内上下滚动查看完整结构。');scrollHint.hidden=true;readout.append(scrollHint);
- function updateAttentionFacts(){
-  if(!attentionFacts||!scenario)return;const d=scenario.data;
-  factDenom.textContent=d.denominator.toFixed(2);
-  factWeight.textContent=(d.weightSum*100).toFixed(1)+'%';
-  factOutput.textContent='['+d.mixed.map(x=>x.toFixed(2)).join(', ')+']';
+ function updateAttentionFacts(p=0,preview=false){
+  if(!attentionFacts||!scenario)return;const d=scenario.data,allowed=d.allowed;
+  const eDone=preview||p>=2.4+allowed*.1;
+  const wDone=preview||p>=3.8;
+  const mixDone=preview||p>=4.6;
+  factDenom.textContent=eDone?d.denominator.toFixed(2):p>=2?'累加中':'待比较';
+  factWeight.textContent=wDone?(d.weightSum*100).toFixed(1)+'%':'待归一化';
+  factOutput.textContent=mixDone?'['+d.mixed.map(x=>x.toFixed(2)).join(', ')+']':p>=3.82?'汇合中':'待汇合';
  }
- function attentionDeepDive(d){
+function attentionDeepDive(d){
   const fmt=v=>'['+v.map(x=>x.toFixed(2)).join(', ')+']';
   const box=node('details','motion-attention-data');
   box.append(node('summary','','深入核对：四行输入、分数、分母与加权和'));
@@ -196,13 +199,17 @@ function mount(host,key){
  }
   history.replaceState(null,'',url);}
  function pause(){driver?.kill();driver=null;tl?.pause();playing=false;controlsState();}
+ // A real condition change returns the shared timeline to frame 1 and pauses.
+ // Renderers keep their selected option and repaint that frame from the same
+ // state; a focused view, speed change or opened detail does not come here.
+ function resetToStart(){if(!scenario||!tl)return;pause();tl.time(0);clock.p=0;paint();save();}
  function paint(){
   const p=Math.max(0,Math.min(scenario.frames.length-1,clock.p)),a=Math.floor(p+1e-8),b=Math.min(a+1,scenario.frames.length-1),raw=p-a,u=raw*raw*(3-2*raw),frame=scenario.frames[a],target=scenario.frames[b];
   section.dataset.position=p.toFixed(4);range.value=p;prev.disabled=p<.0001;next.disabled=p>=scenario.frames.length-1-.0001;
   const transitioning=raw>.0001,captionIndex=transitioning?b:a,captionKey=captionIndex+':'+transitioning;
   if(lastPhase!==captionKey){lastPhase=captionKey;status.textContent=`${transitioning?`${a+1} → ${b+1}`:captionIndex+1} / ${scenario.frames.length} · ${scenario.frames[captionIndex].title}${transitioning?'（进行中）':''}`;evidence.href=scenario.frames[captionIndex].evidence||scenario.evidence||(key.startsWith('f-')?'#evidence':'#source-baseline');action.textContent=(transitioning?'完成这一步后：':'')+scenario.frames[captionIndex].caption;}
   if(key==='f-attention'){
-   updateAttentionFacts();
+   updateAttentionFacts(p,attentionFocusPreview);
    if(attentionFocus){
     const meta=attentionModeMeta[attentionFocus];
     status.textContent=attentionFocusPreview?`聚焦 · ${meta.label} · 完整状态 · 可播放回看中间过程`:`聚焦 · ${meta.label} · 时间线 ${captionIndex+1}/${scenario.frames.length} · ${scenario.frames[captionIndex].title}`;
@@ -273,23 +280,25 @@ function mount(host,key){
  play.addEventListener('click',()=>{if(playing){pause();save();return;}leaveAttentionPreview();if(reduced.matches){go(Math.floor(clock.p+.0001)+1);return;}if(clock.p>=scenario.frames.length-1-.0001)tl.time(0);playing=true;controlsState();tl.timeScale(Number(speed.value)).play();});
  prev.addEventListener('click',()=>go(Math.ceil(clock.p-.0001)-1));next.addEventListener('click',()=>go(Math.floor(clock.p+.0001)+1));reset.addEventListener('click',()=>{pause();leaveAttentionPreview();tl.time(0);paint();save();});
  range.addEventListener('input',()=>{pause();leaveAttentionPreview();const value=Number(range.value);tl.time(timeAt(reduced.matches?Math.round(value):value));paint();save();});
- select.addEventListener('change',()=>{const keep=clock?.p??0;load(Number(select.value));if(key==='f-attention'&&keep>0){tl.time(timeAt(Math.min(keep,scenario.frames.length-1)));paint();}save();});speed.addEventListener('input',()=>{const rate=Number(speed.value);speedValue.textContent=rate+'×';speed.setAttribute('aria-valuetext',rate+' 倍');if(driver)driver.timeScale(rate);else tl.timeScale(rate);});
+ select.addEventListener('change',()=>{load(Number(select.value));save();});speed.addEventListener('input',()=>{const rate=Number(speed.value);speedValue.textContent=rate+'×';speed.setAttribute('aria-valuetext',rate+' 倍');if(driver)driver.timeScale(rate);else tl.timeScale(rate);});
  reduced.addEventListener('change',()=>{pause();if(reduced.matches){tl.time(timeAt(Math.round(clock.p)));paint();}});
  section.addEventListener('keydown',e=>{if(e.target.matches('input,select,button,a'))return;if(e.key===' '){e.preventDefault();play.click();}if(e.key==='ArrowRight'){e.preventDefault();next.click();}if(e.key==='ArrowLeft'){e.preventDefault();prev.click();}});
  const observer=new IntersectionObserver(entries=>{if(!entries[0].isIntersecting)pause();},{threshold:0});observer.observe(section);
  supplement?.addEventListener('toggle',()=>{if(!supplement.open)pause();});
  let layoutFrame=0;const repaintForResize=()=>{if(!scenario)return;cancelAnimationFrame(layoutFrame);layoutFrame=requestAnimationFrame(()=>{paint();motionCamera?.refresh();});};
  active.add({pause});window.addEventListener('resize',()=>{requestAnimationFrame(updateScrollHint);if(foundation)repaintForResize();},{passive:true});if('ResizeObserver'in window){const ro=new ResizeObserver(()=>{requestAnimationFrame(updateScrollHint);if(foundation)repaintForResize();});ro.observe(viewport);}
- svg.addEventListener('attention-query',e=>{const idx=choices.findIndex(c=>c.variant===e.detail.variant);if(idx<0||idx===Number(select.value))return;const keep=clock?.p??0;load(idx);if(keep>0){tl.time(timeAt(Math.min(keep,scenario.frames.length-1)));paint();}save();});
+ svg.addEventListener('attention-query',e=>{const idx=choices.findIndex(c=>c.variant===e.detail.variant);if(idx<0||idx===Number(select.value))return;load(idx);save();});
  svg.addEventListener('attention-focus',e=>{const id=e.detail?.focus;if(['qkv','weights','mask'].includes(id)){attentionFocus=id;attentionFocusPreview=true;pause();syncAttentionFocus();save();paint();}});
  svg.addEventListener('component-focus',e=>{const concept=e.detail?.concept;const idx=choices.findIndex(c=>c.concept===concept);if(idx<0)return;load(idx);const step=Number.isInteger(e.detail?.step)?e.detail.step:0;if(step>0){tl.time(timeAt(Math.min(step,scenario.frames.length-1)));}paint();save();});
  svg.addEventListener('component-seek',e=>{const step=Number(e.detail?.step);if(!Number.isFinite(step))return;pause();tl.time(timeAt(Math.max(0,Math.min(step,scenario.frames.length-1))));paint();save();});
- svg.addEventListener('parallel-tp-split',e=>{const kind=e.detail?.kind;if(kind!=='row'&&kind!=='column')return;const idx=choices.findIndex(c=>c.kind==='parallel-tp'&&c.data?.kind===kind);if(idx<0||idx===Number(select.value))return;const keep=clock?.p??0;load(idx);if(keep>0){tl.time(timeAt(Math.min(keep,scenario.frames.length-1)));paint();}save();});
- svg.addEventListener('parallel-pp-mb',e=>{const mb=Number(e.detail?.mb);if(mb!==1&&mb!==2)return;const idx=choices.findIndex(c=>c.kind==='pipeline'&&Number(c.data?.n)===mb);if(idx<0||idx===Number(select.value))return;const keep=clock?.p??0;load(idx);if(keep>0){tl.time(timeAt(Math.min(keep,scenario.frames.length-1)));paint();}save();});
- svg.addEventListener('parallel-pcp-split',e=>{const split=e.detail?.split;if(split!=='continuous'&&split!=='zigzag')return;const idx=choices.findIndex(c=>c.kind==='parallel-pcp'&&Array.isArray(c.data?.ranks?.[0])&&(split==='zigzag'?c.data.ranks[0].includes(6):!c.data.ranks[0].includes(6)));if(idx<0||idx===Number(select.value))return;const keep=clock?.p??0;load(idx);if(keep>0){tl.time(timeAt(Math.min(keep,scenario.frames.length-1)));paint();}save();});
- svg.addEventListener('parallel-dp-replicas',()=>{pause();save();});
- svg.addEventListener('parallel-ep-mode',()=>{pause();save();});
- svg.addEventListener('parallel-sp-mode',()=>{pause();save();});
+ // Integrated canvases keep their selected mode and reset the shared clock.
+ svg.addEventListener('motion-condition-reset',resetToStart);
+ svg.addEventListener('parallel-tp-split',e=>{const kind=e.detail?.kind;if(kind!=='row'&&kind!=='column')return;const idx=choices.findIndex(c=>c.kind==='parallel-tp'&&c.data?.kind===kind);if(idx<0||idx===Number(select.value))return;load(idx);save();});
+ svg.addEventListener('parallel-pp-mb',e=>{const mb=Number(e.detail?.mb);if(mb!==1&&mb!==2)return;const idx=choices.findIndex(c=>c.kind==='pipeline'&&Number(c.data?.n)===mb);if(idx<0||idx===Number(select.value))return;load(idx);save();});
+ svg.addEventListener('parallel-pcp-split',e=>{const split=e.detail?.split;if(split!=='continuous'&&split!=='zigzag')return;const idx=choices.findIndex(c=>c.kind==='parallel-pcp'&&Array.isArray(c.data?.ranks?.[0])&&(split==='zigzag'?c.data.ranks[0].includes(6):!c.data.ranks[0].includes(6)));if(idx<0||idx===Number(select.value))return;load(idx);save();});
+ svg.addEventListener('parallel-dp-replicas',resetToStart);
+ svg.addEventListener('parallel-ep-mode',resetToStart);
+ svg.addEventListener('parallel-sp-mode',resetToStart);
  const params=new URL(location.href).searchParams,requested=Number(params.get('mv'));const legacyMetric=key==='f-metrics'&&!params.has('mv')?Number(params.get('fv')):NaN;
  let initial=Number.isInteger(legacyMetric)&&legacyMetric>=0&&legacyMetric<choices.length?legacyMetric:Math.max(0,choices.findIndex(s=>s.default));
  const requestedConcept=params.get('concept');if(requestedConcept){const byConcept=choices.findIndex(c=>c.concept===requestedConcept);if(byConcept>=0)initial=byConcept;}else if(params.has('mv')&&Number.isInteger(requested)){const byMv=choices.findIndex((c,i)=>(c.mv??i)===requested);if(byMv>=0)initial=byMv;else if(requested>=2&&requested<=4){const byOld=choices.findIndex(c=>c.concept===['bpe','position','lookup','boundary','contract'][requested]);if(byOld>=0)initial=byOld;}else if(requested>=0&&requested<choices.length)initial=requested;}

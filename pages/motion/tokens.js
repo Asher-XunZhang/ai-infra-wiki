@@ -78,6 +78,10 @@ function bpeBoard(H){
  const bg=node('rect',{class:'tok-board'}),band=node('rect',{class:'tok-band'});
  const resultBg=node('rect',{class:'tok-result-box'});
  const ticks=Array.from({length:6},()=>rect('tok-tick'));
+ /* The amber capsule behind a merge is the only object that changes width.
+  * Source tokens keep their slots and fade there; the capsule contracts from
+  * their combined span to the new unit. Nothing is ever dragged into 我/爱. */
+ const mergeHalo=node('rect',{class:'tok-merge-halo',rx:8});
  const c=Array.from({length:6},(_,i)=>H.token('bpe-c'+i,'机',44,'tok-token'));
  const m1=H.token('bpe-m1','机器',86,'tok-token tok-amber'),m2=H.token('bpe-m2','学习',86,'tok-token tok-amber'),m3=H.token('bpe-m3','机器学习',136,'tok-token tok-cyan');
  const rules=BPE_RULES.map((r,i)=>{
@@ -112,29 +116,56 @@ function bpeBoard(H){
   text(inputLine,16,m?102:110);
   show(inputLine,1);
   text(curLabel,16,m?132:146,'当前序列 · 合并只发生在相邻单位之间');
-  const lay=layout(m),wc=m?42:54,wm=m?68:86,w3=m?104:136;
+  const lay=layout(m),wc=m?42:54,wm=m?68:86,w3=m?104:136,gap=m?5:8;
   const curY=m?148:162;
   const stage=Math.min(3,Math.floor(p+1e-9)),u=clamp(p-stage),next=Math.min(3,stage+1);
-  const pos=(key,st)=>{
-   const map=lay[Math.min(3,st)];
-   if(map[key]!==undefined)return map[key];
-   if(key==='c2'||key==='c3')return (map.m1??0)+(wm-wc)/2;
-   if(key==='c4'||key==='c5')return (map.m2??0)+(wm-wc)/2;
-   if(key==='m1')return map.c2??map.m1??0;
-   if(key==='m2')return map.c4??0;
-   if(key==='m3')return map.m3??map.m1??0;
+  /* A disappearing unit keeps the last slot where it was actually visible.
+   * The old fallback returned 0, which dragged 机器/学习 across 我/爱 during
+   * the third merge. Entering units likewise start at their real target slot. */
+  const stable=(key,st)=>{
+   const at=Math.max(0,Math.min(3,st));
+   for(let i=at;i>=0;i--)if(lay[i][key]!==undefined)return lay[i][key];
+   for(let i=at;i<=3;i++)if(lay[i][key]!==undefined)return lay[i][key];
    return 0;
   };
-  const xFor=k=>pos(k,stage)+(pos(k,next)-pos(k,stage))*u;
+  /* 学/习 reflow only after their neighbours have faded, never under the
+   * merge capsule. Every other unit keeps one fixed x within its lifetime. */
+  const reflow=stage===0?phase(p,.82,1):1;
+  const xFor=key=>{
+   const from=stable(key,stage),to=stable(key,next);
+   if(key==='c4'||key==='c5')return from+(to-from)*(stage===0?reflow:u);
+   return from+(to-from)*u;
+  };
+  const u1=clamp((p-.65)/.35),u2=clamp((p-1.65)/.35),u3=clamp((p-2.65)/.35);
+  const fadeOut=v=>1-phase(v,.15,.7),fadeIn=v=>phase(v,.62,.9);
   const op={c0:1,c1:1,
-   c2:1-phase(p,.65,1),c3:1-phase(p,.65,1),
-   c4:1-phase(p,1.65,2),c5:1-phase(p,1.65,2),
-   m1:phase(p,.65,1)*(1-phase(p,2.65,3)),
-   m2:phase(p,1.65,2)*(1-phase(p,2.65,3)),
-   m3:phase(p,2.65,3)};
+   c2:fadeOut(u1),c3:fadeOut(u1),
+   c4:fadeOut(u2),c5:fadeOut(u2),
+   m1:fadeIn(u1)*fadeOut(u3),
+   m2:fadeIn(u2)*fadeOut(u3),
+   m3:fadeIn(u3)};
+  /* The incoming token's width starts as the span of the two sources and
+   * contracts to its final width. Its label fades in only after the source
+   * labels are almost gone, so two visible words never share one spot. */
+  const morph=(v,to,span)=>span+(to-span)*phase(v,.25,.7);
+  const wm1=stage===0?morph(u1,wm,2*wc+gap):wm;
+  const wm2=stage===1?morph(u2,wm,2*wc+gap):wm;
+  const wm3=stage===2?morph(u3,w3,2*wm+gap):w3;
+  const tokenW={c0:wc,c1:wc,c2:wc,c3:wc,c4:wc,c5:wc,m1:wm1,m2:wm2,m3:wm3};
+  const merge=stage===0?{u:u1,left:lay[0].c2,right:lay[0].c3+wc,target:lay[1].m1,to:wm}
+   :stage===1?{u:u2,left:lay[1].c4,right:lay[1].c5+wc,target:lay[2].m2,to:wm}
+   :stage===2?{u:u3,left:lay[2].m1,right:lay[2].m2+wm,target:lay[3].m3,to:w3}
+   :null;
+  if(merge){
+   const span=merge.right-merge.left;
+   const hw=span+(merge.to-span)*phase(merge.u,.42,.82);
+   const hop=phase(merge.u,0,.12)*(1-phase(merge.u,.8,1));
+   box(mergeHalo,merge.target,curY-3,hw,40);
+   show(mergeHalo,hop);
+  }else show(mergeHalo,0);
   const chars=['我','爱','机','器','学','习'];
-  c.forEach((t,i)=>{set(t.r,{width:wc});set(t.t,{x:wc/2});if(t.t.textContent!==chars[i])t.t.textContent=chars[i];H.move(t,xFor('c'+i),curY,op['c'+i]);});
-  [[m1,'m1',wm],[m2,'m2',wm],[m3,'m3',w3]].forEach(([t,k,w])=>{set(t.r,{width:w});set(t.t,{x:w/2});H.move(t,xFor(k),curY,op[k]);});
+  c.forEach((t,i)=>{const k='c'+i;set(t.r,{width:wc});set(t.t,{x:wc/2});if(t.t.textContent!==chars[i])t.t.textContent=chars[i];H.move(t,xFor(k),curY,op[k]);});
+  [[m1,'m1'],[m2,'m2'],[m3,'m3']].forEach(([t,k])=>{const w=tokenW[k];set(t.r,{width:w});set(t.t,{x:w/2});H.move(t,xFor(k),curY,op[k]);});
   const n=p<1?6:p<2?5:p<3?4:3;
   text(count,16,m?204:218,'单位数 '+n);
   text(seq,m?102:118,m?204:218,'6 → 5 → 4 → 3');
@@ -168,7 +199,7 @@ function positionBoard(H){
   const pos=node('text',{class:'tok-pos',x:56,y:62,'text-anchor':'middle'},'p'+(i+1));
   const id=node('text',{class:'tok-id',x:56,y:90,'text-anchor':'middle'},String(EX2.ids[i]));
   g.append(b,piece,pos,id);
-  hit(g,`${w}，位置 p${i+1}，ID ${EX2.ids[i]}`,()=>{selected=i;pinHere(pin,lastP);repaint();});
+  hit(g,`${w}，位置 p${i+1}，ID ${EX2.ids[i]}`,()=>{if(selected===i)return;selected=i;lastP=0;H.conditionReset();});
   return {g,b,piece,pos,id};
  });
  const title=txt('','tok-title'),sub=txt('','tok-sub'),kicker=txt('','tok-kicker');
@@ -260,7 +291,7 @@ function lookupBoard(H){
   const v=node('text',{class:'tok-vec',x:88,y:33},fmt(r.v));
   const nth=node('text',{class:'tok-stat-note',x:330,y:33,'text-anchor':'end'},'第 '+(i+1)+' 行');
   g.append(b,id,v,nth);
-  hit(g,`ID ${r.id}，读取第 ${i+1} 行的 ${fmt(r.v)}`,()=>{selected=i;pinHere(pin,lastP);repaint();});
+  hit(g,`ID ${r.id}，读取第 ${i+1} 行的 ${fmt(r.v)}`,()=>{if(selected===i)return;selected=i;lastP=0;H.conditionReset();});
   return {g,b,id,v,nth};
  });
  const title=txt('','tok-title'),sub=txt('','tok-sub'),kicker=txt('','tok-kicker');
@@ -320,8 +351,9 @@ function boundaryBoard(H){
  });
  const update=path('tok-link tok-link-amber'),read=path('tok-link tok-link-mint');
  const lock=node('g',{class:'tok-lock'});const lockB=node('rect',{rx:6,width:48,height:24}),lockT=node('text',{x:24,y:17,'text-anchor':'middle'},'只读');lock.append(lockB,lockT);
- const tabTrain=button(H,0,0,148,30,'训练 / 更新',()=>{override='train';interacted=true;repaint();});
- const tabInfer=button(H,0,0,148,30,'推理 / 只读',()=>{override='infer';interacted=true;repaint();});
+ const currentMode=()=>override||(lastP>=3?'train':'infer');
+ const tabTrain=button(H,0,0,148,30,'训练 / 更新',()=>{if(currentMode()==='train')return;override='train';lastP=0;H.conditionReset();});
+ const tabInfer=button(H,0,0,148,30,'推理 / 只读',()=>{if(currentMode()==='infer')return;override='infer';lastP=0;H.conditionReset();});
  const title=txt('','tok-title'),sub=txt('','tok-sub'),kicker=txt('','tok-kicker');
  const tableLabel=txt('','tok-small');
  const modeTitle=txt('','tok-panel-title'),line1=txt('','tok-note'),line2=txt('','tok-note');
@@ -389,9 +421,9 @@ function contractBoard(H){
   const s=node('text',{class:'tok-block-s',x:12,y:49},['文本 → 片段','片段 ↔ 编号','ID → 一行参数'][i]);
   g.append(b,t,s);return {g,b,t,s};
  });
- const tabA=button(H,0,0,92,32,'匹配 A',()=>{mismatch=false;pinHere(pin,lastP);repaint();});
- const tabB=button(H,0,0,150,32,'只换 tokenizer',()=>{mismatch=true;pinHere(pin,lastP);repaint();});
- const tabT=button(H,0,0,140,32,'模板 关',()=>{template=!template;pinHere(pin,lastP);repaint();});
+ const tabA=button(H,0,0,92,32,'匹配 A',()=>{if(!mismatch)return;mismatch=false;lastP=0;H.conditionReset();});
+ const tabB=button(H,0,0,150,32,'只换 tokenizer',()=>{if(mismatch)return;mismatch=true;lastP=0;H.conditionReset();});
+ const tabT=button(H,0,0,140,32,'模板 关',()=>{template=!template;lastP=0;H.conditionReset();});
  const title=txt('','tok-title'),sub=txt('','tok-sub'),kicker=txt('','tok-kicker');
  const status=txt('','tok-status');
  const inputTitle=txt('输入文本','tok-small'),inputWord=txt('学习','tok-input-word');
@@ -517,7 +549,9 @@ V['f-tokens']=(svg,viewport,s)=>{
  if(s.legacy&&legacyVisual)return legacyVisual(svg,viewport,s);
  watchProgress(svg);
  pauseFilm=()=>{const b=film?.querySelector('[data-motion-action=play]');if(b&&b.getAttribute('aria-pressed')==='true')b.click();};
+ const conditionReset=()=>svg.dispatchEvent(new CustomEvent('motion-condition-reset',{bubbles:true}));
  return board(svg,viewport,'tokens-'+s.concept,m=>m?560:500,H=>{
+  H.conditionReset=conditionReset;
   if(s.concept==='bpe')return bpeBoard(H);
   if(s.concept==='position')return positionBoard(H);
   if(s.concept==='lookup')return lookupBoard(H);

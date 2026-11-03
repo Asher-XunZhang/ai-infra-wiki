@@ -1,10 +1,8 @@
-/* Chapter 1, lesson 02. One independent sampling concept:
+/* Chapter 1, lesson 02. The default entry is the full autoregressive chain
+ * (mv0, greedy). Sampling is one independent concept inside that chain:
  * logits z -> e^z -> denominator -> probabilities p -> choice.
- * The old mv0/1 generation boards remain available as legacy entries; this
- * module only replaces the default scene and keeps the old visual untouched.
- *
- * Stable entry: generation.html?concept=sampling (mv=2 is an alias).
- * Legacy entries: generation.html?mv=0 (greedy) and ?mv=1 (fixed draw). */
+ * Fixed sampling stays at mv1; the sampling board is concept=sampling (mv2).
+ * The full-chain boards keep their original mv0/1 URLs and visuals. */
 (function(root){
 'use strict';
 const V=root.MechanismVisuals,D=root.TeachingDrawing,M=root.FoundationModel;
@@ -73,7 +71,7 @@ function samplingBoard(svg,viewport,s){
   const b=film?.querySelector('[data-motion-action=play]');
   if(b&&b.getAttribute('aria-pressed')==='true')b.click();
  }
- function change(){pauseFilm();repaint();}
+ function change(){pauseFilm();lastP=0;repaint();svg.dispatchEvent(new CustomEvent('motion-condition-reset',{bubbles:true}));}
 
  return board(svg,viewport,'generation-sampling',()=>590,H=>{
   const {txt,rect,text,box,show,token,move,set}=H;
@@ -123,11 +121,11 @@ function samplingBoard(svg,viewport,s){
 
   const methodGreedy=makeButton(H,'贪心 · 取最高','选择规则：贪心，取最高概率');
   const methodSampling=makeButton(H,'固定抽样 · 用 u','选择规则：固定抽样');
-  methodGreedy.g.gsRun=()=>{method='greedy';change();};
-  methodSampling.g.gsRun=()=>{method='sampling';change();};
+  methodGreedy.g.gsRun=()=>{if(method==='greedy')return;method='greedy';change();};
+  methodSampling.g.gsRun=()=>{if(method==='sampling')return;method='sampling';change();};
   const uButtons=U_VALUES.map(v=>{
    const b=makeButton(H,'u='+v.toFixed(2),'固定抽样数 u='+v.toFixed(2)+'，按当前分布重新计算落点');
-   b.g.gsRun=()=>{u=v;method='sampling';change();};
+   b.g.gsRun=()=>{if(method==='sampling'&&u===v)return;u=v;method='sampling';change();};
    return b;
   });
 
@@ -333,12 +331,14 @@ const samplingScene={
 };
 
 const legacy=(root.TeachingLessons&&root.TeachingLessons['f-generation']||[]).map((scene,i)=>({
- ...scene,legacy:true,mv:i,
- name:'自回归完整过程 · '+(i?'固定抽样':'贪心'),
+ ...scene,legacy:true,mv:i,default:i===0,
+ name:'完整自回归链 · '+(i?'固定抽样':'贪心'),
  frames:scene.frames.map(f=>({...f}))
 }));
 root.TeachingLessons=root.TeachingLessons||{};
-root.TeachingLessons['f-generation']=[samplingScene,...legacy];
+// Read in the same order as the lesson introduction: full chain first, then
+// its fixed-sampling variant, then the sampling concept, then streaming.
+root.TeachingLessons['f-generation']=[...legacy,samplingScene];
 
 const legacyVisual=V['f-generation'];
 V['f-generation']=(svg,viewport,s)=>{

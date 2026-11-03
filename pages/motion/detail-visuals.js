@@ -5,18 +5,19 @@
 const {board,phase,lerp,clamp}=window.TeachingDrawing,V=window.MechanismVisuals;
 function resourceComparison(svg,viewport,s){return board(svg,viewport,'resource-comparison',()=>710,H=>{
  const {txt,rect,path,text,box,show,wire,token,move,set}=H,d=s.data;
- const heading=txt('','teach-heading'),legend=txt('','teach-small');
+ const baseline=d.baseline||{work:[8,6],rates:[1,2]},heading=txt('','teach-heading'),legend=txt('','teach-small'),legendCompare=txt('','teach-small');
  const rows=d.work.map((count,i)=>({bg:rect(),title:txt('','teach-heading'),rate:txt('','teach-text'),badge:txt('×2','teach-badge'),note:txt('每列 1 秒','teach-small'),
   units:Array.from({length:count},(_,j)=>token('resource-work-'+i+'-'+j,String(j+1),26,'teach-token teach-color-'+(i?2:1))),
   slots:Array.from({length:8},()=>rect('teach-slot')),ticks:Array.from({length:9},(_,j)=>txt(String(j),'teach-small')),
-  axis:path(),bar:rect(i?'teach-compute':'teach-value teach-color-1'),tip:txt('','teach-small'),formula:txt('','teach-number')}));
+  axis:path(),bar:rect(i?'teach-compute':'teach-value teach-color-1'),refBar:rect('teach-reference-bar'),tip:txt('','teach-small'),refNote:txt('','teach-small'),formula:txt('','teach-number')}));
  const sumA=txt('','teach-small'),result=txt('','teach-heading'),why=txt('','teach-small'),explain=txt('','teach-small'),reference=txt('','teach-small');
  return(p,m)=>{const W=m?360:720,x=24,cw=(W-48)/8,u=phase(p,1),timeVisible=phase(p,2),concluded=p>=2.4;
   text(heading,18,30,m?'先数工作量，再按秒分组':'先数工作量，再按每秒容量分组');
-  text(legend,18,56,m?'数字是编号，不是数值。':'同色格代表等量工作；格内数字是编号，不是数据值。');
-  rows.forEach((r,i)=>{const y=(m?68:76)+i*238,rate=d.rates[i],seconds=d.work[i]/rate,panelW=W-24,changed=d.changed===(i?'compute':'bandwidth');
+  text(legend,18,51,m?'数字是编号；两组同为 8 / 6 份工作。':'同色格代表等量工作；格内数字是编号，当前与原配使用同一组 8 / 6 份工作。');
+  text(legendCompare,18,66,m?'实线当前；虚线原配，同用 8 秒刻度。':'实心条为当前条件；虚线为原配，两者同用 8 秒刻度。');
+  rows.forEach((r,i)=>{const y=(m?84:86)+i*238,rate=d.rates[i],seconds=d.work[i]/rate,refRate=baseline.rates[i],refSeconds=baseline.work[i]/refRate,panelW=W-24,changed=d.changed===(i?'compute':'bandwidth');
    r.bg.classList.toggle('is-changed',changed);
-   box(r.bg,12,y,panelW,228);text(r.title,26,y+27,i?'计算量：6 份计算':'数据量：8 份数据');
+   box(r.bg,12,y,panelW,236);text(r.title,26,y+27,i?'计算量：6 份计算':'数据量：8 份数据');
    text(r.rate,26,y+51,m?(i?'算力 ':'带宽 ')+rate+' 份/秒':(i?'算力：每秒 '+rate+' 份计算':'带宽：每秒 '+rate+' 份数据'));
    text(r.note,panelW-2,y+51,'每列 1 秒');set(r.note,{'text-anchor':'end'});
    text(r.badge,panelW-2,y+27,'×2');set(r.badge,{'text-anchor':'end'});show(r.badge,changed?1:0);
@@ -24,19 +25,23 @@ function resourceComparison(svg,viewport,s){return board(svg,viewport,'resource-
    r.units.forEach((a,j)=>{const col=Math.floor(j/rate),row=j%rate;
     move(a,lerp(x+j*cw+6,x+col*cw+6,u),lerp(y+66,y+70+row*23,u),1);set(a.r,{height:22,rx:3});set(a.t,{y:16});
    });
-   wire(r.axis,`M${x-6} ${y+184} H${W-18}`,u);
-   r.ticks.forEach((tick,j)=>{text(tick,j===8?W-18:x-9+j*cw,y+201,j===8?'8 秒':String(j));set(tick,{'text-anchor':j===8?'end':'start'});show(tick,u);});
-   box(r.bar,x-6,y+174,seconds*cw*u,8);r.bar.dataset.motionId='resource-demand-'+i;
+   wire(r.axis,`M${x-6} ${y+200} H${W-18}`,u);
+   r.ticks.forEach((tick,j)=>{text(tick,j===8?W-18:x-9+j*cw,y+216,j===8?'8 秒':String(j));set(tick,{'text-anchor':j===8?'end':'start'});show(tick,u);});
+   box(r.bar,x-6,y+172,seconds*cw*u,8);r.bar.dataset.motionId='resource-demand-'+i;r.bar.dataset.seconds=String(seconds);r.bar.dataset.work=String(d.work[i]);r.bar.dataset.rate=String(rate);
+   box(r.refBar,x-6,y+186,refSeconds*cw*u,7);r.refBar.dataset.motionId='resource-reference-'+i;r.refBar.dataset.seconds=String(refSeconds);r.refBar.dataset.work=String(baseline.work[i]);r.refBar.dataset.rate=String(refRate);show(r.refBar,u*.9);
        const tipX=m&&rate>1?Math.min(W-18,x+(Math.ceil(d.work[i]/rate)-1)*cw+36):x-6+seconds*cw;
     text(r.tip,tipX,y+168,seconds+' 秒');set(r.tip,{'text-anchor':m&&rate>1?'start':'end'});show(r.tip,u);
-   text(r.formula,26,y+224,`${d.work[i]} 份 ÷ ${rate} 份/秒 = ${seconds} 秒`);show(r.formula,u);
+   text(r.formula,26,y+232,`${d.work[i]} 份 ÷ ${rate} 份/秒 = ${seconds} 秒`);show(r.formula,u);
+   text(r.refNote,panelW-2,y+232,refSeconds===seconds?'原配同为 '+refSeconds+' 秒':'原配 '+refSeconds+' 秒');set(r.refNote,{'text-anchor':'end'});show(r.refNote,timeVisible);
   });
-  text(sumA,18,568,m?`搬运 ${d.work[0]/d.rates[0]} 秒 · 计算 ${d.work[1]/d.rates[1]} 秒`:`搬运下界 ${d.work[0]/d.rates[0]} 秒 · 计算下界 ${d.work[1]/d.rates[1]} 秒`);
+  const moveSeconds=d.work[0]/d.rates[0],computeSeconds=d.work[1]/d.rates[1],baseMove=baseline.work[0]/baseline.rates[0],baseCompute=baseline.work[1]/baseline.rates[1];
+  const explainText=concluded?d.changed==='compute'?(m?`原配算 ${baseCompute} 秒，现在 ${computeSeconds} 秒；搬运仍 ${moveSeconds} 秒。`:`原配计算 ${baseCompute} 秒；算力翻倍后 ${computeSeconds} 秒。搬运同为 ${moveSeconds} 秒，下界取 ${d.bound} 秒。`):d.changed==='bandwidth'?(m?`原配搬 ${baseMove} 秒，现在 ${moveSeconds} 秒；计算同为 ${computeSeconds} 秒。`:`原配搬运 ${baseMove} 秒；带宽翻倍后 ${moveSeconds} 秒。计算同为 ${computeSeconds} 秒，下界取 ${d.bound} 秒。`):(m?`原配：搬 ${baseMove} 秒，算 ${baseCompute} 秒，取 ${d.bound} 秒。`:`原配即当前条件：搬运 ${baseMove} 秒，计算 ${baseCompute} 秒，下界取 ${d.bound} 秒。`):'每列 1 秒；数据与计算分开核算。';
+  text(sumA,18,576,m?`搬运 ${moveSeconds} 秒 · 计算 ${computeSeconds} 秒`:`搬运下界 ${moveSeconds} 秒 · 计算下界 ${computeSeconds} 秒`);
   show(sumA,timeVisible);
-  text(result,18,598,concluded?`整体至少 ${d.bound} 秒`:'两项资源分别核算');
-  text(why,18,624,concluded?(d.bound===d.work[0]/d.rates[0]?'受带宽限制':'受算力限制'):'取两项中的较大值');
-  text(explain,18,652,concluded?(d.changed==='compute'?(m?'计算更快，也要先搬完数据。':'计算下界降到 1.5 秒，但搬运仍需 8 秒。'):d.changed==='bandwidth'?(m?'搬运减半，计算仍未变。':'同样 8 份数据，每秒搬 2 份，搬运下界减半。'):(m?'即使算力够，也要搬完数据。':'即使计算能力够用，数据也必须搬够才能结束。')):'每列 1 秒；数据与计算分开核算。');
-  text(reference,18,680,concluded?(m?'下界 = max(搬运, 计算)':'整体下界 = max(搬运下界, 计算下界)'):'');show(reference,timeVisible);
+  text(result,18,604,concluded?`整体至少 ${d.bound} 秒`:'两项资源分别核算');
+  text(why,18,630,concluded?(d.bound===moveSeconds?'受带宽限制':'受算力限制'):'取两项中的较大值');
+  text(explain,18,656,explainText);
+  text(reference,18,684,concluded?(m?'max 只是下界，不是实测时间/加速比':'整体下界 = max(搬运下界, 计算下界)；不是实测时间或加速比'):'');show(reference,timeVisible);
   if(m){set(result,{'font-size':17});set(explain,{'font-size':13});}
  };
 });}
@@ -203,120 +208,188 @@ function spec(svg,viewport,s){const engine=s.kind==='engine-speculation';return 
   show(state,engine?1:0);text(state,18,780,p>=5?'有效历史 ≠ 刚刚发出的输出序列':'验证临时状态不等于已提交历史');
  };
 });}
-function foundationSpeculation(svg,viewport,s){return board(svg,viewport,'speculative-prefix',m=>m?1220:1060,H=>{
+function foundationSpeculation(svg,viewport,s){return board(svg,viewport,'speculative-prefix',m=>m?1040:800,H=>{
  const {txt,rect,text,box,show,token,move,set}=H,d=s.data;
- // One word for the extra token in every branch: accepted-4 adds a drafted
- // bonus token; a shorter accepted prefix commits a replacement instead.
+ // The proposal row and the verification table deliberately share five
+ // columns. The table is the same input sequence seen through one target call,
+ // so predictions can be read against the candidate that produced them.
  const bonusLabel=d.accepted===4?'补出':'替代';
- const context=txt('根 token → 本轮草稿','teach-small'),predictionRule=txt('预测只依赖该候选之前的前缀','teach-small'),heads=['① 草稿候选 · 尚未确认','② 目标模型 · 一次验证','③ 正式输出'].map(t=>txt(t,'teach-heading'));
- const root=txt('根','teach-small'),rootToken=token('root-token','t0',48,'teach-token teach-color-4');
+ const context=txt('','teach-small'),heads=['① 草稿候选 · 尚未确认','② 目标模型 · 1 次验证','③ 提交正式输出'].map(t=>txt(t,'teach-heading'));
+ const root=txt('','teach-small'),rootToken=token('root-token','t0',48,'teach-token teach-color-4');
  const draft=d.draft.map((v,i)=>token('candidate-'+i,v,48,'teach-token teach-color-'+i));
+ const input=[d.root,...d.draft].map((v,i)=>token('verify-input-'+i,v,48,'teach-token teach-color-'+(i===0?4:i-1)));
  const predicted=d.predictions.map((v,i)=>token('prediction-'+i,v,48,'teach-token teach-color-4'));
  const checks=Array.from({length:4},()=>txt('','teach-small'));
  const output=d.output.map((v,i)=>token('committed-output-'+i,v,48,'teach-token teach-color-'+(i<d.accepted?i:4)));
+ const outputTags=Array.from({length:4},()=>txt('','teach-small'));
  const validTitle=txt('有效历史：根 + 接受前缀','teach-small'),validHistory=d.validKV.map((v,i)=>token('valid-history-'+i,v,48,'teach-token teach-color-'+(i===0?4:i)));
- const accepted=rect('teach-read'),rejected=rect('teach-focus'),focus=rect('teach-map'),bonus=txt('补出','teach-small');focus.style.fill='none';
- const prefix=txt('','teach-small'),prefixMore=txt('','teach-small'),comparison=txt('','teach-small'),verdict=txt('','teach-small'),cause=txt('','teach-small');
- const reason=txt('','teach-heading'),legend=txt('候选颜色跟随身份；目标预测使用统一颜色。','teach-small'),legend2=txt('','teach-small');
- // The call ledger is a second, visible accounting of the same submitted
- // sequence. One verification over five positions is one call, not five
- // single-token calls and not a speed-up claim. The ledger is shown while the
- // verification is still in progress, so its heading says it is the
- // after-completion comparison rather than a completed action.
- const callPanel=rect('teach-panel is-reference'),callKicker=txt('','teach-heading'),callTitle=txt('','teach-small');
- const callOrdinaryLabel=txt('','teach-small'),callSpecLabel=txt('','teach-small');
- const callBoxes=Array.from({length:9},()=>rect('spec-call-card'));
- const callLabels=Array.from({length:9},()=>txt('','teach-small'));
- const callValues=Array.from({length:9},()=>txt('','teach-small'));
- const verifyBox=rect('spec-verify'),verifyLabel=txt('','teach-small');
- const finalLine=txt('','teach-small'),kvLine=txt('','teach-small'),kvNote1=txt('','teach-small'),kvNote2=txt('','teach-small'),cost1=txt('','teach-small'),cost2=txt('','teach-small');
- const callNodes=[callPanel,callKicker,callTitle,callOrdinaryLabel,callSpecLabel,verifyBox,verifyLabel,finalLine,kvLine,kvNote1,kvNote2,cost1,cost2,...callBoxes,...callLabels,...callValues];
+ const accepted=rect('teach-read'),rejected=rect('teach-focus'),rejectedDraft=rect('teach-focus'),focus=rect('teach-map'),compareDraft=rect('teach-map');
+ [focus,rejected,rejectedDraft,compareDraft].forEach(e=>e.style.fill='none');
+ const columnLabels=['根','草1','草2','草3','草4'].map(v=>txt(v,'teach-small'));
+ const rowInput=txt('','teach-small'),rowPrediction=txt('','teach-small'),rowJudge=txt('','teach-small');
+ const proposalNote=txt('候选未提交 · 颜色=身份','teach-small'),predictionRule=txt('1 次调用 × 5 个位置','teach-small');
+ const reason=txt('','teach-heading'),legend=txt('候选按身份着色；预测同色','teach-small'),legend2=txt('','teach-small'),bonus=txt('','teach-small');
+ // The call ledger is a process account, not a post-hoc table. Every call
+ // exists from p0 with an explicit pending state; a value appears only after
+ // the action that produced it. One verification over five positions remains
+ // one call, and the ordinary path is an explanatory comparison, not a second
+ // simultaneous execution.
+ const callPanel=rect('teach-panel spec-ledger'),callTitle=txt('','teach-heading'),callNote=txt('','teach-small');
+ const callDraftLabel=txt('','teach-heading'),callVerifyLabel=txt('','teach-heading'),callOrdinaryLabel=txt('','teach-heading');
+ const draftBoxes=Array.from({length:4},()=>rect('spec-call-card'));
+ const draftTints=Array.from({length:4},()=>rect('spec-identity'));
+ const draftLabels=Array.from({length:4},()=>txt('','teach-small spec-card-label'));
+ const draftValues=Array.from({length:4},()=>txt('','teach-text spec-call-value'));
+ const draftStates=Array.from({length:4},()=>txt('','teach-small spec-call-state'));
+ const verifyBox=rect('spec-verify'),verifyTint=rect('spec-identity teach-color-4'),verifyState=txt('','teach-small spec-call-state'),verifyCoverage=txt('','teach-small');
+ const verifyPips=Array.from({length:5},()=>rect('spec-pip'));
+ const verifyPipLabels=Array.from({length:5},()=>txt('','teach-small spec-pip-label'));
+ const verifyProgress=rect('spec-progress'),verifyNote=txt('同一次调用覆盖 5 个位置。','teach-small');
+ const ordinaryBoxes=Array.from({length:5},()=>rect('spec-call-card'));
+ const ordinaryTints=Array.from({length:5},()=>rect('spec-identity'));
+ const ordinaryLabels=Array.from({length:5},()=>txt('','teach-small spec-card-label'));
+ const ordinaryValues=Array.from({length:5},()=>txt('','teach-text spec-call-value'));
+ const ordinaryStates=Array.from({length:5},()=>txt('','teach-small spec-call-state'));
+ const ordinaryPlaceholder=rect('spec-call-card is-pending'),ordinaryPlaceholderTitle=txt('输出确认后展开','teach-small spec-card-label'),ordinaryPlaceholderNote=txt('逐 token 对照，不另行执行','teach-small spec-call-state');
+ const ordinaryNote=txt('同一输出；不另行执行。','teach-small'),costTitle=txt('成本边界','teach-heading'),cost1=txt('','teach-small'),cost2=txt('','teach-small');
+ const callNodes=[callPanel,callTitle,callNote,callDraftLabel,callVerifyLabel,callOrdinaryLabel,verifyBox,verifyTint,verifyState,verifyCoverage,verifyProgress,verifyNote,ordinaryPlaceholder,ordinaryPlaceholderTitle,ordinaryPlaceholderNote,ordinaryNote,costTitle,cost1,cost2,...draftBoxes,...draftTints,...draftLabels,...draftValues,...draftStates,...verifyPips,...verifyPipLabels,...ordinaryBoxes,...ordinaryTints,...ordinaryLabels,...ordinaryValues,...ordinaryStates];
  const callLayer=document.createElementNS('http://www.w3.org/2000/svg','g');
  callNodes.forEach(n=>callLayer.append(n));svg.append(callLayer);
- return(p,m)=>{const W=m?360:720,start=m?78:76,gap=m?56:128,at=i=>start+i*gap;
-  text(context,18,28);text(root,18,92);move(rootToken,18,102,1);heads.forEach((h,i)=>text(h,18,[70,206,532][i]));
-  draft.forEach((t,i)=>{const u=phase(p,i/4,(i+1)/4);move(t,at(i),lerp(92,104,u),u);t.g.classList.toggle('teach-empty',p>=3&&i>=d.accepted);});
-  text(predictionRule,18,232);show(predictionRule,phase(p,1));predicted.forEach((t,i)=>{const commit=phase(p,3+i*.12,4),base=phase(p,1)*(i===4&&d.accepted<4?0:p>=3&&i>d.accepted?.3:1);move(t,at(i),250,p>=3&&i<d.accepted?base*(1-Math.min(1,commit*2)):base);});
+ const cardState=(e,state)=>{for(const s of ['pending','running','done'])e.classList.toggle('is-'+s,state===s);};
+ return(p,m)=>{const W=m?360:860,colGap=m?60:112,colX=i=>m?18+i*colGap:86+i*colGap;
+  const draftY=m?78:84,verifyHeadY=m?134:146,inputY=m?178:194,lineY=m?216:232,predY=m?242:242;
+  const checkY=m?310:292,reasonY=m?334:316,commitHeadY=m?360:338,outputY=m?370:348,validY=m?448:430;
+  text(context,18,24,m?'根 t0 已提交；4 个候选待验证。':'根 t0 已提交；4 个草稿候选等待目标模型一次验证。');
+  text(heads[0],18,50);text(heads[1],18,verifyHeadY);text(heads[2],18,commitHeadY);
+  text(root,20,m?0:106,'根');show(root,m?0:1);
+  move(rootToken,colX(0),draftY,1);
+  const draftProgress=i=>phase(p,i/4,(i+1)/4);
+  draft.forEach((t,i)=>{move(t,colX(i+1),draftY,draftProgress(i));t.g.classList.toggle('teach-empty',p>=3&&i>=d.accepted);});
+  text(proposalNote,610,106);show(proposalNote,m?0:1);
+  text(rowInput,20,m?168:214,m?'验证输入：根 + 4 候选':'验证输入');
+  text(rowPrediction,20,m?226:262,m?'目标预测（1 次调用）':'目标预测');
+  text(rowJudge,20,m?296:292,m?'判断':'判断');
+  columnLabels.forEach((e,i)=>{text(e,colX(i)+24,m?0:184,['根','草1','草2','草3','草4'][i]);set(e,{'text-anchor':'middle'});show(e,m?0:1);});
+  input.forEach((t,i)=>{move(t,colX(i),inputY,i===0?1:phase(p,.92,1.15));if(i)t.g.classList.toggle('teach-empty',p>=3&&i>d.accepted);});
   const checked=Math.min(d.accepted===4?4:d.accepted+1,Math.floor(phase(p,2)*4+1e-8));
-  checks.forEach((t,i)=>{text(t,at(i),308,i>=checked?(checked>d.accepted?'舍弃':''):i<d.accepted?'接受':i===d.accepted?'分歧':'舍弃');});
-  const n=Math.min(d.accepted,checked);box(accepted,at(0)-4,143,n?Math.max(56,(n-1)*gap+56):0,5);show(accepted,p>=2&&n?1:0);
-  box(rejected,at(Math.min(d.accepted,3))-4,99,56,42);rejected.style.fill='none';show(rejected,d.accepted<4&&checked>d.accepted?1:0);
-  const comparing=Math.min(d.accepted,Math.floor(phase(p,2)*4)),validPrefix=d.draft.slice(0,comparing);
-  box(focus,at(comparing)-4,246,56,42);show(focus,p>=2?1:0);
-  // Prefix and comparison are split on the narrow board; the full sentence
-  // otherwise exceeds the 360-unit canvas once the camera restores type size.
-  text(prefix,18,360,'输入前缀：已有文本'+(m||!validPrefix.length?'':' + '+validPrefix.join(' / ')));
-  if(m){text(prefixMore,18,382,validPrefix.length?'+ '+validPrefix.join(' / '):'');show(prefixMore,validPrefix.length&&p>=2?1:0);}else{text(prefixMore,18,382,'');show(prefixMore,0);}
-  show(prefix,p>=2?1:0);
-  if(m){
-   text(comparison,18,410,comparing===4?`目标预测“${d.predictions[4]}” → 多 1 个 token`:`预测“${d.predictions[comparing]}” ↔ 候选“${d.draft[comparing]}”`);
-   text(verdict,18,432,comparing===4?'接受并补出':d.predictions[comparing]===d.draft[comparing]?'相同，可接受':'不同，停止接受');
-   show(verdict,p>=2?1:0);
-  }else{
-   text(comparison,18,390,comparing===4?`目标预测“${d.predictions[4]}” → 多 1 个 token`:`预测“${d.predictions[comparing]}” ↔ 候选“${d.draft[comparing]}”：${d.predictions[comparing]===d.draft[comparing]?'相同，可接受':'不同，停止接受'}`);
-   text(verdict,18,432,'');show(verdict,0);
+  checks.forEach((e,i)=>{text(e,colX(i)+24,checkY,i>=checked?(checked>d.accepted?'舍弃':''):i<d.accepted?'接受':i===d.accepted?'分歧':'舍弃');set(e,{'text-anchor':'middle'});});
+  predicted.forEach((t,i)=>{const visible=!(i===4&&d.accepted<4);move(t,colX(i),predY,visible?phase(p,1):0);});
+  const n=Math.min(d.accepted,checked);box(accepted,colX(0)-2,lineY,n?(n*colGap+52):0,4);show(accepted,p>=2&&n?1:0);
+  const comparing=Math.min(d.accepted,Math.floor(phase(p,2)*4)),validPrefix=d.draft.slice(0,comparing),firstDiff=d.accepted<4?d.accepted:-1;
+  // The prediction is in column i, while the candidate it checks sits one
+  // column to the right. Pair the outlines and name both values so the
+  // judgment is not read as accepting the root input in column 0.
+  const diverged=firstDiff>=0&&(checked>firstDiff||p>=3);
+  box(rejected,colX(Math.min(d.accepted,3))-4,predY-4,56,42);show(rejected,p>=3&&d.accepted<4?1:0);
+  box(rejectedDraft,colX(Math.min(d.accepted,3)+1)-4,draftY-4,56,42);show(rejectedDraft,p>=3&&d.accepted<4?1:0);
+  box(focus,colX(comparing)-4,inputY-2,56,predY+38-(inputY-2));show(focus,p>=2&&p<3?1:0);
+  box(compareDraft,colX(comparing+1)-4,draftY-4,56,42);show(compareDraft,p>=2&&p<3?1:0);
+  let why='';
+  if(p>=1){
+   if(p<2)why='候选逐个生成；随后由目标模型一次验证。';
+   else if(diverged)why=m?`首次分歧：预测${d.predictions[d.accepted]}↔草${d.accepted+1}${d.draft[d.accepted]}；后续不再接受。`:`首次分歧：预测下一 token「${d.predictions[d.accepted]}」 ↔ 草${d.accepted+1}「${d.draft[d.accepted]}」；后面不能跳着接受。`;
+   else if(d.accepted===4&&p>=3)why=m?`全部接受；第 5 列补出「${d.predictions[4]}」。`:`全部接受；第 5 列预测「${d.predictions[4]}」作为补出。`;
+   else{const k=Math.min(checked,3);why=m?`第${k+1}次：预测「${d.predictions[k]}」↔草${k+1}「${d.draft[k]}」`:`第 ${k+1} 次比较：预测下一 token「${d.predictions[k]}」 ↔ 草${k+1}「${d.draft[k]}」`;}
   }
-  show(comparison,p>=2?1:0);
-  text(cause,18,m?456:420,p>=3&&d.accepted<4?'前缀已改变，后面的匹配不再有效。':'每个位置只使用它之前的前缀进行预测。');show(cause,p>=2?1:0);
-  text(reason,18,490,p>=3?(d.accepted===4?'全部接受，再补出 1 个。':'分歧后，后续不再接受。'):'');
-  // Committed tokens enter from the clear lower channel; the bonus label sits
-  // under the token it names, so it can never drift past the accepted4 column.
-  output.forEach((t,i)=>{const u=phase(p,3+i*.12,4);move(t,at(i),lerp(540,548,u),p>3?1:0);});
-  text(bonus,at(d.accepted),598,bonusLabel);show(bonus,p>3?1:0);
-  text(validTitle,18,628);show(validTitle,p>=4);
-  validHistory.forEach((t,i)=>move(t,m?18+i*52:110+i*56,644,p>=4?1:0));
-  text(legend,18,696,p>=4?(m?`输出 ${d.output.length} = 接受 ${d.accepted} + ${bonusLabel} 1`:`输出数量 = ${d.accepted} 个接受 + 1 个${bonusLabel} = ${d.output.length} 个；`):(m?'候选按身份配色；目标预测同色。':'候选颜色跟随身份；目标预测使用统一颜色。'));
-  text(legend2,18,718,p>=4?'有效历史只含根 + 接受前缀。':'');
-  show(legend2,p>=4?1:0);
-  // Ledger geometry: labels get their own line above the card rows. Every long
-  // sentence is split into short lines instead of shrinking the type, and the
-  // two-column desktop layout keeps the ledger from doubling the board height.
-  const ledgerY=742,ledgerH=m?460:308,ledgerX=12,ledgerW=W-24;
+  text(reason,18,reasonY,why);show(reason,p>=1?1:0);
+  text(predictionRule,610,214);show(predictionRule,m?0:1);
+  // Keep the submitted tokens in the ③ row: a tiny upward lane plus a short
+  // horizontal slide, clear of the prediction, judgment and reason rows. The
+  // 草N / 替代 labels on the same baseline name where each token came from.
+  const laneGap=m?10:16,laneY=outputY-3,tagY=m?420:402;
+  output.forEach((t,i)=>{const t0=3.02+i*.06,t1=3.96,u=clamp((p-t0)/(t1-t0)),drop=phase(u,0,.25),slide=clamp((u-.2)/.8);
+  move(t,lerp(colX(i)+laneGap,colX(i),slide),lerp(laneY,outputY,drop),phase(p,3,3.14));});
+ outputTags.forEach((e,i)=>{const accepted=i<d.accepted;text(e,colX(i)+24,tagY,'草'+(i+1));set(e,{'text-anchor':'middle'});show(e,accepted?phase(p,3.08+i*.06,3.24+i*.06):0);});
+  text(bonus,colX(d.accepted)+24,tagY,bonusLabel);set(bonus,{'text-anchor':'middle'});show(bonus,p>3?1:0);
+  text(legend,610,m?0:356);show(legend,m?0:1);
+  text(validTitle,20,m?438:420);show(validTitle,p>=4?1:0);
+  validHistory.forEach((t,i)=>move(t,colX(i),validY,p>=4?1:0));
+  text(legend2,18,m?500:484,p>=4?(m?'根 + 接受前缀；补出/替代未回灌，本轮暂无自身 KV。':'有效历史 = 根 + 接受前缀；补出/替代 token 本轮尚未回灌，尚无自己的有效 KV。'):'');show(legend2,p>=4?1:0);
+  const ledgerY=m?510:498,ledgerH=m?520:288,ledgerX=12,ledgerW=W-24;
+  const comparisonStarted=p>=3,outputSubmitted=p>=4,ordinaryCount=d.targetCallsSequential;
+  const ledgerNote=m?'灰待处理 · 琥珀执行 · 绿完成；普通对照不另行执行。':'灰=待处理 · 琥珀=进行中 · 绿=已完成；普通对照解释同一输出，不另行执行。';
+  const pendingLedgerNote=m?'输出提交中；普通对照待 token 到达后计 1 次。':'正式输出提交中；普通对照暂为预计，token 到达后才计 1 次，不另行执行。';
   box(callPanel,ledgerX,ledgerY,ledgerW,ledgerH);
-  text(callKicker,ledgerX+14,ledgerY+32,'本轮完成后的对照');
-  text(callTitle,ledgerX+14,ledgerY+(m?54:56),m?'调用账单 · 不是已完成动作':'调用账单 · 不是当前已完成的动作');
-  const leftX=ledgerX+14,rightX=m?leftX:ledgerX+354;
-  text(callOrdinaryLabel,leftX,ledgerY+(m?80:92),m?`普通目标 ${d.targetCallsSequential} 次 · 逐 token 调用`:`普通目标 ${d.targetCallsSequential} 次 · 每个输出调 1 次`);
-  const ordinaryBoxW=m?54:58,ordinaryGap=m?5:6,ordinaryBoxY=ledgerY+(m?90:102);
-  const cardH=m?68:62,labelDy=m?18:16,valueDy=m?58:51;
-  for(let i=0;i<5;i++){
-   const x=leftX+i*(ordinaryBoxW+ordinaryGap),used=i<d.targetCallsSequential;
-   box(callBoxes[i],x,ordinaryBoxY,used?ordinaryBoxW:0,cardH);
-   text(callLabels[i],x+ordinaryBoxW/2,ordinaryBoxY+labelDy,'调'+(i+1));
-   text(callValues[i],x+ordinaryBoxW/2,ordinaryBoxY+valueDy,used?d.output[i]:'');
-   set(callLabels[i],{'text-anchor':'middle'});set(callValues[i],{'text-anchor':'middle'});
-   show(callBoxes[i],used?1:0);show(callLabels[i],used?1:0);show(callValues[i],used?1:0);
-  }
-  const specY=ordinaryBoxY+cardH+18;
-  text(callSpecLabel,leftX,specY,`采用：草稿 ${d.draftCalls} 次 + 验证 ${d.verificationCalls} 次`);
-  const draftBoxW=m?60:64,draftGap=m?5:6,draftBoxY=specY+10;
-  for(let i=0;i<4;i++){
-   const x=leftX+i*(draftBoxW+draftGap);
-   box(callBoxes[5+i],x,draftBoxY,draftBoxW,cardH);
-   text(callLabels[5+i],x+draftBoxW/2,draftBoxY+labelDy,'草'+(i+1));
-   text(callValues[5+i],x+draftBoxW/2,draftBoxY+valueDy,d.draft[i]);
-   set(callLabels[5+i],{'text-anchor':'middle'});set(callValues[5+i],{'text-anchor':'middle'});
-  }
-  const verifyX=leftX,verifyY=draftBoxY+cardH+4,verifyW=m?308:320;
-  box(verifyBox,verifyX,verifyY,verifyW,38);
-  text(verifyLabel,verifyX+verifyW/2,verifyY+24,`1 次验证 · 覆盖 ${d.verificationPositions} 个输入位置`);
-  set(verifyLabel,{'text-anchor':'middle'});
-  const finalY=m?verifyY+60:ledgerY+94,kvY=finalY+(m?24:30),note1Y=kvY+(m?24:28),note2Y=note1Y+24,cost1Y=note2Y+(m?28:32),cost2Y=cost1Y+26;
-  text(finalLine,rightX,finalY,`完成后提交：${d.output.join(' ')}`);
-  text(kvLine,rightX,kvY,`有效 KV：${d.validKV.join(' ')}`);
-  text(kvNote1,rightX,note1Y,`${bonusLabel}“${d.output.at(-1)}”尚未输入，`);
-  text(kvNote2,rightX,note2Y,'未计入有效 KV。');
-  if(d.accepted===0){
-   text(cost1,rightX,cost1Y,'目标调用没有减少（各 1 次）。');
-   text(cost2,rightX,cost2Y,'还多 4 次草稿；成本不等。');
+  text(callTitle,26,m?534:522,m?'调用账目 · 已发生动作':'调用账目 · 只记已经发生的动作');
+  text(callNote,26,m?558:543,comparisonStarted&&!outputSubmitted?pendingLedgerNote:ledgerNote);
+  const draftTitleY=m?582:570,draftCardY=m?592:580,draftH=m?70:80,draftW=m?70:54,draftGap=6;
+  text(callDraftLabel,26,draftTitleY,'草稿模型 · 4 次');
+  let completedDrafts=0;
+  draftBoxes.forEach((r,i)=>{const u=draftProgress(i),done=u>=1-1e-6,running=u>0&&!done;
+   if(done)completedDrafts++;
+   const x=26+i*(draftW+draftGap);
+   box(r,x,draftCardY,draftW,draftH);cardState(r,done?'done':running?'running':'pending');
+   box(draftTints[i],x+4,draftCardY+8,3,draftH-16);set(draftTints[i],{rx:2});draftTints[i].setAttribute('class','spec-identity teach-color-'+i);
+   text(draftLabels[i],x+draftW/2,draftCardY+(m?16:18),'草'+(i+1));
+   text(draftValues[i],x+draftW/2,draftCardY+(m?36:40),done?d.draft[i]:'');
+   text(draftStates[i],x+draftW/2,draftCardY+(m?56:60),done?'已完成':running?'生成中':'待生成');cardState(draftStates[i],done?'done':running?'running':'pending');
+   [draftLabels[i],draftValues[i],draftStates[i]].forEach(e=>set(e,{'text-anchor':'middle'}));
+   show(r,1);show(draftTints[i],1);show(draftLabels[i],1);show(draftValues[i],done?1:0);show(draftStates[i],1);
+  });
+  const verifyTitleY=m?684:570,verifyY=m?694:580,verifyW=m?308:244,verifyH=m?86:80,verifyX=m?26:316;
+  text(callVerifyLabel,verifyX,verifyTitleY,'目标模型 · 1 次验证');
+  box(verifyBox,verifyX,verifyY,verifyW,verifyH);
+  box(verifyTint,verifyX+4,verifyY+8,3,verifyH-16);set(verifyTint,{rx:2});
+  const verifyStarted=p>=1-1e-6,verifyDone=p>=2-1e-6,verifyRunning=verifyStarted&&!verifyDone,verifyU=verifyDone?1:phase(p,1,2);
+  cardState(verifyBox,verifyDone?'done':verifyRunning?'running':'pending');
+  text(verifyCoverage,verifyX+10,verifyY+18,'覆盖 5 个位置');
+  text(verifyState,verifyX+verifyW-10,verifyY+18,verifyDone?'已完成':verifyRunning?'执行中':'待开始');set(verifyState,{'text-anchor':'end'});cardState(verifyState,verifyDone?'done':verifyRunning?'running':'pending');
+  const pipW=m?52:40,pipGap=m?6:5,pipY=verifyY+26,pipH=m?24:20,pipX=verifyX+10;
+  ['根','草1','草2','草3','草4'].forEach((name,i)=>{const x=pipX+i*(pipW+pipGap);
+   box(verifyPips[i],x,pipY,pipW,pipH);
+   cardState(verifyPips[i],verifyDone?'done':verifyRunning?'running':'pending');
+   text(verifyPipLabels[i],x+pipW/2,pipY+(m?16:15),name);set(verifyPipLabels[i],{'text-anchor':'middle'});
+  });
+  box(verifyProgress,pipX,verifyY+(m?60:54),(verifyW-20)*verifyU,5);show(verifyProgress,verifyU>0?1:0);
+  text(verifyNote,verifyX,verifyY+(m?102:101));show(verifyNote,1);
+  const ordinaryTitleY=m?818:570,ordinaryY=m?828:580,ordinaryH=m?70:80,ordinaryW=m?56:44,ordinaryGap=m?6:5,ordinaryX=m?26:596;
+  text(callOrdinaryLabel,ordinaryX,ordinaryTitleY,outputSubmitted?`普通对照 · ${ordinaryCount} 次`:comparisonStarted?`普通对照 · 预计 ${ordinaryCount} 次`:'普通对照 · 待定');
+  if(!comparisonStarted){
+   box(ordinaryPlaceholder,ordinaryX,ordinaryY,m?308:244,ordinaryH);
+   text(ordinaryPlaceholderTitle,ordinaryX+12,ordinaryY+24,'输出确认后展开');
+   text(ordinaryPlaceholderNote,ordinaryX+12,ordinaryY+46,'逐 token 对照，不另行执行');
+   show(ordinaryPlaceholder,1);show(ordinaryPlaceholderTitle,1);show(ordinaryPlaceholderNote,1);
+   ordinaryBoxes.forEach((r,i)=>{show(r,0);show(ordinaryTints[i],0);show(ordinaryLabels[i],0);show(ordinaryValues[i],0);show(ordinaryStates[i],0);});
   }else{
-   text(cost1,rightX,cost1Y,`1 次验证覆盖 ${d.verificationPositions} 个位置；`);
-   text(cost2,rightX,cost2Y,'不是 5 次调用；成本不等。');
+   show(ordinaryPlaceholder,0);show(ordinaryPlaceholderTitle,0);show(ordinaryPlaceholderNote,0);
+   ordinaryBoxes.forEach((r,i)=>{
+    const on=i<ordinaryCount,u=phase(p,3+i*.12,4),revealed=u>=1,submitting=u>0&&!revealed;
+    show(r,on?1:0);show(ordinaryTints[i],on?1:0);show(ordinaryLabels[i],on?1:0);show(ordinaryValues[i],on&&revealed?1:0);show(ordinaryStates[i],on?1:0);
+    if(!on)return;
+    const x=ordinaryX+i*(ordinaryW+ordinaryGap);
+    box(r,x,ordinaryY,ordinaryW,ordinaryH);cardState(r,revealed?'reference':'pending');
+    box(ordinaryTints[i],x+4,ordinaryY+8,3,ordinaryH-16);set(ordinaryTints[i],{rx:2});ordinaryTints[i].setAttribute('class','spec-identity teach-color-'+(i<d.accepted?i:4));
+    text(ordinaryLabels[i],x+ordinaryW/2,ordinaryY+(m?16:18),'同'+(i+1));
+    text(ordinaryValues[i],x+ordinaryW/2,ordinaryY+(m?36:40),revealed?d.output[i]:'');
+    text(ordinaryStates[i],x+ordinaryW/2,ordinaryY+(m?56:60),revealed?'计1次':submitting?'提交中':'待对照');
+    [ordinaryLabels[i],ordinaryValues[i],ordinaryStates[i]].forEach(e=>set(e,{'text-anchor':'middle'}));
+   });
   }
-  show(callLayer,p>=2?1:0);
+  text(ordinaryNote,ordinaryX,m?920:681);
+  text(costTitle,26,m?960:719,'成本边界');
+  if(p<1-1e-6){
+   text(cost1,26,m?982:739,`草稿 ${completedDrafts}/4 完成，验证未开始。`);
+   text(cost2,26,m?1004:759,'调用数尚不可比较。');
+  }else if(p<2-1e-6){
+   text(cost1,26,m?982:739,'草稿 4/4 完成，验证执行中。');
+   text(cost2,26,m?1004:759,m?'覆盖 5 个位置，不是 5 次调用。':'1 次验证覆盖 5 个位置，不是 5 次调用。');
+  }else if(!comparisonStarted){
+   text(cost1,26,m?982:739,'验证完成，但输出尚未提交。');
+   text(cost2,26,m?1004:759,m?'普通对照未展开，调用数不可比。':'普通对照尚未展开，调用数不可比较。');
+  }else if(!outputSubmitted){
+   text(cost1,26,m?982:739,'正式输出提交中；有效历史尚未提交。');
+   text(cost2,26,m?1004:759,m?`对照预计 ${ordinaryCount} 次；token 到达后计 1 次，不另行执行。`:`普通对照预计 ${ordinaryCount} 次；待 token 到达后才计 1 次，不另行执行。`);
+  }else if(d.accepted===0){
+   text(cost1,26,m?982:739,m?'接受0：对照1、验证1；目标未减少。':'接受 0：普通对照 1 次，本路径验证 1 次；目标调用未减少。');
+   text(cost2,26,m?1004:759,m?'对照不另行执行；另付4次草稿，成本不等，非固定加速。':'普通对照不另行执行；另付 4 次草稿，成本不等，也不是固定加速。');
+  }else{
+   text(cost1,26,m?982:739,m?`接受${d.accepted}：对照${ordinaryCount}、验证1、草稿4。`:`接受 ${d.accepted}：普通对照 ${ordinaryCount} 次，本路径验证 1 次；另付 4 次草稿。`);
+   text(cost2,26,m?1004:759,m?'对照不另行执行；验证覆盖5位置，成本不等。':'普通对照不另行执行；1 次验证覆盖 5 个位置，成本不等，也不是固定加速。');
+  }
+  show(callLayer,1);
   svg.dataset.comparedPrefix=validPrefix.join('');
  };
-});}
+},m=>m?360:860);}
 V['f-speculation']=foundationSpeculation;V['advanced-generation']=spec;
 V.communication=(svg,viewport,s)=>board(svg,viewport,'page-copy',()=>770,H=>{
  const {txt,rect,text,box,show,token,move,set}=H,d=s.data;

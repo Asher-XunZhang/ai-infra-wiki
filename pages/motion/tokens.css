@@ -37,6 +37,9 @@
 .tok-token.tok-amber>text{fill:#ffe3b2}
 .tok-token.tok-cyan>rect{fill:#0d2d36;stroke:#5fd6e8}
 .tok-token.tok-cyan>text{fill:#d9fbff}
+/* BPE merge capsule: drawn behind the tokens, contracts from the pair span
+ * to the incoming unit. No label is drawn in it, so it cannot stack text. */
+.tok-merge-halo{fill:#f2b45c1a;stroke:#f2b45c;stroke-width:1.5;stroke-dasharray:6 4;pointer-events:none}
 .tok-ghost{opacity:.6}
 .tok-tick{fill:#173344;stroke:none}
 .tok-tick.on{fill:#61d7e7}

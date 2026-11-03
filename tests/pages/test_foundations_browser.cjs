@@ -3,10 +3,26 @@
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const courses = require('../../pages/foundations/courses.json');
+const model = require('../../pages/foundations/model.js');
 const chooseScene = require('./choose_motion_scene.cjs');
 
 const BASE = process.env.OVERVIEW_TEST_URL || 'http://127.0.0.1:8765/';
 const CHROME = process.env.CHROMIUM_EXECUTABLE || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+
+// Attention publishes vectors through two display formats: fmt() keeps a
+// space and trims trailing zeros, while dataset.output is fixed to two
+// decimals without spaces. Compare the rendered numbers, allowing the
+// rounding implied by two-decimal display, instead of matching a string shape.
+function closeNumbers(text, expected, message, tolerance = 0.0051) {
+  const match = String(text).match(/\[\s*([^\]]+?)\s*\]/);
+  assert.ok(match, `${message}: expected a numeric array, got ${text}`);
+  const actual = match[1].split(',').map(part => Number(part.trim()));
+  assert.equal(actual.length, expected.length, `${message}: ${text} vs ${expected.length} values`);
+  actual.forEach((value, i) => {
+    assert.ok(Number.isFinite(value) && Math.abs(value - expected[i]) <= tolerance,
+      `${message}: ${text} at index ${i}, expected ${expected[i]}`);
+  });
+}
 
 async function choose(film, value) {
   const select = film.locator('.motion-controls select');
@@ -81,10 +97,13 @@ async function family(page, label) {
       assert.ok(await page.locator('#evidence a').count(), `${course.slug} evidence`);
       const film = page.locator('.mechanism-film');
       assert.equal(await film.count(), 1, `${course.slug} mechanism film`);
-      const values = await optionsFor(page);
+      // Enumerate the registered catalogue itself, so family-only traversal
+      // still reaches the two legacy token links that have no family button.
+      const values = Array.from({ length: await chooseScene.count(page) }, (_, i) => String(i));
       assert.ok(values.length >= 1, `${course.slug} scenarios`);
       for (const value of values) {
         await chooseScene(page, Number(value));
+        await film.locator('[data-motion-action=reset]').click();
         const select = film.locator('.motion-controls select');
         if (await select.count() && await select.isVisible()) {
           assert.equal(await select.inputValue(), String(value), `${course.slug} selected scenario ${value}`);
@@ -122,13 +141,14 @@ async function family(page, label) {
       await page.setViewportSize({ width: 1440, height: 1000 });
       console.log('PASS', course.slug, values.length, 'scenes');
     }
-    assert.ok(sceneCount >= 77, `main scene coverage ${sceneCount}`);
+    assert.ok(sceneCount >= 95, `main scene coverage ${sceneCount}`);
 
-    // F01-01: one row per vocabulary item, and both occurrences of a repeated
-    // token remain positions of that one row rather than duplicate table rows.
-    await page.goto(BASE + 'foundations/tokens.html', { waitUntil: 'networkidle' });
+    // F01-01: the old sample is a URL-stable legacy entry, not the default
+    // BPE concept. Keep its original two-row drawing assertions explicit.
+    await page.goto(BASE + 'foundations/tokens.html?mv=0', { waitUntil: 'networkidle' });
     const tokens = page.locator('.mechanism-film');
-    await choose(tokens, 0); await goFinal(page);
+    assert.equal(new URL(page.url()).searchParams.get('mv'), '0');
+    await goFinal(page);
     assert.match(await tokens.textContent(), /100134.*p2.*p4/s);
     assert.match(await tokens.textContent(), /104100.*p1/);
     assert.equal(await tokens.locator('svg [data-token-row]').count(), 4);
@@ -138,7 +158,7 @@ async function family(page, label) {
     // node and the KV history remain separate until the new input is computed.
     await page.goto(BASE + 'foundations/generation.html', { waitUntil: 'networkidle' });
     const generation = page.locator('.mechanism-film');
-    await generation.getByLabel('连续演示条件').selectOption({ label: '自回归完整过程 · 固定抽样' });
+    await generation.getByLabel('连续演示条件').selectOption({ label: '完整自回归链 · 固定抽样' });
     await generation.locator('[data-motion-action=reset]').click();
     for (let i = 0; i < 4; i++) { await generation.locator('[data-motion-action=next]').click(); await page.waitForTimeout(18); }
     assert.equal(await generation.locator('[data-kv-written="true"]').count(), 2, 'y1 KV is not written before Decode');
@@ -151,28 +171,109 @@ async function family(page, label) {
     assert.equal(await generation.locator('[data-output="first"]').count(), 1);
     assert.equal(await generation.locator('[data-output="second"]').count(), 1);
 
-    // F03: both dimensions expose their added terms, and future rows stay out
-    // of the denominator.
+    // F03: the current QKV/weights/mask graph publishes only readable
+    // contributions, the causal denominator and the weighted sum. The
+    // data-current value is pending/mixing until every source arrives; the
+    // final data-output is a model check, never a mid-mix visible value.
     await page.goto(BASE + 'foundations/attention.html', { waitUntil: 'networkidle' });
     const attention = page.locator('.mechanism-film');
-    await choose(attention, 0); await goFinal(page);
-    const attentionEqs = await attention.locator('svg [data-equation]').evaluateAll(es => es.map(e => e.textContent));
-    assert.deepEqual(attentionEqs, ['维度1：33.0%×2 + 67.0%×0', '维度2：33.0%×0 + 67.0%×2']);
-    assert.equal(await attention.locator('svg [data-complete="true"]').textContent(), '汇合得到 [0.66, 1.34]');
-    assert.equal(await attention.locator('svg [data-future-row="true"]').count(), 2);
-    assert.match(await attention.textContent(), /允许权重合计 ≈ 100\.0%/);
-    await chooseScene(page, 1); await goFinal(page);
-    assert.equal(await attention.locator('svg [data-equation="1"]').textContent(), '维度1：15.7%×2 + 3.8%×0 + 15.7%×2 + 64.7%×4');
-    assert.equal(await attention.locator('svg [data-complete="true"]').textContent(), '汇合得到 [3.22, 0.39]');
-    assert.match(await attention.textContent(), /16\.92.*26\.15/);
+    const attentionFacts = () => attention.locator('.motion-attention-facts strong').allTextContents();
+    const attentionView = () => attention.locator('svg').evaluate(svg => {
+      const q = Number(svg.dataset.queryPosition);
+      const cells = [...svg.querySelectorAll('.att-maskcell')];
+      const row = cells.slice((q - 1) * 4, q * 4);
+      const out = svg.querySelector('[data-current]');
+      return {
+        query: q,
+        allowed: Number(svg.dataset.allowed),
+        future: Number(svg.dataset.futureCount),
+        denominator: Number(svg.dataset.denominator),
+        weightSum: Number(svg.dataset.weightSum),
+        output: svg.dataset.output,
+        current: out?.getAttribute('data-current'),
+        state: out?.getAttribute('data-mix-state'),
+        count: Number(out?.getAttribute('data-mix-count')),
+        total: Number(out?.getAttribute('data-mix-total')),
+        self: out?.getAttribute('data-self-contribution'),
+        history: out?.getAttribute('data-history-contribution'),
+        maskFuture: row.filter(c => c.classList.contains('is-future')).length,
+        maskOpen: row.filter(c => c.classList.contains('is-open')).length,
+        maskText: svg.querySelector('[data-att-mode=mask]')?.textContent || '',
+        maskOutput: svg.querySelector('[data-att-mode=mask] [data-output]')?.textContent || '',
+        // Desktop mask rows print the percentage alone (33.0%), not w=33.0%.
+        // Future rows print 0%; keeping only one-decimal tokens preserves row order.
+        maskWeights: [...svg.querySelectorAll('[data-att-mode=mask] text.att-w.att-num')]
+          .map(e => e.textContent.trim())
+          .filter(text => /^\d+\.\d%$/.test(text))
+          .map(text => Number(text.slice(0, -1))),
+        weightsText: svg.querySelector('[data-att-mode=weights]')?.textContent || '',
+      };
+    });
+    for (const variant of [0, 1, 2]) {
+      const expected = model.attention(variant);
+      await chooseScene(page, variant);
+      await goFinal(page);
+      const done = await attentionView();
+      assert.equal(done.query, expected.queryPosition, `attention query ${variant}`);
+      assert.equal(done.allowed, expected.allowed, `attention readable positions ${variant}`);
+      assert.equal(done.future, 4 - expected.allowed, `attention causal future ${variant}`);
+      assert.equal(done.maskFuture, 4 - expected.allowed, `mask row future ${variant}`);
+      assert.equal(done.maskOpen, expected.allowed, `mask row readable ${variant}`);
+      assert.equal(done.denominator.toFixed(4), expected.denominator.toFixed(4), `attention denominator ${variant}`);
+      assert.equal(done.weightSum, 1, `attention weights sum ${variant}`);
+      closeNumbers(done.output, expected.mixed, `attention model output ${variant}`);
+      closeNumbers(done.current, expected.mixed, `attention published output ${variant}`);
+      assert.equal(done.state, 'complete', `attention complete ${variant}`);
+      assert.equal(done.count, expected.allowed, `attention arrived contributions ${variant}`);
+      assert.equal(done.total, expected.allowed, `attention contribution total ${variant}`);
+      const self = expected.contributions[expected.query];
+      const history = [0, 1].map(j => expected.contributions.slice(0, expected.query).reduce((sum, c) => sum + c[j], 0));
+      closeNumbers(done.self, self, `attention self contribution ${variant}`);
+      closeNumbers(done.history, history, `attention history contribution ${variant}`);
+      assert.match(done.maskText, new RegExp(`Σ e\\^s（仅可见） = ${expected.denominator.toFixed(2)}`), `attention denominator copy ${variant}`);
+      assert.match(done.maskText, /w 合计 = 100\.0%/, `attention weight copy ${variant}`);
+      closeNumbers(done.maskOutput, expected.mixed, `attention mask output ${variant}`);
+      assert.equal(done.maskWeights.length, expected.allowed, `attention mask row weights ${variant}`);
+      for (let i = 0; i < expected.allowed; i++) {
+        assert.ok(Math.abs(done.maskWeights[i] - expected.weights[i] * 100) <= 0.051,
+          `attention weight ${variant}/${i}: ${done.maskWeights[i]}% vs ${expected.weights[i] * 100}%`);
+      }
+      assert.deepEqual(await attentionFacts(), [
+        expected.denominator.toFixed(2),
+        '100.0%',
+        `[${expected.mixed.map(x => x.toFixed(2)).join(', ')}]`,
+      ], `attention side facts ${variant}`);
+
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      for (const position of [3.9, 4.2]) {
+        await seek(page, position);
+        const mid = await attentionView();
+        assert.equal(mid.state, 'mixing', `attention mixes at ${variant}/${position}`);
+        assert.ok(['pending', 'mixing'].includes(mid.current), `attention current is not final at ${variant}/${position}`);
+        assert.ok(mid.count < mid.total, `attention contributions incomplete at ${variant}/${position}`);
+        assert.match(mid.weightsText, /汇合中/, `attention main says mixing at ${variant}/${position}`);
+        assert.doesNotMatch(mid.weightsText, /m [0-9]/, `attention main has no numeric m at ${variant}/${position}`);
+        assert.equal((await attentionFacts())[2], '汇合中', `attention side says mixing at ${variant}/${position}`);
+      }
+      await seek(page, 4.6);
+      const mixed = await attentionView();
+      assert.equal(mixed.state, 'complete', `attention completes at ${variant}/4.6`);
+      closeNumbers(mixed.current, expected.mixed, `attention final at ${variant}/4.6`);
+      assert.equal(mixed.count, expected.allowed, `attention all contributions at ${variant}/4.6`);
+      assert.notEqual((await attentionFacts())[2], '汇合中', `attention side establishes at ${variant}/4.6`);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+    }
 
     // F04: the comparison keeps read and compute costs separate; the page
     // mapping is a real arrow relation; shared-prefix holders are explicit.
     await page.goto(BASE + 'foundations/cache.html', { waitUntil: 'networkidle' });
     const cache = page.locator('.mechanism-film');
     await choose(cache, 0); await goFinal(page);
-    assert.match(await cache.textContent(), /读取历史：4 \+ 5 = 9/);
-    assert.match(await cache.textContent(), /新算位置数：15.*vs 6/);
+    const cacheFinal = await cache.textContent();
+    assert.match(cacheFinal, /跨轮缓存读取 4 \+ 5 = 9/, 'cache reads 4 and 5 while reusing history');
+    assert.match(cacheFinal, /新算 4 \+ 5 \+ 6 = 15/, 'no-cache K/V positions sum to 15');
+    assert.match(cacheFinal, /新算 4 \+ 1 \+ 1 = 6/, 'cached K/V positions sum to 6');
+    assert.match(cacheFinal, /三次调用完成后的对照：新算 15 vs 6/, 'three-call comparison keeps 15 vs 6');
     await choose(cache, 1); await goFinal(page);
     assert.match(await cache.textContent(), /页 7.*页 2/s);
     assert.match(await cache.textContent(), /p1 → 页 7 \/ 槽 0/);
@@ -264,11 +365,21 @@ async function family(page, label) {
     assert.match(await page.locator('.mechanism-film').textContent(), /可用 3\/3 · y1 KV 完成/);
     assert.equal(await page.locator('.mechanism-film svg text[data-ready="true"]').count(), 1, 'deployment ready state is rendered');
 
-    // F10: root and valid history are in the main speculation explanation.
+    // F10: the 860-unit board is fully in frame, and root/history are checked
+    // as objects rather than by an old sentence about the draft row.
     await page.goto(BASE + 'foundations/speculation.html', { waitUntil: 'networkidle' });
-    await choose(page.locator('.mechanism-film'), 0); await goFinal(page);
-    assert.match(await page.locator('.mechanism-film').textContent(), /根 token → 本轮草稿/);
-    assert.match(await page.locator('.mechanism-film').textContent(), /有效历史：根 \+ 接受前缀/);
+    const speculation = page.locator('.mechanism-film');
+    await choose(speculation, 0); await goFinal(page);
+    assert.equal(await speculation.locator('svg').getAttribute('viewBox'), '0 0 860 800');
+    assert.match(await speculation.textContent(), /有效历史：根 \+ 接受前缀/);
+    const rootToken = speculation.locator('svg [data-motion-id="root-token"]');
+    assert.equal(await rootToken.count(), 1);
+    assert.equal((await rootToken.textContent()).trim(), 't0');
+    assert.equal((await speculation.locator('svg [data-motion-id="verify-input-0"]').textContent()).trim(), '根');
+    const validHistory = await speculation.locator('svg [data-motion-id^="valid-history-"]').evaluateAll(es => es.map(e => e.textContent.trim()));
+    assert.deepEqual(validHistory, ['根', '我', '想'], 'valid history is root plus the accepted prefix');
+    const committed = await speculation.locator('svg [data-motion-id^="committed-output-"]').evaluateAll(es => es.map(e => e.textContent.trim()));
+    assert.deepEqual(committed, ['我', '想', '吃'], 'committed output ends with the replacement/bonus token');
 
     // F11: cancellation lanes and both serving routes are reachable.
     await page.goto(BASE + 'foundations/serving.html', { waitUntil: 'networkidle' });

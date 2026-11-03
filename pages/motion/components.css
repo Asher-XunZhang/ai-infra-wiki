@@ -65,15 +65,6 @@
  .mechanism-film[data-motion=f-components] .parallel-strategies{grid-template-columns:repeat(2,minmax(0,1fr))}
  .cmp-foot{display:none}
 }
-/* The components lesson is a PC-first board: at 1280px the old two-column
- * theater shrank the canvas below its 600px wide-layout threshold. Stack the
- * evidence rail only for this lesson so the 720-unit board is never squeezed
- * into the 360-unit narrow layout on a normal desktop window. */
-@media(min-width:1201px) and (max-width:1360px){
- body[data-lesson=components] .foundation-theater .motion-theater{display:flex;flex-direction:column;height:auto;gap:8px}
- body[data-lesson=components] .foundation-theater .motion-stage{height:min(calc(60vh + 40px),560px);min-height:480px}
- body[data-lesson=components] .foundation-theater .motion-panel{max-height:210px}
-}
 
 /* Attention V11: a compact HTML comparison above the accepted attention player.
  * It is deliberately explanatory, not a performance or accuracy claim. */
@@ -81,6 +72,9 @@
 .attention-motive h2{font-size:20px;line-height:1.5;margin:0 0 6px}
 .attention-motive>p{margin:0 0 14px;color:var(--muted,#536878);font-size:14px;line-height:1.8}
 .motive-card{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;align-items:start}
+.attention-motive .motive-detail{margin-top:8px}
+.attention-motive .motive-detail>summary{cursor:pointer;font-weight:650;font-size:14px;color:#7a470c;padding:6px 0;line-height:1.5}
+.attention-motive .motive-detail[open]>summary{margin-bottom:10px}
 .motive-inputs{display:flex;flex-wrap:wrap;gap:6px;grid-column:1/-1}
 .motive-chip{padding:5px 8px;border:1px solid var(--border,#d8e0e6);border-radius:6px;background:var(--soft,#f4f7f9);font:600 12px/1.3 ui-monospace,SFMono-Regular,monospace;color:var(--fg,#173c47)}
 .motive-chip.p1{border-color:#3a8a7e}.motive-chip.p2{border-color:#b2762a}
@@ -104,3 +98,362 @@
 .motive-explain{grid-column:1/-1;margin:2px 0 0;padding:10px 12px;border-left:3px solid var(--accent,#256f59);background:var(--accent-soft,#e9f3ef);font-size:13.5px;line-height:1.8;color:var(--fg,#173c47)}
 .motive-boundary{grid-column:1/-1;margin:0;color:var(--muted,#536878);font-size:12px;line-height:1.7}
 @media(max-width:760px){.attention-motive{padding:16px}.attention-motive h2{font-size:18px}.motive-card{grid-template-columns:1fr}.motive-result{margin-top:0}}
+
+/* Purpose-first boards for RoPE, RMSNorm and residual. */
+.cmp-seq-node{fill:#0b2533;stroke:#6f8799;stroke-width:1.4}
+.cmp-seq-node.is-q{stroke:#62d8e9;stroke-width:2.4}
+.cmp-seq-node.is-k{stroke:#bda9f7;stroke-width:2.4}
+.cmp-seq-node.is-q.is-k{stroke:#e7d7ff;stroke-width:2.8}
+.cmp-bar-content{fill:#7fe0c3;opacity:.72}
+.cmp-bar-rope{fill:#f2b45c;opacity:.95}
+.cmp-input-arrow{stroke-width:2.2}
+.cmp-input-x{stroke:#62d8e9}
+.cmp-input-2x{stroke:#f2b45c}
+.cmp-rms-ring{stroke:#7fe0c3;stroke-width:1.6;stroke-dasharray:5 4;opacity:.9}
+.cmp-output-norm{stroke:#7fe0c3;stroke-width:3.2}
+.cmp-output-y{stroke:#f2b45c;stroke-width:2.4}
+.cmp-output-2x{stroke-width:2;stroke-dasharray:5 4}
+.cmp-tip-norm{fill:#7fe0c3}
+.cmp-tip-y{fill:#f2b45c;stroke:#071522;stroke-width:1.2}
+.cmp-tip-2x{fill:none;stroke:#f2b45c;stroke-width:2}
+.cmp-input-tip-x{fill:#62d8e9}
+.cmp-input-tip-2x{fill:#f2b45c}
+.cmp-bar-rms{fill:#bda9f7;opacity:.9}
+.cmp-badge-ok{fill:#102d2a;stroke:#4c9b83}
+.cmp-badge-warn{fill:#33221c;stroke:#b7794a}
+.cmp-mainband{fill:#0c2633;stroke:#2e6570;stroke-width:1.2}
+.cmp-value-card{fill:#0a2230;stroke:#3b6f7d;stroke-width:1.2}
+.cmp-f-card{fill:#2a2215;stroke:#b9853f;stroke-width:1.2}
+/* Readable residual bars: x base, signed update, distinct result. */
+.cmp-xbar{fill:#62d8e9;opacity:.88}
+.cmp-ybar{fill:#103a45;stroke:#dff8ff;stroke-width:1}
+.cmp-delta{fill:#f2b45c;opacity:.95}
+.cmp-delta.is-negative{fill:#f0808b}
+.cmp-delta.is-zero{opacity:0}
+.cmp-plus.is-arrived circle{fill:#2a2215;stroke:#f2b45c;stroke-width:2.2}
+.cmp-mainline{stroke:#7fe0c3;stroke-width:2.4;opacity:.95}
+.cmp-branch{stroke:#f2b45c;stroke-width:1.8;stroke-dasharray:5 4;opacity:.9}
+.cmp-plus-zero circle{fill:#102a39;stroke:#7f95a5;stroke-width:1.6}
+.cmp-plus.is-complete circle{fill:#10322c;stroke:#7fe0c3;stroke-width:2}
+.cmp-contrib{fill:#f2b45c;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.cmp-contrib.is-zero{fill:#9db4c6}
+.cmp-update-chip{pointer-events:none}
+.cmp-update-chip rect{fill:#2a2215;stroke:#b9853f;stroke-width:1}
+.cmp-update-chip text{fill:#f6c77d;font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.cmp-update-chip.is-zero rect{fill:#102a39;stroke:#7f95a5}
+.cmp-update-chip.is-zero text{fill:#b8c9d5}
+.cmp-feature-a{fill:#62d8e9;opacity:.88}
+.cmp-feature-b{fill:#bda9f7;opacity:.88}
+.cmp-contrib-fill{fill:#7fe0c3;opacity:.9}
+.cmp-contrib-fill.is-negative{fill:#f0808b;opacity:.92}
+.cmp-zero-line{stroke:#7893a4;stroke-width:1;stroke-dasharray:3 3}
+.cmp-table-current{fill:#10303a;stroke:#3f8ea0;stroke-width:1}
+
+/* Purpose-first boards for MLP/SwiGLU, KV sharing and Transformer Block. */
+.cmp-poscard{fill:#0d2230;stroke:#29485b;stroke-width:1}
+.cmp-poscard.is-focus{fill:#10303a;stroke:#61d7e7;stroke-width:1.8}
+/* SwiGLU: two branches, a continuous coefficient, elementwise product and
+ * the down projection share one graph. The u/z bars use the same zero line so
+ * a>1 lengthening and a<0 reversal are readable without a table. */
+.cmp-focus-chip{fill:#0f3038;stroke:#61d7e7;stroke-width:1.6}
+.cmp-branch-box{fill:#0d2230;stroke:#29485b;stroke-width:1.2}
+.cmp-branch-box.is-gate{stroke:#bda9f7}
+.cmp-branch-box.is-value{stroke:#62d8e9}
+.cmp-branch-box.is-act{fill:#241f2c;stroke:#f2b45c}
+.cmp-branch-box.is-act.is-active{stroke-width:2.2}
+.cmp-branch-box.is-out{fill:#10303a;stroke:#3f8ea0}
+.cmp-merge circle{fill:#102b3b;stroke:#f2b45c;stroke-width:1.6}
+.cmp-merge-text{fill:#f2b45c;font-size:16px;font-weight:700;text-anchor:middle}
+.cmp-flow{stroke:#7893a4;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.cmp-gate-marker{fill:#f2b45c;stroke:#071522;stroke-width:1}
+.cmp-gate-label{fill:#f2b45c;font-size:9px;font-weight:700;font-variant-numeric:tabular-nums}
+.cmp-gate-label.is-negative{fill:#f0808b}
+.cmp-u-fill{fill:#bda9f7;opacity:.9}
+.cmp-u-fill.is-negative{fill:#f0808b}
+.cmp-z-fill{fill:#7fe0c3;opacity:.92}
+.cmp-z-fill.is-negative{fill:#f0808b;opacity:.95}
+.cmp-down-box{fill:#12303a;stroke:#7fe0c3;stroke-width:1.2}
+.cmp-down-box.is-active{stroke-width:2.2}
+.cmp-focus-card{fill:#0f3038;stroke:#61d7e7;stroke-width:2}
+.cmp-focus-mlp{fill:#123d44;stroke:#61d7e7;stroke-width:1.6}
+.cmp-scale-track{stroke:#29485b;stroke-width:9;stroke-linecap:round}
+.cmp-scale-tick{stroke:#6d8496;stroke-width:1}
+.cmp-scale-pointer{stroke:#f2b45c;stroke-width:2}
+.cmp-scale-dot{fill:#f2b45c;stroke:#071522;stroke-width:1.2}
+/* SwiGLU role lanes and the signed u→z ruler. The effect arrow spans the same
+ * zero line as the bars; its direction and colour carry growth/reversal. */
+.cmp-role-tag{font-size:9.4px;font-weight:700;letter-spacing:.02em}
+.cmp-role-tag.is-gate{fill:#f2b45c}
+.cmp-role-tag.is-value{fill:#62d8e9}
+.cmp-role-legend{font-size:10px;font-weight:650}
+.cmp-role-legend.is-grow{fill:#7fe0c3}
+.cmp-role-legend.is-shrink{fill:#f2b45c}
+.cmp-role-legend.is-negative{fill:#f0808b}
+.cmp-role-sep{stroke:#29485b;stroke-width:1;opacity:.85}
+.cmp-effect-axis{stroke:#557184;stroke-width:1}
+.cmp-axis-text{fill:#7893a4;font-variant-numeric:tabular-nums}
+.cmp-effect-dir{font-size:9.6px;font-weight:650}
+.cmp-effect-dir.is-grow{fill:#7fe0c3}
+.cmp-effect-dir.is-shrink{fill:#f2b45c}
+.cmp-effect-dir.is-negative{fill:#f0808b}
+.cmp-effect-arrow{stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.cmp-effect-arrow.is-positive{stroke:#7fe0c3}
+.cmp-effect-arrow.is-negative{stroke:#f0808b}
+.cmp-bar-value{fill:#d6e9f5;font-variant-numeric:tabular-nums;paint-order:stroke;stroke:#071522;stroke-width:2.4px;stroke-linejoin:round}
+.cmp-branch-box.is-gate.is-active{stroke-width:2.2}
+.cmp-branch-box.is-value.is-active{stroke-width:2.2}
+.cmp-branch-box.is-out.is-active{stroke:#7fe0c3;stroke-width:2}
+.cmp-qscore-track{fill:#0a1b28;stroke:#29485b;stroke-width:1}
+.cmp-qscore-seg{fill:#62d8e9;opacity:.9}
+.cmp-qscore-seg.is-alt{fill:#7fe0c3;opacity:.78}
+.cmp-kvbox.is-ghost{fill:#0a1520;stroke:#34505f;stroke-width:1;stroke-dasharray:3 3;opacity:.72}
+.cmp-heads-col{fill:#091924;stroke:#213c4c;stroke-width:1}
+.cmp-headq .cmp-qbox{stroke:#3d7180}
+.cmp-headkv .cmp-kvbox{stroke:#4c94a3}
+.cmp-cache-bar{stroke:none}
+.cmp-kvtick{fill:#2b6a76;stroke:#6fb7c4;stroke-width:.5}
+.cmp-kvtick.is-alt{fill:#3c7f8b}
+.cmp-read{stroke:#f2b45c;stroke-width:1.4;opacity:.74;stroke-linecap:round}
+.cmp-read-0{stroke:#62d8e9}
+.cmp-read-1{stroke:#bda9f7}
+.cmp-read-2{stroke:#7fe0c3}
+.cmp-read-3{stroke:#f2b45c}
+.cmp-read.is-dim{opacity:.2}
+.cmp-read-pulse{stroke:#071522;stroke-width:1.1}
+.cmp-pulse-0{fill:#62d8e9}
+.cmp-pulse-1{fill:#bda9f7}
+.cmp-pulse-2{fill:#7fe0c3}
+.cmp-pulse-3{fill:#f2b45c}
+.cmp-ledger-save{fill:#0e2a26;stroke:#3c7d68;stroke-width:1}
+.cmp-ledger-cost{fill:#2a2117;stroke:#8a6640;stroke-width:1}
+.cmp-beam{stroke:#f2b45c;stroke-width:1.6;opacity:.85}
+.cmp-attn-node{fill:#102b3b;stroke:#4a8291;stroke-width:1}
+.cmp-attn-node.is-focus{fill:#1a4a58;stroke:#f2b45c;stroke-width:2}
+.cmp-attn-node.is-dim{opacity:.45}
+.cmp-rescard{fill:#0e2b27;stroke:#438a75;stroke-width:1}
+.cmp-normbox{fill:#0d2230;stroke:#3b7a89;stroke-width:1}
+.cmp-mlpbox{fill:#102b3b;stroke:#3b7a89;stroke-width:1}
+.cmp-outcard{fill:#102d2a;stroke:#4c9b83;stroke-width:1}
+.cmp-legend{fill:#0d2230;stroke:#29485b;stroke-width:1}
+.cmp-legend:hover{fill:#123543;stroke:#4f8998}
+
+/* PC layout entry for the six component lessons only. The default foundation
+ * theater reserved a 300px evidence rail, leaving the 720-unit board about
+ * 584px wide at 1280. Stack the evidence below and fit the board to the same
+ * aspect ratio as its 720x560 viewBox, so inline type is not shrunk twice.
+ * The former 1201–1360 override (height:min(calc(60vh + 40px),560px)) has been
+ * removed: it outranked this block at 1280 and pinned the stage to 520px on a
+ * 800px-tall window. This rule now owns the whole ≥1201 band. */
+@media(min-width:1201px){
+ .mechanism-film[data-motion=f-components] .motion-theater{display:block;height:auto}
+ .mechanism-film[data-motion=f-components] .motion-stage{width:100%;height:clamp(660px,calc(100vh - 80px),780px);min-height:0}
+ .mechanism-film[data-motion=f-components] .motion-panel{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,.85fr);gap:6px 18px;margin-top:10px;max-height:none;padding:10px 14px}
+ .mechanism-film[data-motion=f-components] .motion-panel-kicker{grid-column:1/-1;margin:0}
+ .mechanism-film[data-motion=f-components] .motion-panel .motion-readout{grid-column:1}
+ .mechanism-film[data-motion=f-components] .motion-panel .motion-scrub{grid-column:2;margin:0;align-self:start}
+}
+
+/* RMSNorm process animation: inputs, per-vector RMS divide, gamma. */
+.cmp-rms-ray{stroke:#557184;stroke-width:1;stroke-dasharray:4 5;opacity:.55}
+.cmp-rms-tick{stroke:#7893a4;stroke-width:1;opacity:.8}
+.cmp-rms-bracket{stroke:#7f95a5;stroke-width:1.2;stroke-dasharray:3 3}
+.cmp-pretip{fill:#0e1d2c;stroke:#7fe0c3;stroke-width:1.4}
+.cmp-gamma-stretch{stroke:#bda9f7;stroke-width:2.2;stroke-linecap:round}
+.cmp-compare{stroke:#bda9f7;stroke-width:1.8;stroke-dasharray:5 5;opacity:.8}
+.cmp-compare-tip{fill:none;stroke:#bda9f7;stroke-width:1.8}
+.cmp-angle-arc{stroke:#f2b45c;stroke-width:1.6;opacity:.9}
+.cmp-rms-length{stroke:#7fe0c3;stroke-width:1;stroke-dasharray:2 4;opacity:.8}
+
+/* RoPE purpose-first board: content cards and origin tags lead; the pair icon
+ * and qualitative bar are secondary, and numeric values stay in the detail row. */
+.cmp-qslot{fill:#0a1b28;stroke:#3a6b7e;stroke-width:1.2;stroke-dasharray:4 4}
+.cmp-qslot.is-filled{stroke:#62d8e9;stroke-dasharray:none;opacity:.55}
+.cmp-slot-tick{fill:#3c5b6c}
+.cmp-kcard-bg{fill:#171c33;stroke:#6b5b9a;stroke-width:1.2}
+.cmp-kcard.is-self .cmp-kcard-bg{fill:#102d36;stroke:#62d8e9;stroke-width:2}
+.cmp-kcard-id{fill:#cbb9ff;font-size:10px;font-weight:700}
+.cmp-kcard-pos{fill:#7f8fa6;font-size:9.5px}
+.cmp-kcard-content{fill:#eef8ff;font-size:12px;font-weight:700}
+.cmp-card-tag{fill:#8fa4b8;font-size:9.5px}
+.cmp-card-tag.is-self{fill:#8ff0ff}
+.cmp-self-dot{fill:#62d8e9}
+.cmp-row{fill:#0b1d2a;stroke:#223b50;stroke-width:1}
+.cmp-row.is-self{fill:#0f2a34;stroke:#3e8994}
+.cmp-origin{fill:#9db4c6;font-size:10px}
+.cmp-mini-q{fill:none;stroke:#62d8e9;stroke-width:1.6}
+.cmp-mini-k{fill:#bda9f7;opacity:.72;stroke:#e6d9ff;stroke-width:1}
+.cmp-row-result{fill:#f2b45c;font-size:11px;font-weight:700}
+.cmp-row-result.is-muted{fill:#9db4c6;font-weight:400}
+.cmp-compare-track{fill:#102a39;stroke:#29485b;stroke-width:1}
+.cmp-compare-fill{opacity:.9}
+.cmp-compare-fill.is-negative{fill:#f0808b}
+.cmp-compare-fill.is-zero{opacity:0}
+.cmp-compare-zero{stroke:#9db4c6;stroke-width:1;opacity:.9}
+.cmp-scale-tick{fill:#7893a4;font-size:7px}
+.cmp-row-result.is-negative{fill:#f0808b}
+.cmp-row-result.is-zero{fill:#9db4c6}
+.cmp-legend{fill:#8fa4b8;font-size:9px}
+.cmp-detail-line{fill:#c9dbe8;font-size:10.5px;font-variant-numeric:tabular-nums}
+.cmp-detail-sub{fill:#8fa4b8;font-size:8.5px}
+
+
+/* RoPE rotation board: fixed axes, one unit circle, three Q-vs-K rows. */
+.cmp-qslot{stroke-width:1.2}
+.cmp-qslot.is-filled{opacity:.7}
+.cmp-slot-label{fill:#7893a4;font-variant-numeric:tabular-nums}
+.cmp-qconnector{stroke:#62d8e9;stroke-width:1;opacity:.65}
+.cmp-qpin-bg{fill:#0b2533;stroke:#62d8e9;stroke-width:1.2}
+.cmp-qpin-text{fill:#dff8ff;font-weight:700}
+.cmp-target-card-bg{fill:none;stroke:#4f7d93;stroke-width:1;stroke-dasharray:3 3}
+.cmp-target-label{fill:#7f97a9;font-size:7px}
+.cmp-axis-tick{stroke:#557184;stroke-width:1;opacity:.8}
+.cmp-axis-label{fill:#6f8799}
+.cmp-target-ray{stroke-width:1;stroke-dasharray:3 4;opacity:.3;fill:none}
+.cmp-target-ray.is-q{stroke:#62d8e9}
+.cmp-target-ray.is-k1{stroke:#c9b8ff}
+.cmp-target-ray.is-k2{stroke:#a98cf5}
+.cmp-target-ray.is-k3{stroke:#e3d4ff}
+.cmp-ghost-ray{stroke-width:1.2;stroke-dasharray:2 5;opacity:.2;fill:none}
+.cmp-ghost-ray.is-q{stroke:#62d8e9}
+.cmp-ghost-ray.is-k1{stroke:#c9b8ff}
+.cmp-ghost-ray.is-k2{stroke:#a98cf5}
+.cmp-ghost-ray.is-k3{stroke:#e3d4ff}
+.cmp-vector-line{stroke-linecap:round;fill:none}
+.cmp-vector-k1{stroke:#c9b8ff;stroke-width:2}
+.cmp-vector-k2{stroke:#a98cf5;stroke-width:2.4}
+.cmp-vector-k3{stroke:#e3d4ff;stroke-width:5;stroke-dasharray:7 4;opacity:.58}
+.cmp-vector-q{stroke:#62d8e9;stroke-width:2.6}
+.cmp-tip-k1{fill:#c9b8ff}
+.cmp-tip-k2{fill:#a98cf5}
+.cmp-tip-k3{fill:none;stroke:#e3d4ff;stroke-width:1.5}
+.cmp-tip-q{fill:#62d8e9;stroke:#071522;stroke-width:1}
+.cmp-vector-label{font-size:8.5px;font-weight:600;paint-order:stroke;stroke:#071522;stroke-width:2.4px;stroke-linejoin:round}
+.cmp-vector-label.is-q{fill:#62d8e9}
+.cmp-vector-label.is-k1{fill:#c9b8ff}
+.cmp-vector-label.is-k2{fill:#a98cf5}
+.cmp-vector-label.is-k3{fill:#e3d4ff}
+.cmp-vector-label.is-joint{fill:#d9e8f2}
+.cmp-label-leader{stroke-width:.9;fill:none;opacity:.55}
+.cmp-label-leader.is-q{stroke:#62d8e9}
+.cmp-label-leader.is-k1{stroke:#c9b8ff}
+.cmp-label-leader.is-k2{stroke:#a98cf5}
+.cmp-label-leader.is-k3{stroke:#e3d4ff}
+.cmp-legend-id{font-weight:700}
+.cmp-legend-id.is-q{fill:#62d8e9}
+.cmp-legend-id.is-k1{fill:#c9b8ff}
+.cmp-legend-id.is-k2{fill:#a98cf5}
+.cmp-legend-id.is-k3{fill:#e3d4ff}
+.cmp-projection{stroke:#a98cf5;stroke-width:3.2;opacity:.9;stroke-linecap:round}
+.cmp-projection-drop{stroke:#a98cf5;stroke-width:1;stroke-dasharray:3 3;opacity:.55}
+.cmp-projection-foot{fill:#a98cf5;stroke:#071522;stroke-width:1}
+.cmp-projection-label{fill:#d9c7ff;font-variant-numeric:tabular-nums}
+.cmp-arc{stroke:#f2b45c;stroke-width:1.3;opacity:.85}
+.cmp-arc-label{fill:#f2b45c;font-weight:600}
+.cmp-angle-readout{fill:#9db4c6;font-variant-numeric:tabular-nums}
+.cmp-angle-readout.is-q{fill:#62d8e9}
+.cmp-angle-readout.is-k1{fill:#c9b8ff}
+.cmp-angle-readout.is-k2{fill:#a98cf5}
+.cmp-angle-readout.is-k3{fill:#e3d4ff}
+.cmp-row-label{font-weight:700;font-variant-numeric:tabular-nums}
+.cmp-row-delta{fill:#9db4c6;font-variant-numeric:tabular-nums}
+.cmp-row-value{fill:#d6e9f5;font-weight:650;font-variant-numeric:tabular-nums}
+.cmp-row.is-example{stroke:#7c67a8}
+.cmp-row-value.is-negative{fill:#f0808b}
+.cmp-detail-subline{fill:#a9bccb}
+@media(max-width:1200px){
+ .mechanism-film[data-motion=f-components] .motion-stage:has(svg[data-component=rope]){height:min(calc(100vh - 16px),740px);min-height:620px}
+}
+@media(max-width:650px){
+ .mechanism-film[data-motion=f-components] .motion-stage:has(svg[data-component=rope]){height:min(calc(100vh - 16px),740px);min-height:640px}
+}
+
+/* Residual board: one signed ruler per dimension. Base is drawn as an
+ * outline, the signed update sits inside it, and the result marker moves on
+ * the same ruler. All new text classes carry an explicit fill. */
+.cmp-res-axis{stroke:#456477;stroke-width:1;opacity:.9}
+.cmp-res-zero{stroke:#8aa1b1;stroke-width:1;stroke-dasharray:3 3;opacity:.65}
+.cmp-res-tick{stroke:#6d8496;stroke-width:1}
+.cmp-res-tick-label{fill:#8fa4b8;font-size:8.5px;font-variant-numeric:tabular-nums}
+.cmp-res-dim{fill:#8fe8d0;font-size:10px;font-weight:700;letter-spacing:.02em}
+.cmp-res-lane{fill:#b8cad6;font-size:9.5px;font-weight:600}
+.cmp-res-value{fill:#e6f4fb;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.cmp-res-value.is-negative{fill:#f0808b}
+.cmp-res-value.is-zero{fill:#9db4c6}
+.cmp-res-value.is-final{fill:#dcfaee}
+.cmp-res-pending{fill:#7f97a9;font-size:9px;font-variant-numeric:tabular-nums}
+.cmp-res-progress{fill:#f2b45c;font-size:9px;font-weight:700;font-variant-numeric:tabular-nums}
+.cmp-res-base{fill:#0a2a36;fill-opacity:.42;stroke:#62d8e9;stroke-width:1.4}
+.cmp-res-delta{fill:#f2b45c;opacity:.95}
+.cmp-res-delta.is-negative{fill:#f0808b}
+.cmp-res-delta.is-zero{opacity:0}
+.cmp-res-fonly{fill:#f2b45c;opacity:.9}
+.cmp-res-fonly.is-negative{fill:#f0808b}
+.cmp-res-fonly.is-zero{fill:none;stroke:#9db4c6;stroke-width:1.2}
+.cmp-res-zero-dot{fill:#0a2230;stroke:#9db4c6;stroke-width:1.2}
+.cmp-res-result{fill:#7fe0c3;stroke:#071522;stroke-width:1.2}
+.cmp-res-result-stem{stroke:#7fe0c3;stroke-width:1;stroke-dasharray:2 2;opacity:.8}
+.cmp-res-result-tag{fill:#7fe0c3;font-size:8.5px;font-weight:700}
+.cmp-res-diff{fill:#f2b45c;fill-opacity:.08;stroke:#f2b45c;stroke-width:1;stroke-dasharray:3 3;opacity:.9}
+.cmp-res-diff.is-negative{fill:#f0808b;fill-opacity:.08;stroke:#f0808b}
+.cmp-res-diff-label{fill:#f2b45c;font-size:8.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.cmp-res-diff-label.is-negative{fill:#f0808b}
+.cmp-res-diff-label.is-zero{fill:#d6e9f5}
+.cmp-res-note{fill:#8fa4b8;font-size:9.5px}
+.cmp-res-legend-label{fill:#9db4c6;font-size:8.5px}
+.cmp-update-path{stroke:#b9853f;stroke-width:1;stroke-dasharray:3 3;opacity:.55;fill:none}
+.cmp-plus text{font-size:9.5px;font-variant-numeric:tabular-nums}
+
+/* Transformer Block merge cards, bypass buses and per-position SwiGLU pills.
+ * Every class here is created by blockBoard. Shapes get an explicit dark fill
+ * or stroke so none of the new groups falls back to SVG black. Base is cyan,
+ * a signed update is amber/rose, and the settled result marker is mint. */
+.cmp-block-merge{font-variant-numeric:tabular-nums}
+.cmp-block-card{fill:#0b1f2c;stroke:#2b4c5e;stroke-width:1.2}
+.cmp-block-merge:not([data-grow="0.000"]) .cmp-block-card{fill:#0c2330;stroke:#4f8998}
+.cmp-block-merge[data-done="true"] .cmp-block-card{fill:#0b2527;stroke:#4c9b83}
+.cmp-block-base{fill:#62d8e9;fill-opacity:.42;stroke:#8be7f3;stroke-width:1}
+.cmp-block-delta{fill:#f2b45c}
+.cmp-block-delta.is-negative{fill:#f0808b}
+.cmp-block-zero{stroke:#8aa1b1;stroke-width:1;stroke-dasharray:2.5 2.5;opacity:.78}
+.cmp-block-dot{fill:#0b1d2a;stroke:#c7d8e3;stroke-width:1.2}
+.cmp-block-dot.is-done{fill:#7fe0c3;stroke:#071522;stroke-width:1.3}
+.cmp-block-dim{fill:#9db4c6;font-size:7px;font-weight:600;letter-spacing:.01em}
+.cmp-block-pending{fill:#9db4c6;font-weight:500}
+.cmp-block-result{fill:#8ff0d4;font-weight:700}
+.cmp-block-tag{fill:#f6c77d;font-weight:700;letter-spacing:.01em}
+.cmp-block-tag.is-warn{fill:#f6c77d}
+.cmp-block-merge .att-dim{fill:#a9bccb}
+/* Inline details stay legible against the card; focus is owned by .cmp-hit. */
+.cmp-block-detail{fill:#0d2431;stroke:#35576a;stroke-width:1.2}
+.cmp-hit:hover>.cmp-block-detail{fill:#123543;stroke:#4f8998;stroke-width:1.4}
+.cmp-hit:active>.cmp-block-detail{fill:#174356;stroke:#61d7e7}
+.cmp-hit:focus>.cmp-block-detail,.cmp-hit:focus-visible>.cmp-block-detail{fill:#123543;stroke:#f2b45c;stroke-width:2.6}
+.cmp-block-detail-text{fill:#cfe3f1;font-weight:650}
+.cmp-hit:hover .cmp-block-detail-text,.cmp-hit:focus .cmp-block-detail-text{fill:#eef8ff}
+/* Shared MLP parameters read as one dashed bus, not as another data path. */
+.cmp-block-shared{fill:none;stroke:#bda9f7;stroke-width:1.2;stroke-dasharray:4 4;stroke-linecap:round;opacity:.85}
+.cmp-block-shared-text{fill:#cbb9ff;font-weight:650;paint-order:stroke;stroke:#0e1d2c;stroke-width:2px;stroke-linejoin:round}
+/* Two bypasses keep the source colour: x is cyan, x1 (the first result) mint. */
+.cmp-block-skip{fill:none;stroke:#7fe0c3;stroke-width:1.6;stroke-dasharray:5 4;stroke-linecap:round;stroke-linejoin:round}
+.cmp-block-skip.is-x{stroke:#62d8e9}
+.cmp-block-skip.is-x1{stroke:#7fe0c3}
+.cmp-block-stub{fill:none;stroke:#7fe0c3;stroke-width:1.2;stroke-linecap:round;opacity:.8}
+.cmp-block-stub.is-x{stroke:#62d8e9}
+.cmp-block-stub.is-x1{stroke:#7fe0c3}
+.cmp-block-skip-tag{font-weight:700;letter-spacing:.02em}
+.cmp-block-skip-tag.is-x{fill:#9ff0ff}
+.cmp-block-skip-tag.is-x1{fill:#a8f0d9}
+.cmp-block-warn-chip{fill:#33221c;stroke:#b7794a;stroke-width:1.2}
+.cmp-block-warn-text{fill:#f6c77d;font-weight:650}
+/* Per-position MLP: Norm chips sit on the panel, pills split gate and value. */
+.cmp-normchip{fill:#0a2530;stroke:#3b7484;stroke-width:1}
+.cmp-normchip+text{fill:#a9c3d2;font-weight:600}
+.cmp-pill{fill:#102b3b;stroke:#3b7a89;stroke-width:1}
+.cmp-pill.is-gate{fill:#241d33;stroke:#8d76c9}
+.cmp-pill.is-value{fill:#0c2c38;stroke:#4aa0b3}
+.cmp-pill-text{fill:#dff8ff;font-weight:650}
+.cmp-pill-text.is-gate{fill:#e2d6ff}
+.cmp-pill-text.is-value{fill:#a8f2ff}
+.cmp-mlp-row{fill:#b8cad6;font-weight:600}
+.cmp-mlp-delta{fill:#c9a46b;font-weight:650}
+.cmp-mlp-delta.is-done{fill:#ffd18a;font-weight:700}

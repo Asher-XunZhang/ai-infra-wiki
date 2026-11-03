@@ -6,7 +6,7 @@ let boardSerial=0;
 const NS='http://www.w3.org/2000/svg',clamp=n=>Math.max(0,Math.min(1,n));
 const phase=(p,start,end=start+1)=>{const t=clamp((p-start)/(end-start));return t*t*(3-2*t);};
 const lerp=(a,b,t)=>a+(b-a)*t;
-function board(svg,viewport,kind,height,build){
+function board(svg,viewport,kind,height,build,width){
  viewport.classList.add('teaching-viewport');viewport.setAttribute('aria-label','可回看的机制画布，窄屏自动排列');
  const node=(tag,attrs={},value)=>{const e=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);if(value!==undefined)e.textContent=value;svg.append(e);return e;};
  const markerId='teach-arrow-'+(++boardSerial),defs=node('defs'),marker=document.createElementNS(NS,'marker'),arrow=document.createElementNS(NS,'path');
@@ -30,7 +30,10 @@ function board(svg,viewport,kind,height,build){
  const narrowAt=()=>viewport.clientWidth<(sharedWide()?520:600);
  let narrow=narrowAt(),last=0,dead=false,resizeFrame=0,resizeTimeout=0;
  const paint=build({node,txt,rect,path,set,show,text,box,wire,token,move});
- function render(p){last=p;narrow=narrowAt();svg.setAttribute('viewBox',`0 0 ${narrow?360:720} ${height(narrow)}`);svg.dataset.teachingKind=kind;paint(p,narrow);}
+ // Most boards paint inside 720/360 units. A board whose own layout is wider can
+ // pass width(narrow); the painted columns and the viewBox then share one frame
+ // on first render, resize, seek and replay.
+ function render(p){last=p;narrow=narrowAt();const w=width?width(narrow):(narrow?360:720);svg.setAttribute('viewBox',`0 0 ${w} ${height(narrow)}`);svg.dataset.teachingKind=kind;paint(p,narrow);}
  const observer=new ResizeObserver(()=>{if(!dead)render(last);});observer.observe(viewport);
  // A resized-away board must not repaint a later renderer's SVG. Cancel both
  // the animation frame and the debounce timer when the player replaces it.

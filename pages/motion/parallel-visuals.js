@@ -246,7 +246,7 @@ V['f-parallel']=(svg,viewport,s)=>{
    }
    svg.append(g);cards.push({key,g,bg,title,badge,foot,labels,chips});
   }
-  const setMode=next=>{if(next===mode)return;mode=next;if(draw)draw(lastP,lastM);svg.dispatchEvent(new CustomEvent('parallel-sp-mode',{bubbles:true,detail:{mode}}));};
+  const setMode=next=>{if(next===mode)return;mode=next;lastP=0;if(draw)draw(0,lastM);svg.dispatchEvent(new CustomEvent('parallel-sp-mode',{bubbles:true,detail:{mode}}));};
   for(const card of cards){
    card.g.addEventListener('click',()=>setMode(card.key));
    card.g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();setMode(card.key);}});

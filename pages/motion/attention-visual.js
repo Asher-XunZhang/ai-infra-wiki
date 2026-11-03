@@ -23,6 +23,7 @@ const clamp=n=>Math.max(0,Math.min(1,n));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const ease=t=>t*t*(3-2*t);
 const phase=(p,a,b)=>ease(clamp((p-a)/(b-a)));
+const SOURCE_COLORS=['#5fd6e8','#b9a6f5','#f2b45c','#e9a6c6'];
 const qVariant={2:0,4:1,3:2};
 const MODE_META={
  qkv:{num:'①',title:'输入怎样分成 Q、K、V？',sub:'Q 去提问，K 被比较，V 带内容。'},
@@ -35,7 +36,7 @@ const STAGE_NOTES=[
  'Q 与每个可读 K 比较，得到分数 s。',
  'e^s 只对可读项累加，得到分母 Σ。',
  '分母归一化，每个位置得到权重 w。',
- 'w 乘以各自的 V，再逐维相加得到 m。',
+ 'w 乘以各自的 V，再逐维相加；历史位置的 V 由此进入当前 m。',
  '遮罩限定可读范围；未来项不进入分母。'
 ];
 
@@ -146,25 +147,34 @@ V['f-attention']=(svg,viewport,s)=>{
    const track=rect(gWeights,'att-track',0,0,0,7,3);
    const bar=rect(gWeights,'att-wbar',0,0,0,7,3);
    const wlabel=tx(gWeights,'','att-w att-num',0,0);
-   const contrib=tx(gWeights,'','att-v att-num',0,0);
+   const contrib=tx(gWeights,'','att-v att-num att-contrib-text',0,0);
    return {i,bg:rowbg,pos,k,score,exp,track,bar,wlabel,contrib};
   });
   const wOutPanel=rect(gWeights,'att-panel',14,374,692,84);
-  const wOutEq=tx(gWeights,'','att-out',28,402);
+  const wOutEq=tx(gWeights,'','att-out att-out-ref',28,397);
   wOutEq.setAttribute('data-output','true');
   wOutEq.setAttribute('data-complete','true');
-  const wOutNote=tx(gWeights,'两维分别相加，不是拼接','att-dim',450,424);
-  const wMixNote=tx(gWeights,'','att-dim',450,448);
-  const wTrack1=rect(gWeights,'att-track',28,418,400,9,3);
-  const wTrack2=rect(gWeights,'att-track',28,434,400,9,3);
-  const wOutSegs=[];
+  const wOutNote=tx(gWeights,'','att-purpose',698,397,{'text-anchor':'end'});
+  const wMixNote=tx(gWeights,'','att-purpose',28,450);
+  const wTrack1=rect(gWeights,'att-track',52,408,400,8,3);
+  const wTrack2=rect(gWeights,'att-track',52,424,400,8,3);
+  const wSelfRef1=rect(gWeights,'att-vref',52,408,0,8,3);
+  const wSelfRef2=rect(gWeights,'att-vref',52,424,0,8,3);
+  const wDim1=tx(gWeights,'d1','att-dim',28,415);
+  const wDim2=tx(gWeights,'d2','att-dim',28,431);
+  const wVal1=tx(gWeights,'','att-ref-val',462,415);
+  const wVal2=tx(gWeights,'','att-ref-val',462,431);
+  const wOutSegs=[],wSegGrid=d.inputs.map(()=>[null,null]);
   for(let i=0;i<4;i++)for(let j=0;j<2;j++){
-   const e=rect(gWeights,'att-contrib',0,0,0,9,2);
-   e.style.fill=['#5fd6e8','#b9a6f5','#f2b45c','#c4a6f5'][i];
+   const e=rect(gWeights,'att-contrib',0,0,0,8,2);
+   e.style.fill=SOURCE_COLORS[i];
    e.setAttribute('data-contribution',`p${i+1}-d${j+1}`);
    e.setAttribute('data-row',String(i+1));
-   wOutSegs.push({i,j,e});
+   const seg={i,j,e};
+   wOutSegs.push(seg);wSegGrid[i][j]=seg;
   }
+  const wSelfTick1=line(gWeights,'att-vref-tick',0,0,0,0);
+  const wSelfTick2=line(gWeights,'att-vref-tick',0,0,0,0);
   const wFooter=tx(gWeights,'','att-foot',14,544);
 
   /* ---------------------------------------------------------------- mask view */
@@ -355,7 +365,7 @@ V['f-attention']=(svg,viewport,s)=>{
    setBox(wDenomPanel,m?12:14,m?120:102,m?336:692,72);
    textAt(wDenomTitle,m?24:28,m?140:124);vis(wDenomTitle,1);
    textAt(wDenomLine,m?24:200,m?162:124);
-   textAt(wWeightLine,m?24:540,m?180:124);
+   textAt(wWeightLine,m?24:500,m?180:124);
    textAt(wDenomNote,28,146);vis(wDenomNote,!m);
 
    const shownExps=[];
@@ -414,57 +424,126 @@ V['f-attention']=(svg,viewport,s)=>{
     row.exp.classList.toggle('att-mask',future);
     row.wlabel.classList.toggle('att-mask',future);
     row.contrib.classList.toggle('att-mask',future);
+    row.contrib.classList.toggle('is-self',!future&&i===qIndex);
+    row.contrib.setAttribute('data-source',future?'future':i===qIndex?'self':'history');
+    if(readable)row.contrib.style.fill=SOURCE_COLORS[i];else row.contrib.style.removeProperty('fill');
     row.score.classList.toggle('att-hot',stage===1&&!future&&shownScore>0);
     row.exp.classList.toggle('att-hot',stage===2&&!future&&eT>0);
     row.wlabel.classList.toggle('att-hot',stage===3&&!future&&wT>0);
-    row.contrib.classList.toggle('att-hot',stage===4&&!future&&cT>0);
     on(row.track,'is-future',future);on(row.bar,'is-future',future);
     vis(row.bg,1);vis(row.pos,1);vis(row.k,1);vis(row.score,1);vis(row.exp,1);vis(row.track,1);vis(row.bar,barW>0.5);vis(row.wlabel,1);vis(row.contrib,1);
    });
 
    setBox(wOutPanel,m?12:14,m?440:374,m?336:692,m?80:84);
-   textAt(wOutEq,m?24:28,m?464:402);
-   const revealed=d.inputs.map((_,i)=>i<=qIndex&&(pinned||cReveal(i)>=.5));
-   const partial=[0,1].map(j=>d.contributions.reduce((sum,c,i)=>sum+(revealed[i]?c[j]:0),0));
-   const count=revealed.filter(Boolean).length;
-   if(count===0){
-    setText(wOutEq,'m = Σ w·V · 等待权重');
+   textAt(wOutEq,m?24:28,m?458:397);
+   setText(wOutEq,m?'m = w_qV_q + Σ历史':'m = w_qV_q + Σ_{i<q} w_iV_i');
+   textAt(wOutNote,m?342:698,m?458:397);
+   setText(wOutNote,m?'同刻度 · 空心 V_q':'同刻度 · 空心 = 原 V_q（参照）');
+   vis(wOutNote,1);
+
+   /* The two output rows share one numeric scale: hollow = original V_q,
+    * filled = the part of m already merged. Draw self first, then history from
+    * nearest to farthest, so the visible transition is V_q reference beside a
+    * growing w_qV_q + Σw_iV_i, not a completed result or V_q + history. */
+   const mixEnd=4.6;
+   const selfProgress=pinned?1:phase(p,3.82,4.14);
+   const historyOrder=[];
+   for(let i=qIndex-1;i>=0;i--)historyOrder.push(i);
+   const historyStep=historyOrder.length?(mixEnd-4.1)/historyOrder.length:0;
+   const progressBySource=d.inputs.map(()=>0);
+   progressBySource[qIndex]=selfProgress;
+   historyOrder.forEach((i,k)=>{
+    progressBySource[i]=pinned?1:phase(p,4.1+k*historyStep,4.1+(k+1)*historyStep);
+   });
+   if(mixDone)d.inputs.forEach((_,i)=>{if(i<=qIndex)progressBySource[i]=1;});
+   const selfOnly=d.values[qIndex];
+   const selfContribution=d.contributions[qIndex]||[0,0];
+   const historyContribution=[0,1].map(j=>historyOrder.reduce((sum,i)=>sum+d.contributions[i][j],0));
+   const activeCount=progressBySource.filter(x=>x>.01).length;
+   const expectedCount=qIndex+1;
+   const arrivedCount=progressBySource.filter(x=>x>=1-1e-6).length;
+   const complete=activeCount>0&&arrivedCount===expectedCount;
+   const mixing=activeCount>0&&!complete;
+   const mixState=!activeCount?'pending':complete?'complete':'mixing';
+   // Interpolated bar growth is a drawing progress, not a computed sum. Only a
+   // complete set of source contributions may be added and published as m.
+   if(!activeCount){
     wOutEq.setAttribute('data-current','pending');
-   }else if(count<allowed||!mixDone){
-    setText(wOutEq,`m = ${fmt(partial)} · 汇合 ${count}/${allowed}`);
-    wOutEq.setAttribute('data-current',fmt(partial));
+    setText(wMixNote,'m 待汇合 · 尚无完整贡献到达');
+   }else if(!complete){
+    wOutEq.setAttribute('data-current','mixing');
+    setText(wMixNote,'m 汇合中 · 分段只示进度，不报部分和');
    }else{
-    setText(wOutEq,`m = Σ w·V = ${fmt(d.mixed)}`);
     wOutEq.setAttribute('data-current',fmt(d.mixed));
+    setText(wMixNote,`m 完成：自身贡献 ${tight(selfContribution)} ｜ 历史贡献 ${tight(historyContribution)}`);
    }
    wOutEq.setAttribute('data-value',fmt(d.mixed));
-   wOutEq.setAttribute('data-mix-count',String(count));
-   wOutEq.classList.toggle('att-hot',mixDone&&stage>=4);
-   textAt(wOutNote,450,424);vis(wOutNote,!m);
-   textAt(wMixNote,m?24:450,m?510:448);
-   setText(wMixNote,count===0?'逐项汇合：等待权重完成':count<allowed?`已汇合 ${count}/${allowed} 项`:(mixDone?'全部可读项已汇合':'逐项汇合中'));
+   wOutEq.setAttribute('data-mix-state',mixState);
+   wOutEq.setAttribute('data-mix-count',String(arrivedCount));
+   wOutEq.setAttribute('data-mix-total',String(expectedCount));
+   wOutEq.setAttribute('data-self-contribution',complete?tight(selfContribution):'pending');
+   wOutEq.setAttribute('data-history-contribution',complete?tight(historyContribution):'pending');
+   wOutEq.classList.toggle('att-hot',complete&&stage>=4);
+   textAt(wMixNote,m?24:28,m?509:450);
    vis(wMixNote,1);
-   const barW=m?300:400,baseX=m?24:28,trackY1=m?474:418,trackY2=m?488:434;
-   attrs(wTrack1,{x:baseX,y:trackY1,width:barW,height:9});
-   attrs(wTrack2,{x:baseX,y:trackY2,width:barW,height:9});
-   const cursor=[0,0];
-   wOutSegs.forEach(({i,j,e})=>{
-    const show=revealed[i];
-    const width=show?d.contributions[i][j]/Math.max(d.mixed[j],0.0001)*barW:0;
-    attrs(e,{x:baseX+cursor[j],y:j?trackY2:trackY1,width,height:9});
-    if(show)cursor[j]+=width;
-    vis(e,show&&width>0.01);
+
+   const barW=m?220:400,baseX=m?40:52,trackY1=m?470:408,trackY2=m?486:424,barH=8;
+   const valueX=m?266:462,vDigits=m?1:2;
+   attrs(wTrack1,{x:baseX,y:trackY1,width:barW,height:barH});
+   attrs(wTrack2,{x:baseX,y:trackY2,width:barW,height:barH});
+   const scaleMax=Math.max(selfOnly[0],selfOnly[1],d.mixed[0],d.mixed[1],0.01)*1.06;
+   const selfRefW=[0,1].map(j=>Math.max(0,selfOnly[j])/scaleMax*barW);
+   [wSelfRef1,wSelfRef2].forEach((e,j)=>{
+    attrs(e,{x:baseX,y:j?trackY2:trackY1,width:selfRefW[j],height:barH});
+    e.setAttribute('data-reference',`self-v-d${j+1}`);
+    vis(e,selfRefW[j]>0.5);
+   });
+   [wSelfTick1,wSelfTick2].forEach((e,j)=>{
+    const x=baseX+selfRefW[j],y=j?trackY2:trackY1;
+    attrs(e,{x1:x,y1:y-2,x2:x,y2:y+barH+2});
+    e.setAttribute('data-reference',`self-v-end-d${j+1}`);
+    vis(e,selfRefW[j]>0.5);
+   });
+   textAt(wDim1,m?24:28,m?477:415);
+   textAt(wDim2,m?24:28,m?493:431);
+   textAt(wVal1,valueX,m?477:415);
+   textAt(wVal2,valueX,m?493:431);
+   const mixLabel=complete?null:mixing?'汇合中':'待汇合';
+   setText(wVal1,`V_q ${selfOnly[0].toFixed(vDigits)} · m ${complete?d.mixed[0].toFixed(vDigits):mixLabel}`);
+   setText(wVal2,`V_q ${selfOnly[1].toFixed(vDigits)} · m ${complete?d.mixed[1].toFixed(vDigits):mixLabel}`);
+   vis(wDim1,1);vis(wDim2,1);vis(wVal1,1);vis(wVal2,1);
+
+   const sourceOrder=[qIndex,...historyOrder],cursor=[0,0];
+   sourceOrder.forEach(i=>{
+    for(let j=0;j<2;j++){
+     const {e}=wSegGrid[i][j];
+     const width=progressBySource[i]>0?d.contributions[i][j]*progressBySource[i]/scaleMax*barW:0;
+     attrs(e,{x:baseX+cursor[j],y:j?trackY2:trackY1,width,height:barH});
+     e.setAttribute('data-source',i===qIndex?'self':'history');
+     e.setAttribute('data-progress',progressBySource[i].toFixed(3));
+     e.setAttribute('data-width',width.toFixed(2));
+     on(e,'is-self',i===qIndex);
+     vis(e,width>0.01);
+     cursor[j]+=width;
+    }
    });
    textAt(wFooter,14,m?544:472);
    setText(wFooter,m?'s→e^s→w→ΣwV；e^s 只对可读项求和。':'s = Q·K/√2；e^s 只对可读项求和；w×V 按维相加。');
    vis(wFooter,1);
    vis(wOutPanel,1);vis(wTrack1,1);vis(wTrack2,1);vis(wOutEq,1);
+   wOutEq.setAttribute('data-mix-ratio',complete?'1.000':'0.000');
+   svg.dataset.mixState=mixState;
    svg.dataset.mixProgress=(pinned?1:phase(p,3.8,4.6)).toFixed(3);
+   svg.dataset.mixRatio=complete?'1.000':'0.000';
   }
 
   /* -------------------------------------------------------------- mask paint */
   function paintMask(m,p,pinned){
    const cell=m?38:42,gap=m?6:5,gridX=m?62:64,gridY=m?170:154;
+   const sDone=pinned||p>=1.35+allowed*.1;
+   const eDone=pinned||p>=2.4+allowed*.1;
+   const wDone=pinned||p>=3.8;
+   const mixDone=pinned||p>=4.6;
    if(m){
     setBox(mPanel,12,104,336,252);
     textAt(mHead,24,126);textAt(mSub,24,146);setText(mSub,'行 Q · 列 K');
@@ -516,9 +595,9 @@ V['f-attention']=(svg,viewport,s)=>{
     const y=170+i*36;
     setBox(row.bg,336,y,362,30);
     textAt(row.pos,344,y+20);setText(row.pos,`p${i+1}`);
-    textAt(row.score,390,y+20);setText(row.score,readable?`s=${d.scores[i].toFixed(2)}`:'s=−∞');
-    textAt(row.exp,452,y+20);setText(row.exp,readable?d.exps[i].toFixed(2):'0');
-    textAt(row.weight,524,y+20);setText(row.weight,readable?pct(d.weights[i]):'0%');
+    textAt(row.score,390,y+20);setText(row.score,readable?(sDone?`s=${d.scores[i].toFixed(2)}`:'s=…'):'s=−∞');
+    textAt(row.exp,452,y+20);setText(row.exp,readable?(eDone?d.exps[i].toFixed(2):'…'):'0');
+    textAt(row.weight,524,y+20);setText(row.weight,readable?(wDone?pct(d.weights[i]):'…'):'0%');
     textAt(row.status,620,y+20);setText(row.status,readable?'✓ 可读':'× 未来');
     on(row.bg,'is-future',future);on(row.bg,'is-query',i===qIndex);
     row.score.classList.toggle('att-mask',future);
@@ -528,10 +607,10 @@ V['f-attention']=(svg,viewport,s)=>{
     vis(row.bg,!m);vis(row.pos,!m);vis(row.score,!m);vis(row.exp,!m);vis(row.weight,!m);vis(row.status,!m);
    });
 
-   setText(mDenom,m?`Σe^s = ${d.denominator.toFixed(2)}`:`Σ e^s（仅可见） = ${d.denominator.toFixed(2)}`);
-   setText(mWeightSum,m?'w 合计 = 100%':`w 合计 = ${(d.weightSum*100).toFixed(1)}%`);
-   setText(mOut,`m = ${fmt(d.mixed)}`);
-   mOut.classList.toggle('att-hot',pinned||p>=4.6);
+   setText(mDenom,m?(eDone?`Σe^s = ${d.denominator.toFixed(2)}`:(sDone?'Σe^s 累加中 · 只加可读项':'Σe^s 待比较')):(eDone?`Σ e^s（仅可见） = ${d.denominator.toFixed(2)}`:(sDone?'Σ e^s（仅可见） · 累加中':'Σ e^s（仅可见） · 待比较')));
+   setText(mWeightSum,m?(wDone?'w 合计 = 100%':'w 待归一化'):(wDone?`w 合计 = ${(d.weightSum*100).toFixed(1)}%`:'w 待归一化'));
+   setText(mOut,mixDone?`m = ${fmt(d.mixed)}`:(wDone?'m = 汇合中':sDone?'m 待归一化':'m 待权重'));
+   mOut.classList.toggle('att-hot',mixDone);
    setText(mNote,d.allowed===4?'本例 Query 在最后位置：没有未来项。':'未来项 e^s = 0，从未加入求和。');
    setText(mFooter,d.allowed===4?'遮罩只决定可读范围；本例没有未来项。':'遮罩不改变 K/V，只限制本次可读范围。');
    vis(mDenom,1);vis(mWeightSum,1);vis(mOut,1);vis(mNote,!m);vis(mFooter,1);

@@ -117,7 +117,7 @@
 <nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">自回归生成：Prefill 与 Decode 怎样接续？</span></nav>
 <header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · 02 / 13</a><span class="lesson-count">通用原理</span></div><h1>自回归生成：Prefill 与 Decode 怎样接续？</h1><p>先处理输入，再给下一片段打分；把选出的片段接回去，才能继续下一轮。</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
 <p class="foundation-prereqs">先看：<a href="tokens.html">Tokenization 与 Embedding：文字怎样变成模型输入？</a></p>
-<p class="foundation-intro">输入准备好了，模型也不会一次交出整篇回答。一次选择一个 token、再把它送回继续生成，这叫自回归。下面先看一组明确标为教学假设的候选怎样从分数变成概率并完成一次选择；再用“自回归完整过程”回看两次续写，或进入“Detokenization 与流式可见”观察同一个输出 ID 怎样经过反分词和传输到达客户端。</p>
+<p class="foundation-intro">输入准备好了，模型也不会一次交出整篇回答。默认先沿完整自回归链走一遍：输入 → Prefill → 候选 → 选出 token → 同一个 ID 回送 → Decode；再对照固定抽样与 sampling 概念，最后看 Detokenization 与流式可见怎样把 ID 送到客户端。</p>
 <section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>语言模型学到的是：给定已有内容，下一个单位有哪些可能。自回归生成把这个局部问题反复求解；Prefill 和 Decode 则是推理系统执行这条依赖链时的两种工作形态。</p></section>
 
 <nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>

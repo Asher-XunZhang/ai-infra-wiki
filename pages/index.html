@@ -144,7 +144,7 @@
 <li><a href="foundations/tokens.html"><span class="lesson-no">01</span><span><strong>Tokenization 与 Embedding：文字怎样变成模型输入？</strong><small>能把一句话的文字片段、词表编号和输入向量对应起来。</small></span></a></li>
 <li><a href="foundations/generation.html"><span class="lesson-no">02</span><span><strong>自回归生成：Prefill 与 Decode 怎样接续？</strong><small>能区分输入处理、候选打分、选择、可见文字和停止。</small></span></a></li>
 <li><a href="foundations/attention.html"><span class="lesson-no">03</span><span><strong>Attention 与 Q/K/V：模型怎样参考上下文？</strong><small>能说明 Q、K、V 各自参与哪一步、未来位置为什么被挡住，以及同一个 Query 在两个头中怎样得到不同结果并合并。</small></span></a></li>
-<li><a href="foundations/components.html"><span class="lesson-no">04</span><span><strong>Transformer 基础部件：一层内部怎样计算？</strong><small>能说明六种部件各自改变什么、读取什么，并把它们接成一层。</small></span></a></li>
+<li><a href="foundations/components.html"><span class="lesson-no">04</span><span><strong>Transformer 基础部件：一层内部怎样计算？</strong><small>能按用途说出六个部件各自改变什么、读取什么，并把它们接成一条 Pre-Norm 前向；也能用一个小算例核对对象身份没有走样。</small></span></a></li>
 <li><a href="foundations/cache.html"><span class="lesson-no">05</span><span><strong>KV Cache 与前缀复用：为什么保存历史 K/V？</strong><small>能区分模型权重、历史 K/V、请求映射和可复用前缀。</small></span></a></li>
 <li><a href="foundations/batching.html"><span class="lesson-no">06</span><span><strong>Batch 调度：动态组批、连续批处理与 Chunked Prefill</strong><small>能区分等候组批与轮次间补位，并解释等待上限、整批结束和空位各自控制什么。</small></span></a></li>
 <li><a href="foundations/hardware.html"><span class="lesson-no">07</span><span><strong>GPU 计算与访存：算力、带宽和 CUDA Graph</strong><small>能说明算力、带宽与执行提交分别影响哪一段。</small></span></a></li>

@@ -4,10 +4,38 @@ import argparse
 import json
 from html import escape
 from pathlib import Path
+from urllib.parse import quote
 from build_learning_navigation import ROOT, PAGES, FOUNDATIONS, FOUNDATION_BY_SLUG, sidebar
 
 EXTENSIONS = json.loads((PAGES / 'foundations/extensions.json').read_text(encoding='utf-8'))
 CONCEPTS = json.loads((PAGES / 'foundations/concepts.json').read_text(encoding='utf-8'))
+
+
+def repo_doc_url(path, fragment=''):
+    """Stable public route for a repository Markdown document.
+
+    Pages links to the repository's existing GitHub blob route instead of a
+    machine-local path. Percent-encoding keeps spaces and non-ASCII directory
+    names valid in an href while the wording stays readable in the catalog.
+    """
+    url = 'https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/' + quote(path)
+    if fragment:
+        url += '#' + quote(fragment, safe='-')
+    return url
+
+
+def deep_reading_html(c):
+    """Render optional repository deep-reading entries from courses.json."""
+    items = c.get('deep_reading')
+    if not items:
+        return ''
+    links = ''.join(
+        f'<li><a href="{escape(repo_doc_url(path, fragment), quote=True)}">{escape(label)}</a></li>'
+        for label, path, fragment in items
+    )
+    return ('<div id="deep-reading" class="foundation-deep-reading"><h3>仓内深入阅读</h3>'
+            '<p>以下入口按既有 Pages 文档路由指向仓库内固定说明，不复制其正文；每篇保留各自的版本与验证边界。</p>'
+            f'<ul class="foundation-sources">{links}</ul></div>')
 
 
 def concept_table(table):
@@ -394,6 +422,26 @@ def cache_static_summary():
 </section>"""
 
 
+def attention_variants_static():
+    """No-JS six-row structural summary; calculations stay in linked docs."""
+    return """<div class="av-static" id="attention-variants-static">
+<h3 id="attention-classification">静态对照：六组机制各改了什么</h3>
+<p class="av-static-intro">六组不是一条演进路线：它们分别改 KV 共享、缓存表示、可见范围、候选位置和状态表示。Self / Cross 与 causal / bidirectional 是另一组独立分类，不与这六组混成一条轴。</p>
+<div class="av-static-scroll"><table class="av-static-table">
+<caption>同一层 Attention 的六个设计对象（结构对照，不含数值）</caption>
+<thead><tr><th scope="col">组</th><th scope="col">改动的对象</th><th scope="col">读取关系</th><th scope="col">不能推成什么</th></tr></thead>
+<tbody>
+<tr><th scope="row">MHA / GQA / MQA</th><td>每组 Q 共享几套历史 K/V。</td><td>4 个 Q 头不变，K/V 组数 4 / 2 / 1；同组 Q 各自用 q 打分、各自输出。</td><td>不是把 Q 头合并，也不是共享输出。</td></tr>
+<tr><th scope="row">MLA</th><td>每个位置缓存什么。</td><td>每位置存 latent 与独立位置 key；内容 K/V 读时恢复或吸收。</td><td>不是固定状态，缓存仍随历史增长。</td></tr>
+<tr><th scope="row">SWA</th><td>当前层直接读哪些位置。</td><td>最近 W 个位置（含当前 query）进入本层 softmax。</td><td>窗口外不等于删除或立即回收。</td></tr>
+<tr><th scope="row">DSA</th><td>主注意力本次读哪些位置。</td><td>indexer 先选 Top-K，主注意力只读选中的主缓存条目。</td><td>索引分不是最终权重；未选条目仍保留在主缓存。</td></tr>
+<tr><th scope="row">NSA</th><td>历史按什么粒度并行读取。</td><td>摘要、选中块原 token、近期窗口三路独立注意力，再由独立门汇合。</td><td>不是一路的三种视图；三个门不归一化。</td></tr>
+<tr><th scope="row">GDN / KDA</th><td>历史放在哪里。</td><td>压进固定形状状态：先衰减，再用当前 k、v 的预测误差纠正写回，q 读出。</td><td>固定形状不等于每 token 零成本；GDN 整体衰减，KDA 按通道衰减。</td></tr>
+</tbody></table></div>
+<p class="av-static-note"><strong>边界：</strong>本模块只画对象与访问关系，不比较速度、显存或模型质量；图中不展开 softmax 表、矩阵数值或误差向量。详细推导、版本差异与源码边界见本页末尾 <a href="#deep-reading">仓内深入阅读</a>。</p>
+<p class="av-static-links"><a href="#attention-variants">回到交互图</a><a href="components.html#why-heads">第04课头共享图</a><a href="hardware.html#concept-3">第 07 课 FlashAttention</a></p>
+</div>"""
+
 def render(c, i):
     page = PAGES / 'foundations' / (c['slug'] + '.html')
     title = escape(c['title'])
@@ -428,6 +476,7 @@ def render(c, i):
         learning_entry = learning_entry.replace('<a href="#lesson-animation">观察过程</a>', '<a href="#cache-static">核心摘要</a><a href="#lesson-animation">观察过程</a>')
     if c['slug'] == 'attention':
         learning_entry = learning_entry.replace('<a href="#lesson-animation">观察过程</a>', '<a href="#attention-motive">先看动机</a><a href="#lesson-animation">观察过程</a><a href="#multihead">多头算例</a>')
+        learning_entry = learning_entry.replace('<a href="#multihead">多头算例</a>', '<a href="#multihead">多头算例</a><a href="#attention-variants">变体定位</a>')
     sources = ''.join(f'<li><a href="{escape(url, quote=True)}">{escape(name)}</a></li>' for name, url in c['sources'])
     visual_refs = ''
     if c.get('visual_references'):
@@ -453,7 +502,7 @@ def render(c, i):
     if c['slug'] in {'tokens', 'generation', 'attention', 'cache', 'deployment'}:
         mechanism_assets += '<link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-scenes.js" defer></script><script src="../motion/teaching-visuals.js" defer></script>'
         if c['slug'] == 'attention':
-            mechanism_assets += '<script src="../motion/attention-visual.js" defer></script><link rel="stylesheet" href="../motion/components.css"><script src="components-model.js" defer></script><script src="../motion/attention-motive.js" defer></script><link rel="stylesheet" href="../motion/attention-layer.css"><script src="../motion/attention-layer.js" defer></script><link rel="stylesheet" href="../motion/attention-multihead.css"><script src="../motion/attention-multihead.js" defer></script>'
+            mechanism_assets += '<script src="../motion/attention-visual.js" defer></script><link rel="stylesheet" href="../motion/components.css"><script src="components-model.js" defer></script><script src="../motion/attention-motive.js" defer></script><link rel="stylesheet" href="../motion/attention-layer.css"><script src="../motion/attention-layer.js" defer></script><link rel="stylesheet" href="../motion/attention-multihead.css"><script src="../motion/attention-multihead.js" defer></script><link rel="stylesheet" href="../motion/attention-variants.css"><script src="../motion/attention-variants.js" defer></script>'
         elif c['slug'] != 'deployment':
             mechanism_assets += '<script src="../motion/basics-visuals.js" defer></script>'
         if c['slug'] == 'generation':
@@ -489,6 +538,7 @@ def render(c, i):
         motive_html = '''<section id="attention-motive" class="attention-motive" aria-labelledby="attention-motive-title">
 <h2 id="attention-motive-title">先看动机：同一组 Q/K/V，只读自己与读取上下文</h2>
 <p>同一个 Query 与同一组 K/V，只改变允许读取的范围。先看只读自己的结果，再看 p1 的历史贡献怎样进入表示。</p>
+<details class="motive-detail"><summary>展开完整对照与数值（同一组 Q/K/V）</summary>
 <div id="attention-motive-app" class="motive-card">
  <p class="motive-boundary">交互版本需要 JavaScript。固定例：Q=[0,1]，K1=[1,0]，K2=[0,1]，V1=[2,0]，V2=[0,2]。</p>
  <table class="fd-table"><caption>同一输入的两种读取范围</caption><thead><tr><th>读取范围</th><th>权重</th><th>结果 m</th></tr></thead><tbody>
@@ -497,6 +547,7 @@ def render(c, i):
  </tbody></table>
  <p class="motive-boundary">这是解释性对照，不是性能优化或语义正确率。</p>
 </div>
+</details>
 </section>'''
     multihead_html = ''
     if c['slug'] == 'attention':
@@ -508,7 +559,19 @@ def render(c, i):
 <noscript><p>本例取 x=[1,1]，两个位置 K=[[1,0],[0,1]]、V=[[2,0],[0,2]]；Wq0=[[1,0],[0,0]]、Wq1=[[0,0],[0,1]]。两头权重分别为 [66.98%, 33.02%] 与 [33.02%, 66.98%]，结果为 [1.3395, 0.6605] 与 [0.6605, 1.3395]；concat 为 4 维 [1.3395, 0.6605, 0.6605, 1.3395]，教学 Wo 再投回 [1,1]。</p></noscript>
 </div>
 </section>'''
+    attention_variants_html = ''
+    if c['slug'] == 'attention':
+        attention_variants_html = ('\n<section id="attention-variants" class="av-section" aria-labelledby="attention-variants-title">'
+            '<div class="av-section-head"><p class="eyebrow">独立对照 · 共享头 / 缓存表示 / 访问范围 / 候选选择 / 递推状态</p>'
+            '<h2 id="attention-variants-title">同一层的六组 Attention 机制：它们各自在改什么？</h2>'
+            '<p class="av-lead">六组分别改共享、缓存表示、可见范围、候选位置与状态，不在同一根轴上，也不是速度排行。按共享方式、缓存表示、可见窗口、候选选位与状态更新逐项对照，推导和版本边界见页末深入阅读。</p></div>'
+            '<div data-attention-variants data-public-root="../../"><noscript><p class="av-lead" style="padding:14px 16px;margin:0">交互面板需要 JavaScript；下方六行静态对照与页末深入阅读仍可阅读、跳转。</p></noscript></div>'
+            + attention_variants_static() + '</section>')
     lab_html = '<div data-foundation-lab="components" hidden></div>' if c['slug'] == 'components' else f'<section class="foundation-lab" data-foundation-lab="{c["slug"]}" data-full="true" data-title="{title}"><h2>走一遍具体过程</h2><p>{escape(c["goal"])}</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>'
+    if c['slug'] == 'components':
+        lab_html += '<p class="foundation-prereqs">本课保留原有头共享动画：4 个 Q 头分别映射到 4 / 2 / 1 组 K/V，看 block 内哪些计算共享。六组变体的缓存表示、窗口、稀疏选择与递推状态对照，统一从 <a href="attention.html#attention-variants">第 03 课 Attention 变体主入口</a> 进入。</p>'
+    elif c['slug'] == 'hardware':
+        lab_html += '<p class="foundation-prereqs">FlashAttention 的 tiling 与 online softmax 只重排精确 Attention 的读写顺序；六组 Attention 机制与各自缓存/候选差异见 <a href="attention.html#attention-variants">第 03 课变体主入口</a>。</p>'
     goal_selector = parallel_goal_selector() if c['slug'] == 'parallel' else ''
     space_time_entry = parallel_space_time_entry() if c['slug'] == 'parallel' else ''
     return f'''<!doctype html>
@@ -526,7 +589,7 @@ def render(c, i):
 <div id="lesson-animation"></div>
 {animation_anchor}
 {lab_html}
-{multihead_html}
+{multihead_html}{attention_variants_html}
 {concept_guide(c)}
 <section id="lesson-glossary"><h2>术语速查</h2>{terms_html}</section>
 <section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2>{reading_entry}<div class="foundation-copy">{sections}</div></section>
@@ -534,7 +597,7 @@ def render(c, i):
 <details class="foundation-fallback"><summary>自测与解释：{escape(c['question'])}</summary><p>{escape(c['feedback'])}</p></details>
 {extension_html}
 <a class="foundation-to-engine" href="../{c['implementation']}"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
-<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：{escape(c.get("reviewed", "2026-10-15"))}。{escape(c['scope'])}</p><p>概念动机、取舍与背景整理：{escape(c.get("reviewed", "2026-10-16"))}。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources">{sources}</ul>{visual_refs}<p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：{escape(c.get("reviewed", "2026-10-15"))}。{escape(c['scope'])}</p><p>概念动机、取舍与背景整理：{escape(c.get("reviewed", "2026-10-16"))}。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources">{sources}</ul>{visual_refs}{deep_reading_html(c)}<p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
 <nav class="lesson-pager" aria-label="推理基础内继续学习">{previous}{following}</nav>
 </main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>
 '''

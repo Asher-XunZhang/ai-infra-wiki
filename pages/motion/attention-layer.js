@@ -63,37 +63,47 @@ function mergeHTML(left,right,symbol='+'){
 }
 function localAttentionHTML(s){
  const d=s.data,q=d.query,focus=s.focus;
+ const read=d.inputs.map((_,i)=>i<d.allowed?`p${i+1}`:'').filter(Boolean);
+ const history=read.filter(label=>label!==`p${q+1}`);
+ const purpose=history.length
+  ?`当前位置 p${q+1} 可读 ${read.join('、')}；汇合时自己的 V ${vec(d.values[q])} 与 ${history.join('、')} 的历史 V 贡献一起进入 m。完整数字按需展开。`
+  :`当前位置 p${q+1} 只可读自己；本例没有历史位置汇入。完整数字按需展开。`;
  const qkv=d.inputs.map((input,i)=>{
-  const read=i<d.allowed,cur=i===q;
-  return `<div class="attl-local-row${cur?' is-query':''}${read?'':' is-masked'}" role="row">
+  const isRead=i<d.allowed,cur=i===q;
+  return `<div class="attl-local-row${cur?' is-query':''}${isRead?'':' is-masked'}" role="row">
    <b>p${i+1}</b>
    <span class="attl-qkv-cell"><i>Q</i><code>${vec(d.Q)}</code></span>
    <span class="attl-qkv-cell"><i>K</i><code>${vec(d.keys[i])}</code></span>
    <span class="attl-qkv-cell"><i>V</i><code>${vec(d.values[i])}</code></span>
-   <small class="attl-local-status">${cur?'当前 Query':read?'可读':'未来 · 遮罩'}</small>
+   <small class="attl-local-status">${cur?'当前 Query':isRead?'可读':'未来 · 遮罩'}</small>
   </div>`;
  }).join('');
  const weights=d.inputs.map((input,i)=>{
-  const read=i<d.allowed,cur=i===q,w=read?d.weights[i]:0;
-  return `<div class="attl-wrow${cur?' is-query':''}${read?'':' is-masked'}">
+  const isRead=i<d.allowed,cur=i===q,w=isRead?d.weights[i]:0;
+  return `<div class="attl-wrow${cur?' is-query':''}${isRead?'':' is-masked'}">
    <b>p${i+1}</b>
-   <span class="attl-score">${read?'s='+fmt(d.scores[i]):'s=−∞'}</span>
+   <span class="attl-score">${isRead?'s='+fmt(d.scores[i]):'s=−∞'}</span>
    <span class="attl-track"><i style="--w:${(w*100).toFixed(2)}%"></i></span>
    <strong>${pct(w)}</strong>
-   <small>${read?'w×V '+vec(d.contributions[i]):'不进分母'}</small>
+   <small>${isRead?'w×V '+vec(d.contributions[i]):'不进分母'}</small>
   </div>`;
  }).join('');
  const focusNote=focus==='mask'?'当前聚焦遮罩：未来位置 w=0，不进入分母。':focus==='qkv'?'当前聚焦 Q/K/V 分工：Q 只来自当前行，K/V 每个可读位置各一份。':focus==='weights'?'当前聚焦权重：先有 s 与 e^s，再除分母得到 w，最后用 w 混合 V。':'当前为自动镜头；局部例的完整结果不随层视图的操作进度改变。';
  return `<section class="attl-local" aria-label="局部手算例，独立于完整层数值链">
   <div class="attl-local-head"><div><p class="attl-local-kicker">局部手算例 · 独立说明</p><h5>这一页的 Attention 子层怎样手算</h5></div><span class="attl-chip is-muted">完整层 A 仍是符号</span></div>
   <p class="attl-local-note">为手算，WQ=WK=I、WV=2I，并把 Norm 折叠掉；下面直接用本页 x 作为 Q/K，V=2x。这组数字只解释局部 Attention，不是上方 x̂ → A 的数值。</p>
+  <p class="attl-local-purpose">${purpose}</p>
   <div class="attl-local-qkv" role="table" aria-label="局部 Q/K/V 与可读位置">
    <div class="attl-local-row is-head" role="row"><b>位置</b><span>Q</span><span>K</span><span>V</span><span>可读</span></div>
    ${qkv}
   </div>
-  <div class="attl-local-weights" aria-label="局部分数与权重">${weights}</div>
-  <div class="attl-local-result"><span>局部例完整结果</span><strong>m = Σw·V = ${vec(d.mixed)}</strong><small>Σe^s=${d.denominator.toFixed(2)} · Σw=${pct(d.weightSum)}</small></div>
-  <p class="attl-local-note">这是局部例的完整结果；本地时间线可能停在其间。完整层的 A 不从这里取数。${focusNote}</p>
+  <details class="attl-local-detail">
+   <summary>展开完整手算：s → e^s → w → w×V → m（同源数字）</summary>
+   <div class="attl-local-weights" aria-label="局部分数与权重">${weights}</div>
+   <div class="attl-local-result"><span>局部例完整结果</span><strong>m = Σw·V = ${vec(d.mixed)}</strong><small>Σe^s=${d.denominator.toFixed(2)} · Σw=${pct(d.weightSum)}</small></div>
+   <p class="attl-local-note">这是局部例的完整结果；本地时间线可能停在其间。完整层的 A 不从这里取数。${focusNote}</p>
+  </details>
+  <p class="attl-local-note">完整层的 A 仍是符号，不从这里取数。</p>
  </section>`;
 }
 
@@ -121,7 +131,7 @@ function stageContent(s,stage){
     source:`<p class="attl-label">来源 · Norm(x)</p>${obj('x̂','Attention 的输入','Q/K/V 都从 x̂ 投影得到','is-source')}${note('不是从原始 x 直接得到 Q/K/V。')}`,
     op:`<div class="attl-op-copy"><strong>A = Attention(x̂)</strong><p>Q=x̂W_Q，K=x̂W_K，V=x̂W_V；因果掩码只让当前位置读取可读位置。多头输出先拼接，再过 W_O。</p></div>${relayHTML('Attention','x̂','A','Attn')}${formula('A = [softmax(QKᵀ/√d + mask) · V] W_O')}${note('单头时括号内结果直接过 W_O 得 A；这里只保留符号对象 A，不写完整层的 Attention 数值。')}`,
     result:`${obj('A','结果 · Attention 子层输出','符号对象；不是整层输出','is-ok')}${note('A 还要加回 x，得到 x₁。')}`,
-    note:'A 是 Attention(Norm(x)) 的符号结果。下方“局部手算例”的 m 是另一套独立数字，不能替代 A。',
+    note:'A 是 Attention(Norm(x)) 的符号结果。下方局部手算例的完整数字在展开区，属于另一套独立数字，不能替代 A。',
     local:localAttentionHTML(s),pending:STAGES[2].pending,resultName:'A',duration:STAGES[2].duration
    };
   case 3:
