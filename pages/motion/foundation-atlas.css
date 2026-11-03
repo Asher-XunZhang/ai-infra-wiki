@@ -1,0 +1,21 @@
+/* Mechanism overview canvases. Detailed experiments retain their own styles. */
+[data-foundation-atlas]{--fa-bg:#071520;--fa-panel:#0b1e2a;--fa-line:#315160;--fa-fg:#e7f1f7;--fa-muted:#a6bac6;--fa-cyan:#62d8e9;--fa-green:#7fe0c3;--fa-purple:#bda9f7;--fa-orange:#f2b45c;container-type:inline-size;container-name:foundation-atlas;color:var(--fa-fg);color-scheme:dark;min-width:0;margin:24px 0;font:400 14px/1.65 system-ui,-apple-system,"PingFang SC",sans-serif;scroll-margin-top:90px}
+[data-foundation-atlas] *{box-sizing:border-box}
+.fa-surface{background:var(--fa-bg);border:1px solid #294654;border-radius:12px;overflow:hidden}
+[data-foundation-atlas] h2,[data-foundation-atlas] h3,[data-foundation-atlas] h4{color:var(--fa-fg);line-height:1.5;margin:0;font-weight:600}
+[data-foundation-atlas] h2{font-size:23px}[data-foundation-atlas] h3{font-size:18px}[data-foundation-atlas] h4{font-size:17px}
+.fa-heading{padding:24px 24px 18px;background:#0a1e2c}.fa-heading p{margin:6px 0 0;color:var(--fa-muted);font-size:13px}
+.fa-nav{padding:15px 24px;display:flex;flex-wrap:wrap;gap:8px;border-bottom:1px solid #294654}
+.fa-nav button{font:inherit;font-size:13px;background:#0d2230;border:1px solid #315160;border-radius:7px;padding:8px 13px;min-height:40px;color:var(--fa-muted);cursor:pointer}
+.fa-nav button:hover,.fa-nav button[aria-pressed=true]{color:var(--fa-fg);border-color:var(--fa-cyan);background:#185368}
+[data-foundation-atlas] :focus-visible,.fa-detail>summary:focus-visible{outline:3px solid #62d8e9;outline-offset:4px}
+.fa-stage{padding:22px 24px}.fa-stage>h3{margin-bottom:16px}.fa-panels{display:grid;grid-template-columns:repeat(var(--fa-columns,2),minmax(0,1fr));gap:14px;min-width:0}
+.fa-panel{border:1px solid #294654;background:var(--fa-panel);border-radius:9px;padding:16px 13px 12px;min-width:0}.fa-panel-sub{color:var(--fa-muted);font-size:13px;min-height:42px;margin:3px 0 4px}
+.fa-panel svg{display:block;width:100%;overflow:visible}.fa-panel svg text{font:400 13px system-ui,-apple-system,"PingFang SC",sans-serif;fill:#e7f1f7}
+.fa-note{border-left:3px solid #62d8e9;padding:3px 0 3px 13px;color:#c0d1dc;font-size:13px;margin:18px 0 0;line-height:1.8}.fa-footer{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;padding:13px 24px;border-top:1px solid #294654;font-size:12px;color:var(--fa-muted)}
+[data-foundation-atlas] a{color:#7fe0c3;text-decoration:underline;text-underline-offset:4px}.fa-footer span{max-width:70ch}
+.fa-static{padding:20px}.fa-static article+article{margin-top:20px}.fa-static p{color:#c0d1dc}
+.fa-detail{margin:20px 0 30px;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:16px}.fa-detail>summary{font-size:15px;font-weight:600;cursor:pointer;color:var(--accent);line-height:1.8}.fa-detail>p{color:var(--muted);font-size:13px;line-height:1.8}.fa-detail .mechanism-film{margin-top:15px}.fa-detail[open]{padding-bottom:10px}
+@container foundation-atlas (min-width:1000px){.fa-panels:has(>.fa-panel:only-child) .fa-panel{padding-left:40px;padding-right:40px}}
+@container foundation-atlas (max-width:660px){.fa-panels{grid-template-columns:1fr}.fa-heading,.fa-stage{padding:18px 16px}.fa-nav{padding:14px 16px}.fa-heading h2{font-size:21px}.fa-footer{padding:12px 16px}.fa-panel-sub{min-height:0;margin-bottom:12px}}
+@media print{.fa-detail:not([open])>summary::after{content:'（交互细节请在网页中展开）'}.fa-nav{display:none}}

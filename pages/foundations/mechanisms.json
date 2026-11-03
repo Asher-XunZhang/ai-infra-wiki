@@ -1,0 +1,1040 @@
+{
+  "tokens": {
+    "title": "从文字到模型输入",
+    "detail": "逐次 BPE 合并、固定 tokenizer 的真实 ID、位置与查表、模板契约",
+    "boards": [
+      {
+        "id": "input",
+        "tab": "文字 → 向量",
+        "question": "“学习再学习”怎样成为模型输入？",
+        "note": "以“学习再学习”为教学例：分词决定单位，ID 标识词表项，Embedding 按 ID 查行。ID α / β 为符号编号，向量色块只示意形状。",
+        "panels": [
+          {
+            "title": "分词",
+            "sub": "固定规则，只合并相邻单位",
+            "kind": "bpe"
+          },
+          {
+            "title": "编号",
+            "sub": "片段对应词表中的一项",
+            "kind": "lookup",
+            "mode": "id"
+          },
+          {
+            "title": "查表",
+            "sub": "同一 ID 取出同一行向量",
+            "kind": "lookup",
+            "mode": "embedding"
+          }
+        ],
+        "detail": "concept=bpe"
+      },
+      {
+        "id": "position",
+        "tab": "ID 与位置",
+        "question": "同一个词出现两次，什么相同，什么不同？",
+        "note": "同一词表项的 ID 与初始 Embedding 相同；位置和上下文由后续计算结合。",
+        "panels": [
+          {
+            "title": "两次“学习”",
+            "sub": "位置是序列坐标，ID 是词表索引",
+            "kind": "position"
+          }
+        ],
+        "detail": "concept=position"
+      },
+      {
+        "id": "training",
+        "tab": "训练 / 推理",
+        "question": "同一张 Embedding 表，什么时候改变？",
+        "note": "普通推理只读取已训练权重；训练的参数更新发生在反向传播和优化步骤。",
+        "panels": [
+          {
+            "title": "训练",
+            "sub": "从误差中更新参数",
+            "kind": "flow",
+            "stages": [
+              [
+                "token ID",
+                "查表"
+              ],
+              [
+                "Embedding",
+                "参与前向与反向"
+              ],
+              [
+                "参数更新",
+                "优化器修改表中权重"
+              ]
+            ]
+          },
+          {
+            "title": "推理",
+            "sub": "使用训练好的参数",
+            "kind": "flow",
+            "stages": [
+              [
+                "token ID",
+                "查表"
+              ],
+              [
+                "Embedding",
+                "读取已有向量"
+              ],
+              [
+                "后续模型",
+                "继续前向计算"
+              ]
+            ]
+          }
+        ],
+        "detail": "concept=boundary"
+      },
+      {
+        "id": "template",
+        "tab": "聊天模板",
+        "question": "一轮聊天怎样变成有角色边界的输入？",
+        "note": "角色标记和格式由模型的聊天模板约定；分词器、模板和模型必须匹配。",
+        "panels": [
+          {
+            "title": "结构化消息",
+            "sub": "角色与正文分开",
+            "kind": "flow",
+            "stages": [
+              [
+                "system",
+                "行为要求"
+              ],
+              [
+                "user",
+                "用户问题"
+              ],
+              [
+                "assistant",
+                "等待生成"
+              ]
+            ]
+          },
+          {
+            "title": "模板序列",
+            "sub": "按该模型的约定拼接",
+            "kind": "flow",
+            "stages": [
+              [
+                "角色与边界标记",
+                "包住消息正文"
+              ],
+              [
+                "Tokenizer",
+                "编码成 ID 序列"
+              ],
+              [
+                "模型输入",
+                "在 assistant 位置续写"
+              ]
+            ]
+          }
+        ],
+        "detail": "concept=contract"
+      }
+    ],
+    "intro": "从“学习再学习”这个小例子开始，把文字片段、词表编号和输入向量对应起来，再看位置与聊天模板的作用。"
+  },
+  "generation": {
+    "title": "输入、续写与可见输出",
+    "detail": "自回归反馈、固定抽样、logits 与概率、反分词和流式消息",
+    "boards": [
+      {
+        "id": "stages",
+        "tab": "Prefill / Decode",
+        "question": "同一个模型，两次调用处理哪些位置？",
+        "note": "Prefill 处理一段输入；Decode 处理新位置并读取历史 KV。刚选出的输出在下一轮进入模型后才有自己的 KV。",
+        "panels": [
+          {
+            "title": "Prefill",
+            "sub": "先处理输入，再选首个输出",
+            "kind": "generation",
+            "mode": "prefill"
+          },
+          {
+            "title": "Decode",
+            "sub": "读历史，计算一个新位置",
+            "kind": "generation",
+            "mode": "decode"
+          }
+        ],
+        "detail": "mv=0"
+      },
+      {
+        "id": "feedback",
+        "tab": "输出回流",
+        "question": "模型为什么要一轮一轮地生成？",
+        "note": "选出的 token ID 成为下一轮输入；客户端看到的文字还要经过反分词和传输。",
+        "panels": [
+          {
+            "title": "自回归环",
+            "sub": "每轮选出的内容影响后续预测",
+            "kind": "flow",
+            "stages": [
+              [
+                "输入 ID + 历史 KV",
+                "完整模型前向"
+              ],
+              [
+                "候选分数",
+                "选择一个 token"
+              ],
+              [
+                "新 token ID",
+                "送回下一轮输入"
+              ]
+            ],
+            "loop": true
+          }
+        ],
+        "detail": "mv=0"
+      },
+      {
+        "id": "selection",
+        "tab": "贪心 / 抽样",
+        "question": "面对同一组候选，两种选择怎样不同？",
+        "note": "教学分布：A 60%、B 30%、C 10%。贪心取最大值；固定抽样点 0.75 落在 B 的概率区间。",
+        "panels": [
+          {
+            "title": "贪心",
+            "sub": "选概率最大的候选",
+            "kind": "sampling",
+            "mode": "greedy"
+          },
+          {
+            "title": "抽样",
+            "sub": "按概率分布选择候选",
+            "kind": "sampling",
+            "mode": "sample"
+          }
+        ],
+        "detail": "concept=sampling"
+      },
+      {
+        "id": "stream",
+        "tab": "Token / 消息",
+        "question": "生成一个 token，就一定发一条消息吗？",
+        "note": "网络消息可以合并多个 token；消息到达间隔与逐 token 生成间隔需要分开观察。",
+        "panels": [
+          {
+            "title": "逐个发送",
+            "sub": "一个消息包含一个 token",
+            "kind": "stream",
+            "mode": "single"
+          },
+          {
+            "title": "合并发送",
+            "sub": "一个消息包含多个 token",
+            "kind": "stream",
+            "mode": "chunk"
+          }
+        ],
+        "detail": "mv=3"
+      }
+    ],
+    "intro": "先并排看 Prefill 与 Decode 处理哪些位置，再沿输出回流、候选选择和流式消息理解一条生成请求。"
+  },
+  "components": {
+    "title": "一层内部：各部件改变什么",
+    "detail": "RoPE 条件切换、RMSNorm 数值、残差贡献、SwiGLU 门控、头共享和 Block 逐步计算",
+    "boards": [
+      {
+        "id": "block",
+        "tab": "层内主线",
+        "question": "一层 Transformer 中，信息怎样流动？",
+        "note": "图示采用本课的 Pre-Norm 结构：两个子层各有残差连接；实际模型结构以各自定义为准。",
+        "panels": [
+          {
+            "title": "Transformer Block",
+            "sub": "原输入走旁路，子层结果在加法处合并",
+            "kind": "block"
+          }
+        ],
+        "detail": "concept=block"
+      },
+      {
+        "id": "rope",
+        "tab": "RoPE",
+        "question": "同样的内容，怎样让位置影响 Q/K 的比较？",
+        "note": "旋转作用于 Q/K 的成对特征分量。两者共同平移时，相对角度保持；V 不参与该旋转。",
+        "panels": [
+          {
+            "title": "原位置",
+            "sub": "Q 与 K 有一个相对角度",
+            "kind": "rope",
+            "shift": 0
+          },
+          {
+            "title": "整体平移",
+            "sub": "两者共同旋转，夹角保持",
+            "kind": "rope",
+            "shift": 60
+          }
+        ],
+        "detail": "concept=rope"
+      },
+      {
+        "id": "norm",
+        "tab": "RMSNorm",
+        "question": "怎样调整特征尺度，同时保留各分量的关系？",
+        "note": "先用共同的 RMS 尺度缩放，再乘可学习的逐维权重。图中前后长度仅为教学示意。",
+        "panels": [
+          {
+            "title": "原始特征",
+            "sub": "分量大小不同",
+            "kind": "norm",
+            "mode": "before"
+          },
+          {
+            "title": "共同缩放",
+            "sub": "同一个尺度作用于全部分量",
+            "kind": "norm",
+            "mode": "after"
+          },
+          {
+            "title": "逐维权重",
+            "sub": "各维再乘自己的权重",
+            "kind": "norm",
+            "mode": "weight"
+          }
+        ],
+        "detail": "concept=rmsnorm"
+      },
+      {
+        "id": "residual",
+        "tab": "残差",
+        "question": "子层结果怎样与原输入合并？",
+        "note": "旁路保留输入，子层产生增量，两路按对应维度相加。",
+        "panels": [
+          {
+            "title": "输入 + 子层结果",
+            "sub": "原输入与增量都能追踪到输出",
+            "kind": "residual"
+          }
+        ],
+        "detail": "concept=residual"
+      },
+      {
+        "id": "mlp",
+        "tab": "MLP / SwiGLU",
+        "question": "逐位置的特征变换，门控多做了什么？",
+        "note": "两种结构都处理每个位置的特征；SwiGLU 额外用一条分支逐元素调节另一条分支。",
+        "panels": [
+          {
+            "title": "普通 MLP",
+            "sub": "一条特征变换路径",
+            "kind": "flow",
+            "stages": [
+              [
+                "输入 x",
+                "同一位置的向量"
+              ],
+              [
+                "升维 + 激活",
+                "变换特征"
+              ],
+              [
+                "降维",
+                "回到模型宽度"
+              ]
+            ]
+          },
+          {
+            "title": "SwiGLU",
+            "sub": "两条投影分支相乘",
+            "kind": "swiglu"
+          }
+        ],
+        "detail": "concept=swiglu"
+      },
+      {
+        "id": "heads",
+        "tab": "MHA / GQA / MQA",
+        "question": "相同 Q 头，谁共用一套历史 K/V？",
+        "note": "共享的是历史 K/V；每个 Q 头仍独立查询并产生自己的输出。",
+        "panels": [
+          {
+            "title": "MHA",
+            "sub": "每个 Q 头一套 K/V",
+            "kind": "heads",
+            "groups": 4
+          },
+          {
+            "title": "GQA",
+            "sub": "组内共用 K/V",
+            "kind": "heads",
+            "groups": 2
+          },
+          {
+            "title": "MQA",
+            "sub": "所有 Q 头共用 K/V",
+            "kind": "heads",
+            "groups": 1
+          }
+        ],
+        "detail": "concept=heads"
+      }
+    ],
+    "intro": "先看一层内部的主线，再分别观察位置旋转、尺度调整、残差、门控和头共享改变了什么。"
+  },
+  "cache": {
+    "title": "历史计算怎样保存和复用",
+    "detail": "跨轮计算计数、物理页映射、共享引用与释放条件",
+    "boards": [
+      {
+        "id": "reuse",
+        "tab": "保存历史",
+        "question": "进入下一轮时，哪些位置还需要重新计算？",
+        "note": "保存 KV 省去历史位置的重复投影，同时需要保存并读取历史。Attention 仍要访问可见上下文。",
+        "panels": [
+          {
+            "title": "不保存",
+            "sub": "每轮重新计算全部输入位置",
+            "kind": "cache",
+            "mode": "recompute"
+          },
+          {
+            "title": "保存 KV",
+            "sub": "旧位置读取，新位置计算",
+            "kind": "cache",
+            "mode": "reuse"
+          }
+        ],
+        "detail": "mv=0"
+      },
+      {
+        "id": "pages",
+        "tab": "连续 / 分页",
+        "question": "同一段逻辑序列，怎样放进物理内存？",
+        "note": "连续布局要求相邻空间；分页通过映射使用离散物理页，增加页表并可能留下末页余量。",
+        "panels": [
+          {
+            "title": "连续布局",
+            "sub": "逻辑顺序与相邻空间对应",
+            "kind": "pages",
+            "mode": "contiguous"
+          },
+          {
+            "title": "分页布局",
+            "sub": "逻辑页映射到离散物理页",
+            "kind": "pages",
+            "mode": "paged"
+          }
+        ],
+        "detail": "mv=1"
+      },
+      {
+        "id": "prefix",
+        "tab": "独立 / 共享",
+        "question": "两个请求前缀相同，需要保存两份吗？",
+        "note": "满足前缀匹配与缓存兼容条件时，两请求可引用同一份前缀 KV；各自后缀独立，释放要遵守引用关系。",
+        "panels": [
+          {
+            "title": "独立保存",
+            "sub": "两份前缀，两份后缀",
+            "kind": "prefix",
+            "mode": "copy"
+          },
+          {
+            "title": "前缀共享",
+            "sub": "两条引用，一份前缀",
+            "kind": "prefix",
+            "mode": "shared"
+          }
+        ],
+        "detail": "mv=2"
+      }
+    ],
+    "intro": "围绕三个问题看历史 KV：要不要保存、放在哪些物理页、哪些请求可以共享。"
+  },
+  "batching": {
+    "title": "请求怎样进入和离开一批计算",
+    "detail": "动态等待的到达时刻、固定与连续批次、Chunked Prefill 调度分支",
+    "boards": [
+      {
+        "id": "membership",
+        "tab": "固定 / 连续",
+        "question": "短请求结束后，空出来的位置怎么办？",
+        "note": "相同请求：A 需 2 轮、B 需 4 轮、C 需 2 轮，容量为 2。格子表示生成轮次，不表示等长耗时。",
+        "panels": [
+          {
+            "title": "固定批次",
+            "sub": "本批全部完成后才接下一批",
+            "kind": "batch",
+            "mode": "fixed"
+          },
+          {
+            "title": "连续批处理",
+            "sub": "每轮边界补入等待中的请求",
+            "kind": "batch",
+            "mode": "continuous"
+          }
+        ],
+        "detail": "mv=0"
+      },
+      {
+        "id": "chunk",
+        "tab": "整段 / 分块",
+        "question": "长输入处理时，已有请求何时能继续生成？",
+        "note": "同一组工作：4 段 Prefill 与 4 轮 Decode。分块提供交错机会；具体分配取决于调度与资源预算。",
+        "panels": [
+          {
+            "title": "整段 Prefill",
+            "sub": "先处理完整输入，再执行 Decode",
+            "kind": "chunk",
+            "mode": "whole"
+          },
+          {
+            "title": "Chunked Prefill",
+            "sub": "把输入分段，允许 Decode 穿插",
+            "kind": "chunk",
+            "mode": "chunk"
+          }
+        ],
+        "detail": "mv=5"
+      },
+      {
+        "id": "admission",
+        "tab": "动态等待",
+        "question": "凑一批之前，愿意额外等多久？",
+        "note": "A、B、C 分别在 0、2、4 到达，批容量 3；达到容量或等待上限即发出。这里仅比较入批等待。",
+        "panels": [
+          {
+            "title": "不额外等",
+            "sub": "每条到达后立即发出",
+            "kind": "admission",
+            "wait": 0
+          },
+          {
+            "title": "最多等 3",
+            "sub": "部分请求合批",
+            "kind": "admission",
+            "wait": 3
+          },
+          {
+            "title": "最多等 5",
+            "sub": "第三条到达时凑满",
+            "kind": "admission",
+            "wait": 5
+          }
+        ],
+        "detail": "mv=2"
+      }
+    ],
+    "intro": "把入批等待、轮次间补位和长输入分块分开看；每组对照保持相同请求与工作条件。"
+  },
+  "hardware": {
+    "title": "计算、访存与提交",
+    "detail": "逐项矩阵乘加、算力与带宽条件、CUDA Graph 捕获和重放",
+    "boards": [
+      {
+        "id": "graph",
+        "tab": "普通提交 / Graph",
+        "question": "同一串 GPU 工作，CPU 怎样交给 GPU？",
+        "note": "Graph 预先捕获可复用的执行依赖，再重放；GPU 算子工作仍存在，收益取决于提交开销与适用条件。",
+        "panels": [
+          {
+            "title": "普通提交",
+            "sub": "CPU 逐个提交算子",
+            "kind": "graph",
+            "mode": "eager"
+          },
+          {
+            "title": "CUDA Graph",
+            "sub": "捕获后，通过图重放提交",
+            "kind": "graph",
+            "mode": "graph"
+          }
+        ],
+        "detail": "mv=4"
+      },
+      {
+        "id": "limits",
+        "tab": "算力 / 带宽",
+        "question": "为什么有时算得快，有时先得等数据？",
+        "note": "两张图分别突出计算和搬运的约束；这里只解释瓶颈位置，不给出性能排名。",
+        "panels": [
+          {
+            "title": "计算受限",
+            "sub": "大量运算占据主要工作",
+            "kind": "bottleneck",
+            "mode": "compute"
+          },
+          {
+            "title": "带宽受限",
+            "sub": "频繁读取占据主要工作",
+            "kind": "bottleneck",
+            "mode": "bandwidth"
+          }
+        ],
+        "detail": "mv=0"
+      },
+      {
+        "id": "matmul",
+        "tab": "矩阵乘加",
+        "question": "一行权重怎样得到一个输出分量？",
+        "note": "每一行权重都与同一输入配对，对应项相乘，再把本行贡献相加。详细数值在下方逐步演示。",
+        "panels": [
+          {
+            "title": "按行形成输出",
+            "sub": "颜色表示同一输出行的贡献",
+            "kind": "matmul"
+          }
+        ],
+        "detail": "mv=3"
+      }
+    ],
+    "intro": "区分 CPU 提交、GPU 计算和数据搬运，再用逐项乘加演示理解计算的基本单位。"
+  },
+  "parallel": {
+    "title": "把什么分给不同设备",
+    "detail": "TP 两种切法与合并、PP 微批次、DP/EP 路由、SP/PCP/DCP 分片与通信",
+    "boards": [
+      {
+        "id": "split",
+        "tab": "TP / PP / DP",
+        "question": "权重、层和请求，分别怎样分工？",
+        "note": "每栏均为两张 GPU 的教学示意。TP 分张量、PP 分层、DP 复制完整模型；图中箭头标明载荷。",
+        "panels": [
+          {
+            "title": "TP · 张量并行",
+            "sub": "同一层的张量切给不同卡",
+            "kind": "parallel",
+            "mode": "tp"
+          },
+          {
+            "title": "PP · 流水线并行",
+            "sub": "不同卡负责不同层段",
+            "kind": "parallel",
+            "mode": "pp"
+          },
+          {
+            "title": "DP · 数据并行",
+            "sub": "完整副本接不同请求",
+            "kind": "parallel",
+            "mode": "dp"
+          }
+        ],
+        "detail": "mv=0"
+      },
+      {
+        "id": "experts",
+        "tab": "EP · 专家",
+        "question": "token 被分给哪些专家，结果怎样回来？",
+        "note": "路由决定专家选择；EP 决定专家放在哪张卡。跨卡传递激活与专家结果，合并后回到原 token 位置。",
+        "panels": [
+          {
+            "title": "专家分布在两张 GPU",
+            "sub": "本例每个 token 选一个专家；多选时还需按路由权重合并",
+            "kind": "experts"
+          }
+        ],
+        "detail": "mv=5"
+      },
+      {
+        "id": "sequence",
+        "tab": "SP / PCP / DCP",
+        "question": "都是分序列，分的对象和阶段一样吗？",
+        "note": "三者针对不同环节：逐 token 区激活、Prefill 上下文、Decode 历史 KV。必要的交换与合并仍然存在。",
+        "panels": [
+          {
+            "title": "SP",
+            "sub": "分散逐 token 区的激活行",
+            "kind": "parallel",
+            "mode": "sp"
+          },
+          {
+            "title": "PCP",
+            "sub": "分工处理 Prefill 的 Query 位置",
+            "kind": "parallel",
+            "mode": "pcp"
+          },
+          {
+            "title": "DCP",
+            "sub": "分散 Decode 要读取的历史 KV",
+            "kind": "parallel",
+            "mode": "dcp"
+          }
+        ],
+        "detail": "mv=7"
+      }
+    ],
+    "intro": "先辨认切分的是张量、层、请求、专家还是序列，再追踪局部计算之后的通信与合并。"
+  },
+  "communication": {
+    "title": "相同参与者，看数据去向",
+    "detail": "逐个 collective、扫描与邻居交换、Send/Recv、单边访问、同步与完成条件",
+    "boards": [
+      {
+        "id": "distribute",
+        "tab": "广播 / 分发",
+        "question": "root 手里的一组数据，发给各方的内容相同吗？",
+        "note": "R0–R3 表示四个逻辑 rank。色块标识数据来源；图示通信语义，不指定 ring/tree 或物理拓扑。",
+        "panels": [
+          {
+            "title": "Broadcast",
+            "sub": "每个 rank 得到同一整份数据",
+            "kind": "collective",
+            "mode": "broadcast"
+          },
+          {
+            "title": "Scatter",
+            "sub": "每个 rank 得到对应片段",
+            "kind": "collective",
+            "mode": "scatter"
+          }
+        ],
+        "detail": "mv=0"
+      },
+      {
+        "id": "gather",
+        "tab": "收集",
+        "question": "各方都有一片，最后谁持有完整结果？",
+        "note": "Gather 的完整结果在 root；AllGather 的完整结果在每个参与者。",
+        "panels": [
+          {
+            "title": "Gather",
+            "sub": "收齐到 root",
+            "kind": "collective",
+            "mode": "gather"
+          },
+          {
+            "title": "AllGather",
+            "sub": "每个 rank 都收齐",
+            "kind": "collective",
+            "mode": "allgather"
+          }
+        ],
+        "detail": "mv=4"
+      },
+      {
+        "id": "reduce",
+        "tab": "归约",
+        "question": "对应位置合并之后，结果放在哪里？",
+        "note": "使用逐元素求和作为例子。Σ 表示对应位置相加；ReduceScatter 先归约，再把结果的不同片段分给各方。",
+        "panels": [
+          {
+            "title": "Reduce",
+            "sub": "root 拿到归约结果",
+            "kind": "collective",
+            "mode": "reduce"
+          },
+          {
+            "title": "AllReduce",
+            "sub": "每个 rank 拿到归约结果",
+            "kind": "collective",
+            "mode": "allreduce"
+          },
+          {
+            "title": "ReduceScatter",
+            "sub": "每个 rank 拿到一段归约结果",
+            "kind": "collective",
+            "mode": "reducescatter"
+          }
+        ],
+        "detail": "mv=8"
+      },
+      {
+        "id": "exchange",
+        "tab": "复制 / 交换",
+        "question": "AllGather 与 AllToAll 的去向有什么不同？",
+        "note": "两栏使用同一组输入片段。AllGather 让各方拿到所有输入（A* 表示 A0–A3 整组）；AllToAll 按目标交换，每方只拿到发给自己的片段。",
+        "panels": [
+          {
+            "title": "AllGather",
+            "sub": "每个 rank 拿到所有输入",
+            "kind": "collective",
+            "mode": "allgather",
+            "grouped": true
+          },
+          {
+            "title": "AllToAll",
+            "sub": "每个 rank 拿到发给自己的片段",
+            "kind": "collective",
+            "mode": "alltoall"
+          }
+        ],
+        "detail": "mv=15"
+      },
+      {
+        "id": "completion",
+        "tab": "同步 / 可用",
+        "question": "大家到了，是否就说明一份载荷已经可以读取？",
+        "note": "Barrier 协调参与者到达；数据可用还要满足相应通信操作的完成与可见性条件。两种依赖需要分别确认。",
+        "panels": [
+          {
+            "title": "Barrier",
+            "sub": "先到者等待全部参与者进入",
+            "kind": "barrier"
+          },
+          {
+            "title": "载荷交接",
+            "sub": "消费者依赖实际数据就绪",
+            "kind": "flow",
+            "stages": [
+              [
+                "通知到达",
+                "知道有这份数据"
+              ],
+              [
+                "传输完成 + 可见",
+                "满足该接口的完成条件"
+              ],
+              [
+                "消费者读取",
+                "开始使用数据"
+              ]
+            ]
+          }
+        ],
+        "detail": "mv=25"
+      }
+    ],
+    "intro": "用相同的 rank 和稳定的色块，观察复制、分发、收集、归约与交换的结果，并区分参与者同步与数据可用。"
+  },
+  "deployment": {
+    "title": "同池执行与 P/D 分工",
+    "detail": "共享资源对照、KV 与首 token 交接、Decode 准入和角色成本",
+    "boards": [
+      {
+        "id": "roles",
+        "tab": "同池 / 分离",
+        "question": "处理输入与逐步生成，在哪一组资源上执行？",
+        "note": "左侧一组共享资源，右侧两组独立资源。P、D 都能执行完整模型；图示阶段分工，不代表增加资源后的固定加速比。",
+        "panels": [
+          {
+            "title": "同池执行",
+            "sub": "一组资源处理两个阶段",
+            "kind": "deployment",
+            "mode": "colocated"
+          },
+          {
+            "title": "PD 分离",
+            "sub": "P 与 D 独立配置资源",
+            "kind": "deployment",
+            "mode": "split"
+          }
+        ],
+        "detail": "mv=0"
+      },
+      {
+        "id": "handoff",
+        "tab": "KV 交接",
+        "question": "D 接到通知后，还在等什么？",
+        "note": "D 需要历史 KV、后续输入及相关元信息，并确认可用与调度准入后才继续 Decode。",
+        "panels": [
+          {
+            "title": "从 P 到 D",
+            "sub": "跨服务组交接 KV 载荷与输入信息",
+            "kind": "handoff"
+          }
+        ],
+        "detail": "mv=0"
+      }
+    ],
+    "intro": "对照同池执行与 P/D 分离的角色和资源，再看历史 KV 交接后，D 必须满足哪些条件才能继续。"
+  },
+  "speculation": {
+    "title": "先提出候选，再验证前缀",
+    "detail": "候选验证输入、连续接受、替代或补出 token、有效 KV 边界与调用账目",
+    "boards": [
+      {
+        "id": "prefix",
+        "tab": "三种验证结果",
+        "question": "同一串草稿候选，第一次分歧在哪里？",
+        "note": "亮色为已接受前缀；分歧后候选不再提交。全部通过时再补出一个 token；补出的 token 需下一轮输入后才有自己的有效 KV。",
+        "panels": [
+          {
+            "title": "全部通过",
+            "sub": "接受整个草稿前缀",
+            "kind": "speculation",
+            "accepted": 4
+          },
+          {
+            "title": "中途分歧",
+            "sub": "保留分歧之前的候选",
+            "kind": "speculation",
+            "accepted": 2
+          },
+          {
+            "title": "首个分歧",
+            "sub": "没有草稿候选被接受",
+            "kind": "speculation",
+            "accepted": 0
+          }
+        ],
+        "detail": "mv=0"
+      },
+      {
+        "id": "work",
+        "tab": "逐个 / 成组验证",
+        "question": "目标模型每次检查几个位置？",
+        "note": "草稿生成与目标验证都要做工作；一次检查多个位置不等于一次普通单 token 调用的成本。",
+        "panels": [
+          {
+            "title": "普通自回归",
+            "sub": "目标模型逐个生成",
+            "kind": "flow",
+            "stages": [
+              [
+                "前向 → 选 token",
+                "第一个输出"
+              ],
+              [
+                "前向 → 选 token",
+                "第二个输出"
+              ],
+              [
+                "前向 → 选 token",
+                "继续输出"
+              ]
+            ]
+          },
+          {
+            "title": "推测解码",
+            "sub": "草稿提出，目标集中检查",
+            "kind": "flow",
+            "stages": [
+              [
+                "草稿模型",
+                "提出多个候选"
+              ],
+              [
+                "目标模型",
+                "一次验证多个位置"
+              ],
+              [
+                "提交连续前缀",
+                "并补出 token"
+              ]
+            ]
+          }
+        ],
+        "detail": "mv=0"
+      }
+    ],
+    "intro": "把同一串草稿的三种验证结果放在一起，先看接受前缀的边界，再区分草稿生成与目标验证的工作。"
+  },
+  "serving": {
+    "title": "请求结束与资源回收",
+    "detail": "正常响应、运行中取消、在途操作完成和双实例路由",
+    "boards": [
+      {
+        "id": "lifetime",
+        "tab": "完成 / 取消",
+        "question": "客户端结束等待后，后端何时可以归还资源？",
+        "note": "图中的从上到下的位置表示生命周期事件顺序，不是耗时比例；资源须等在途操作结束后才能安全复用。",
+        "panels": [
+          {
+            "title": "正常完成",
+            "sub": "输出结束，完成收尾",
+            "kind": "lifetime",
+            "mode": "normal"
+          },
+          {
+            "title": "运行中取消",
+            "sub": "停止后续工作，等待在途操作",
+            "kind": "lifetime",
+            "mode": "cancel"
+          }
+        ],
+        "detail": "mv=0"
+      },
+      {
+        "id": "routing",
+        "tab": "请求路由",
+        "question": "两条请求怎样进入不同模型实例？",
+        "note": "路由器选择实例；实例内部仍需自行排队、执行和管理缓存。此图不指定具体负载均衡策略。",
+        "panels": [
+          {
+            "title": "两份完整模型副本",
+            "sub": "请求与响应跨服务进程边界",
+            "kind": "router"
+          }
+        ],
+        "detail": "mv=2"
+      }
+    ],
+    "intro": "对照正常结束和运行中取消，沿客户端、控制状态、在途操作和资源回收追踪请求的收尾。"
+  },
+  "metrics": {
+    "title": "沿时间轴读懂指标",
+    "detail": "TTFT/ITL/TPOT 端点、token 与消息口径、P95 和成功率、统计窗口与吞吐",
+    "boards": [
+      {
+        "id": "latency",
+        "tab": "延迟区间",
+        "question": "同一条请求，不同延迟量的是哪一段？",
+        "note": "采用客户端观测示例：一条消息包含一个 token，时间点是教学设定。TTFT 从发出请求到首个输出，ITL 看相邻 token 到达间隔。",
+        "panels": [
+          {
+            "title": "一条共同时间轴",
+            "sub": "TTFT / ITL / TPOT 使用不同区间",
+            "kind": "latency"
+          }
+        ],
+        "detail": "mv=0"
+      },
+      {
+        "id": "chunks",
+        "tab": "Token / Chunk",
+        "question": "一条消息含两个 token，间隔还怎么解释？",
+        "note": "客户端可直接观察消息到达时刻；合包后，不能把包间隔直接当作每个 token 在服务端的生成间隔。",
+        "panels": [
+          {
+            "title": "分别到达",
+            "sub": "一个消息对应一个 token",
+            "kind": "stream",
+            "mode": "single"
+          },
+          {
+            "title": "一起到达",
+            "sub": "一个消息包含两个 token",
+            "kind": "stream",
+            "mode": "chunk"
+          }
+        ],
+        "detail": "mv=1"
+      },
+      {
+        "id": "distribution",
+        "tab": "分位数 / 成功率",
+        "question": "看尾部慢请求，与统计成功请求，有什么不同？",
+        "note": "分位数先对固定样本排序；成功率另看成功数与总请求数。失败样本如何处理要明确约定。",
+        "panels": [
+          {
+            "title": "P50 / P95",
+            "sub": "定位延迟分布中的位置",
+            "kind": "distribution"
+          },
+          {
+            "title": "成功率",
+            "sub": "分别计数成功与失败",
+            "kind": "success"
+          }
+        ],
+        "detail": "mv=2"
+      },
+      {
+        "id": "window",
+        "tab": "统计窗口",
+        "question": "吞吐的分子和时间窗口怎样配对？",
+        "note": "请求吞吐与 token 吞吐使用不同分子；比较时保持统计窗口、成功口径和负载条件一致。",
+        "panels": [
+          {
+            "title": "相同观测窗口",
+            "sub": "只统计窗口内按既定口径计入的事件",
+            "kind": "window"
+          }
+        ],
+        "detail": "mv=4"
+      }
+    ],
+    "intro": "沿同一时间轴读延迟区间，再区分 token 与消息、延迟分位数与成功率，以及统计窗口内的吞吐。"
+  }
+}

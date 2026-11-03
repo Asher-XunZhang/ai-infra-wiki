@@ -9,6 +9,7 @@ from build_learning_navigation import ROOT, PAGES, FOUNDATIONS, FOUNDATION_BY_SL
 
 EXTENSIONS = json.loads((PAGES / 'foundations/extensions.json').read_text(encoding='utf-8'))
 CONCEPTS = json.loads((PAGES / 'foundations/concepts.json').read_text(encoding='utf-8'))
+MECHANISMS = json.loads((PAGES / 'foundations/mechanisms.json').read_text(encoding='utf-8'))
 
 
 def repo_doc_url(path, fragment=''):
@@ -445,9 +446,25 @@ def attention_variants_static():
 <p class="av-static-links"><a href="#attention-variants">回到交互图</a><a href="components.html#why-heads">第04课头共享图</a><a href="hardware.html#concept-3">第 07 课 FlashAttention</a></p>
 </details>"""
 
+def mechanism_atlas(slug):
+    """A readable fallback and an embedded catalogue keep the overview offline."""
+    atlas = MECHANISMS[slug]
+    fallback = ''.join(
+        '<article><h3>' + escape(b['question']) + '</h3><p>'
+        + '；'.join(escape(p['title'] + '：' + p['sub']) for p in b['panels'])
+        + '</p><p>' + escape(b['note']) + '</p></article>'
+        for b in atlas['boards'])
+    payload = json.dumps(atlas, ensure_ascii=False).replace('<', r'\u003c')
+    return ('<section id="mechanism-atlas" data-foundation-atlas="' + slug + '">'
+            '<script type="application/json">' + payload + '</script>'
+            '<div class="fa-static"><h2>' + escape(atlas['title']) + '</h2>'
+            + fallback + '</div></section>')
+
+
 def render(c, i):
     page = PAGES / 'foundations' / (c['slug'] + '.html')
     title = escape(c['title'])
+    intro = MECHANISMS.get(c['slug'], {}).get('intro', c['intro'])
     prerequisites = '从这一课开始，不要求推理知识。' if not c['prerequisites'] else '先看：' + ' · '.join(f'<a href="{slug}.html">{escape(FOUNDATION_BY_SLUG[slug]["title"])}</a>' for slug in c['prerequisites'])
     terms = ''.join(f'<div><dt>{escape(a)}</dt><dd>{escape(b)}</dd></div>' for a, b in c['terms'])
     sections = ''.join(f'<section id="concept-{n}"><h2>{escape(a)}</h2><p>{escape(b)}</p></section>' for n, (a, b) in enumerate(c['sections']))
@@ -577,6 +594,16 @@ def render(c, i):
         lab_html += '<p class="foundation-prereqs">FlashAttention 的 tiling 与 online softmax 只重排精确 Attention 的读写顺序；六组 Attention 机制与各自缓存/候选差异见 <a href="attention.html#attention-variants">第 03 课变体主入口</a>。</p>'
     goal_selector = parallel_goal_selector() if c['slug'] == 'parallel' else ''
     space_time_entry = parallel_space_time_entry() if c['slug'] == 'parallel' else ''
+    mechanism_block = f'{learning_entry}{goal_selector}{space_time_entry}{static_summary}\n<div id="lesson-animation"></div>\n{animation_anchor}\n{lab_html}'
+    if c['slug'] in MECHANISMS:
+        mechanism_assets += '<link rel="stylesheet" href="../motion/foundation-atlas.css"><script src="../motion/foundation-atlas.js" defer></script>'
+        learning_entry = learning_entry.replace('<a href="#understand">', '<a href="#mechanism-atlas">机制画布</a><a href="#understand">', 1)
+        mechanism_block = (learning_entry + mechanism_atlas(c['slug'])
+            + '<details class="fa-detail" id="mechanism-detail"><summary>深入演示 · '
+            + escape(MECHANISMS[c['slug']]['detail']) + '</summary>'
+            + '<p>下方保留逐步播放、条件切换和数值核对，可在过程中暂停、回看。</p>'
+            + goal_selector + space_time_entry + static_summary
+            + '<div id="lesson-animation"></div>' + animation_anchor + lab_html + '</details>')
     return f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title} · 推理基础</title><meta name="description" content="{escape(c['lead'], quote=True)}"><link rel="icon" href="data:,"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script>{mechanism_assets}<script src="../motion/camera.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script>{extension_assets}</head>
 <body data-page="foundations" data-lesson="{c['slug']}"><a class="skip-link" href="#main-content">跳到正文</a>
@@ -585,13 +612,10 @@ def render(c, i):
 <nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">{title}</span></nav>
 <header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · {i+1:02} / {len(FOUNDATIONS):02}</a><span class="lesson-count">通用原理</span></div><h1>{title}</h1><p>{escape(c['lead'])}</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
 <p class="foundation-prereqs">{prerequisites}</p>
-<p class="foundation-intro">{escape(c['intro'])}</p>
+<p class="foundation-intro">{escape(intro)}</p>
 <section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>{escape(CONCEPTS[c['slug']]['problem'])}</p></section>
 {motive_html}
-{learning_entry}{goal_selector}{space_time_entry}{static_summary}
-<div id="lesson-animation"></div>
-{animation_anchor}
-{lab_html}
+{mechanism_block}
 {multihead_html}{attention_variants_html}
 {concept_guide(c)}
 <section id="lesson-glossary"><h2>术语速查</h2>{terms_html}</section>
