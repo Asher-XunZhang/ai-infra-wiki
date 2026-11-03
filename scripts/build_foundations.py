@@ -423,12 +423,12 @@ def cache_static_summary():
 
 
 def attention_variants_static():
-    """No-JS six-row structural summary; calculations stay in linked docs."""
-    return """<div class="av-static" id="attention-variants-static">
-<h3 id="attention-classification">静态对照：六组机制各改了什么</h3>
-<p class="av-static-intro">六组不是一条演进路线：它们分别改 KV 共享、缓存表示、可见范围、候选位置和状态表示。Self / Cross 与 causal / bidirectional 是另一组独立分类，不与这六组混成一条轴。</p>
+    """No-JS structural reference; keep the main comparison focused on diagrams."""
+    return """<details class="av-static" id="attention-variants-static">
+<summary id="attention-classification">文字速查：各变体改变了什么</summary>
+<p class="av-static-intro">分别对照 KV 共享、缓存表示、读取范围、递推状态、跨层复用和执行方式。Self / Cross 与 causal / bidirectional 是独立分类；这些机制可以组合。</p>
 <div class="av-static-scroll"><table class="av-static-table">
-<caption>同一层 Attention 的六个设计对象（结构对照，不含数值）</caption>
+<caption>Attention 机制与工程实现（结构对照）</caption>
 <thead><tr><th scope="col">组</th><th scope="col">改动的对象</th><th scope="col">读取关系</th><th scope="col">不能推成什么</th></tr></thead>
 <tbody>
 <tr><th scope="row">MHA / GQA / MQA</th><td>每组 Q 共享几套历史 K/V。</td><td>4 个 Q 头不变，K/V 组数 4 / 2 / 1；同组 Q 各自用 q 打分、各自输出。</td><td>不是把 Q 头合并，也不是共享输出。</td></tr>
@@ -437,10 +437,13 @@ def attention_variants_static():
 <tr><th scope="row">DSA</th><td>主注意力本次读哪些位置。</td><td>indexer 先选 Top-K，主注意力只读选中的主缓存条目。</td><td>索引分不是最终权重；未选条目仍保留在主缓存。</td></tr>
 <tr><th scope="row">NSA</th><td>历史按什么粒度并行读取。</td><td>摘要、选中块原 token、近期窗口三路独立注意力，再由独立门汇合。</td><td>不是一路的三种视图；三个门不归一化。</td></tr>
 <tr><th scope="row">GDN / KDA</th><td>历史放在哪里。</td><td>压进固定形状状态：先衰减，再用当前 k、v 的预测误差纠正写回，q 读出。</td><td>固定形状不等于每 token 零成本；GDN 整体衰减，KDA 按通道衰减。</td></tr>
+<tr><th scope="row">QSA / CSA / HCA</th><td>索引路径或主 KV 的序列表示。</td><td>QSA 压索引并展开选中块；CSA 选择压缩主 KV；HCA 读取全部可见高压缩条目，CSA/HCA 另有近期窗口。</td><td>压缩索引不等于压缩主 KV；遍历压缩条目不等于读全量原 token。</td></tr>
+<tr><th scope="row">CSA2</th><td>跨层复用全局 KV 与位置选择。</td><td>Full 新建并选位；Reindex 复用记录、重选位置；Reuse 复用记录与已有选择。</td><td>每层仍计算自己的 Q、SWA 与输出；不是复用前层答案。</td></tr>
+<tr><th scope="row">FlashAttention / PagedAttention</th><td>计算与搬运 / KV 的物理存储。</td><td>前者分块计算并在线归一化；后者通过块表读取非连续的 KV 块。</td><td>这是工程实现维度，不等于改变模型读取哪些逻辑位置。</td></tr>
 </tbody></table></div>
 <p class="av-static-note"><strong>边界：</strong>本模块只画对象与访问关系，不比较速度、显存或模型质量；图中不展开 softmax 表、矩阵数值或误差向量。详细推导、版本差异与源码边界见本页末尾 <a href="#deep-reading">仓内深入阅读</a>。</p>
 <p class="av-static-links"><a href="#attention-variants">回到交互图</a><a href="components.html#why-heads">第04课头共享图</a><a href="hardware.html#concept-3">第 07 课 FlashAttention</a></p>
-</div>"""
+</details>"""
 
 def render(c, i):
     page = PAGES / 'foundations' / (c['slug'] + '.html')
@@ -562,10 +565,10 @@ def render(c, i):
     attention_variants_html = ''
     if c['slug'] == 'attention':
         attention_variants_html = ('\n<section id="attention-variants" class="av-section" aria-labelledby="attention-variants-title">'
-            '<div class="av-section-head"><p class="eyebrow">独立对照 · 共享头 / 缓存表示 / 访问范围 / 候选选择 / 递推状态</p>'
-            '<h2 id="attention-variants-title">同一层的六组 Attention 机制：它们各自在改什么？</h2>'
-            '<p class="av-lead">六组分别改共享、缓存表示、可见范围、候选位置与状态，不在同一根轴上，也不是速度排行。按共享方式、缓存表示、可见窗口、候选选位与状态更新逐项对照，推导和版本边界见页末深入阅读。</p></div>'
-            '<div data-attention-variants data-public-root="../../"><noscript><p class="av-lead" style="padding:14px 16px;margin:0">交互面板需要 JavaScript；下方六行静态对照与页末深入阅读仍可阅读、跳转。</p></noscript></div>'
+            '<div class="av-section-head"><p class="eyebrow">机制对照 · 共享 / 压缩 / 选位 / 状态 / 复用</p>'
+            '<h2 id="attention-variants-title">Attention 变体：并排看清机制差异</h2>'
+            '<p class="av-lead">看连线怎样共享、哪些历史被读取、记忆怎样保存。每组只比较一个问题，点选上方分类切换。</p></div>'
+            '<div data-attention-variants data-public-root="../../"><noscript><p style="padding:14px 16px;margin:0">交互图需要 JavaScript；下方“文字速查”与页末深入阅读仍可使用。</p></noscript></div>'
             + attention_variants_static() + '</section>')
     lab_html = '<div data-foundation-lab="components" hidden></div>' if c['slug'] == 'components' else f'<section class="foundation-lab" data-foundation-lab="{c["slug"]}" data-full="true" data-title="{title}"><h2>走一遍具体过程</h2><p>{escape(c["goal"])}</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>'
     if c['slug'] == 'components':
