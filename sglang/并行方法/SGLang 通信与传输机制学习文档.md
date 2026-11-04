@@ -154,6 +154,8 @@ stateDiagram-v2
 
 同机 / 跨机是放置方式，P2P / collective 是参与方式，TCP / RDMA 是底层传输选择。它们不一一对应。SGLang 的 [Mooncake wrapper][engine] 负责注册与传入 transport 配置，代码包含默认 RDMA、TCP 等配置路径；本文不验证外部 Mooncake 版本的内部实现或硬件支持。
 
+需要跨引擎对照时，读 [SGLang 与 vLLM V1 架构差异](<../../大模型推理/推理基础/SGLang 与 vLLM V1 架构差异源码学习文档.md>) 第 4 节：分别核对 ZMQ socket 模式、bind/connect、pickle / MsgPack、共享内存和 rank 控制协同。它使用独立固定提交，编码默认值不可直接套回本文。
+
 继续阅读：
 
 - [并行专题](<README.md>)：把通信算子放回 TP、PP、EP 等分工中。

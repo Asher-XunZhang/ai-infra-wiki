@@ -20,6 +20,8 @@
 | 工作区状态 | `main...origin/main`，无已修改或未跟踪文件 |
 | 操作边界 | 只读源码分析；未修改 vLLM 源码，未执行测试、推理和传输实验 |
 
+若还不能定位 Scheduler 与 Worker 的进程关系，先读 [SGLang 与 vLLM V1 架构差异](<../../大模型推理/推理基础/SGLang 与 vLLM V1 架构差异源码学习文档.md>)。该篇补齐 API → EngineCore → Worker 的消息通路，并区分前端 ZMQ、Executor 工作队列与 Connector KV 数据面；两篇基线独立。
+
 ### 0.2 分析深度
 
 本文按三档处理：

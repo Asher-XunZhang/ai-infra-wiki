@@ -34,6 +34,8 @@
 | Eager Break | 明确留在普通执行的动态区域 | 图与动态逻辑的边界 |
 | Captured shape | 预先录制的 batch/token 档位 | 实际输入要映射到这些档位 |
 
+需要与 vLLM 对照时，读 [SGLang 与 vLLM V1 架构差异](<../../大模型推理/推理基础/SGLang 与 vLLM V1 架构差异源码学习文档.md>)第 8.4 节：分别比较分段边界、形状匹配和运行模式，并以固定源码补充验证。本文继续保留原博客的版本与性能条件。
+
 ## 1. CUDA Graph 优化的是什么
 
 一次 Transformer forward 包含许多 kernel。普通 Eager 路径由 CPU 逐个 launch：

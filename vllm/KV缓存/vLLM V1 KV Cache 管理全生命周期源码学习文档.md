@@ -58,6 +58,8 @@ KV Connector 如何把 KV 扩展到远端、CPU 或其他实例，见配套文�
 | DCP / PCP | Decode Context Parallel / Prefill Context Parallel；会改变 block 对全局 token 的覆盖关系 | `vllm/config/parallel.py` |
 | HMA | Hybrid Memory Allocator；面向混合 KV 类型的统一分组与内存布局 | `vllm/config/cache.py` |
 
+跨引擎场景对照见 [SGLang 与 vLLM V1 架构差异](<../../大模型推理/推理基础/SGLang 与 vLLM V1 架构差异源码学习文档.md>)第 8 节：对齐请求结束后的缓存保留、容量压力与取消时的释放条件。该篇使用独立固定源码，不把其函数细节直接替换为本文版本。
+
 ## 1. 先建立整体地图
 
 ### 1.1 人话版：同一份 KV 有三种视角

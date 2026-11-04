@@ -17,6 +17,8 @@
 
 [系统边界与学习地图](<SGLang 系统边界与学习地图学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/system-overview/)：先用完整代码框架定位接入、调度、执行、KV 与输出，再区分进程、设备资源和模型副本；各模块可进入固定源码及详细课程。先修为一次 Prefill / Decode 的输入输出关系。
 
+架构对照：[SGLang 与 vLLM V1 架构差异](<../../大模型推理/推理基础/SGLang 与 vLLM V1 架构差异源码学习文档.md>)。先修为 Prefill/Decode；重点比较同进程调用与跨进程消息、独立 Detokenizer 与前端输出处理，以及两套调度接口。
+
 ## 阅读顺序
 
 先用推理全景建立宏观认识；首轮再读总览和请求生命周期，再读显存预算。CUDA Graph 是执行支线，先补下方 Worker / ModelRunner 与 Graph 课程入口。

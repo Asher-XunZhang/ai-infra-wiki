@@ -22,6 +22,8 @@
 | 1 | [vLLM 从连续批处理到 PagedAttention 的引擎工作流](<vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>) | 起步 | 建立引擎、调度与 PagedAttention 的整体关系；概念示例含不同历史版本。 |
 | 2 | [vLLM Chunked Prefill 与 Block Size](<vLLM Chunked Prefill 与 Block Size 学习文档.md>) | 主线 | 拆清 chunk、block 与每轮预算的联系。 |
 
+桥接选读：[SGLang 与 vLLM V1 架构差异](<../../大模型推理/推理基础/SGLang 与 vLLM V1 架构差异源码学习文档.md>)。读完工作流概念篇后，按固定 V1 源码追踪 EngineCore、Executor 和 Worker，并与 SGLang 的进程、序列化及控制协同对照。
+
 ## 自测与下一步
 
 能解释连续批处理如何补入和移出请求，以及计算 chunk 为什么不等于存储 block。

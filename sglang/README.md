@@ -22,6 +22,8 @@
 
 完成标志：能解释一条请求何时可被接纳、谁持有 KV、谁发起计算，以及请求结束与缓存保留为什么不是一回事。
 
+跨引擎选读：[SGLang 与 vLLM V1 架构差异](<../大模型推理/推理基础/SGLang 与 vLLM V1 架构差异源码学习文档.md>)。掌握 Prefill/Decode 后，用模块对应表和消息通路理解 SGLang Scheduler 与 vLLM EngineCore 的不同分工。
+
 ### 系统源码课程怎样衔接
 
 希望逐阶段读代码时，使用 [source-study 总目录](<source-study/README.md>)。保留其 00–12 阶段、架构导读与附录编号；专题目录不复制这套课程。
