@@ -56,6 +56,7 @@ jobs:
           node tests/pages/test_performance.cjs
           node tests/pages/test_execution.cjs
           node tests/pages/test_kv_memory.cjs
+          node tests/pages/test_radix_lifecycle.cjs
           node tests/pages/test_scheduling.cjs
           node tests/pages/test_system_overview.cjs
           node tests/pages/test_foundations.cjs

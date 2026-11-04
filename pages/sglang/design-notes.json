@@ -228,24 +228,47 @@
     }
   },
   "sglang/inference-overview/kv-cache.html": {
-    "problem": "知道“旧 KV 可以复用”后，引擎还必须确定哪一段历史已经存在、实际存在哪里、哪些新位置需要计算。前缀树索引把文本前缀匹配与设备缓存地址连接起来。",
+    "problem": "引擎需要按 token 前缀找到已有 KV 的位置索引，并保护仍在使用的路径。Radix Tree 的搜索、分裂、插入与驱逐围绕这组索引展开。",
     "topics": [
       {
         "id": "prefix-index",
-        "title": "为什么要维护前缀索引，而不是只比较两句话是否相似？",
-        "why": "可复用的是符合计算条件的同一前缀状态，语义相似不足以保证数值相同。系统需要按 token 与相关身份找到精确匹配，再得到可读取的缓存位置。",
-        "mechanism": "本页普通 RadixCache 的 match_prefix 查找 token 序列与命名空间对应的最长匹配，返回设备索引及末端节点；请求据此确定本轮剩余输入范围。",
-        "tradeoff": "查到索引不意味着已经执行本轮 Attention；还需要保护有效缓存、分配新位置并完成计算。分页与特殊后端的匹配边界要分别核对。",
+        "title": "为什么按 token 前缀查树，而不是比较两句话是否相似？",
+        "why": "可复用的是同一 token 前缀下已经算出的 K/V；语义相似不能保证数值相同。树节点保存一段 token 和对应槽号，请求命中后只计算剩余位置。",
+        "mechanism": "match_prefix 先把 RadixKey 按 page_size 对齐，再用第一页 token 组定位候选节点；match_at 用指数扩大的比较窗口与局部二分确定匹配长度，最后向下取整到完整页。匹配在节点内部结束时，_split_node 把共享前缀显式化；返回的 device_indices 写入请求的 prefix_indices。",
+        "tradeoff": "匹配粒度受 page_size 和命名空间约束。查到索引之后，调度准入仍要保护命中路径；索引返回与路径加锁是两个动作。",
         "source": [
           "mem_cache/radix_cache.py",
           397,
           "match_prefix"
         ],
-        "example": "相同输入文本若属于不同缓存命名空间，不能仅凭字符一致就共享条目。树节点存的是索引关系，不是复制一整份历史 KV。",
+        "example": "R2 只共享前 4 个 token 时，搜索会在 N1 中间分裂出 N2（ABCD）与 N1（EFGH）。变化的是索引节点和 value 切片，K/V 数值没有移动。",
         "links": [
           [
             "进一步区分请求映射和物理存储",
             "sglang/kv-memory/index.html"
+          ]
+        ]
+      },
+      {
+        "id": "cache-lifecycle",
+        "title": "为什么命中、插入、保护与移除不能合成一个动作？",
+        "why": "命中只返回现有索引；插入让新后缀可被复用；锁保护活跃请求使用的路径；驱逐只能选择未锁叶。这四种动作改变不同的树状态。",
+        "mechanism": "prefill 后 cache_unfinished_req 先 insert，再重新 match_prefix、更新匹配结果并移动路径保护；请求结束时 dec_lock_ref 沿路径减锁。只有 lock_ref=0 且无孩子的节点才能进入 evictable_leaves，被 evict 选中。",
+        "tradeoff": "尽早插入提高复用机会，但匹配结果和路径保护必须同步。结束请求可以保留索引，真正驱逐时才移除节点。",
+        "source": [
+          "mem_cache/radix_cache.py",
+          561,
+          "cache_unfinished_req"
+        ],
+        "example": "R1 结束后，N3 先成为未锁叶。删除 N3 后，N1 才成为新的候选；R2 仍在使用的 N2（ABCD）一直受保护。",
+        "links": [
+          [
+            "下一节：分页续写与共享回收",
+            "sglang/kv-memory/index.html"
+          ],
+          [
+            "Scheduler 的 KV 预算",
+            "sglang/inference-overview/scheduling.html"
           ]
         ]
       }
@@ -259,7 +282,7 @@
           "https://www.lmsys.org/blog/2024-01-17-sglang/"
         ]
       ],
-      "scope": "这是 2024 年设计背景；本课的命名空间和匹配约束以固定源码为准。",
+      "scope": "这是 2024 年 RadixAttention 的设计背景；本页的 page_size、命名空间、锁与驱逐条件以固定提交 279339f113 的普通 RadixCache 路径为准，不覆盖 MLA、HiCache 或混合状态。",
       "read_date": "2026-10-16"
     }
   },

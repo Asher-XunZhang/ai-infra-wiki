@@ -1,6 +1,24 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RadixCache 与 Attention：前缀索引怎样连接 KV？ · AI Infra Wiki</title><meta name="description" content="把缓存复用落到请求索引、模型调用和生命周期三个接口。"><link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="overview.css"><script src="../../motion/integration.js" defer></script><script src="../../site.js" defer></script><link rel="stylesheet" href="../../diagrams.css"><link rel="stylesheet" href="../../foundations/foundations.css"></head>
-<body data-page="inference-overview" data-lesson="kv-cache"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header><div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RadixCache 与 Attention：前缀索引怎样连接 KV？ · AI Infra Wiki</title>
+<meta name="description" content="沿固定提交的 SGLang 普通 RadixCache，观察前缀搜索、节点分裂、缓存插入、共享保护与逐叶驱逐，并把树节点、请求行和 KV 池页对上。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23216c51%22/%3E%3Ctext%20x%3D%228%22%20y%3D%2224%22%20fill%3D%22white%22%20font-family%3D%22Georgia%2Cserif%22%20font-weight%3D%22bold%22%20font-size%3D%2227%22%3Ea%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../site.css">
+<link rel="stylesheet" href="overview.css">
+<link rel="stylesheet" href="../../foundations/foundations.css">
+<link rel="stylesheet" href="radix-lesson.css">
+<script src="../../motion/integration.js" defer></script>
+<script src="../../site.js" defer></script>
+<script src="radix-model.js" defer></script>
+<script src="radix-lab.js" defer></script>
+</head>
+<body data-page="inference-overview" data-lesson="kv-cache">
+<a class="skip-link" href="#main-content">跳到正文</a>
+<header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header>
+<div class="site-layout">
+<aside class="site-sidebar" aria-label="学习导航">
 <details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
 <div class="sidebar-content">
 <a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
@@ -111,10 +129,182 @@
 </details>
 <div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
-</div></details></aside><div class="site-content"><main id="main-content" tabindex="-1"><!-- learning-context:start -->
+</div></details></aside>
+<div class="site-content"><main id="main-content" tabindex="-1">
+<!-- learning-context:start -->
 <nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第二章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-instance">第二层 · 理解单实例</a><span aria-hidden="true">/</span><a href="../../#kv-memory">04 KV Cache 与内存管理</a><span aria-hidden="true">/</span><span aria-current="page">RadixCache 与 Attention：前缀索引怎样连接 KV？</span></nav>
 <!-- learning-context:end -->
-<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#kv-memory">模块 04 / KV Cache 与内存管理</a><span class="lesson-count">SGLang · 源码导读</span></div><h1>RadixCache 与 Attention：前缀索引怎样连接 KV？</h1><p>把缓存复用落到请求索引、模型调用和生命周期三个接口。</p><div class="meta-tags"><span>普通自回归文本生成</span><span>固定提交 · 接口与状态对照</span><span>源码 279339f113</span></div></header><!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>连接请求的前缀索引、本轮输入范围与 attention 调用，再进入物理页和回收实现。</p><a href="../../foundations/cache.html">需要回顾原理：KV Cache 与前缀复用：为什么保存历史 K/V？</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">知道“旧 KV 可以复用”后，引擎还必须确定哪一段历史已经存在、实际存在哪里、哪些新位置需要计算。前缀树索引把文本前缀匹配与设备缓存地址连接起来。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-background"><summary>复用应当针对相同历史</summary><p>RadixAttention 作者文章从多次调用共享 prompt 前缀出发，用前缀树管理已算过的 KV，并在容量压力下驱逐。由此要问的是“哪些历史计算完全可以复用”，而不是两段文字表达的意思是否相近。</p><p class="design-source">概念与设计说明：<a href="https://www.lmsys.org/blog/2024-01-17-sglang/">SGLang 作者：RadixAttention（2024-01-17） ↗</a></p><p class="design-source">这是 2024 年设计背景；本课的命名空间和匹配约束以固定源码为准。 资料读取：2026-10-16。</p></details><section class="design-question" id="design-prefix-index"><h3>为什么要维护前缀索引，而不是只比较两句话是否相似？</h3><p>可复用的是符合计算条件的同一前缀状态，语义相似不足以保证数值相同。系统需要按 token 与相关身份找到精确匹配，再得到可读取的缓存位置。</p><details><summary>展开机制与具体例子</summary><p>本页普通 RadixCache 的 match_prefix 查找 token 序列与命名空间对应的最长匹配，返回设备索引及末端节点；请求据此确定本轮剩余输入范围。</p><div class="design-example"><strong>用一个例子理解</strong><p>相同输入文本若属于不同缓存命名空间，不能仅凭字符一致就共享条目。树节点存的是索引关系，不是复制一整份历史 KV。</p></div></details><p class="design-tradeoff"><strong>取舍与条件：</strong>查到索引不意味着已经执行本轮 Attention；还需要保护有效缓存、分配新位置并完成计算。分页与特殊后端的匹配边界要分别核对。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L397">match_prefix · 本课实现核对 ↗</a></p><ul class="design-links"><li><a href="../kv-memory/index.html">进一步区分请求映射和物理存储 →</a></li></ul></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-10-16。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end --><section class="implementation-map" aria-label="实现阅读路线"><h2>沿实现接口阅读</h2><ol><li><h3>选出本轮仍需处理的位置</h3><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L2678"><code>Req.prefix_indices → prepare_for_extend</code></a><p>批次准备按已有 prefix_indices 切取 get_fill_ids 的剩余部分，同时保存前缀长度与本轮长度。</p><p class="implementation-check">读到这里核对：“前缀可复用”必须体现为本轮输入范围，不能只看一个命中数字。</p></li><li><h3>计算剩余位置的新状态</h3><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L2049"><code>DeepseekV2AttentionMLA.forward</code></a><p>以 DeepSeek-V3 为例，MLA 注意力先准备本轮特征，再按后端与批次条件选择计算路径。缓存保存压缩的历史表示及位置相关部分，不能直接套用基础课完整 K/V 的存储示意。</p><p class="implementation-check">读到这里核对：地址准备、模型计算和缓存持有是三个责任，不能把它们都叫作“缓存”。</p></li><li><h3>追踪谁还持有这些位置</h3><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L859"><code>请求结果处理 → 缓存与资源管理</code></a><p>Prefill 的未完成请求仍有后续工作；处理分块、写入和缓存时，要结合请求状态判断。</p><p class="implementation-check">读到这里核对：下一课分别操作请求映射、共享保护和驱逐，不把请求结束等同于物理位置已空闲。</p></li></ol></section><a class="foundation-to-engine" href="../kv-memory/index.html"><small>继续查看具体执行与状态变化</small>继续观察物理页映射、保护与回收 →</a><section class="overview-section source-links"><h2>回到源码核对</h2><ul><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L2678">prepare_for_extend：去掉已复用前缀 ↗</a> · <code>managers/schedule_batch.py</code></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/deepseek_v2.py#L2049">DeepseekV2AttentionMLA.forward：MLA 的准备与计算分派 ↗</a> · <code>models/deepseek_v2.py</code></li><li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L859">未完成请求与缓存处理 ↗</a> · <code>disaggregation/prefill.py</code></li></ul><p>阅读基线：公开上游 <code>main</code> / <code>279339f113b79af84f27fd3ac92d0a13bd3f4cbd</code>，读取于 2026-09-17；DeepSeek-V3 调用路径复核于 2026-10-15。只读固定提交；未运行推理或性能实验。<a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/%E8%BF%90%E8%A1%8C%E6%97%B6/SGLang%20%E6%8E%A8%E7%90%86%E5%85%A8%E6%99%AF%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97.md">完整基线、源码映射与阅读笔记 ↗</a></p></section><!-- reading-pagers:start -->
+<header class="lesson-header">
+<div class="lesson-kicker"><a class="eyebrow" href="../../#kv-memory">模块 04 / KV Cache 与内存管理</a><span class="lesson-count">SGLang · 源码导读</span></div>
+<h1>RadixCache 与 Attention：前缀索引怎样连接 KV？</h1>
+<p>从一条共享前缀出发，观察 Radix Tree 怎样搜索、分裂、插入、保护与逐叶驱逐，并让每个树节点、请求行与 KV 池页始终对得上。</p>
+<div class="meta-tags"><span>普通 RadixCache · page_size=4（教学设定）</span><span>源码 279339f113</span><span>机制演示 · 未运行 GPU 实验</span></div>
+</header><!-- lesson-reading:start --><nav class="lesson-reading-nav" aria-label="本课阅读入口"><span>按问题阅读</span><a href="#implementation-why-title">从问题理解实现</a><a href="#radix-lab-title">一条前缀怎样被找到、挂上树，再被回收？</a><a href="#radix-objects-title">明确树节点和请求的职责</a><a href="#radix-conditions-title">搜索、插入、保护、移除的精确条件</a><a href="#reading-topic-4">沿实现接口阅读</a><a href="#radix-selfcheck-title">先预测，再解释</a><a href="#radix-sources-title">固定源码与继续阅读</a></nav><!-- lesson-reading:end -->
+<!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>连接请求的前缀索引、本轮输入范围与 attention 调用，再进入物理页和回收实现。</p><a href="../../foundations/cache.html">需要回顾原理：KV Cache 与前缀复用：为什么保存历史 K/V？</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">引擎需要按 token 前缀找到已有 KV 的位置索引，并保护仍在使用的路径。Radix Tree 的搜索、分裂、插入与驱逐围绕这组索引展开。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-background"><summary>复用应当针对相同历史</summary><p>RadixAttention 作者文章从多次调用共享 prompt 前缀出发，用前缀树管理已算过的 KV，并在容量压力下驱逐。由此要问的是“哪些历史计算完全可以复用”，而不是两段文字表达的意思是否相近。</p><p class="design-source">概念与设计说明：<a href="https://www.lmsys.org/blog/2024-01-17-sglang/">SGLang 作者：RadixAttention（2024-01-17） ↗</a></p><p class="design-source">这是 2024 年 RadixAttention 的设计背景；本页的 page_size、命名空间、锁与驱逐条件以固定提交 279339f113 的普通 RadixCache 路径为准，不覆盖 MLA、HiCache 或混合状态。 资料读取：2026-10-16。</p></details><nav class="design-nav" aria-label="实现问题导航"><a href="#design-prefix-index">为什么按 token 前缀查树，而不是比较两句话是否相似？</a><a href="#design-cache-lifecycle">为什么命中、插入、保护与移除不能合成一个动作？</a></nav><section class="design-question" id="design-prefix-index"><h3>为什么按 token 前缀查树，而不是比较两句话是否相似？</h3><p>可复用的是同一 token 前缀下已经算出的 K/V；语义相似不能保证数值相同。树节点保存一段 token 和对应槽号，请求命中后只计算剩余位置。</p><details><summary>展开机制与具体例子</summary><p>match_prefix 先把 RadixKey 按 page_size 对齐，再用第一页 token 组定位候选节点；match_at 用指数扩大的比较窗口与局部二分确定匹配长度，最后向下取整到完整页。匹配在节点内部结束时，_split_node 把共享前缀显式化；返回的 device_indices 写入请求的 prefix_indices。</p><div class="design-example"><strong>用一个例子理解</strong><p>R2 只共享前 4 个 token 时，搜索会在 N1 中间分裂出 N2（ABCD）与 N1（EFGH）。变化的是索引节点和 value 切片，K/V 数值没有移动。</p></div></details><p class="design-tradeoff"><strong>取舍与条件：</strong>匹配粒度受 page_size 和命名空间约束。查到索引之后，调度准入仍要保护命中路径；索引返回与路径加锁是两个动作。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L397">match_prefix · 本课实现核对 ↗</a></p><ul class="design-links"><li><a href="../kv-memory/index.html">进一步区分请求映射和物理存储 →</a></li></ul></section><section class="design-question" id="design-cache-lifecycle"><h3>为什么命中、插入、保护与移除不能合成一个动作？</h3><p>命中只返回现有索引；插入让新后缀可被复用；锁保护活跃请求使用的路径；驱逐只能选择未锁叶。这四种动作改变不同的树状态。</p><details><summary>展开机制与具体例子</summary><p>prefill 后 cache_unfinished_req 先 insert，再重新 match_prefix、更新匹配结果并移动路径保护；请求结束时 dec_lock_ref 沿路径减锁。只有 lock_ref=0 且无孩子的节点才能进入 evictable_leaves，被 evict 选中。</p><div class="design-example"><strong>用一个例子理解</strong><p>R1 结束后，N3 先成为未锁叶。删除 N3 后，N1 才成为新的候选；R2 仍在使用的 N2（ABCD）一直受保护。</p></div></details><p class="design-tradeoff"><strong>取舍与条件：</strong>尽早插入提高复用机会，但匹配结果和路径保护必须同步。结束请求可以保留索引，真正驱逐时才移除节点。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L561">cache_unfinished_req · 本课实现核对 ↗</a></p><ul class="design-links"><li><a href="../kv-memory/index.html">下一节：分页续写与共享回收 →</a></li><li><a href="scheduling.html">Scheduler 的 KV 预算 →</a></li></ul></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-10-16。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end -->
+<section class="radix-lab" id="radix-lab" data-radix-lab hidden aria-labelledby="radix-lab-title">
+<div class="radix-lab-head">
+<div>
+<p class="eyebrow">交互机制 · 普通 RadixCache</p>
+<h2 id="radix-lab-title">一条前缀怎样被找到、挂上树，再被回收？</h2>
+<p class="radix-lede">追踪 token 前缀、位置索引与树结构的变化。连续播放，或拖动时间查看任意时刻。</p>
+</div>
+<div class="radix-modes" role="group" aria-label="选择机制演示">
+<button type="button" data-mode="journey" aria-pressed="true">完整链路</button>
+<button type="button" data-mode="search" aria-pressed="false">搜索</button>
+<button type="button" data-mode="insert" aria-pressed="false">插入</button>
+<button type="button" data-mode="remove" aria-pressed="false">移除</button>
+</div>
+</div>
+<p class="radix-mode-hint" id="radix-mode-hint">从前缀搜索、后缀插入到路径保护与逐叶驱逐。</p>
+<div class="radix-controls motion-controls">
+<button type="button" id="radix-prev">上一步</button>
+<button type="button" id="radix-play" aria-pressed="false">播放</button>
+<button type="button" id="radix-next">下一步</button>
+<button type="button" id="radix-reset">重置</button>
+<label class="radix-speed-label">速度 <select id="radix-speed" aria-label="播放速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
+<output id="radix-progress" aria-live="polite">第 1 / 12 步</output>
+</div>
+<div class="radix-seek-row"><label for="radix-seek">时间</label><input id="radix-seek" type="range" min="0" max="1" step="0.01" value="0" aria-label="机制演示时间"><output id="radix-time" aria-live="off">0.0 s</output></div>
+<ol class="radix-timeline" id="radix-timeline" aria-label="机制步骤"></ol>
+<div class="radix-now" aria-live="polite"><span>当前动作</span><h3 id="radix-step-title">先放好一段旧前缀</h3></div>
+<div class="radix-figure">
+<section class="radix-panel radix-tree-panel" aria-labelledby="radix-tree-title">
+<div class="radix-panel-head"><strong id="radix-tree-title">Radix Tree · 索引</strong><span>key：token · value：槽号</span></div>
+<div class="radix-tree-scroll" id="radix-tree-scroll">
+<div class="radix-tree-canvas" id="radix-tree-canvas">
+<svg class="radix-edges" id="radix-tree-edges" aria-hidden="true"></svg>
+<div class="radix-nodes" id="radix-tree-nodes" role="list" aria-label="Radix 树节点"></div>
+</div>
+</div>
+<div class="radix-tree-legend"><span><i class="radix-legend-dot is-locked"></i>实线 = 有请求锁住路径</span><span><i class="radix-legend-dot is-evictable"></i>虚线 = 可驱逐叶</span><span>value = KV 位置索引</span></div>
+</section>
+<section class="radix-panel radix-req-panel" aria-labelledby="radix-requests-title">
+<div class="radix-panel-head"><strong id="radix-requests-title">请求 · 查询与匹配结果</strong><span>token → prefix_indices</span></div>
+<div class="radix-requests" id="radix-requests"></div>
+<div class="radix-evictable" id="radix-evictable"></div>
+<div class="radix-pressure" id="radix-pressure" hidden></div>
+</section>
+<div class="radix-flow" id="radix-flow" aria-hidden="true"></div>
+</div>
+<div class="radix-readout">
+<div class="radix-caption" aria-live="polite">
+<div class="radix-caption-top"><span class="radix-stepno" id="radix-stepno">步骤 1 / 12</span><span class="radix-phase" id="radix-phase">场景</span></div>
+<details class="radix-step-detail"><summary>本阶段全过程与源码</summary>
+<p id="radix-step-caption">树里已有节点 N1：key 是 ABCDEFGH，value 是 8 个 KV 位置索引。两条请求还没有搜索。</p>
+<p class="radix-note" id="radix-step-note">节点保存 key + value（槽号），不保存文本，也不复制 K/V。</p>
+<div class="radix-source-line" id="radix-source"></div>
+</details>
+</div>
+<div class="radix-side-readout">
+<div class="radix-metrics" id="radix-metrics"></div>
+
+</div>
+</div>
+<details class="radix-goals"><summary>看完应能回答什么？</summary>
+
+<ol>
+<li>为什么命中 4 个 token 会让搜索本身分裂节点？</li>
+<li>为什么 prefill 完就插入，而不是等请求结束？</li>
+<li>为什么请求结束、成为可驱逐叶、移除节点是三个时刻？</li>
+</ol>
+</details>
+<details class="radix-explanation"><summary>教学设定与源码边界</summary><p class="radix-footnote">本图只呈现普通 RadixCache 的树机制：搜索、分裂、插入、路径保护与逐叶驱逐。token 字母与 value 数字是教学设定，value 表示已有 KV 的位置索引；插入阶段以本轮计算已完成为前提。匹配粒度沿用 page_size=4，不展开内存布局。真实 evict 会调用存储释放接口后删除节点，此处只呈现树内资格与关系变化；底层分配与回收见 <a href="../kv-memory/index.html">KV Memory Pool</a>。为观察父节点资格变化，同一个驱逐循环被拆成相邻步骤；结束请求并不触发必然清空。时间轴是讲解时间，省略逐 token 解码，不代表实测耗时。</p></details>
+</section>
+<noscript><p class="radix-footnote">交互动画需要 JavaScript；下方机制说明、源码入口和自测仍完整可读。</p></noscript>
+
+
+<section class="overview-section" aria-labelledby="radix-objects-title">
+<h2 id="radix-objects-title">明确树节点和请求的职责</h2>
+<p>本课讲 <code>RadixCache</code> 如何管理前缀索引。它返回 KV 位置索引，不把 K/V 数值搬入树节点。模型侧 <code>RadixAttention</code> 与底层存储是使用这些索引的后续环节。</p>
+<div class="table-wrap"><table class="radix-object-table">
+<caption>本课使用的对象职责；以固定提交 <code>279339f113</code> 的普通 MHA 路径为准。</caption>
+<thead><tr><th>对象</th><th>保存什么</th><th>不保存什么</th><th>谁改它</th></tr></thead>
+<tbody>
+<tr><td><code>TreeNode</code>（Radix Tree 节点）</td><td>一段 token 的 key、对应槽号数组 <code>value</code>、父子关系、<code>lock_ref</code></td><td>K/V 数值、原始文本</td><td><code>match_prefix</code> / <code>insert</code> / <code>_split_node</code> / <code>evict</code></td></tr>
+<tr><td>请求的匹配结果</td><td><code>prefix_indices</code>、<code>last_node</code>、受保护的路径</td><td>树结构和全局驱逐策略</td><td><code>match_prefix</code> 返回结果；准入与结束更新保护</td></tr>
+
+<tr><td><code>RadixAttention</code></td><td>接收模型已经算好的 Q/K/V，把 attention 计算及 KV 读写交给 backend</td><td>不负责 Radix Tree 的搜索</td><td><code>forward</code>；树搜索发生在请求初始化阶段</td></tr>
+</tbody></table></div>
+<p class="radix-contract"><strong>一句话的边界：</strong>本图的 value 只是 KV 位置索引，不能将树节点当成内存块。分配、写入与底层回收另见 <a href="../kv-memory/index.html">KV Memory Pool</a>。</p>
+</section>
+
+<section class="overview-section" id="radix-conditions" aria-labelledby="radix-conditions-title">
+<h2 id="radix-conditions-title">搜索、插入、保护、移除的精确条件</h2>
+<p>下面按固定提交的实际接口拆开四个动作。动画只抽取普通路径；每一步的源码入口仍可回到原文件核对。</p>
+
+<h3>搜索：先对齐页，再比较 token</h3>
+<ol class="radix-condition-list">
+<li><code>RadixKey.page_aligned(page_size)</code> 把查询长度向下截到 <code>page_size</code> 的整数倍。本例 <code>page_size=4</code>，所以 8 个 token 的节点只会在 4 的边界上被切开；若 <code>page_size=1</code>，粒度才回到单个 token。</li>
+<li>每一层用“第一页 token 组”作为 <code>child_key</code> 找到候选子节点，进入后由 <code>match_at</code> 用指数扩大的比较窗口与局部二分确定匹配长度，最后向下取整到完整页。候选路由不替代精确比较；真正决定命中长度的是 token 序列，以及 <code>extra_key</code> / <code>cache_salt</code> 等命名空间条件。</li>
+<li>如果匹配在节点的 key 中间结束（本例 R2 只在 ABCD 处命中），<code>_match_prefix_helper</code> 调用 <code>_split_node</code>：新建一个前缀父节点，原来的子节点保留为后缀。value 索引数组按匹配位置切片，K/V 数值没有移动。</li>
+<li>返回的 <code>device_indices</code> 会写入请求的 <code>prefix_indices</code>，末端节点写入 <code>last_node</code>。<code>match_prefix</code> 本身不加锁；调度器准入请求时通过 <code>PrefillAdder._req_inc_lock_ref</code> 保护命中路径。请求再用 <code>prepare_for_extend</code> 去掉已命中部分，只为本轮剩余位置准备输入。</li>
+</ol>
+
+<h3>插入：prefill 后先挂前缀，结束时再收尾</h3>
+<ol class="radix-condition-list">
+<li><strong>prefill 完成后</strong>，<code>cache_unfinished_req</code> 把已算好 KV 的位置索引及对应 token 插入树。这样请求还在解码时，下一条同前缀请求就能命中。插入后它会再 <code>match_prefix</code> 一次，把请求行重写成树返回的槽号，并把锁从旧的 <code>last_node</code> 移到新的末端节点。</li>
+<li><strong>请求结束时</strong>，<code>cache_finished_req</code> 处理已提交的完整 KV：必要时插入整段；如果 prompt 边界落在新叶内部，还会再插一次，使 prompt 与生成 token 可以分别被驱逐；先归还重复位置和未对齐尾部，再减少锁；随后 <code>release_kv_cache</code> 才归还请求行。</li>
+<li><code>insert</code> 只接收页对齐的 key 和 value；命中的部分不重复创建节点，未命中的后缀才成为新叶。树里的 <code>value</code> 是槽号数组，不是 K/V 张量。</li>
+</ol>
+
+<h3>保护：锁沿“实际命中的路径”累加</h3>
+<ol class="radix-condition-list">
+<li><code>inc_lock_ref(last_node)</code> 从末端节点一路走到 root（不含 root）。路径上每个节点 <code>lock_ref</code> 加 1；从 0 变 1 时，该节点的 token 长度从可驱逐容量移到受保护容量。</li>
+<li><code>dec_lock_ref</code> 反向执行：从 1 变 0 时移回可驱逐容量，再减 1。root 初始就是 <code>lock_ref=1</code>，不参与回收判断。</li>
+<li>锁保护的是这条请求匹配到的路径，不是整个子树。R1 结束后，R2 只锁住 ABCD，所以 EFGH 可以在 R2 仍活跃时被驱逐；反过来，祖先被锁住也不代表后代自动受保护。</li>
+</ol>
+
+<h3>移除：只有“未锁的叶”才是候选</h3>
+<ol class="radix-condition-list">
+<li><code>_update_leaf_status</code> 把满足“没有未驱逐的孩子”且 <code>lock_ref=0</code> 的节点放进 <code>evictable_leaves</code>。有孩子、被锁、或已经驱逐的节点都不在集合里。</li>
+<li><code>evict(num_tokens)</code> 按当前驱逐策略从叶集合取节点，先调用 <code>free_segment(node.value)</code> 交给存储层释放，再 <code>_delete_leaf</code> 断开父子关系；本图只展开后者和候选集合的变化。若父节点因此变成无孩子且未锁，会成为新的候选；循环直到回收够或集合为空。</li>
+<li>本页按默认 LRU 假设选择先后；固定源码的 <code>eviction_policy</code> 可以替换策略。因此动画展示的是一条合法的 LRU 顺序，不是所有部署的唯一顺序。</li>
+</ol>
+
+
+<div class="radix-scope">
+<strong>本例边界</strong>
+<p>普通 <code>RadixCache</code>；<code>page_size=4</code> 是教学设定，不是固定默认值，实际值由后端与启动参数解析；只有一个命名空间，省略逐 token 解码。不覆盖 MLA、HiCache 分层回载、SWA / Mamba / 混合状态、投机解码、chunked prefill 与 PD 分离。源码核对不等于运行过 GPU 或做过性能测量。</p>
+</div>
+</section>
+
+<section class="implementation-map" aria-label="实现阅读路线">
+<h2 id="reading-topic-4">沿实现接口阅读</h2>
+<ol>
+<li><h3>先把请求的前缀命中变成剩余输入</h3><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L1617"><code>Req.init_next_round_input → match_prefix</code></a><p>命中结果写入 <code>prefix_indices</code>、<code>last_node</code> 和 <code>cache_protected_len</code>；<code>prepare_for_extend</code> 再切掉已复用部分。</p><p class="implementation-check">读到这里核对：“命中”必须体现为本轮输入范围变短，不能只看一个命中数字。</p></li>
+<li><h3>再看 prefill 后的插入与请求行重写</h3><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L561"><code>cache_unfinished_req → insert</code></a><p>插入后重新 <code>match_prefix</code>、写回请求行、移动锁；这是“解码中的请求也能被后续请求复用”的关键步骤。</p><p class="implementation-check">读到这里核对：请求行里的槽号可以来自树，但请求不因此拥有这些树节点。</p></li>
+<li><h3>最后看锁释放和逐叶驱逐</h3><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L638"><code>evict / dec_lock_ref / _update_leaf_status</code></a><p>请求结束先减锁；节点要等到成为未锁叶，才可能被 <code>evict</code> 选中并从树中移除。</p><p class="implementation-check">读到这里核对：请求结束、可驱逐、节点移除是三个不同状态，不能合成一个事件。</p></li>
+</ol>
+</section>
+
+<section class="overview-section radix-selfcheck" aria-labelledby="radix-selfcheck-title">
+<h2 id="radix-selfcheck-title">先预测，再解释</h2>
+<details><summary>R2 与 R1 共享前 4 个 token，为什么搜索会新增一个节点？</summary><p>因为匹配在 N1 的 8-token key 内部结束。树必须把共享边界显式化，才能让后续请求直接从 4 个 token 处分支；这个动作是 <code>_split_node</code>，而不是等到 insert 才发生。新增的是索引父节点 N2，原有 K/V 数值没有移动。</p></details>
+<details><summary>R1 结束以后，为什么 N3 还留在树里？</summary><p>结束请求使它的路径减锁。N3 只是从“保护中”变成“可驱逐叶”；直到 evict 真正选中它，才会删除节点。这段缓存仍有可能供后续请求命中。</p></details>
+<details><summary>R2 还在解码时，为什么 EFGH 可以被驱逐，ABCD 不行？</summary><p>锁只沿 R2 实际命中的路径累加。R2 只命中 ABCD，所以 N2（ABCD）的 <code>lock_ref=1</code>；N1（EFGH）不在 R2 的路径上，R1 结束后它的锁为 0。等 N1 成为叶，它就能被驱逐。祖先被锁住不会自动保护所有后代。</p></details>
+<details><summary>为什么驱逐 XYZW 后，ABCD 仍然留在树里？</summary><p>删除 N4 只是让 N2 第一次满足“无孩子且未锁”。N2 成为新的驱逐候选，但还未被选择和移除；父节点资格变化不等于立即删除父节点。</p></details>
+<details><summary>相同文本、不同 <code>cache_salt</code>，会命中同一棵树节点吗？</summary><p>不会。本例只说“同一命名空间”这一条路径；<code>extra_key</code> 或 <code>cache_salt</code> 不同的请求会被有意隔离。文本看起来一样也不够，必须 token 序列和命名空间条件都匹配；另外 <code>page_size&gt;1</code> 时匹配长度还要按页向下对齐。</p></details>
+</section>
+
+<section class="overview-section" id="radix-sources" aria-labelledby="radix-sources-title">
+<h2 id="radix-sources-title">固定源码与继续阅读</h2>
+<p>源码分析基线：公开上游 <a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">SGLang main · 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>。本页在 2026-11-04 重新核对对象、接口与边界；只读 Git 固定对象，未修改源码，也未运行 SGLang 或 GPU 实验。当前工作区有与本页无关的既存改动，未做 reset、stash 或 clean。</p>
+<ul class="source-links">
+<li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L147">RadixKey.page_aligned：页对齐</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L182">match_at：匹配长度按页向下取整</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L222">child_key</a></li>
+<li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L256">TreeNode：key / value / lock_ref</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L397">match_prefix</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L724">_match_prefix_helper</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L750">_split_node</a></li>
+<li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L457">insert</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L783">_insert_helper</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L561">cache_unfinished_req</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L479">cache_finished_req</a></li>
+<li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L668">inc_lock_ref</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L683">dec_lock_ref</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L866">_update_leaf_status</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L638">evict</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/radix_cache.py#L856">_delete_leaf</a></li>
+<li><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/allocation.py#L55">write_cache_indices</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/schedule_batch.py#L2678">prepare_for_extend</a> · <a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/layers/radix_attention.py#L157">RadixAttention.forward</a></li>
+</ul>
+<p>继续阅读：<a href="../kv-memory/index.html">分页续写、整页命中与共享回收</a>（本模块下一节）；<a href="../../foundations/cache.html">KV Cache 与前缀复用</a>（先修）；<a href="scheduling.html">Scheduler 与容量预算</a>；<a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/KV%E7%BC%93%E5%AD%98/SGLang%20KV%20%E6%98%A0%E5%B0%84%E4%B8%8E%E5%85%B1%E4%BA%AB%E5%9B%9E%E6%94%B6%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md">完整笔记：映射、命中与共享回收 ↗</a>。</p>
+</section>
+<p class="big-idea">树按 token 前缀找到 KV 索引；搜索、插入、保护与驱逐是四个不同动作。</p>
+<!-- reading-pagers:start -->
 <nav class="reading-route-pager" data-reading-route="first" data-route-title="从基础走向源码" data-route-position="4 / 5" aria-label="从基础走向源码 · 继续学习" hidden><a href="transformer.html?learn=first"><small>这条路线 · 上一节</small><strong>← DeepSeek-V3：Embedding、Decoder Layer 与输出头</strong></a><a class="next" href="scheduling.html?learn=first"><small>这条路线 · 下一节</small><strong>Scheduler：选批、Chunked Prefill 与 Decode 更新 →</strong></a></nav>
 <!-- reading-pagers:end -->
-<nav class="lesson-pager" aria-label="框架内继续学习"><a href="../../#kv-memory"><small>回到所属模块</small><strong>← 04 KV Cache 与内存管理</strong></a><a class="next" href="../kv-memory/index.html"><small>本模块 · 下一节</small><strong>KV Memory Pool：地址映射、分页与缓存回收 →</strong></a></nav></main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>
+<nav class="lesson-pager" aria-label="框架内继续学习"><a href="../../#kv-memory"><small>回到所属模块</small><strong>← 04 KV Cache 与内存管理</strong></a><a class="next" href="../kv-memory/index.html"><small>本模块 · 下一节</small><strong>KV Memory Pool：地址映射、分页与缓存回收 →</strong></a></nav>
+</main>
+<footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer>
+</div>
+</div>
+</body></html>

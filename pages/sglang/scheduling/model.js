@@ -54,7 +54,7 @@ function retraction(scenario='resume',step=0){
  const capacity=scenario==='cache'?14:12;
  let r1=8,r2=4,cache=scenario==='cache'?2:0,location='running',output=['a'],row=true,recompute=0;
  if(scenario==='cache'){if(step>=1)cache=0;if(step===3){r1=9;r2=5;output.push('b');}}
- else {if(step>=2){r2=0;row=false;location='released';}if(step>=3)location=scenario==='full'?'aborted':'waiting';if(step>=4)r1=9;if(step>=5){cache=9;r1=0;}if(step>=6){cache=0;r2=5;row=true;location='prefill';recompute=5;}if(step===7){location='running';output.push('b');}}
+ else {if(step>=2){r2=0;row=false;location='released';}if(step>=3)location=scenario==='full'?'aborted':'waiting';if(step>=4)r1=9;if(step>=5){cache=9;r1=0;}if(step>=6){cache=7;r2=5;row=true;location='prefill';recompute=5;}if(step===7){location='running';output.push('b');}}
  return {scenario,step,last,capacity,r1,r2,cache,free:capacity-r1-r2-cache,location,output,row,recompute,need:scenario==='cache'||step<2?2:step<5?1:0};
 }
 const api={revision,sources,requests,cases,admission,chunks,retraction};if(typeof module==='object'&&module.exports)module.exports=api;root.SchedulingModel=api;

@@ -11,3 +11,18 @@ for(const scenario of ['resume','full','cache']){const last=M.retraction(scenari
 assert.equal(M.retraction('resume',2).free,4);assert.equal(M.retraction('resume',3).location,'waiting');assert.equal(M.retraction('full',3).location,'aborted');assert.equal(M.retraction('resume',5).cache,9);assert.equal(M.retraction('resume',6).recompute,5);assert.deepEqual(M.retraction('resume',6).output,['a']);assert.deepEqual(M.retraction('resume',7).output,['a','b']);assert.equal(M.retraction('cache',1).free,2);assert.equal(M.retraction('cache',2).location,'running');
 if(process.env.SGLANG_SOURCE_DIR)for(const [key,[file,line,symbol]] of Object.entries(M.sources)){const code=execFileSync('git',['-C',process.env.SGLANG_SOURCE_DIR,'show',`${M.revision}:${file}`],{encoding:'utf8'});assert.ok(code.split('\n')[line-1].includes(symbol),`${key}: line ${line}: ${code.split('\n')[line-1]}`);}
 console.log(`PASS: order/admission separation, first-input exception, strict KV boundary, temporary pin rollback, stop-after-commit, chunk work conservation, recovery and queue rejection; ${process.env.SGLANG_SOURCE_DIR?Object.keys(M.sources).length:0} source anchors.`);
+const F=require('../../pages/sglang/scheduling/flow-model.js');
+for(const view of ['batch','loop','admission','chunks','retract']){
+ const t=F.build(view),start=F.at(t,0);let end=0;
+ for(const p of t.phases){assert.equal(p.start,end);assert.ok(p.duration>0);assert.ok(F.sources[p.source],p.source);end=p.end;}
+ assert.equal(end,t.duration);assert.equal(F.at(t,t.duration).state.done,true);assert.deepEqual(F.at(t,0),start);
+ for(const m of t.marks){const at=F.at(t,m.time);for(const[k,v]of Object.entries(m.patch))assert.equal(at.state[k],v);}
+}
+for(const hit of [0,3]){const t=F.build('batch',{hit});assert.equal(t.data.flat.length,9-hit);for(const r of t.data.requests){assert.equal(r.hit+r.fresh.length,r.tokens.length);}const phase=id=>t.phases.find(p=>p.id===id);assert.equal(F.at(t,phase('gather').start).state.decodePrepared,true);assert.equal(F.at(t,phase('gather').start).state.gathered,false);assert.equal(F.at(t,phase('relay').start).state.executed,true);}
+assert.deepEqual(F.loopState(3).running,['D']);assert.equal(F.loopState(3).chunk,'L');assert.deepEqual(F.loopState(6).running,['D','L']);assert.ok(!F.loopState(6).running.includes('S'));assert.deepEqual(F.loopState(9).running,[]);
+const recovery=F.build('retract'),atPhase=id=>F.at(recovery,recovery.phases.find(p=>p.id===id).end-.001).state;
+const trimmed=F.recovery(recovery,atPhase('reclaim'));assert.equal(trimmed.cache,7);assert.equal(trimmed.free,5);
+const reserved=F.recovery(recovery,atPhase('reserve-recovery'));assert.equal(reserved.reserved,5);assert.equal(reserved.writtenR2,0);assert.equal(reserved.cache,7);assert.equal(reserved.free,0);
+const written=F.recovery(recovery,atPhase('recompute'));assert.equal(written.writtenR2,5);assert.deepEqual(written.output,['a']);assert.deepEqual(F.recovery(recovery,atPhase('result')).output,['a','b']);
+if(process.env.SGLANG_SOURCE_DIR)for(const [key,[file,line,symbol]]of Object.entries(F.sources)){const code=execFileSync('git',['-C',process.env.SGLANG_SOURCE_DIR,'show',`${F.revision}:${file}`],{encoding:'utf8'});assert.ok(code.split('\n')[line-1].includes(symbol),`${key}: ${file}:${line}`);}
+console.log(`PASS: 5 deterministic timelines; batch slicing/relay ordering; chunk/finished-request exclusion; reserve-before-write; retained prompt cache; ${Object.keys(F.sources).length} pinned anchors.`);
