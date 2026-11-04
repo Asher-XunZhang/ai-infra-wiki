@@ -450,13 +450,13 @@
     }
   },
   "sglang/parallelism/index.html": {
-    "problem": "基础章解释切什么；实现章还要回答谁与谁协作。相同进程可能在不同通信组里承担不同角色，必须结合模型层和组内布局解释 rank。",
+    "problem": "并行配置最终要落实为进程组和张量布局。沿各模块的实际输入、局部计算和交接条件，才能判断下一步是否拿到了正确的数据。",
     "topics": [
       {
         "id": "groups",
         "title": "为什么配置里既有 rank，又有多个 process group？",
         "why": "TP、PP 等协作范围不同。如果不明确组成员，就无法知道一次求和、收集或激活交接应当等待哪些参与者。",
-        "mechanism": "本页 TP=2、PP=2 的教学拓扑把同级 rank 组成 TP 组，再沿相同 TP 坐标组成 PP 组。一个进程在模型并行世界与子组中可以有不同编号，须注明范围。",
+        "mechanism": "TP 与 PP 先建立模型进程组；Attention 的 TP 宽度再按 TP / Attention DP / CP 派生。动画分别固定各模式的组大小，模型层按本组 rank 构造本地分片。",
         "tradeoff": "组划分组织协作，但不会消除通信成本；Attention DP、EP、CP 可能在既有世界内分组，不能把所有参数机械相乘得到卡数。",
         "source": [
           "distributed/parallel_state.py",
@@ -474,7 +474,7 @@
         "id": "layer-layout",
         "title": "为什么 Attention 的 DP 不等同于独立服务副本？",
         "why": "不同层的计算和权重组织不同，一种布局未必同时适合 Attention 与 MoE。层内按请求分组，和在服务入口复制整个模型，是不同层级的设计。",
-        "mechanism": "本页 Attention DP 示例仍在同一个模型并行世界中组织 Attention TP 子组，层间可能需要整理 token 布局。先确认当前是在讨论哪一层，再解释 DP 数值。",
+        "mechanism": "在本页 TP=2、Attention DP=2 的 dense 层路径中，两组 Attention 各处理自己的请求。LayerCommunicator 在 MLP 前收集激活行，MLP TP 完成后再取回本组结果；请求队列与 KV 不参加该次 gather。",
         "tradeoff": "更适合某层的分组可能引入布局转换与通信；是否能与其他并行选项组合，必须核对当前固定版本的约束。",
         "source": [
           "runtime_context.py",
