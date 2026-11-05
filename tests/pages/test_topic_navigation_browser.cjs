@@ -42,8 +42,21 @@ const courses=[
   assert.match(await page.locator('#performance').innerText(),/已有课程[\s\S]*开始学习/);
   assert.match(await page.locator('#serving-operations').innerText(),/已有课程[\s\S]*开始学习/);
   assert.deepEqual(await page.locator('a[href^="#"]').evaluateAll(links=>links.filter(a=>!document.getElementById(a.hash.slice(1))).map(a=>a.hash)),[]);
-  assert.equal(await page.locator('.chapter-nav').count(),2);
-  assert.equal(await page.locator('.foundation-lessons a').count(),12);
+  assert.equal(await page.locator('.chapter-nav').count(),3);
+  assert.equal(await page.locator('.foundation-lessons:not(.engine-topic-links) a').count(),13);
+  const engineChapter=page.locator('[data-chapter=engine-comparison]');
+  assert.equal(await engineChapter.evaluate(e=>e.open),true);
+  const engineLinks=engineChapter.locator('.lesson-link');
+  assert.equal(await engineLinks.count(),6);
+  assert.equal(await engineLinks.first().getAttribute('href').then(h=>h.endsWith('#process')),true);
+  assert.equal(await engineLinks.last().getAttribute('href').then(h=>h.endsWith('#crosscut')),true);
+  await engineLinks.first().click();await page.waitForURL(url=>url.hash==='#process'&&url.pathname.endsWith('/engine-comparison/index.html'));
+  assert.match(await page.locator('.ia-chapterTab[aria-pressed=true]').innerText(),/进程骨架/);
+  assert.equal(await page.locator('.ia-stepItem').count(),4);
+  await page.locator('[data-chapter=engine-comparison] .lesson-link').last().click();
+  await page.waitForURL(url=>url.hash==='#crosscut');
+  assert.match(await page.locator('.ia-chapterTab[aria-pressed=true]').innerText(),/生命周期/);
+  await page.goto(base);await page.waitForLoadState('load');
   await page.locator('[data-chapter=sglang]>summary').click();
   for(const group of await page.locator('.topic-group').all()){
    assert.equal(await group.evaluate(el=>el.open),false);
@@ -89,7 +102,7 @@ const courses=[
    assert.equal(await page.locator('script[src*="foundations/player"]').count(),0,route);
    if(route.includes('inference-overview/')){assert.equal(await page.locator('.implementation-map li').count(),3);assert.equal(await page.locator('[data-diagram]').count(),0);}
    assert.deepEqual(await signature(),expectedModules,route);
-   assert.equal(await page.locator('.site-sidebar .lesson-link').count(),courses.length,route);
+   assert.equal(await page.locator('[data-chapter=sglang] .lesson-link').count(),courses.length,route);
    assert.equal(await page.locator('.site-sidebar [aria-current=page]').count(),1,route);
    assert.equal(await page.locator(`[data-module=${module}] .lesson-link[aria-current=page]`).count(),1,route);
    assert.equal(await page.locator(`[data-module=${module}]`).evaluate(e=>e.open),true,route);
@@ -142,8 +155,8 @@ const courses=[
   assert.equal(await page.locator('.reading-route-pager:visible').count(),0);
   const staticPage=await browser.newPage({javaScriptEnabled:false,viewport:{width:1440,height:1000}});
   await staticPage.goto(base);
-  assert.equal(await staticPage.locator('.chapter-choice a:visible').count(),2,'chapter links remain readable without JavaScript');
-  assert.equal(await staticPage.locator('.foundation-lessons a').count(),12);
+  assert.equal(await staticPage.locator('.chapter-choice a:visible').count(),3,'chapter links remain readable without JavaScript');
+  assert.equal(await staticPage.locator('.foundation-lessons:not(.engine-topic-links) a').count(),13);
   assert.equal(await staticPage.locator('.module-card').count(),12);
   await staticPage.goto(base+'sglang/inference-overview/kv-cache.html');
   assert.equal(await staticPage.locator('[data-module=kv-memory] .lesson-link[aria-current=page]').isVisible(),true,'navigation is in HTML, not swapped after load');

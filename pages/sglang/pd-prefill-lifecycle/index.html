@@ -22,7 +22,15 @@
 <a href="../../foundations/serving.html">12 请求路由与取消：服务在线为何还没收到回答？</a>
 <a href="../../foundations/metrics.html">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
 </nav></details>
-<details class="chapter-nav" data-chapter="sglang" open><summary>第二章 · SGLang 实现剖析</summary>
+<details class="chapter-nav" data-chapter="engine-comparison"><summary>第二章 · SGLang 与 vLLM 架构对照</summary><div class="module-lessons-nav engine-topic-nav">
+<a class="lesson-link" href="../../engine-comparison/index.html#process"><span>01 进程骨架</span><small>Process spine</small></a>
+<a class="lesson-link" href="../../engine-comparison/index.html#wire"><span>02 通信面</span><small>Wire profile</small></a>
+<a class="lesson-link" href="../../engine-comparison/index.html#prefix"><span>03 前缀缓存</span><small>Prefix cache</small></a>
+<a class="lesson-link" href="../../engine-comparison/index.html#batch"><span>04 调度心跳</span><small>Scheduling beat</small></a>
+<a class="lesson-link" href="../../engine-comparison/index.html#disagg"><span>05 分离扩展</span><small>Disaggregation</small></a>
+<a class="lesson-link" href="../../engine-comparison/index.html#crosscut"><span>06 生命周期与执行边界</span><small>Crosscuts</small></a>
+</div></details>
+<details class="chapter-nav" data-chapter="sglang" open><summary>第三章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
 <summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第一层 · 建立全局">
@@ -112,12 +120,12 @@
 </div></details>
 </nav></details>
 </details>
-<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章对照固定 release，第三章沿固定版本源码核对实现。</p></div>
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside><div class="site-content">
 
 <main id="main-content" tabindex="-1"><!-- learning-context:start -->
-<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第二章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-distributed">第三层 · 扩展到多卡多机</a><span aria-hidden="true">/</span><a href="../../#disaggregation">08 分离部署与分布式状态交接</a><span aria-hidden="true">/</span><span aria-current="page">PD + PP：Prefill 请求生命周期与 KV 释放</span></nav>
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第三章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-distributed">第三层 · 扩展到多卡多机</a><span aria-hidden="true">/</span><a href="../../#disaggregation">08 分离部署与分布式状态交接</a><span aria-hidden="true">/</span><span aria-current="page">PD + PP：Prefill 请求生命周期与 KV 释放</span></nav>
 <!-- learning-context:end -->
 <header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#disaggregation">模块 08 / 分离部署与分布式状态交接</a><span class="lesson-count">SGLang · PD＋PP 案例</span></div>
 <h1>PD + PP：Prefill 请求生命周期与 KV 释放</h1><p>在同一张流水线图中，操控请求 <strong>R</strong> 从接入到释放。观察它此刻到达哪个模块、流动的是什么数据，以及各级仍持有哪些资源。</p>

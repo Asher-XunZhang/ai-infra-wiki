@@ -21,7 +21,15 @@
 <a href="serving.html">12 请求路由与取消：服务在线为何还没收到回答？</a>
 <a href="metrics.html">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
 </nav></details>
-<details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
+<details class="chapter-nav" data-chapter="engine-comparison"><summary>第二章 · SGLang 与 vLLM 架构对照</summary><div class="module-lessons-nav engine-topic-nav">
+<a class="lesson-link" href="../engine-comparison/index.html#process"><span>01 进程骨架</span><small>Process spine</small></a>
+<a class="lesson-link" href="../engine-comparison/index.html#wire"><span>02 通信面</span><small>Wire profile</small></a>
+<a class="lesson-link" href="../engine-comparison/index.html#prefix"><span>03 前缀缓存</span><small>Prefix cache</small></a>
+<a class="lesson-link" href="../engine-comparison/index.html#batch"><span>04 调度心跳</span><small>Scheduling beat</small></a>
+<a class="lesson-link" href="../engine-comparison/index.html#disagg"><span>05 分离扩展</span><small>Disaggregation</small></a>
+<a class="lesson-link" href="../engine-comparison/index.html#crosscut"><span>06 生命周期与执行边界</span><small>Crosscuts</small></a>
+</div></details>
+<details class="chapter-nav" data-chapter="sglang"><summary>第三章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
 <summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第一层 · 建立全局">
@@ -111,7 +119,7 @@
 </div></details>
 </nav></details>
 </details>
-<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章对照固定 release，第三章沿固定版本源码核对实现。</p></div>
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside><div class="site-content"><main id="main-content">
 <nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">Transformer 基础部件：一层内部怎样计算？</span></nav>
@@ -131,4 +139,4 @@
 <a class="foundation-to-engine" href="../sglang/inference-overview/transformer.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
 <section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-23。六个部件的公式与数值来自公开论文的机制定义和独立手算教学例；不加载模型权重，不声称训练后改头数无损，也不把 48/24/12 当作显存测量。图中只核对 K/V 组数与映射；独立头权重、concat 和 output projection 仅作结构说明，数值未在本图展开。 GQA/MQA 的共享对象是 K/V 投影与历史副本，各 Q 投影仍保留；本图不把它说成每头仍有独立 K/V。</p><p>概念动机、取舍与背景整理：2026-10-23。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="https://arxiv.org/abs/2104.09864">RoPE · RoFormer 论文</a></li><li><a href="https://arxiv.org/abs/1910.07467">RMSNorm 论文</a></li><li><a href="https://arxiv.org/abs/2002.05202">SwiGLU 论文</a></li><li><a href="https://arxiv.org/abs/2305.13245">GQA 论文</a></li><li><a href="https://arxiv.org/abs/1706.03762">Vaswani 等 · Attention Is All You Need</a></li><li><a href="https://arxiv.org/abs/2002.04745">Pre-LN 层归一化位置分析</a></li></ul><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
 <nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="attention.html"><small>上一课</small><strong>Attention 与 Q/K/V：模型怎样参考上下文？</strong></a><a class="next" href="cache.html"><small>下一课</small><strong>KV Cache 与前缀复用：为什么保存历史 K/V？</strong></a></nav>
-</main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>
+</main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">三章完整目录</a></footer></div></div></body></html>

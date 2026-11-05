@@ -1,0 +1,127 @@
+/* Chapter 2 lives inside the wiki shell: no separate offline frame. */
+.ec-site-content{padding-top:22px}
+.ec-topic-map{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:14px 16px;margin:0 0 26px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.ec-topic-map a{display:block;padding:8px 10px;border-left:2px solid var(--border);color:var(--fg);min-width:0}
+.ec-topic-map a:hover{border-left-color:var(--accent);background:var(--accent-soft);text-decoration:none}
+.ec-topic-map b{display:block;font-size:13px;line-height:1.5}
+.ec-topic-map small{display:block;font-size:10px;color:var(--muted);line-height:1.5;margin-top:2px}
+.ec-topic-map .ec-map-note{grid-column:1/-1;font-size:11px;color:var(--muted);margin:2px 0 0;border:0;padding:2px 0 0}
+.ec-anchors{position:relative}
+.ec-anchors span{position:absolute;top:-92px}
+.ec-lang{font-size:12px;border-radius:20px;padding:6px 13px}
+.ec-noscript{max-width:850px;padding:18px 20px;border-left:3px solid var(--accent);background:var(--soft);font-size:14px}
+/* The atlas was a standalone app; fit it to the wiki content column instead. */
+.ia-page{--ia-max:1500px;height:auto;min-height:0;overflow:visible;overscroll-behavior:auto;padding:0 0 20px;background:transparent;color:var(--fg);font-size:14px;--ia-bg:var(--bg);--ia-surface:var(--surface);--ia-surface2:var(--soft);--ia-ink:var(--fg);--ia-muted:var(--muted);--ia-faint:var(--muted);--ia-line:var(--border);--ia-line2:var(--border);--ia-focus:var(--accent)}
+.ia-page .ia-windowSafe,.ia-page .ia-topline{display:none}
+.ia-page .ia-header{padding-bottom:20px;align-items:start;gap:24px}
+.ia-page .ia-title{font-size:clamp(30px,3.4vw,44px);line-height:1.35;margin:8px 0 10px}
+.ia-page .ia-lede{font-size:14px;line-height:1.8;max-width:62em}
+.ia-page .ia-caution{font-size:11px}
+.ia-page .ia-releaseCard{padding:8px 0}
+.ia-page .ia-controls{margin-top:12px}
+.ia-page .ia-stage{margin-top:18px}
+.ia-page .ia-boardGrid{gap:12px}
+.ia-page .ia-boardHead{padding:9px 12px}
+.ia-page .ia-boardFoot{padding:7px 12px}
+.ia-page .ia-stageTitle{font-size:26px;margin:4px 0 0}
+.ia-page .ia-stageTop{padding-bottom:10px}
+.ia-page .ia-stepRail{margin-top:10px}
+.ia-page .ia-stepItem{flex-basis:148px;min-width:148px;padding-top:8px;padding-bottom:8px}
+.ia-page .ia-verdict{margin-top:12px}
+.ia-page .ia-verdictCol{padding:12px 14px}
+.ia-page .ia-verdictText{font-size:13px;line-height:1.75}
+.ia-page .ia-fork{padding:10px 14px}
+.ia-page .ia-section{margin-top:34px}
+.ia-page .ia-profileSection,.ia-page .ia-releaseSection{margin-top:30px}
+.ia-page .ia-footer{padding-top:20px}
+@media(max-width:1100px){.ec-topic-map{grid-template-columns:repeat(3,minmax(0,1fr))}.ia-page .ia-header{grid-template-columns:1fr}.ia-page .ia-boardGrid{grid-template-columns:1fr}}
+@media(max-width:900px){.ia-page .ia-title{font-size:clamp(28px,5vw,38px)}.ec-topic-map{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.ec-site-content{padding:18px 14px 0}.ec-topic-map{grid-template-columns:1fr;padding:10px}.ia-page .ia-title{font-size:28px}.ia-page .ia-stageTitle{font-size:22px}.ia-page .ia-lede{font-size:13px}}
+@media(max-height:820px) and (min-width:1100px){
+ .ia-page .ia-title{font-size:clamp(28px,3vw,38px)}
+ .ia-page .ia-header{padding-bottom:12px;gap:20px}
+ .ia-page .ia-lede{font-size:13px;line-height:1.7}
+ .ia-page .ia-caution{margin-top:6px}
+ .ia-page .ia-controls{margin-top:8px}
+ .ia-page .ia-stage{margin-top:12px}
+ .ia-page .ia-stageTitle{font-size:24px}
+ .ia-page .ia-verdict{margin-top:10px}
+ .ia-page .ia-verdictText{font-size:12.5px}
+ .ia-page .ia-boardSvgWrap{min-width:420px}
+}
+
+/* Shared-framework sidebar links stay compact while preserving the six anchors. */
+.engine-topic-nav .lesson-link{display:flex;flex-direction:column;gap:1px}
+.engine-topic-nav .lesson-link small{font-size:10px;line-height:1.4;color:var(--muted);font-weight:400}
+.engine-topic-nav .lesson-link:hover small{color:var(--accent)}
+
+/* Fit the diagram to the actual content column, not the browser viewport. */
+.ia-page .ia-boardGrid{grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));align-items:stretch;gap:18px}
+.ia-page .ia-boardSvgWrap{min-width:0;width:100%;max-width:1000px;margin-inline:auto}
+.ia-page .ia-board.is-zoomed .ia-boardSvgWrap{min-width:760px;max-width:none}
+.ia-page .ia-boardHead{flex-wrap:wrap;gap:8px;padding:12px}
+.ia-page .ia-boardZoom{flex:none;padding:6px 9px;border:1px solid #65748b;border-radius:5px;background:transparent;color:#e9eef5;font:11px/1.4 var(--ia-ui)}
+.ia-page .ia-boardZoom:hover{background:#263243}
+.ia-page .ia-boardZoom[aria-pressed=true]{border-color:var(--board-accent);color:var(--board-accent)}
+.ia-page .ia-boardStage{overflow:auto}
+.ia-page .ia-boardRoute,.ia-page .ia-boardFootText{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+.ia-page .ia-boardFoot{align-items:start;font-size:11px;line-height:1.65}
+.ia-page .ia-sceneNote{margin:0;padding:14px 16px;color:#abb7c8;font-size:12px;line-height:1.75;border-top:1px solid var(--ia-scene-line);overflow-wrap:anywhere}
+.ia-page .ia-boardScrollHint{display:block;margin:0;padding:8px 14px;color:#bdc8d8;font-size:11px;border-top:1px solid var(--ia-scene-line)}
+.ia-page .ia-chapterTabs{flex-wrap:wrap;overflow:visible;gap:8px}
+.ia-page .ia-chapterTab{white-space:normal;height:auto;font-size:12px;line-height:1.55;padding:9px 10px}
+.ia-page .ia-stepRail{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible;gap:4px;border:0}
+.ia-page .ia-stepItem{min-width:0;flex-basis:auto;align-items:start;border:1px solid var(--ia-line);border-radius:5px;padding:10px}
+.ia-page .ia-stepLabel{white-space:normal;overflow:visible;text-overflow:clip;font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+.ia-page .ia-stepItem::before{top:0}
+.ia-page .ia-stepIndex{line-height:2.2}
+.ia-page .ia-inspectorTag{white-space:normal;overflow-wrap:anywhere}
+.ia-page .ia-table{table-layout:fixed}
+.ia-page .ia-table td,.ia-page .ia-table th{overflow-wrap:anywhere}
+.ia-page .ia-sectionNote{font-size:13px;line-height:1.85}
+.ia-page ol.ia-sectionNote{padding:12px 18px 12px 38px;margin:16px 0;list-style:decimal}
+.ia-page ol.ia-sectionNote li{padding-left:4px;margin:8px 0}
+.ia-page ol.ia-sectionNote li::marker{color:var(--ia-ink);font-weight:600}
+.ia-page .ia-topicReading>.ia-section{margin-top:30px}
+.ia-referenceDetails{margin-top:24px;border:1px solid var(--ia-line2);border-radius:8px;padding:16px 18px;background:var(--ia-surface)}
+.ia-referenceDetails>summary{font-size:14px;font-weight:600;line-height:1.6;cursor:pointer}
+.ia-referenceDetails>.ia-section:first-of-type{margin-top:20px}
+@media(max-width:700px){
+ .ia-page .ia-chapterTabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+ .ia-page .ia-chapterTab{text-align:left;min-width:0;justify-content:start}
+ .ia-page .ia-stepRail{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ia-page .ia-boardStamp{font-size:10px}
+ .ia-page .ia-boardZoom{margin-left:auto}
+ .ia-page .ia-controls{align-items:stretch}
+ .ia-page .ia-transport{flex-wrap:wrap;justify-content:flex-start;gap:8px}
+ .ia-page .ia-stageTop{align-items:start;flex-direction:column;gap:10px}
+ .ia-page .ia-stageMeta{padding:0}
+ .ia-page .ia-sectionTitle{font-size:21px;line-height:1.5}
+ .ia-page .ia-inspectorHead{gap:8px}
+ .ia-page .ia-inspectorTitle{overflow-wrap:anywhere}
+ .ia-referenceDetails{padding:12px}
+}
+@media(max-width:380px){
+ body[data-page=engine-comparison] .site-actions{gap:5px}
+ body[data-page=engine-comparison] .repo-link{display:none}
+ body[data-page=engine-comparison] .site-header{padding-inline:10px}
+}
+
+.ia-page .ia-board{display:flex;flex-direction:column}
+.ia-page .ia-boardHead,.ia-page .ia-boardStage,.ia-page .ia-boardFoot{flex:none}
+.ia-page .ia-sceneNote{flex:1}
+.ia-page .ia-table td{font-size:13px;line-height:1.85}
+.ia-page .ia-table th{font-size:11px}
+.ia-page .ia-cellWire{font-size:13px!important}
+.ia-page .ia-table td::before{font-size:10px}
+.ia-page .ia-topicReading{margin-top:28px;padding-top:18px;border-top:1px solid var(--ia-line2)}
+.ia-readingEyebrow{margin:0 0 8px;color:var(--ia-muted);font-size:11px;letter-spacing:.08em}
+.ia-readingDetails{padding:14px 16px;border:1px solid var(--ia-line2);border-radius:8px;background:var(--ia-surface)}
+.ia-readingDetails>summary,.ia-referenceDetails>summary{cursor:pointer;font-size:14px;line-height:1.75}
+.ia-readingLabel{font-weight:600;overflow-wrap:anywhere}
+.ia-readingAction{display:inline-block;margin-left:12px;font-size:11px;color:var(--ia-muted);font-weight:400;white-space:nowrap}
+.ia-readingDetails>.ia-section{margin-top:18px;padding-top:16px}
+.ia-readingDetails .ia-sectionHead{grid-template-columns:1fr;gap:8px}
+.ia-readingDetails .ia-sectionTitle{font-size:21px;line-height:1.5}
+.ia-page .ia-referenceDetails{margin-top:12px}
+@media(max-width:700px){.ia-readingDetails{padding:12px}.ia-readingAction{display:block;margin:4px 0 0 16px}}

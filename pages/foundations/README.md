@@ -1,6 +1,6 @@
 # 推理基础课程
 
-本目录是 Pages 第一章，面向尚未掌握推理术语的读者。以可操作的教学算例建立直觉，不把通用概念归为 SGLang 专属机制。第二章的 SGLang 实现课各自保留固定源码、配置约束与历史基线。
+本目录是 Pages 第一章，面向尚未掌握推理术语的读者。以可操作的教学算例建立直觉，不把通用概念归为 SGLang 专属机制。第三章的 SGLang 实现课各自保留固定源码、配置约束与历史基线。
 
 ## 推荐阅读路线
 
@@ -13,7 +13,7 @@
 
 ## 内容与来源
 
-`courses.json` 是课程正文、先修关系、自测和来源的编辑入口；`build_foundations.py` 生成十三个 HTML。`extensions.json` 保存从旧概览课归并而来的六幅选读机制图及原说明；第二章只保留对应实现导读，不再嵌入基础播放器。选读区按需初始化，收起时停止播放。`model.js` 提供独立教学状态，`player.js` 按机制绘制不同图形。数字与边界写在各课，不能把教学轮次、资源下界或手工分数当成 GPU 观测。
+`courses.json` 是课程正文、先修关系、自测和来源的编辑入口；`build_foundations.py` 生成十三个 HTML。`extensions.json` 保存从旧概览课归并而来的六幅选读机制图及原说明；第三章只保留对应实现导读，不再嵌入基础播放器。选读区按需初始化，收起时停止播放。`model.js` 提供独立教学状态，`player.js` 按机制绘制不同图形。数字与边界写在各课，不能把教学轮次、资源下界或手工分数当成 GPU 观测。
 
 token 样例来自 Qwen/Qwen2.5-0.5B-Instruct 的 `7ae557604adf67be50417f59c2c2f167def9a775` 版本，使用 `tokenizers 0.23.3` 对原始文本执行 encode（不添加特殊 token）与 decode 核对。两组句子不应用聊天模板，也不运行模型。`tokenizer.json` SHA-256 为 `c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539`。固定文件的公开来源列在第一课。
 
@@ -27,4 +27,4 @@ python3 -B scripts/check_learning_docs.py
 node tests/pages/test_foundations.cjs
 ```
 
-构建会检查课程与导航生成一致性。浏览器检查使用 `tests/pages/test_foundations_browser.cjs`，通过环境变量提供浏览器、Playwright 模块与本地预览地址。逐页审核从首页两章目录进入，不需要改变页面 URL 或失效旧书签。
+构建会检查课程与导航生成一致性。浏览器检查使用 `tests/pages/test_foundations_browser.cjs`，通过环境变量提供浏览器、Playwright 模块与本地预览地址。逐页审核从首页三章目录进入，不需要改变页面 URL 或失效旧书签。

@@ -1,0 +1,267 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const BASE=(process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/').replace(/\/+$/,'')+'/';
+const CHAPTERS=['process','wire','prefix','batch','disagg','crosscut'];
+const alive=pid=>{try{process.kill(pid,0);return true;}catch(e){return e.code!=='ESRCH';}};
+const waitGone=async(pid,ms=3000)=>{const end=Date.now()+ms;while(Date.now()<end){if(!alive(pid))return true;await new Promise(r=>setTimeout(r,60));}return !alive(pid);};
+const stepAt=page=>page.locator('.ia-stepItem').evaluateAll(items=>items.findIndex(i=>i.getAttribute('aria-current')==='step'));
+const activeTab=page=>page.locator('.ia-chapterTab[aria-pressed=true]');
+const noOverflow=async(page,label)=>{
+ const size=await page.evaluate(()=>({html:document.documentElement.scrollWidth,body:document.body.scrollWidth,inner:innerWidth}));
+ assert.ok(size.html<=size.inner,`${label}: html ${size.html} > ${size.inner}`);
+ assert.ok(size.body<=size.inner,`${label}: body ${size.body} > ${size.inner}`);
+};
+const diagramGeometry=async(page,label)=>{
+ const issues=await page.evaluate(()=>{
+  const found=[];
+  const intersects=(a,b)=>Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x)>1 && Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y)>1;
+  for(const svg of document.querySelectorAll('.ia-board .ia-svg')){
+   const side=svg.closest('.ia-board').dataset.engine,view=svg.viewBox.baseVal;
+   const texts=[...svg.querySelectorAll('text')];
+   for(const text of texts){
+    const b=text.getBBox(),node=text.closest('.ia-node');
+    if(b.x<0||b.y<0||b.x+b.width>view.width||b.y+b.height>view.height)found.push(`${side}: clipped text ${text.textContent}`);
+    if(node&&/ia-node(Label|Tag)/.test(text.getAttribute('class'))){
+     const r=node.querySelector('.ia-nodeBox').getBBox();
+     if(b.x<r.x+2||b.x+b.width>r.x+r.width-2||b.y<r.y||b.y+b.height>r.y+r.height-2)found.push(`${side}: node caption escapes ${text.textContent}`);
+    }
+    if(text.classList.contains('ia-edgeLabel'))for(const rect of svg.querySelectorAll('.ia-nodeBox')){
+     if(intersects(b,rect.getBBox()))found.push(`${side}: node covers edge label ${text.textContent}`);
+    }
+   }
+   for(let i=0;i<texts.length;i++)for(let j=i+1;j<texts.length;j++){
+    if(intersects(texts[i].getBBox(),texts[j].getBBox()))found.push(`${side}: overlapping ${texts[i].textContent} / ${texts[j].textContent}`);
+   }
+  }
+  return found;
+ });
+ assert.deepEqual(issues,[],label);
+};
+(async()=>{
+ let server,browser,owned,browserPid=0,profilePath='',cleanupDone=false,report={};
+ const cleanup=async()=>{
+  if(cleanupDone)return report;cleanupDone=true;
+  try{if(browser)await browser.close();}catch(e){report.browserCloseError=e.message;}
+  try{if(server)await server.close();}catch(e){report.serverCloseError=e.message;}
+  let stopped=true;
+  if(browserPid){
+   stopped=await waitGone(browserPid,2500);
+   if(!stopped){try{process.kill(browserPid,'SIGTERM');}catch(e){}stopped=await waitGone(browserPid,2000);}
+   if(!stopped){try{process.kill(browserPid,'SIGKILL');}catch(e){}stopped=await waitGone(browserPid,1000);}
+  }
+  if(profilePath&&fs.existsSync(profilePath)&&(profilePath.includes('playwright')||profilePath.startsWith(os.tmpdir()))){
+   try{fs.rmSync(profilePath,{recursive:true,force:true});}catch(e){report.profileRemoveError=e.message;}
+  }
+  report={...report,session:'engine-comparison-browser',controller:process.pid,browser:browserPid,profile:profilePath,stopped,residue:browserPid&&alive(browserPid)?1:0,profileResidue:!!(profilePath&&fs.existsSync(profilePath))};
+  console.log(JSON.stringify({cleanup:report}));
+  if(process.env.ENGINE_TEST_REPORT)try{fs.writeFileSync(process.env.ENGINE_TEST_REPORT,JSON.stringify(report,null,2));}catch(e){}
+  return report;
+ };
+ const shutdown=signal=>{cleanup().finally(()=>process.exit(signal==='SIGINT'?130:143));};
+ process.once('SIGINT',()=>shutdown('SIGINT'));process.once('SIGTERM',()=>shutdown('SIGTERM'));
+ try{
+  const launch={headless:true,handleSIGINT:false,handleSIGTERM:false};
+  if(process.env.CHROMIUM_EXECUTABLE)launch.executablePath=process.env.CHROMIUM_EXECUTABLE;
+  server=await chromium.launchServer(launch);
+  owned=server.process();browserPid=owned.pid;
+  const profileArg=owned.spawnargs.find(a=>a.startsWith('--user-data-dir='));
+  profilePath=profileArg?profileArg.slice('--user-data-dir='.length):'';
+  console.log(JSON.stringify({session:'engine-comparison-browser',controller:process.pid,browser:browserPid,profile:profilePath}));
+  browser=await chromium.connect(server.wsEndpoint());
+  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(BASE+'engine-comparison/index.html#process');await page.waitForLoadState('load');
+  assert.match(await page.locator('.ia-releaseCol').innerText(),/297e54f/);
+  await page.locator('.ia-referenceDetails').last().locator('summary').click();
+  assert.match(await page.locator('.ia-sourceBody').innerText(),/297e54f/);
+  assert.match(await page.locator('.ia-sourceBody').innerText(),/TP=2 \/ PP=1 \/ DP=1/);
+  await page.locator('.ia-referenceDetails').last().locator('summary').click();
+  assert.doesNotMatch(await page.locator('.ia-footerMeta').innerText(),/Harness/i);
+
+  // Six topics × four steps, including per-topic release source and chapter 3 links.
+  for(let chapter=0;chapter<CHAPTERS.length;chapter++){
+   const tab=page.locator('.ia-chapterTab').nth(chapter);
+   await tab.click();await page.waitForFunction(id=>location.hash==='#'+id,CHAPTERS[chapter]);
+   assert.equal(await tab.getAttribute('aria-pressed'),'true',CHAPTERS[chapter]);
+   assert.equal(await page.locator('.ia-stepItem').count(),4,CHAPTERS[chapter]);
+   const hrefs=await page.locator('.ia-chapterLinks a').evaluateAll(as=>as.map(a=>a.href));
+   assert.ok(hrefs.some(h=>h.includes('/blob/')),`${CHAPTERS[chapter]} pinned source`);
+   assert.ok(hrefs.some(h=>h.includes('/sglang/')&&h.endsWith('.html')),`${CHAPTERS[chapter]} chapter 3 link`);
+   await page.locator('.ia-referenceDetails>summary').click();
+   const sourceLinks=await page.locator('.ia-sourceLinks a').evaluateAll(as=>as.map(a=>a.href));
+   assert.deepEqual(sourceLinks.filter(h=>h.includes('/blob/')).sort(),hrefs.filter(h=>h.includes('/blob/')).sort(),'sources must match this topic');
+   assert.equal(sourceLinks.filter(h=>h.includes('/releases/tag/')).length,2);
+   await page.locator('.ia-referenceDetails>summary').click();
+   for(let step=0;step<4;step++){
+    const item=page.locator('.ia-stepItem').nth(step);
+    await item.click();
+    assert.equal(await item.getAttribute('aria-current'),'step',`${CHAPTERS[chapter]} step ${step+1}`);
+    assert.equal(await page.locator('.ia-stepItem[aria-current=step]').count(),1);
+    assert.equal((await page.locator('#ia-stage-title').innerText()).trim(),(await item.locator('.ia-stepLabel').innerText()).trim());
+    assert.equal(await page.locator('.ia-board').count(),2);
+    await diagramGeometry(page,`${CHAPTERS[chapter]} step ${step+1}`);
+    assert.equal(await page.locator('.ia-topicReading').getAttribute('data-topic'),CHAPTERS[chapter]);
+    assert.equal(await page.locator('.ia-table').count(),0,'unrequested tables must not be mounted');
+    assert.equal(await page.locator('.ia-readingDetails[open]').count(),0,'a new step starts with concise reading');
+    await page.locator('.ia-readingDetails>summary').click();
+    assert.equal(await page.locator('.ia-topicReading table:visible').count(),1);
+    assert.equal(await page.locator('.ia-table').count(),1,'only this topic comparison may be mounted');
+    if(chapter===5)assert.match(await page.locator('.ia-topicReading h2').innerText(),[/KV/,/过载/,/取消/,/图捕获/][step]);
+    await noOverflow(page,`${CHAPTERS[chapter]} step ${step+1} 1440`);
+   }
+  }
+
+  // Topic-specific reading and semantic lists; global references remain optional.
+  await page.locator('.ia-chapterTab').nth(1).click();
+  await page.locator('.ia-playButton').click();
+  await page.locator('.ia-readingDetails>summary').click();
+  assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'false','opening a reading must pause playback');
+  assert.equal(await page.locator('.ia-topicReading ol.ia-sectionNote li').count(),4);
+  assert.match(await page.locator('.ia-topicReading ol li').last().innerText(),/适用范围/);
+  assert.equal(await page.locator('.ia-referenceDetails[open]').count(),0);
+  assert.equal(await page.getByText('差异不是功能表，而是几条结构线',{exact:true}).count(),0);
+  assert.equal(await page.locator('.ia-releaseSection').count(),0);
+  await page.locator('.ia-readingDetails>summary').click();
+  assert.equal(await page.locator('.ia-table').count(),0,'closing must remove the full comparison');
+  await page.locator('#lang-toggle').click();
+  for(let topic=0;topic<6;topic++){
+   await page.locator('.ia-chapterTab').nth(topic).click();
+   for(let step=0;step<4;step++){
+    await page.locator('.ia-stepItem').nth(step).click();
+    await diagramGeometry(page,`English ${CHAPTERS[topic]} step ${step+1}`);
+    assert.equal(await page.locator('.ia-table').count(),0);
+    await page.locator('.ia-readingDetails>summary').click();
+    assert.equal(await page.locator('.ia-topicReading table:visible').count(),1);
+   }
+  }
+  await page.locator('#lang-toggle').click();
+
+  // Node note pauses playback and closes.
+  await page.goto(BASE+'engine-comparison/index.html#process');await page.waitForLoadState('load');
+  await page.locator('.ia-playButton').click();
+  assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'true');
+  await page.locator('.ia-board--sg .ia-node[data-node-id=scheduler]').click();
+  assert.equal(await page.locator('.ia-inspector').isVisible(),true);
+  assert.match(await page.locator('.ia-inspector').innerText(),/Scheduler/);
+  assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'false');
+  await page.locator('.ia-closeButton').click();
+  assert.equal(await page.locator('.ia-inspector').count(),0);
+
+  // Play / pause keeps the step, replay restarts, and speed keeps playing.
+  const play=page.locator('.ia-playButton');
+  await play.click();assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'true');
+  await page.selectOption('.ia-speed select','2');
+  assert.equal(await page.locator('.ia-playProgress i').evaluate(el=>el.style.animationDuration),'2800ms');
+  assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'true');
+  assert.equal(await stepAt(page),0);
+  await page.waitForFunction(()=>[...document.querySelectorAll('.ia-stepItem')].findIndex(i=>i.getAttribute('aria-current')==='step')===1,null,{timeout:6000});
+  await play.click();assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'false');
+  const held=await stepAt(page);assert.equal(held,1);
+  await page.waitForTimeout(3200);assert.equal(await stepAt(page),held,'paused step must not advance');
+  await page.locator('.ia-transport .ia-iconButton').nth(2).click();
+  assert.equal(await stepAt(page),0);assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'true');
+  await play.click();
+
+  // Direct hash, history and reload.
+  await page.goto(BASE+'engine-comparison/index.html#prefix');await page.waitForLoadState('load');
+  assert.match(await activeTab(page).innerText(),/前缀缓存/);
+  await page.locator('.ia-chapterTab').nth(4).click();
+  await page.waitForFunction(()=>location.hash==='#disagg');
+  assert.match(await activeTab(page).innerText(),/分离扩展/);
+  await page.goBack().catch(()=>{});
+  await page.waitForFunction(()=>location.hash==='#prefix');
+  assert.match(await activeTab(page).innerText(),/前缀缓存/);
+  await page.reload();await page.waitForLoadState('load');
+  assert.match(await activeTab(page).innerText(),/前缀缓存/);assert.equal(await stepAt(page),0);
+
+  // Prefix reuse is 8/12 on both engines.
+  await page.locator('.ia-stepItem').nth(1).click();
+  const feet=await page.locator('.ia-boardFootText').allInnerTexts();
+  assert.equal(feet.length,2);
+  feet.forEach(text=>assert.match(text,/8\s*\/\s*12/));
+
+  // Chinese / English and light / dark.
+  await page.locator('#lang-toggle').click();
+  assert.equal(await page.locator('html').getAttribute('lang'),'en');
+  assert.match(await page.locator('.ia-title').innerText(),/One request/);
+  assert.match(await activeTab(page).innerText(),/Prefix cache/);
+  assert.match(await page.locator('.ia-chapterLinks').innerText(),/Chapter 3 deep dives/i);
+  await page.locator('#lang-toggle').click();
+  assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN');
+  assert.match(await page.locator('.ia-chapterLinks').innerText(),/第三章深入/);
+  await page.locator('.theme-toggle').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
+  await noOverflow(page,'1440 light');
+  await page.locator('.theme-toggle').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
+
+  // Three viewport sizes, no document/body overflow.
+  for(const width of [1440,1280,1024,768,390,320]){
+   await page.setViewportSize({width,height:1000});
+   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+   await noOverflow(page,`${width} dark`);
+   for(const stage of await page.locator('.ia-boardStage').all()){
+    const size=await stage.evaluate(el=>({scroll:el.scrollWidth,client:el.clientWidth}));
+    assert.ok(size.scroll<=size.client+1,`default diagram must fit at ${width}: ${JSON.stringify(size)}`);
+   }
+  }
+  await page.setViewportSize({width:390,height:1000});
+  await page.locator('.theme-toggle').click();
+  assert.equal(await page.locator('html').getAttribute('data-theme'),'system');
+  await noOverflow(page,'390 system');
+
+  // The full diagram fits by default; explicit zoom offers a keyboard-accessible detail view.
+  const stage=page.locator('.ia-board--sg .ia-boardStage');
+  const zoom=page.locator('.ia-board--sg .ia-boardZoom');
+  assert.equal(await zoom.getAttribute('aria-pressed'),'false');
+  await zoom.click();
+  assert.equal(await zoom.getAttribute('aria-pressed'),'true');
+  const mobile=await stage.evaluate(el=>({
+   scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,tabIndex:el.tabIndex,
+   role:el.getAttribute('role'),label:el.getAttribute('aria-label'),
+  }));
+  assert.ok(mobile.scrollWidth>mobile.clientWidth+5,`mobile board should scroll: ${JSON.stringify(mobile)}`);
+  assert.equal(mobile.tabIndex,0);
+  assert.equal(mobile.role,'region');
+  assert.match(mobile.label,/左右滑动/);
+  assert.equal(await page.locator('.ia-boardScrollHint').first().isVisible(),true);
+  const scrolled=await stage.evaluate(el=>{
+   el.scrollLeft=el.scrollWidth;el.focus();
+   return {left:el.scrollLeft,focused:document.activeElement===el,doc:document.documentElement.scrollWidth,body:document.body.scrollWidth,inner:innerWidth,winX:scrollX};
+  });
+  assert.ok(scrolled.left>0,`stage should scroll right: ${JSON.stringify(scrolled)}`);
+  assert.equal(scrolled.focused,true);
+  assert.ok(scrolled.doc<=scrolled.inner);assert.ok(scrolled.body<=scrolled.inner);assert.equal(scrolled.winX,0);
+  const beforeKey=scrolled.left;
+  await page.keyboard.press('ArrowLeft');await page.waitForTimeout(120);
+  const afterKey=await stage.evaluate(el=>el.scrollLeft);
+  assert.ok(afterKey<beforeKey,`keyboard should scroll stage left: ${afterKey} !< ${beforeKey}`);
+  const foot=await page.locator('.ia-board--sg .ia-boardFootText').evaluate(el=>{
+   const style=getComputedStyle(el);
+   return {client:el.clientWidth,scroll:el.scrollWidth,whiteSpace:style.whiteSpace,textOverflow:style.textOverflow,text:el.innerText.trim()};
+  });
+  assert.ok(foot.text.length>0);
+  assert.ok(foot.scroll<=foot.client+1,`footer text is clipped: ${JSON.stringify(foot)}`);
+  assert.notEqual(foot.whiteSpace,'nowrap');
+  await zoom.click();
+  assert.equal(await zoom.getAttribute('aria-pressed'),'false');
+  assert.ok(await stage.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+
+  // Reduced motion starts paused and never auto-advances.
+  const reduced=await browser.newContext({reducedMotion:'reduce',viewport:{width:390,height:900}});
+  try{
+   const reducedPage=await reduced.newPage();reducedPage.on('pageerror',e=>errors.push(e.message));
+   await reducedPage.goto(BASE+'engine-comparison/index.html#process');await reducedPage.waitForLoadState('load');
+   assert.equal(await reducedPage.locator('.ia-page').getAttribute('data-reduced-motion'),'true');
+   assert.equal(await reducedPage.locator('.ia-liveStatus').getAttribute('data-playing'),'false');
+   assert.match(await reducedPage.locator('.ia-playButton').getAttribute('aria-label'),/播放动画/);
+   assert.equal(await reducedPage.locator('.ia-playProgress').count(),1);
+   const reducedStep=await stepAt(reducedPage);
+   await reducedPage.waitForTimeout(6000);
+   assert.equal(await stepAt(reducedPage),reducedStep,'reduced motion must not auto-advance');
+   assert.equal(await reducedPage.locator('.ia-liveStatus').getAttribute('data-playing'),'false');
+  }finally{await reduced.close();}
+
+  assert.deepEqual(errors,[]);
+  console.log('PASS: engine comparison six topics / 24 steps, pinned source and chapter 3 links, node note pause/close, 2x timed advance and pause hold, hash/history/reload, zh/EN, light/dark/system, six widths with complete diagrams, explicit zoom/fit and keyboard scrolling, 48 bilingual geometry states, topic/step-specific reading and ordered notes, prefix 8/12, reduced motion paused without auto-advance.');
+ }finally{await cleanup();}
+})().catch(e=>{console.error(e);process.exit(1);});

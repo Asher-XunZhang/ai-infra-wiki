@@ -19,7 +19,15 @@
 <a href="../../foundations/serving.html">12 请求路由与取消：服务在线为何还没收到回答？</a>
 <a href="../../foundations/metrics.html">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
 </nav></details>
-<details class="chapter-nav" data-chapter="sglang" open><summary>第二章 · SGLang 实现剖析</summary>
+<details class="chapter-nav" data-chapter="engine-comparison"><summary>第二章 · SGLang 与 vLLM 架构对照</summary><div class="module-lessons-nav engine-topic-nav">
+<a class="lesson-link" href="../../engine-comparison/index.html#process"><span>01 进程骨架</span><small>Process spine</small></a>
+<a class="lesson-link" href="../../engine-comparison/index.html#wire"><span>02 通信面</span><small>Wire profile</small></a>
+<a class="lesson-link" href="../../engine-comparison/index.html#prefix"><span>03 前缀缓存</span><small>Prefix cache</small></a>
+<a class="lesson-link" href="../../engine-comparison/index.html#batch"><span>04 调度心跳</span><small>Scheduling beat</small></a>
+<a class="lesson-link" href="../../engine-comparison/index.html#disagg"><span>05 分离扩展</span><small>Disaggregation</small></a>
+<a class="lesson-link" href="../../engine-comparison/index.html#crosscut"><span>06 生命周期与执行边界</span><small>Crosscuts</small></a>
+</div></details>
+<details class="chapter-nav" data-chapter="sglang" open><summary>第三章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations" open>
 <summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第一层 · 建立全局">
@@ -109,14 +117,14 @@
 </div></details>
 </nav></details>
 </details>
-<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章对照固定 release，第三章沿固定版本源码核对实现。</p></div>
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside><div class="site-content"><main id="main-content" tabindex="-1"><!-- learning-context:start -->
-<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第二章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-foundations">第一层 · 建立全局</a><span aria-hidden="true">/</span><a href="../../#system-overview">01 推理系统全景</a><span aria-hidden="true">/</span><span aria-current="page">SGLang 代码架构：模块划分与协作全景</span></nav>
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第三章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-foundations">第一层 · 建立全局</a><span aria-hidden="true">/</span><a href="../../#system-overview">01 推理系统全景</a><span aria-hidden="true">/</span><span aria-current="page">SGLang 代码架构：模块划分与协作全景</span></nav>
 <!-- learning-context:end -->
 <header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#system-overview">模块 01 / 推理系统全景</a><span class="lesson-count">SGLang · 架构入口</span></div><h1>SGLang 代码架构：模块划分与协作全景</h1><p>先从代码框架认识接入、调度、执行、缓存与输出，再沿模块进入对应源码和课程。</p><div class="meta-tags"><span>职责 · 进程 · 副本 · 服务角色</span><span>开篇 e00930 · 单实例参考 279339</span><span>机制演示 · 非运行 trace</span></div></header><!-- lesson-reading:start --><nav class="lesson-reading-nav" aria-label="本课阅读入口"><span>按问题阅读</span><a href="#pd-opening-title">SGLang SRT · PD 架构</a><a href="#architecture-title">单实例模块职责与源码索引</a><a href="#implementation-why-title">从问题理解实现</a><a href="#system-title">从单卡主线扩展到 TP、DP 与 P/D</a><a href="#reading-topic-2">把问题放回学习框架</a><a href="#reading-topic-3">读图自测</a><a href="#reading-topic-4">固定源码与继续阅读</a></nav><!-- lesson-reading:end --><!-- system-architecture:start -->
 <section id="sglang-opening" aria-labelledby="pd-opening-title">
-  <div class="op-heading"><h2 id="pd-opening-title">SGLang SRT · PD 架构</h2><span class="op-caption">第二章 · 源码导览</span></div>
+  <div class="op-heading"><h2 id="pd-opening-title">SGLang SRT · PD 架构</h2><span class="op-caption">第三章 · 源码导览</span></div>
   <div class="op-controls">
     <button id="op-toggle" type="button">播放</button>
     <button id="op-restart" type="button">从头播放</button>

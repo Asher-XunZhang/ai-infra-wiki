@@ -14,6 +14,17 @@ FOUNDATION_BY_SLUG = {c['slug']: c for c in FOUNDATIONS}
 DESIGN_NOTES = json.loads((PAGES / 'sglang/design-notes.json').read_text(encoding='utf-8'))
 from system_architecture import render_architecture
 
+ENGINE_COMPARISON = 'engine-comparison/index.html'
+ENGINE_PAGE = PAGES / ENGINE_COMPARISON
+ENGINE_TOPICS = [
+    ('process', '01 进程骨架', 'Process spine'),
+    ('wire', '02 通信面', 'Wire profile'),
+    ('prefix', '03 前缀缓存', 'Prefix cache'),
+    ('batch', '04 调度心跳', 'Scheduling beat'),
+    ('disagg', '05 分离扩展', 'Disaggregation'),
+    ('crosscut', '06 生命周期与执行边界', 'Crosscuts'),
+]
+
 DESIGN_REVISION = '279339f113b79af84f27fd3ac92d0a13bd3f4cbd'
 BRIDGES = {'system-overview':'generation','request-runtime':'serving','model-execution':'hardware','kv-memory':'cache','scheduling':'batching','parallelism':'parallel','communication':'communication','disaggregation':'deployment','advanced-generation':'speculation','serving-operations':'serving','performance':'metrics','case-studies':'parallel'}
 
@@ -100,9 +111,10 @@ def route_href(page, target, route):
 
 
 def learning_start(page):
-    parts = ['<!-- learning-start:start -->', '<section id="reading-routes" aria-label="两章学习入口">',
+    parts = ['<!-- learning-start:start -->', '<section id="reading-routes" aria-label="三章学习入口">',
         '<div class="chapter-choice"><a href="#chapter-foundations"><span>第一章</span><strong>推理基础</strong><p>从一句话怎样变成数字开始，逐步认识生成、缓存、调度与多卡协作。</p><span>先建立直觉，再进入实现</span></a>',
-        '<a href="#chapter-sglang"><span>第二章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十二模块 · 二十节实现课程</span></a></div></section>',
+        '<a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 并排查看两套引擎的进程、通信、缓存、调度与分离扩展。</p><span>六幅剖面 · 保留各自版本边界</span></a>',
+        '<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十二模块 · 二十节实现课程</span></a></div></section>',
         '<section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>',
         '<p>第一章从文字、生成、Attention 与基础部件，走向缓存、调度、硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">']
     for i, c in enumerate(FOUNDATIONS, 1):
@@ -159,6 +171,7 @@ def href(page, target='index.html', anchor=''):
 
 def sidebar(page, active):
     home = page == PAGES / 'index.html'
+    engine = page == ENGINE_PAGE
     lines = ['<aside class="site-sidebar" aria-label="学习导航">',
              '<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>',
              '<div class="sidebar-content">',
@@ -170,7 +183,11 @@ def sidebar(page, active):
         selected = page == PAGES / target
         lines.append(f'<a href="{href(page, target)}"' + (' aria-current="page"' if selected else '') + f'>{i:02} {escape(c["title"])}</a>')
     lines.append('</nav></details>')
-    lines.append('<details class="chapter-nav" data-chapter="sglang"' + (' open' if active else '') + '><summary>第二章 · SGLang 实现剖析</summary>')
+    lines.append('<details class="chapter-nav" data-chapter="engine-comparison"' + (' open' if engine or home else '') + '><summary>第二章 · SGLang 与 vLLM 架构对照</summary><div class="module-lessons-nav engine-topic-nav">')
+    for key, label, english in ENGINE_TOPICS:
+        lines.append(f'<a class="lesson-link" href="{href(page, ENGINE_COMPARISON, key)}"><span>{escape(label)}</span><small>{escape(english)}</small></a>')
+    lines.append('</div></details>')
+    lines.append('<details class="chapter-nav" data-chapter="sglang"' + (' open' if active else '') + '><summary>第三章 · SGLang 实现剖析</summary>')
     for stage, label, title in STAGES:
         opened = active and active[2] == stage
         lines.append(f'<details class="topic-group" data-topic="framework-{stage}"' + (' open' if opened else '') + '>')
@@ -197,7 +214,7 @@ def sidebar(page, active):
                 lines.append(f'<a class="course-link" data-module="{mid}" href="{href(page, anchor=mid)}">{heading}</a>')
         lines.append('</nav></details>')
     lines.append('</details>')
-    lines.extend(['<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>',
+    lines.extend(['<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章对照固定 release，第三章沿固定版本源码核对实现。</p></div>',
                   '<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>',
                   '</div></details></aside>'])
     return '\n'.join(lines)
@@ -207,7 +224,7 @@ def breadcrumb(page, module, lesson):
     stage = next(s for s in STAGES if s[0] == module[2])
     n = MODULES.index(module) + 1
     return ('<!-- learning-context:start -->\n<nav class="learning-breadcrumb" aria-label="当前位置">'
-            f'<a href="{href(page, anchor="learning-path")}">第二章 · SGLang 实现剖析</a><span aria-hidden="true">/</span>'
+            f'<a href="{href(page, anchor="learning-path")}">第三章 · SGLang 实现剖析</a><span aria-hidden="true">/</span>'
             f'<a href="{href(page, anchor="stage-" + stage[0])}">{stage[1]}</a><span aria-hidden="true">/</span>'
             f'<a href="{href(page, anchor=module[0])}">{n:02} {module[1]}</a>'
             f'<span aria-hidden="true">/</span><span aria-current="page">{escape(lesson[1])}</span>'
@@ -278,14 +295,33 @@ def lesson_reading_nav(source):
     return re.sub(r'(<header class="lesson-header".*?</header>)', lambda m: m[0] + nav, updated, count=1, flags=re.S)
 
 
+def engine_breadcrumb(page):
+    return ('<!-- learning-context:start -->\n<nav class="learning-breadcrumb" aria-label="当前位置">'
+            f'<a href="{href(page)}">学习首页</a><span aria-hidden="true">/</span>'
+            f'<a href="{href(page, anchor="chapter-engine")}">第二章 · SGLang 与 vLLM 架构对照</a><span aria-hidden="true">/</span>'
+            '<span aria-current="page">六主题架构对照</span></nav>\n<!-- learning-context:end -->')
+
+
+def engine_pager(page):
+    return ('<nav class="lesson-pager" aria-label="跨章继续学习">'
+            f'<a href="{href(page, anchor="chapter-foundations")}"><small>上一章 · 第一章</small><strong>← 推理基础</strong></a>'
+            f'<a class="next" href="{href(page, "sglang/system-overview/index.html")}"><small>下一章 · 第三章</small><strong>进入 SGLang 实现剖析 →</strong><span>从推理系统全景开始</span></a>'
+            '</nav>')
+
+
 def rendered(page, module=None, lesson=None):
     source = page.read_text(encoding='utf-8')
-    if 'motion/integration.js' not in source:
+    engine = page == ENGINE_PAGE
+    if 'motion/integration.js' not in source and not engine:
         source = source.replace('<script ', f'<script src="{href(page, "motion/integration.js")}" defer></script><script ', 1)
     source, count = re.subn(r'<aside class="site-sidebar".*?</aside>', lambda _: sidebar(page, module), source, count=1, flags=re.S)
     if count != 1:
         raise ValueError(f'{page}: expected exactly one site sidebar')
     if page.parent == PAGES / 'foundations':
+        return source
+    if engine:
+        source = re.sub(r'<!-- learning-context:start -->.*?<!-- learning-context:end -->', lambda _: engine_breadcrumb(page), source, count=1, flags=re.S)
+        source = re.sub(r'<!-- learning-pager:start -->.*?<!-- learning-pager:end -->', lambda _: engine_pager(page), source, count=1, flags=re.S)
         return source
     if not module:
         source, count = re.subn(r'<!-- learning-start:start -->.*?<!-- learning-start:end -->', lambda _: learning_start(page), source, count=1, flags=re.S)
@@ -343,7 +379,7 @@ def rendered(page, module=None, lesson=None):
 
 
 def build(check=False):
-    targets = [(PAGES / 'index.html', None, None)]
+    targets = [(PAGES / 'index.html', None, None), (ENGINE_PAGE, None, None)]
     targets += [(PAGES / ('foundations/' + c['slug'] + '.html'), None, None) for c in FOUNDATIONS]
     targets += [(PAGES / lesson[0], module, lesson) for module in MODULES for lesson in module[4]]
     assert len({p for p, _, _ in targets}) == len(targets), 'each course must have exactly one primary module'
@@ -359,7 +395,7 @@ def build(check=False):
                 page.write_text(result, encoding='utf-8')
     if stale:
         raise SystemExit('Navigation is stale; run scripts/build_learning_navigation.py: ' + ', '.join(stale))
-    print(f'{"Checked" if check else "Generated"} shared framework navigation: {len(targets)} pages, 2 chapters, {len(FOUNDATIONS)} foundations, 12 SGLang modules, 20 implementation courses.')
+    print(f'{"Checked" if check else "Generated"} shared framework navigation: {len(targets)} pages, 3 chapters, {len(FOUNDATIONS)} foundations, {len(ENGINE_TOPICS)} comparison topics, 12 SGLang modules, 20 implementation courses.')
 
 
 if __name__ == '__main__':

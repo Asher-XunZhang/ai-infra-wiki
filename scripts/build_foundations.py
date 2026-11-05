@@ -503,7 +503,7 @@ def render(c, i):
         visual_refs = '<details class="concept-background"><summary>画法参考与演示范围</summary><ul>' + ''.join(f'<li><a href="{escape(url, quote=True)}">{escape(name)}</a>：{escape(note)}</li>' for name, url, note in c['visual_references']) + '</ul><p>本课数值、交互模型与图形独立实现；输入输出和完成条件按上方官方文档复核。参考资料读取：2026-10-19。</p></details>'
     choices = ''.join(f'<label><input type="radio" name="prediction" value="{n}"><span>{escape(value)}</span></label>' for n, value in enumerate(c['choices']))
     previous = '<a href="../#chapter-foundations"><small>第一章目录</small><strong>回到推理基础</strong></a>' if i == 0 else f'<a href="{FOUNDATIONS[i-1]["slug"]}.html"><small>上一课</small><strong>{escape(FOUNDATIONS[i-1]["title"])}</strong></a>'
-    following = '<a class="next" href="../#chapter-sglang"><small>进入第二章</small><strong>SGLang 实现剖析</strong></a>' if i == len(FOUNDATIONS)-1 else f'<a class="next" href="{FOUNDATIONS[i+1]["slug"]}.html"><small>下一课</small><strong>{escape(FOUNDATIONS[i+1]["title"])}</strong></a>'
+    following = '<a class="next" href="../engine-comparison/"><small>进入第二章</small><strong>SGLang 与 vLLM 架构对照</strong></a>' if i == len(FOUNDATIONS)-1 else f'<a class="next" href="{FOUNDATIONS[i+1]["slug"]}.html"><small>下一课</small><strong>{escape(FOUNDATIONS[i+1]["title"])}</strong></a>'
     if c['slug'] == 'parallel':
         static_summary = parallel_adoption_summary()
     elif c['slug'] == 'deployment':
@@ -626,7 +626,7 @@ def render(c, i):
 <a class="foundation-to-engine" href="../{c['implementation']}"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
 <section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：{escape(c.get("reviewed", "2026-10-15"))}。{escape(c['scope'])}</p><p>概念动机、取舍与背景整理：{escape(c.get("reviewed", "2026-10-16"))}。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources">{sources}</ul>{visual_refs}{deep_reading_html(c)}<p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
 <nav class="lesson-pager" aria-label="推理基础内继续学习">{previous}{following}</nav>
-</main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">两章完整目录</a></footer></div></div></body></html>
+</main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">三章完整目录</a></footer></div></div></body></html>
 '''
 
 

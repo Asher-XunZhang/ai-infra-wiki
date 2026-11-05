@@ -36,7 +36,15 @@
 <a href="foundations/serving.html">12 请求路由与取消：服务在线为何还没收到回答？</a>
 <a href="foundations/metrics.html">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
 </nav></details>
-<details class="chapter-nav" data-chapter="sglang"><summary>第二章 · SGLang 实现剖析</summary>
+<details class="chapter-nav" data-chapter="engine-comparison" open><summary>第二章 · SGLang 与 vLLM 架构对照</summary><div class="module-lessons-nav engine-topic-nav">
+<a class="lesson-link" href="engine-comparison/index.html#process"><span>01 进程骨架</span><small>Process spine</small></a>
+<a class="lesson-link" href="engine-comparison/index.html#wire"><span>02 通信面</span><small>Wire profile</small></a>
+<a class="lesson-link" href="engine-comparison/index.html#prefix"><span>03 前缀缓存</span><small>Prefix cache</small></a>
+<a class="lesson-link" href="engine-comparison/index.html#batch"><span>04 调度心跳</span><small>Scheduling beat</small></a>
+<a class="lesson-link" href="engine-comparison/index.html#disagg"><span>05 分离扩展</span><small>Disaggregation</small></a>
+<a class="lesson-link" href="engine-comparison/index.html#crosscut"><span>06 生命周期与执行边界</span><small>Crosscuts</small></a>
+</div></details>
+<details class="chapter-nav" data-chapter="sglang"><summary>第三章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
 <summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第一层 · 建立全局">
@@ -126,7 +134,7 @@
 </div></details>
 </nav></details>
 </details>
-<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章沿固定版本源码核对实现。</p></div>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章对照固定 release，第三章沿固定版本源码核对实现。</p></div>
 <a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
 </div></details></aside>
   <div class="site-content">
@@ -136,9 +144,10 @@
         <p class="lead">从文字、数字和一次生成开始，逐步走到调度、缓存和真实源码。</p>
       </header>
       <!-- learning-start:start -->
-<section id="reading-routes" aria-label="两章学习入口">
+<section id="reading-routes" aria-label="三章学习入口">
 <div class="chapter-choice"><a href="#chapter-foundations"><span>第一章</span><strong>推理基础</strong><p>从一句话怎样变成数字开始，逐步认识生成、缓存、调度与多卡协作。</p><span>先建立直觉，再进入实现</span></a>
-<a href="#chapter-sglang"><span>第二章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十二模块 · 二十节实现课程</span></a></div></section>
+<a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 并排查看两套引擎的进程、通信、缓存、调度与分离扩展。</p><span>六幅剖面 · 保留各自版本边界</span></a>
+<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十二模块 · 二十节实现课程</span></a></div></section>
 <section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>
 <p>第一章从文字、生成、Attention 与基础部件，走向缓存、调度、硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">
 <li><a href="foundations/tokens.html"><span class="lesson-no">01</span><span><strong>Tokenization 与 Embedding：文字怎样变成模型输入？</strong><small>能把一句话的文字片段、词表编号和输入向量对应起来。</small></span></a></li>
@@ -156,9 +165,23 @@
 <li><a href="foundations/metrics.html"><span class="lesson-no">13</span><span><strong>TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</strong><small>能指出首输出等待、后续间隔、总体完成和百分位的测量边界。</small></span></a></li>
 </ol></section><!-- learning-start:end -->
 
+      <section id="chapter-engine" class="home-section" aria-labelledby="chapter-engine-title">
+        <div class="section-heading"><div><p class="eyebrow">六幅剖面 · 固定 release</p><h2 id="chapter-engine-title">第二章 · SGLang 与 vLLM 架构对照</h2></div><a class="text-link" href="#reading-routes">回到三章入口 ↑</a></div>
+        <p class="framework-intro">第二章把 SGLang v0.5.23 与 vLLM v0.33.0 放在同一组问题下：进程骨架、通信面、前缀缓存、调度心跳、分离扩展与生命周期边界。两侧保留固定 release，不合并历史源码版本。</p>
+        <ol class="foundation-lessons engine-topic-links">
+          <li><a href="engine-comparison/#process"><span class="lesson-no">01</span><span><strong>进程骨架</strong><small>API、Tokenizer、Scheduler 与 Worker 谁拥有请求。</small></span></a></li>
+          <li><a href="engine-comparison/#wire"><span class="lesson-no">02</span><span><strong>通信面</strong><small>控制消息、数据面与跨进程边界。</small></span></a></li>
+          <li><a href="engine-comparison/#prefix"><span class="lesson-no">03</span><span><strong>前缀缓存</strong><small>Radix / Paged 前缀缓存的对象与命中条件。</small></span></a></li>
+          <li><a href="engine-comparison/#batch"><span class="lesson-no">04</span><span><strong>调度心跳</strong><small>每轮怎样选批、更新成员与推进执行。</small></span></a></li>
+          <li><a href="engine-comparison/#disagg"><span class="lesson-no">05</span><span><strong>分离扩展</strong><small>P / D 角色分工、KV 交接与就绪条件。</small></span></a></li>
+          <li><a href="engine-comparison/#crosscut"><span class="lesson-no">06</span><span><strong>生命周期与执行边界</strong><small>取消、失败、释放与执行路径的收尾。</small></span></a></li>
+        </ol>
+        <p class="framework-legend"><a class="text-link" href="engine-comparison/">进入第二章完整对照 →</a></p>
+      </section>
+
       <span id="chapter-sglang"></span><section id="learning-path" class="home-section" aria-labelledby="learning-path-title">
-        <div class="section-heading"><div><p class="eyebrow">五个层次 · 十二个模块</p><h2 id="learning-path-title">第二章 · SGLang 实现剖析</h2></div><a class="text-link" href="#reading-routes">回到两章入口 ↑</a></div>
-        <p class="framework-intro">第一章回答“机制是什么、为什么需要”；本章回答“SGLang 由谁执行、改哪些状态、受什么约束”。十二模块保留各课独立的源码基线。</p>
+        <div class="section-heading"><div><p class="eyebrow">五个层次 · 十二个模块</p><h2 id="learning-path-title">第三章 · SGLang 实现剖析</h2></div><a class="text-link" href="#reading-routes">回到三章入口 ↑</a></div>
+        <p class="framework-intro">第三章回答“SGLang 由谁执行、改哪些状态、受什么约束”。十二模块保留各课独立的源码基线；需要跨引擎定位时先回到第二章的固定 release 对照。</p>
         <p class="framework-legend">各模块已有学习入口；具体实现、配置与验证边界见对应课程。</p>
 
         <section id="stage-foundations" class="framework-stage" aria-labelledby="stage-foundations-title">
