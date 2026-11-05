@@ -87,7 +87,7 @@ const diagramGeometry=async(page,label)=>{
    assert.equal(await page.locator('.ia-stepItem').count(),4,CHAPTERS[chapter]);
    const hrefs=await page.locator('.ia-chapterLinks a').evaluateAll(as=>as.map(a=>a.href));
    assert.ok(hrefs.some(h=>h.includes('/blob/')),`${CHAPTERS[chapter]} pinned source`);
-   assert.ok(hrefs.some(h=>h.includes('/sglang/')&&h.endsWith('.html')),`${CHAPTERS[chapter]} chapter 3 link`);
+   assert.ok(hrefs.some(h=>h.includes('/sglang/')&&new URL(h).pathname.endsWith('.html')),`${CHAPTERS[chapter]} chapter 3 link`);
    await page.locator('.ia-referenceDetails>summary').click();
    const sourceLinks=await page.locator('.ia-sourceLinks a').evaluateAll(as=>as.map(a=>a.href));
    assert.deepEqual(sourceLinks.filter(h=>h.includes('/blob/')).sort(),hrefs.filter(h=>h.includes('/blob/')).sort(),'sources must match this topic');
@@ -100,6 +100,9 @@ const diagramGeometry=async(page,label)=>{
     assert.equal(await page.locator('.ia-stepItem[aria-current=step]').count(),1);
     assert.equal((await page.locator('#ia-stage-title').innerText()).trim(),(await item.locator('.ia-stepLabel').innerText()).trim());
     assert.equal(await page.locator('.ia-board').count(),2);
+    assert.equal(await page.getByRole('button',{name:'上一步',exact:true}).isDisabled(),step===0);
+    assert.equal(await page.getByRole('button',{name:'下一步',exact:true}).isDisabled(),step===3);
+    assert.ok(await page.locator('.ia-edge.is-active,.ia-nodePulse,.ia-splitMarker.is-active').evaluateAll(nodes=>nodes.every(el=>getComputedStyle(el).animationPlayState==='running')),`${CHAPTERS[chapter]} step ${step+1}: existing effects must run`);
     await diagramGeometry(page,`${CHAPTERS[chapter]} step ${step+1}`);
     assert.equal(await page.locator('.ia-topicReading').getAttribute('data-topic'),CHAPTERS[chapter]);
     assert.equal(await page.locator('.ia-table').count(),0,'unrequested tables must not be mounted');
@@ -114,9 +117,8 @@ const diagramGeometry=async(page,label)=>{
 
   // Topic-specific reading and semantic lists; global references remain optional.
   await page.locator('.ia-chapterTab').nth(1).click();
-  await page.locator('.ia-playButton').click();
   await page.locator('.ia-readingDetails>summary').click();
-  assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'false','opening a reading must pause playback');
+  assert.equal(await stepAt(page),0,'opening a reading must retain the stage');
   assert.equal(await page.locator('.ia-topicReading ol.ia-sectionNote li').count(),4);
   assert.match(await page.locator('.ia-topicReading ol li').last().innerText(),/适用范围/);
   assert.equal(await page.locator('.ia-referenceDetails[open]').count(),0);
@@ -137,31 +139,48 @@ const diagramGeometry=async(page,label)=>{
   }
   await page.locator('#lang-toggle').click();
 
-  // Node note pauses playback and closes.
+  // Node notes retain the stage and leave the stage effects running.
   await page.goto(BASE+'engine-comparison/index.html#process');await page.waitForLoadState('load');
-  await page.locator('.ia-playButton').click();
-  assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'true');
   await page.locator('.ia-board--sg .ia-node[data-node-id=scheduler]').click();
   assert.equal(await page.locator('.ia-inspector').isVisible(),true);
   assert.match(await page.locator('.ia-inspector').innerText(),/Scheduler/);
-  assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'false');
+  assert.equal(await stepAt(page),0);
   await page.locator('.ia-closeButton').click();
   assert.equal(await page.locator('.ia-inspector').count(),0);
 
-  // Play / pause keeps the step, replay restarts, and speed keeps playing.
-  const play=page.locator('.ia-playButton');
-  await play.click();assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'true');
-  await page.selectOption('.ia-speed select','2');
-  assert.equal(await page.locator('.ia-playProgress i').evaluate(el=>el.style.animationDuration),'2800ms');
-  assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'true');
-  assert.equal(await stepAt(page),0);
-  await page.waitForFunction(()=>[...document.querySelectorAll('.ia-stepItem')].findIndex(i=>i.getAttribute('aria-current')==='step')===1,null,{timeout:6000});
-  await play.click();assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'false');
-  const held=await stepAt(page);assert.equal(held,1);
-  await page.waitForTimeout(3200);assert.equal(await stepAt(page),held,'paused step must not advance');
-  await page.locator('.ia-transport .ia-iconButton').nth(2).click();
-  assert.equal(await stepAt(page),0);assert.equal(await page.locator('.ia-liveStatus').getAttribute('data-playing'),'true');
-  await play.click();
+  // Stages only advance on reader input; decorative motion remains independent.
+  assert.equal(await page.locator('.ia-playButton,.ia-speed,.ia-playProgress,.ia-liveStatus').count(),0);
+  const prev=page.getByRole('button',{name:'上一步',exact:true});
+  const next=page.getByRole('button',{name:'下一步',exact:true});
+  assert.equal(await prev.isDisabled(),true);
+  await next.focus();await page.keyboard.press('Enter');assert.equal(await stepAt(page),1);
+  await next.click();assert.equal(await stepAt(page),2);
+  await next.click();assert.equal(await stepAt(page),3);assert.equal(await next.isDisabled(),true);
+  await prev.focus();await page.keyboard.press('Space');assert.equal(await stepAt(page),2);
+  await prev.click();await prev.click();assert.equal(await stepAt(page),0);assert.equal(await prev.isDisabled(),true);
+  const effects=()=>page.locator('.ia-edge.is-active,.ia-nodePulse,.ia-splitMarker.is-active').evaluateAll(nodes=>nodes.map(el=>({
+   style:getComputedStyle(el).animationPlayState,
+   name:getComputedStyle(el).animationName,
+   offset:getComputedStyle(el).strokeDashoffset,
+   opacity:getComputedStyle(el).opacity,
+   time:el.getAnimations()[0]?.currentTime,
+  })));
+  const before=await effects();assert.ok(before.length>0);
+  assert.ok(before.every(e=>e.style==='running'&&e.name!=='none'));
+  await page.waitForTimeout(350);
+  const after=await effects();
+  assert.ok(after.some((e,i)=>e.time>before[i].time&& (e.offset!==before[i].offset||e.opacity!==before[i].opacity)),'stage effects must actually move');
+  await page.locator('.ia-board--sg .ia-node[data-node-id=scheduler]').click();
+  await page.locator('.ia-readingDetails>summary').click();
+  assert.ok((await effects()).every(e=>e.style==='running'),'reading and inspecting must not freeze stage effects');
+  await page.waitForTimeout(6000);assert.equal(await stepAt(page),0,'idle reader must never be advanced by a timer');
+  await page.locator('.ia-closeButton').click();
+  await page.locator('.ia-readingDetails>summary').click();
+  if(process.env.ENGINE_TEST_SCREENSHOTS){
+   fs.mkdirSync(process.env.ENGINE_TEST_SCREENSHOTS,{recursive:true});
+   await page.locator('.ia-controls').scrollIntoViewIfNeeded();
+   await page.screenshot({path:path.join(process.env.ENGINE_TEST_SCREENSHOTS,'manual-desktop.png')});
+  }
 
   // Direct hash, history and reload.
   await page.goto(BASE+'engine-comparison/index.html#prefix');await page.waitForLoadState('load');
@@ -246,22 +265,25 @@ const diagramGeometry=async(page,label)=>{
   assert.equal(await zoom.getAttribute('aria-pressed'),'false');
   assert.ok(await stage.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
 
-  // Reduced motion starts paused and never auto-advances.
+  // Reduced motion suppresses looping effects; manual navigation still works.
   const reduced=await browser.newContext({reducedMotion:'reduce',viewport:{width:390,height:900}});
   try{
    const reducedPage=await reduced.newPage();reducedPage.on('pageerror',e=>errors.push(e.message));
    await reducedPage.goto(BASE+'engine-comparison/index.html#process');await reducedPage.waitForLoadState('load');
    assert.equal(await reducedPage.locator('.ia-page').getAttribute('data-reduced-motion'),'true');
-   assert.equal(await reducedPage.locator('.ia-liveStatus').getAttribute('data-playing'),'false');
-   assert.match(await reducedPage.locator('.ia-playButton').getAttribute('aria-label'),/播放动画/);
-   assert.equal(await reducedPage.locator('.ia-playProgress').count(),1);
-   const reducedStep=await stepAt(reducedPage);
-   await reducedPage.waitForTimeout(6000);
-   assert.equal(await stepAt(reducedPage),reducedStep,'reduced motion must not auto-advance');
-   assert.equal(await reducedPage.locator('.ia-liveStatus').getAttribute('data-playing'),'false');
+   assert.equal(await reducedPage.locator('.ia-playButton,.ia-speed,.ia-playProgress').count(),0);
+   await reducedPage.waitForTimeout(100);
+   assert.equal(await reducedPage.locator('.ia-board').evaluateAll(boards=>boards.flatMap(b=>b.getAnimations({subtree:true})).filter(a=>a.playState==='running').length),0);
+   await reducedPage.getByRole('button',{name:'下一步',exact:true}).click();assert.equal(await stepAt(reducedPage),1);
+   assert.equal(await reducedPage.locator('.ia-page').getAttribute('data-reduced-motion'),'true');
   }finally{await reduced.close();}
+  if(process.env.ENGINE_TEST_SCREENSHOTS){
+   await page.setViewportSize({width:390,height:1000});
+   await page.locator('.ia-controls').scrollIntoViewIfNeeded();
+   await page.screenshot({path:path.join(process.env.ENGINE_TEST_SCREENSHOTS,'manual-mobile.png')});
+  }
 
   assert.deepEqual(errors,[]);
-  console.log('PASS: engine comparison six topics / 24 steps, pinned source and chapter 3 links, node note pause/close, 2x timed advance and pause hold, hash/history/reload, zh/EN, light/dark/system, six widths with complete diagrams, explicit zoom/fit and keyboard scrolling, 48 bilingual geometry states, topic/step-specific reading and ordered notes, prefix 8/12, reduced motion paused without auto-advance.');
+  console.log('PASS: engine comparison six topics / 24 steps, pinned source and chapter 3 links, node notes without freezing effects, manual previous/next and boundary states, idle stage retention and animated edges/nodes, hash/history/reload, zh/EN, light/dark/system, six widths with complete diagrams, explicit zoom/fit and keyboard scrolling, 48 bilingual geometry states, topic/step-specific reading and ordered notes, prefix 8/12, reduced motion without looping effects.');
  }finally{await cleanup();}
 })().catch(e=>{console.error(e);process.exit(1);});

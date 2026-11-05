@@ -158,8 +158,8 @@ const chapterFromHash = () => {
         titleA: ['同一条请求，', 'One request,'],
         titleB: ['两种调度心跳', 'two scheduling heartbeats'],
         lede: [
-          '把固定 release 的 SGLang v0.5.23 与 vLLM v0.33.0 拆成可播放的 2D 剖面：请求如何穿过进程，ZMQ / 共享内存 / NCCL / RDMA 怎样接力，KV 如何被寻址，以及它在收尾、压力、取消和图形捕获时走向哪里。',
-          'A playable 2D anatomy of SGLang v0.5.23 and vLLM v0.33.0: how a request crosses process boundaries, how ZMQ, shared memory, NCCL, and RDMA hand off work, how KV is addressed, and where it goes during cleanup, pressure, cancellation, and graph capture.',
+          '把固定 release 的 SGLang v0.5.23 与 vLLM v0.33.0 拆成分阶段探索的 2D 剖面：请求如何穿过进程，ZMQ / 共享内存 / NCCL / RDMA 怎样接力，KV 如何被寻址，以及它在收尾、压力、取消和图形捕获时走向哪里。',
+          'A step-by-step 2D anatomy of SGLang v0.5.23 and vLLM v0.33.0: how a request crosses process boundaries, how ZMQ, shared memory, NCCL, and RDMA hand off work, how KV is addressed, and where it goes during cleanup, pressure, cancellation, and graph capture.',
         ],
         caution: ['机制示意，不是性能排名。', 'A mechanism explainer, not a performance ranking.'],
         releaseLabel: ['固定 release 与 commit', 'Pinned release and commit'],
@@ -168,15 +168,9 @@ const chapterFromHash = () => {
       },
       control: {
         chapter: ['章节', 'Chapters'],
-        play: ['播放动画', 'Play animation'],
-        pause: ['暂停动画', 'Pause animation'],
         prev: ['上一步', 'Previous step'],
         next: ['下一步', 'Next step'],
-        replay: ['重播', 'Replay'],
-        speed: ['速度', 'Speed'],
-        step: ['步', 'Step'],
-        playing: ['自动播放中', 'Autoplay on'],
-        paused: ['已暂停', 'Paused'],
+        hint: ['点击上一步、下一步或阶段名称切换；图中动态仅示意当前阶段。', 'Use Previous, Next, or a stage name to navigate; motion illustrates the current stage.'],
       },
       board: {
         sgRoute: ['RadixAttention 路线', 'RadixAttention lineage'],
@@ -1833,19 +1827,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       );
     }
 
-    function PlayIcon() {
-      return h(IconBase, null, h('path', { d: 'M8 5.4 19 12 8 18.6Z', fill: 'currentColor', stroke: 'none' }));
-    }
-
-    function PauseIcon() {
-      return h(
-        IconBase,
-        null,
-        h('rect', { x: 7.4, y: 5.3, width: 3, height: 13.4, rx: 0.6, fill: 'currentColor', stroke: 'none' }),
-        h('rect', { x: 13.6, y: 5.3, width: 3, height: 13.4, rx: 0.6, fill: 'currentColor', stroke: 'none' }),
-      );
-    }
-
     function StepBackIcon() {
       return h(
         IconBase,
@@ -1861,15 +1842,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         null,
         h('path', { d: 'M5.6 6v12L14.8 12Z', fill: 'currentColor', stroke: 'none' }),
         h('path', { d: 'M18.4 6v12' }),
-      );
-    }
-
-    function ReplayIcon() {
-      return h(
-        IconBase,
-        null,
-        h('path', { d: 'M4.8 9.4A7.4 7.4 0 1 1 5.2 15' }),
-        h('path', { d: 'M4.8 4.8v4.9h4.9' }),
       );
     }
 
@@ -3918,7 +3890,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
     // Mount only the requested material. A new topic/step gets a fresh closed
     // disclosure, so an open comparison cannot spill into the next lesson.
-    function ReadingDisclosure({ title, t, children, className, onExpand }) {
+    function ReadingDisclosure({ title, t, children, className }) {
       const [open, setOpen] = React.useState(false);
       return h('details', {
         className, open,
@@ -3927,7 +3899,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           event.preventDefault();
           const nextOpen = !open;
           setOpen(nextOpen);
-          if (nextOpen) onExpand?.();
         } },
           h('span', { className: 'ia-readingLabel' }, title),
           h('small', { className: 'ia-readingAction' }, t(open ? 'reading.collapse' : 'reading.expand')),
@@ -3936,7 +3907,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       );
     }
 
-    function TopicReading({ chapter, step, t, onRead }) {
+    function TopicReading({ chapter, step, t }) {
       const topic = chapter.id;
       const facet = topic === 'crosscut' ? ['finish', 'overload', 'abort', 'graph'][step] : topic;
       const table = topic === 'wire' ? h(WireTable, { t }) :
@@ -3949,7 +3920,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       return h('section', { className: 'ia-topicReading', 'data-topic': topic, 'data-reading': facet },
         h('p', { className: 'ia-readingEyebrow' }, t('reading.optional')),
         h(ReadingDisclosure, {
-          key: `${topic}:${step}`, t, className: 'ia-readingDetails', title: t(`reading.titles.${facet}`), onExpand: onRead,
+          key: `${topic}:${step}`, t, className: 'ia-readingDetails', title: t(`reading.titles.${facet}`),
         }, table),
       );
     }
@@ -4006,8 +3977,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         const [reduceMotion, setReduceMotion] = useState(() => prefersReducedMotion());
         const [chapterIndex, setChapterIndex] = useState(chapterFromHash);
         const [step, setStep] = useState(0);
-        const [playing, setPlaying] = useState(false);
-        const [speed, setSpeed] = useState(1);
         const [selected, setSelected] = useState(null);
 
         useEffect(() => locale.subscribe(() => setLocaleRevision((value) => value + 1)), [locale]);
@@ -4022,7 +3991,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           if (!media) return undefined;
           const onChange = (event) => {
             setReduceMotion(event.matches);
-            if (event.matches) setPlaying(false);
           };
           if (media.addEventListener) media.addEventListener('change', onChange);
           else media.addListener(onChange);
@@ -4035,16 +4003,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         const t = useMemo(() => locale.bind(NS), [locale, localeRevision]);
         const chapter = CHAPTERS[chapterIndex];
         const stepCount = chapter.steps;
-        const stepDuration = Math.round(5600 / speed);
         const stepTitleKey = `chapters.${chapter.id}.steps.${step}.title`;
-
-        useEffect(() => {
-          if (!playing) return undefined;
-          const timer = window.setTimeout(() => {
-            setStep((current) => (current + 1) % stepCount);
-          }, stepDuration);
-          return () => window.clearTimeout(timer);
-        }, [playing, step, stepDuration, stepCount, chapterIndex]);
 
         useEffect(() => {
           const sync = () => {
@@ -4052,7 +4011,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             setChapterIndex(next);
             setStep(0);
             setSelected(null);
-            setPlaying(false);
           };
           window.addEventListener('hashchange', sync);
           window.addEventListener('popstate', sync);
@@ -4066,32 +4024,17 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           setChapterIndex(index);
           setStep(0);
           setSelected(null);
-          setPlaying(false);
           try { history.pushState(null, '', '#' + CHAPTERS[index].id); } catch {}
         };
 
         const goToStep = (index) => {
-          setStep(((index % stepCount) + stepCount) % stepCount);
-          setPlaying(false);
+          setStep(Math.max(0, Math.min(index, stepCount - 1)));
           setSelected(null);
         };
 
         const goRelative = (delta) => {
-          setStep((current) => (current + delta + stepCount) % stepCount);
-          setPlaying(false);
+          setStep((current) => Math.max(0, Math.min(current + delta, stepCount - 1)));
           setSelected(null);
-        };
-
-        const startReplay = () => {
-          setStep(0);
-          setSelected(null);
-          setPlaying(true);
-        };
-
-        const togglePlaying = () => {
-          const next = !playing;
-          if (next) setSelected(null);
-          setPlaying(next);
         };
 
         const handleSelectNode = useCallback(
@@ -4102,7 +4045,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                 ? null
                 : { ...picked, key, chapter: chapter.id },
             );
-            setPlaying(false);
           },
           [chapter.id],
         );
@@ -4120,7 +4062,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             'main',
             {
               className: 'ia-page',
-              'data-playing': playing ? 'true' : 'false',
               'data-reduced-motion': reduceMotion ? 'true' : 'false',
             },
             h('div', { className: 'ia-windowSafe', 'aria-hidden': 'true' }),
@@ -4175,83 +4116,29 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                 h(
                   'button',
                   {
-                    type: 'button',
-                    className: 'ia-playButton',
-                    onClick: togglePlaying,
-                    'aria-label': playing ? t('control.pause') : t('control.play'),
-                  },
-                  playing ? h(PauseIcon) : h(PlayIcon),
-                  h('span', null, playing ? t('control.pause') : t('control.play')),
-                ),
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'ia-iconButton',
-                    onClick: () => goRelative(-1),
+                    type: 'button', className: 'ia-stepButton',
+                    onClick: () => goRelative(-1), disabled: step === 0,
                     'aria-label': t('control.prev'),
-                    title: t('control.prev'),
                   },
-                  h(StepBackIcon),
+                  h(StepBackIcon), h('span', null, t('control.prev')),
                 ),
                 h(
                   'button',
                   {
-                    type: 'button',
-                    className: 'ia-iconButton',
-                    onClick: () => goRelative(1),
+                    type: 'button', className: 'ia-stepButton',
+                    onClick: () => goRelative(1), disabled: step === stepCount - 1,
                     'aria-label': t('control.next'),
-                    title: t('control.next'),
                   },
-                  h(StepForwardIcon),
-                ),
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'ia-iconButton',
-                    onClick: startReplay,
-                    'aria-label': t('control.replay'),
-                    title: t('control.replay'),
-                  },
-                  h(ReplayIcon),
-                ),
-                h(
-                  'label',
-                  { className: 'ia-speed' },
-                  h('span', null, t('control.speed')),
-                  h(
-                    'select',
-                    {
-                      value: speed,
-                      onChange: (event) => setSpeed(Number(event.target.value)),
-                      'aria-label': t('control.speed'),
-                    },
-                    [0.5, 1, 1.5, 2].map((value) =>
-                      h('option', { key: value, value }, `${value}×`),
-                    ),
-                  ),
+                  h('span', null, t('control.next')), h(StepForwardIcon),
                 ),
               ),
             ),
-            h(
-              'div',
-              { className: 'ia-playProgress', 'aria-hidden': 'true' },
-              h('i', {
-                key: `${chapter.id}-${step}-${speed}`,
-                style: {
-                  animationDuration: `${stepDuration}ms`,
-                  animationPlayState: playing ? 'running' : 'paused',
-                },
-              }),
-            ),
+            h('p', { className: 'ia-controlHint' }, t('control.hint')),
             h(StepRail, { chapter, step, t, onStep: goToStep }),
             h(
               'p',
               { className: 'ia-srOnly', 'aria-live': 'polite' },
-              `${t('stage.step')} ${step + 1} / ${stepCount}: ${t(stepTitleKey)}. ${
-                playing ? t('control.playing') : t('control.paused')
-              }`,
+              `${t('stage.step')} ${step + 1} / ${stepCount}: ${t(stepTitleKey)}`,
             ),
             h(
               'section',
@@ -4277,12 +4164,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                     'span',
                     { className: 'ia-stepCounter' },
                     `${t('stage.step')} ${pad2(step + 1)} / ${pad2(stepCount)}`,
-                  ),
-                  h(
-                    'span',
-                    { className: 'ia-liveStatus', 'data-playing': playing ? 'true' : 'false' },
-                    h('i', { 'aria-hidden': 'true' }),
-                    playing ? t('control.playing') : t('control.paused'),
                   ),
                 ),
               ),
@@ -4379,9 +4260,9 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                 h('p', null, stepData.diff),
               ),
             ),
-            h(TopicReading, { chapter, step, t, onRead: () => setPlaying(false) }),
+            h(TopicReading, { chapter, step, t }),
             h(ReadingDisclosure, {
-              key: `sources:${chapter.id}`, t, className: 'ia-referenceDetails', title: t('reading.sources'), onExpand: () => setPlaying(false),
+              key: `sources:${chapter.id}`, t, className: 'ia-referenceDetails', title: t('reading.sources'),
             }, h(SourcesSection, { t, chapter })),
             h(
               'footer',
