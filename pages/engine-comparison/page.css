@@ -34,7 +34,7 @@
 .ia-page .ia-section{margin-top:34px}
 .ia-page .ia-profileSection,.ia-page .ia-releaseSection{margin-top:30px}
 .ia-page .ia-footer{padding-top:20px}
-@media(max-width:1100px){.ec-topic-map{grid-template-columns:repeat(3,minmax(0,1fr))}.ia-page .ia-header{grid-template-columns:1fr}.ia-page .ia-boardGrid{grid-template-columns:1fr}}
+@media(max-width:1100px){.ec-topic-map{grid-template-columns:repeat(3,minmax(0,1fr))}.ia-page .ia-header{grid-template-columns:1fr}}
 @media(max-width:900px){.ia-page .ia-title{font-size:clamp(28px,5vw,38px)}.ec-topic-map{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.ec-site-content{padding:18px 14px 0}.ec-topic-map{grid-template-columns:1fr;padding:10px}.ia-page .ia-title{font-size:28px}.ia-page .ia-stageTitle{font-size:22px}.ia-page .ia-lede{font-size:13px}}
 @media(max-height:820px) and (min-width:1100px){
@@ -55,8 +55,12 @@
 .engine-topic-nav .lesson-link small{font-size:10px;line-height:1.4;color:var(--muted);font-weight:400}
 .engine-topic-nav .lesson-link:hover small{color:var(--accent)}
 
-/* Fit the diagram to the actual content column, not the browser viewport. */
-.ia-page .ia-boardGrid{grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));align-items:stretch;gap:18px}
+/* Keep both engines on one row. Only the comparison scrolls on narrow screens. */
+.ia-comparison{container:engine-pair / inline-size;min-width:0}
+.ia-page .ia-boardGrid{grid-template-columns:repeat(2,minmax(min(100%,360px),1fr));align-items:stretch;gap:18px;min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;scrollbar-color:var(--ia-muted) var(--ia-surface2);padding-bottom:6px}
+.ia-page .ia-boardGrid:focus-visible{outline:2px solid var(--ia-focus);outline-offset:3px}
+.ia-comparisonHint{display:none;margin:0 0 10px;color:var(--ia-muted);font-size:12px;line-height:1.6}
+@container engine-pair (max-width:737px){.ia-comparisonHint{display:block}}
 .ia-page .ia-boardSvgWrap{min-width:0;width:100%;max-width:1000px;margin-inline:auto}
 .ia-page .ia-board.is-zoomed .ia-boardSvgWrap{min-width:760px;max-width:none}
 .ia-page .ia-boardHead{flex-wrap:wrap;gap:8px;padding:12px}
@@ -125,3 +129,6 @@
 .ia-readingDetails .ia-sectionTitle{font-size:21px;line-height:1.5}
 .ia-page .ia-referenceDetails{margin-top:12px}
 @media(max-width:700px){.ia-readingDetails{padding:12px}.ia-readingAction{display:block;margin:4px 0 0 16px}}
+
+.ia-inspectorRole{margin:12px 0 0;color:var(--ia-ink);font-size:14px;line-height:1.75;overflow-wrap:anywhere}
+.ia-inspectorRole strong{font-weight:650}

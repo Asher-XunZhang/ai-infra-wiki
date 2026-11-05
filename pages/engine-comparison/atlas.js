@@ -176,6 +176,8 @@ const chapterFromHash = () => {
         sgRoute: ['RadixAttention 路线', 'RadixAttention lineage'],
         vlRoute: ['PagedAttention / V1 路线', 'PagedAttention / V1 lineage'],
         hint: ['点击图中的模块查看注释。', 'Select any module in the diagram to inspect its role.'],
+        comparison: ['SGLang 与 vLLM 横向对照', 'SGLang and vLLM side-by-side comparison'],
+        comparisonScroll: ['两种引擎固定左右排列；左右滑动对照区查看，聚焦后也可用方向键滚动。', 'The engines stay side by side. Scroll this comparison horizontally, or focus it and use the arrow keys.'],
         zoom: ['放大图表', 'Zoom in'],
         fit: ['显示全图', 'Fit diagram'],
         fullView: ['完整图表；可用图表标题旁的按钮放大', 'Full diagram; use the adjacent button to zoom in'],
@@ -598,6 +600,104 @@ const chapterFromHash = () => {
           ],
         },
       },
+      roles: {
+        "prefill": ["输入计算者：处理输入序列，生成后续逐 token 续写需要的初始 KV。", "Prompt processor: computes the input sequence and produces the initial KV needed for token-by-token generation."],
+        "decode": ["续写执行者：接收并使用已有 KV，继续逐 token 生成输出。", "Generation worker: receives and uses existing KV to continue producing tokens."],
+        "kvTransfer": ["KV 搬运通道：把缓存数据从 Prefill 所在位置传到 Decode 所在位置。", "KV data path: moves cache data from the prefill side to the decode side."],
+        "kvMetadata": ["KV 交接说明单：把调度侧决定的传输信息交给 Worker 执行。", "KV handoff instructions: passes scheduler-side transfer information to Workers for execution."],
+        "http": [
+                "服务入口：接收用户的生成请求，把它交给引擎处理。",
+                "Service entry: accepts generation requests and passes them into the engine."
+        ],
+        "input": [
+                "请求与文本的接口：把输入转成 token，并把生成结果持续返回给用户。",
+                "Request and text interface: prepares token input and streams generated output to the user."
+        ],
+        "scheduler": [
+                "调度决策者：根据请求状态和资源余量，决定这一轮让哪些请求推进。",
+                "Scheduling decision maker: selects the requests that advance this round based on their state and available resources."
+        ],
+        "worker": [
+                "模型执行者：接收执行任务，在本 rank 上运行模型计算并返回结果。",
+                "Model executor: runs the assigned model computation on this rank and returns the results."
+        ],
+        "detok": [
+                "文本还原器：把模型输出的 token ID 逐步转回用户可读的文字。",
+                "Text decoder: incrementally converts model output token IDs into readable text."
+        ],
+        "engine": [
+                "推理任务的调度中枢：组织每轮选批、模型执行和结果更新。",
+                "Inference scheduling hub: coordinates each round of scheduling, model execution, and result updates."
+        ],
+        "stream": [
+                "结果出口：把生成结果逐段送回客户端。",
+                "Result delivery: streams generated output back to the client."
+        ],
+        "rpc": [
+                "管理通道：把控制指令送到调度器，与普通生成请求分开处理。",
+                "Management channel: sends control commands to the scheduler separately from ordinary generation requests."
+        ],
+        "dp": [
+                "副本协调者：协调多个 EngineCore 的数据并行运行。",
+                "Replica coordinator: coordinates data-parallel execution across multiple EngineCore instances."
+        ],
+        "radix": [
+                "前缀索引：查找哪些输入已经计算过，让后续请求复用对应的 KV。",
+                "Prefix index: finds previously computed input so later requests can reuse its KV."
+        ],
+        "pool": [
+                "KV 块的库存管理员：跟踪哪些块空闲、被引用或可回收。",
+                "KV block inventory: tracks which blocks are free, referenced, or reclaimable."
+        ],
+        "blockTable": [
+                "KV 地址表：告诉模型，一个请求的各段 KV 实际存在哪些物理块里。",
+                "KV address map: tells the model which physical blocks hold each portion of a request’s KV."
+        ],
+        "queue": [
+                "请求候选集合：保存等待处理或仍在生成的请求，供调度器选取。",
+                "Request candidates: holds waiting or still-generating requests for the scheduler to select."
+        ],
+        "adder": [
+                "Prefill 准入检查员：检查 token 和 KV 等预算，决定新请求能否加入本轮。",
+                "Prefill admission: checks token and KV budgets to decide which new work can enter this round."
+        ],
+        "batch": [
+                "本轮任务包：汇集这一轮交给模型执行的请求和输入。",
+                "This round’s work package: collects the requests and inputs to execute together."
+        ],
+        "overlap": [
+                "流水衔接：让 CPU 的准备或结果处理与 GPU 计算交错进行。",
+                "Execution overlap: interleaves CPU preparation or result handling with GPU computation."
+        ],
+        "budget": [
+                "每轮工作额度：限制本轮处理的 token 总量，Prefill 和 Decode 共同使用。",
+                "Per-round work allowance: limits the total tokens processed by prefill and decode together."
+        ],
+        "schedout": [
+                "执行任务单：告诉执行侧本轮每个请求算多少 token，以及使用哪些 KV 块。",
+                "Execution work order: tells the execution side how many tokens to compute per request and which KV blocks to use."
+        ],
+        "output": [
+                "前端结果包：携带这一轮的生成结果和请求状态，用于更新用户输出。",
+                "Frontend result package: carries this round’s generated output and request status for delivery to the user."
+        ],
+        "router": [
+                "请求分流器：选择由哪个推理实例接手请求。",
+                "Request router: chooses the inference instance that will handle a request."
+        ],
+        "connector": [
+                "KV 交接接口：协调 Prefill 产生的缓存如何交给 Decode 继续使用。",
+                "KV handoff interface: coordinates how prefill-produced cache becomes available to decode."
+        ],
+        "cacheTier": [
+                "缓存分层：让前缀 KV 可保存在 GPU、CPU 或存储层，需要时再取回。",
+                "Cache tiers: keeps prefix KV in GPU memory, CPU memory, or storage for later retrieval."
+        ],
+        "runner": [
+                "单个 rank 的模型运行器：准备执行输入并调用模型的 GPU 计算路径。",
+                "Per-rank model runner: prepares execution inputs and invokes the model’s GPU compute path."
+        ]
+},
       nodes: {
         process: {
           sg_http: [
@@ -629,8 +729,8 @@ const chapterFromHash = () => {
             'AsyncLLM handles input processing, output processing, streaming callbacks, and the engine client. It does not own the GPU scheduling loop.',
           ],
           vl_engine: [
-            '默认多进程拓扑下，EngineCore 是独立进程与忙循环：Scheduler、KVCacheManager、Executor、KV connector 的调度侧都在这里汇合。',
-            'In the default multiprocess topology, EngineCore is a separate process and busy loop where Scheduler, KVCacheManager, Executor, and the scheduling side of KV connectors meet.',
+            '默认多进程拓扑下，EngineCore 在独立进程中运行引擎主循环：Scheduler 选择本轮任务，Executor 把任务交给 Worker 执行，结果回来后更新请求状态。KVCacheManager 管理 KV 块，KV connector 的调度侧协调缓存交接；实际模型计算由 Worker 完成。',
+            'In the default multiprocess topology, EngineCore runs the engine loop in a separate process: Scheduler selects the work, Executor dispatches it to Workers, and returned results update request state. KVCacheManager manages KV blocks, while the scheduling side of KV connectors coordinates cache handoff. Workers perform the model computation.',
           ],
           vl_workers: [
             '每个 Worker 进程对应一个模型 rank，执行本 rank 的 ModelRunner；教学拓扑为 ×2。多进程 executor 中它与 EngineCore 分属不同进程，v0.33 的 MRV2、CUDA Graph、attention backend 与量化 kernel 在这里落地。',
@@ -667,7 +767,7 @@ const chapterFromHash = () => {
             'SGLang’s ordinary request/output path uses PUSH/PULL through ipc_channels; io_struct’s sock_send/sock_recv also has configuration branches, so the whole chain is not always pickle. Default IPC uses ipc://; DP attention switches to TCP.',
           ],
           vl_frontend: [
-            '独立 EngineCore 进程的拓扑下，前端绑定 ROUTER 输入与 PULL 输出，输入返回 EngineCoreOutputs；输出合并和 detokenize 留在 AsyncLLM / 前端一侧。Rust frontend 是另一条可选前端路径。',
+            '独立 EngineCore 进程的拓扑下，前端绑定 ROUTER 输入与 PULL 输出，输出通道返回 EngineCoreOutputs；输出合并和 detokenize 留在 AsyncLLM / 前端一侧。Rust frontend 是另一条可选前端路径。',
             'In a separate-EngineCore topology, the frontend binds a ROUTER input and PULL output. EngineCoreOutputs return to the frontend, where merging and detokenization happen. The Rust frontend is an alternative frontend path.',
           ],
           vl_core: [
@@ -742,6 +842,10 @@ const chapterFromHash = () => {
             '统一 token budget 决定本步可以放多少 token；prefill chunk 与 decode token 共同占用。',
             'A unified token budget decides how many tokens fit into the step; prefill chunks and decode tokens draw from it together.',
           ],
+          vl_output: [
+            'EngineCore 在处理模型执行结果后生成 EngineCoreOutputs，并发送给前端。它携带输出 token 和请求完成等状态；前端继续做输出处理与流式返回。',
+            'After processing model results, EngineCore produces EngineCoreOutputs for the frontend. It carries output tokens and request completion state; the frontend handles output processing and streaming.',
+          ],
           vl_schedout: [
             'SchedulerOutput 是 EngineCore 给 Worker 的执行契约，包含每请求调度 token 数、块变化和 connector metadata。',
             'SchedulerOutput is the execution contract from EngineCore to Workers. It carries per-request scheduled tokens, block changes, and connector metadata.',
@@ -756,6 +860,11 @@ const chapterFromHash = () => {
           ],
         },
         disagg: {
+          sg_prefill: ["Prefill pool 是处理输入序列的实例组。它生成初始 KV，再通过 KV 传输后端交给 Decode 侧继续生成。", "The prefill pool is the group of instances processing input sequences. It produces initial KV and hands it to decode through the KV transfer backend."],
+          sg_decode: ["Decode pool 是继续生成 token 的实例组。它接收 Prefill 侧交接的 KV，在本地准备好后继续生成。", "The decode pool is the group of instances continuing token generation. It receives prefill KV and continues when that KV is ready locally."],
+          vl_prefill: ["Prefill pool 负责计算输入并生成初始 KV。KVConnectorV1 的调度侧描述交接信息，Worker 侧负责相应的保存与传输操作。", "The prefill pool computes the input and produces initial KV. The scheduler side of KVConnectorV1 describes the handoff, and its Worker side handles the corresponding save and transfer operations."],
+          vl_decode: ["Decode pool 使用接收的 KV 继续生成。KVConnectorV1 的 Worker 侧负责加载；KV 就绪后，该请求才能按调度要求继续计算。", "The decode pool continues generation using received KV. The Worker side of KVConnectorV1 loads it; the request can continue its scheduled computation once the KV is ready."],
+          vl_meta: ["调度侧生成 connector metadata，随 SchedulerOutput 交给执行侧；Worker 根据这些信息执行 KV 的加载与保存。元数据描述要做的事，不是 KV 张量本身。", "The scheduler creates connector metadata and includes it in SchedulerOutput. Workers use it to load and save KV. The metadata describes the work, rather than containing the KV tensors themselves."],
           sg_router: [
             'sgl-router 是 Rust 路由器，可按前缀命中与负载选择实例。PD 路由是它区别于普通负载均衡器的关键。',
             'sgl-router is the Rust router. It can choose instances using prefix hits and load, and PD routing is what distinguishes it from a generic balancer.',
@@ -2000,7 +2109,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           { id: 'budget', x: 186, y: 136, w: 128, h: 54, label: 'token budget', tag: 'max tokens', detailKey: 'nodes.batch.vl_budget' },
           { id: 'scheduler', x: 330, y: 136, w: 154, h: 54, label: 'SchedulerOutput', tag: 'per step', detailKey: 'nodes.batch.vl_schedout' },
           { id: 'workers', x: 186, y: 214, w: 128, h: 54, label: 'Workers', tag: 'ModelRunner', detailKey: 'nodes.batch.vl_workers' },
-          { id: 'output', x: 330, y: 214, w: 154, h: 54, label: 'EngineCoreOutputs', tag: 'frontend', detailKey: 'nodes.batch.vl_schedout' },
+          { id: 'output', x: 330, y: 214, w: 154, h: 54, label: 'EngineCoreOutputs', tag: 'frontend', detailKey: 'nodes.batch.vl_output' },
           { id: 'async', x: 30, y: 278, w: 460, h: 76, label: 'async scheduling / PP batch queue', tag: 'multiple steps in flight', detailKey: 'nodes.batch.vl_async', card: true },
         ],
         edges: [
@@ -2023,8 +2132,8 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       sg: {
         nodes: [
           { id: 'router', x: 30, y: 48, w: 138, h: 56, label: 'sgl-router', tag: 'cache-aware', detailKey: 'nodes.disagg.sg_router' },
-          { id: 'prefill', x: 190, y: 48, w: 134, h: 56, label: 'Prefill pool', tag: 'PD / EPD', detailKey: 'nodes.disagg.sg_kv' },
-          { id: 'decode', x: 354, y: 48, w: 136, h: 56, label: 'Decode pool', tag: 'KV consumer', detailKey: 'nodes.disagg.sg_kv' },
+          { id: 'prefill', x: 190, y: 48, w: 134, h: 56, label: 'Prefill pool', tag: 'PD / EPD', detailKey: 'nodes.disagg.sg_prefill' },
+          { id: 'decode', x: 354, y: 48, w: 136, h: 56, label: 'Decode pool', tag: 'KV consumer', detailKey: 'nodes.disagg.sg_decode' },
           { id: 'kv', x: 190, y: 128, w: 134, h: 52, label: 'KV transfer', tag: 'Mooncake / NIXL', detailKey: 'nodes.disagg.sg_kv' },
           { id: 'l1', x: 30, y: 212, w: 138, h: 52, label: 'L1 GPU', tag: 'hot KV', detailKey: 'nodes.disagg.sg_hicache' },
           { id: 'l2', x: 190, y: 212, w: 134, h: 52, label: 'L2 CPU', tag: 'HiCache', detailKey: 'nodes.disagg.sg_hicache' },
@@ -2049,10 +2158,10 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       vl: {
         nodes: [
           { id: 'router', x: 30, y: 48, w: 138, h: 56, label: 'Frontend / DP', tag: 'coordinator', detailKey: 'nodes.disagg.vl_router' },
-          { id: 'prefill', x: 190, y: 48, w: 134, h: 56, label: 'Prefill pool', tag: 'KV producer', detailKey: 'nodes.disagg.vl_connector' },
-          { id: 'decode', x: 354, y: 48, w: 136, h: 56, label: 'Decode pool', tag: 'KV consumer', detailKey: 'nodes.disagg.vl_connector' },
+          { id: 'prefill', x: 190, y: 48, w: 134, h: 56, label: 'Prefill pool', tag: 'KV producer', detailKey: 'nodes.disagg.vl_prefill' },
+          { id: 'decode', x: 354, y: 48, w: 136, h: 56, label: 'Decode pool', tag: 'KV consumer', detailKey: 'nodes.disagg.vl_decode' },
           { id: 'connector', x: 190, y: 128, w: 134, h: 52, label: 'KVConnectorV1', tag: 'meta + RDMA', detailKey: 'nodes.disagg.vl_connector' },
-          { id: 'meta', x: 30, y: 212, w: 138, h: 52, label: 'Scheduler meta', tag: 'per step', detailKey: 'nodes.disagg.vl_connector' },
+          { id: 'meta', x: 30, y: 212, w: 138, h: 52, label: 'Scheduler meta', tag: 'per step', detailKey: 'nodes.disagg.vl_meta' },
           { id: 'remote', x: 190, y: 212, w: 134, h: 52, label: 'remote KV', tag: 'block load', detailKey: 'nodes.disagg.vl_offload' },
           { id: 'offload', x: 354, y: 212, w: 136, h: 52, label: 'offload / HMA', tag: 'block owner', detailKey: 'nodes.disagg.vl_offload' },
           { id: 'scale', x: 30, y: 298, w: 460, h: 52, label: 'Parallel controls', tag: 'TP · PP · DP · EP · elastic', detailKey: 'nodes.disagg.vl_scale' },
@@ -3971,6 +4080,61 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       );
     }
 
+    const NODE_ROLE_KEYS = {
+      "nodes.disagg.vl_meta": "roles.kvMetadata",
+      "nodes.disagg.vl_decode": "roles.decode",
+      "nodes.disagg.sg_decode": "roles.decode",
+      "nodes.disagg.vl_prefill": "roles.prefill",
+      "nodes.disagg.sg_prefill": "roles.prefill",
+      "nodes.process.sg_http": "roles.http",
+      "nodes.process.vl_frontend": "roles.http",
+      "nodes.wire.vl_frontend": "roles.http",
+      "nodes.process.sg_tokenizer": "roles.input",
+      "nodes.process.vl_async": "roles.input",
+      "nodes.wire.sg_tok": "roles.input",
+      "nodes.process.sg_scheduler": "roles.scheduler",
+      "nodes.wire.sg_sched": "roles.scheduler",
+      "nodes.crosscut.sg_sched": "roles.scheduler",
+      "nodes.crosscut.vl_sched": "roles.scheduler",
+      "nodes.process.sg_workers": "roles.worker",
+      "nodes.process.vl_workers": "roles.worker",
+      "nodes.wire.sg_workers": "roles.worker",
+      "nodes.wire.vl_workers": "roles.worker",
+      "nodes.batch.vl_workers": "roles.worker",
+      "nodes.batch.sg_gpu": "roles.worker",
+      "nodes.process.sg_detok": "roles.detok",
+      "nodes.wire.sg_detok": "roles.detok",
+      "nodes.process.vl_engine": "roles.engine",
+      "nodes.wire.vl_core": "roles.engine",
+      "nodes.crosscut.vl_core": "roles.engine",
+      "nodes.process.vl_stream": "roles.stream",
+      "nodes.crosscut.vl_out": "roles.stream",
+      "nodes.wire.sg_rpc": "roles.rpc",
+      "nodes.wire.vl_dp": "roles.dp",
+      "nodes.prefix.sg_radix": "roles.radix",
+      "nodes.prefix.vl_pool": "roles.pool",
+      "nodes.crosscut.vl_pool": "roles.pool",
+      "nodes.crosscut.sg_pool": "roles.pool",
+      "nodes.prefix.vl_table": "roles.blockTable",
+      "nodes.crosscut.vl_table": "roles.blockTable",
+      "nodes.batch.sg_queue": "roles.queue",
+      "nodes.batch.vl_queue": "roles.queue",
+      "nodes.batch.sg_adder": "roles.adder",
+      "nodes.batch.sg_batch": "roles.batch",
+      "nodes.batch.sg_overlap": "roles.overlap",
+      "nodes.batch.vl_async": "roles.overlap",
+      "nodes.batch.vl_budget": "roles.budget",
+      "nodes.batch.vl_schedout": "roles.schedout",
+      "nodes.batch.vl_output": "roles.output",
+      "nodes.disagg.sg_router": "roles.router",
+      "nodes.disagg.vl_router": "roles.router",
+      "nodes.disagg.sg_kv": "roles.kvTransfer",
+      "nodes.disagg.vl_connector": "roles.connector",
+      "nodes.disagg.sg_hicache": "roles.cacheTier",
+      "nodes.crosscut.sg_graph": "roles.runner",
+      "nodes.crosscut.vl_mrv2": "roles.runner"
+};
+
     function createAtlasPage(locale) {
       return function InferenceAtlasPage() {
         const [localeRevision, setLocaleRevision] = useState(0);
@@ -4167,16 +4331,14 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                   ),
                 ),
               ),
-              h(
-                'div',
-                { className: 'ia-boardGrid' },
-                h(Scene, {
-                  chapter: chapter.id,
-                  step,
-                  t,
-                  selected,
-                  onSelect: handleSelectNode,
-                }),
+              h('div', { className: 'ia-comparison' },
+                h('p', { className: 'ia-comparisonHint', id: 'ia-comparison-hint' }, t('board.comparisonScroll')),
+                h('div', {
+                  className: 'ia-boardGrid', role: 'region', tabIndex: 0,
+                  'aria-label': t('board.comparison'), 'aria-describedby': 'ia-comparison-hint',
+                }, h(Scene, {
+                  chapter: chapter.id, step, t, selected, onSelect: handleSelectNode,
+                })),
               ),
               h(
                 'p',
@@ -4224,6 +4386,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                         h(CloseIcon),
                       ),
                     ),
+                    NODE_ROLE_KEYS[selected.detailKey] ? h('p', { className: 'ia-inspectorRole' }, h('strong', null, t(NODE_ROLE_KEYS[selected.detailKey]))) : null,
                     h('p', { className: 'ia-inspectorBody' }, t(selected.detailKey)),
                   )
                 : null,

@@ -12,6 +12,27 @@ const noOverflow=async(page,label)=>{
  assert.ok(size.html<=size.inner,`${label}: html ${size.html} > ${size.inner}`);
  assert.ok(size.body<=size.inner,`${label}: body ${size.body} > ${size.inner}`);
 };
+const horizontalPair=async(page,label)=>{
+ const boxes=await page.locator('.ia-board').evaluateAll(nodes=>nodes.map(n=>{const b=n.getBoundingClientRect();return {x:b.x,y:b.y,width:b.width,right:b.right};}));
+ assert.equal(boxes.length,2,label);
+ assert.ok(Math.abs(boxes[0].y-boxes[1].y)<1,`${label}: engines must share a row ${JSON.stringify(boxes)}`);
+ assert.ok(boxes[1].x>=boxes[0].right,`${label}: vLLM must stay to the right`);
+ assert.ok(Math.abs(boxes[0].width-boxes[1].width)<1,`${label}: equal comparison widths`);
+};
+const visibleBoundaries=async(page)=>{
+ const ratios=await page.locator('.ia-zoneRect,.ia-blockBracket,.ia-splitMarker').evaluateAll(nodes=>{
+  const rgb=value=>value.startsWith('#')?value.slice(1).match(/../g).map(v=>parseInt(v,16)):value.match(/[\d.]+/g).map(Number);
+  const lum=c=>c.slice(0,3).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+  return nodes.map(n=>{
+   const style=getComputedStyle(n),base=rgb(getComputedStyle(n.closest('.ia-page')).getPropertyValue('--ia-scene-2').trim());
+   const fill=style.fill==='none'?[...base,0]:rgb(style.fill),alpha=fill[3]??1;
+   const background=base.map((v,i)=>v*(1-alpha)+fill[i]*alpha);
+   const stroke=rgb(style.stroke),a=stroke[3]??1,ink=background.map((v,i)=>v*(1-a)+stroke[i]*a);
+   return (Math.max(lum(ink),lum(background))+.05)/(Math.min(lum(ink),lum(background))+.05);
+  });
+ });
+ assert.ok(ratios.every(r=>r>=3),`dashed boundaries must contrast with the canvas: ${ratios}`);
+};
 const diagramGeometry=async(page,label)=>{
  const issues=await page.evaluate(()=>{
   const found=[];
@@ -104,6 +125,8 @@ const diagramGeometry=async(page,label)=>{
     assert.equal(await page.getByRole('button',{name:'下一步',exact:true}).isDisabled(),step===3);
     assert.ok(await page.locator('.ia-edge.is-active,.ia-nodePulse,.ia-splitMarker.is-active').evaluateAll(nodes=>nodes.every(el=>getComputedStyle(el).animationPlayState==='running')),`${CHAPTERS[chapter]} step ${step+1}: existing effects must run`);
     await diagramGeometry(page,`${CHAPTERS[chapter]} step ${step+1}`);
+    await horizontalPair(page,`${CHAPTERS[chapter]} step ${step+1}`);
+    await visibleBoundaries(page);
     assert.equal(await page.locator('.ia-topicReading').getAttribute('data-topic'),CHAPTERS[chapter]);
     assert.equal(await page.locator('.ia-table').count(),0,'unrequested tables must not be mounted');
     assert.equal(await page.locator('.ia-readingDetails[open]').count(),0,'a new step starts with concise reading');
@@ -147,6 +170,30 @@ const diagramGeometry=async(page,label)=>{
   assert.equal(await stepAt(page),0);
   await page.locator('.ia-closeButton').click();
   assert.equal(await page.locator('.ia-inspector').count(),0);
+
+  // Core components explain their role before implementation details.
+  await page.locator('.ia-board--vl .ia-node[data-node-id=engine]').click();
+  assert.match(await page.locator('.ia-inspectorRole').innerText(),/调度中枢/);
+  assert.match(await page.locator('.ia-inspectorBody').innerText(),/Worker/);
+  await page.locator('#lang-toggle').click();
+  assert.match(await page.locator('.ia-inspectorRole').innerText(),/scheduling hub/);
+  await page.locator('#lang-toggle').click();
+  if(process.env.ENGINE_TEST_SCREENSHOTS){
+   fs.mkdirSync(process.env.ENGINE_TEST_SCREENSHOTS,{recursive:true});
+   await page.locator('.ia-inspector').scrollIntoViewIfNeeded();
+   await page.screenshot({path:path.join(process.env.ENGINE_TEST_SCREENSHOTS,'enginecore-role.png')});
+  }
+  await page.locator('.ia-closeButton').click();
+  await page.locator('.ia-chapterTab').nth(3).click();
+  await page.locator('.ia-board--vl .ia-node[data-node-id=output]').click();
+  assert.match(await page.locator('.ia-inspectorRole').innerText(),/前端结果包/);
+  assert.match(await page.locator('.ia-inspectorBody').innerText(),/EngineCoreOutputs/);
+  await page.locator('.ia-chapterTab').nth(4).click();
+  for(const side of ['sg','vl'])for(const [node,role] of [['prefill',/输入计算者/],['decode',/续写执行者/]]){
+   await page.locator(`.ia-board--${side} .ia-node[data-node-id=${node}]`).click();
+   assert.match(await page.locator('.ia-inspectorRole').innerText(),role);
+  }
+  await page.locator('.ia-chapterTab').nth(0).click();
 
   // Stages only advance on reader input; decorative motion remains independent.
   assert.equal(await page.locator('.ia-playButton,.ia-speed,.ia-playProgress,.ia-liveStatus').count(),0);
@@ -213,11 +260,17 @@ const diagramGeometry=async(page,label)=>{
   await noOverflow(page,'1440 light');
   await page.locator('.theme-toggle').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'dark');
 
-  // Three viewport sizes, no document/body overflow.
-  for(const width of [1440,1280,1024,768,390,320]){
+  // Fixed horizontal pairing at desktop, tablet and phone widths; only the pair scrolls.
+  for(const width of [1440,1280,1100,1024,900,768,390,320]){
    await page.setViewportSize({width,height:1000});
    await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
    await noOverflow(page,`${width} dark`);
+   await horizontalPair(page,`${width} dark`);
+   if(width>=1024)assert.ok(await page.locator('.ia-boardGrid').evaluate(e=>e.scrollWidth<=e.clientWidth+1),`desktop pair fits at ${width}`);
+   if(process.env.ENGINE_TEST_SCREENSHOTS&&[1280,1024,390].includes(width)){
+    await page.locator('.ia-comparison').scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(process.env.ENGINE_TEST_SCREENSHOTS,`horizontal-${width}.png`)});
+   }
    for(const stage of await page.locator('.ia-boardStage').all()){
     const size=await stage.evaluate(el=>({scroll:el.scrollWidth,client:el.clientWidth}));
     assert.ok(size.scroll<=size.client+1,`default diagram must fit at ${width}: ${JSON.stringify(size)}`);
@@ -227,6 +280,18 @@ const diagramGeometry=async(page,label)=>{
   await page.locator('.theme-toggle').click();
   assert.equal(await page.locator('html').getAttribute('data-theme'),'system');
   await noOverflow(page,'390 system');
+
+  const pair=page.locator('.ia-boardGrid');
+  assert.equal(await page.locator('.ia-comparisonHint').isVisible(),true);
+  const pairSize=await pair.evaluate(el=>({scroll:el.scrollWidth,client:el.clientWidth,role:el.getAttribute('role'),tab:el.tabIndex}));
+  assert.ok(pairSize.scroll>pairSize.client);assert.equal(pairSize.role,'region');assert.equal(pairSize.tab,0);
+  assert.ok(await page.locator('.ia-board--sg').evaluate(el=>el.clientWidth<=el.closest('.ia-boardGrid').clientWidth),'a single engine card must fit the narrow viewport');
+  await pair.evaluate(el=>{el.scrollLeft=0;el.focus();});
+  await page.keyboard.press('ArrowRight');await page.waitForTimeout(150);
+  assert.ok(await pair.evaluate(el=>el.scrollLeft>0),'keyboard must scroll the comparison');
+  await pair.evaluate(el=>el.scrollLeft=el.scrollWidth);
+  assert.ok(await page.locator('.ia-board--vl').evaluate(el=>{const b=el.getBoundingClientRect(),g=el.closest('.ia-boardGrid').getBoundingClientRect();return b.right<=g.right+1&&b.right>g.left;}),'the right-hand engine is reachable');
+  await noOverflow(page,'horizontal pair scrolled');await pair.evaluate(el=>el.scrollLeft=0);
 
   // The full diagram fits by default; explicit zoom offers a keyboard-accessible detail view.
   const stage=page.locator('.ia-board--sg .ia-boardStage');
@@ -284,6 +349,6 @@ const diagramGeometry=async(page,label)=>{
   }
 
   assert.deepEqual(errors,[]);
-  console.log('PASS: engine comparison six topics / 24 steps, pinned source and chapter 3 links, node notes without freezing effects, manual previous/next and boundary states, idle stage retention and animated edges/nodes, hash/history/reload, zh/EN, light/dark/system, six widths with complete diagrams, explicit zoom/fit and keyboard scrolling, 48 bilingual geometry states, topic/step-specific reading and ordered notes, prefix 8/12, reduced motion without looping effects.');
+  console.log('PASS: engine comparison six topics / 24 steps, pinned source and chapter 3 links, node notes without freezing effects, manual previous/next and boundary states, idle stage retention and animated edges/nodes, hash/history/reload, zh/EN, light/dark/system, eight widths with fixed horizontal engine pairs, visible dashed boundaries, role-first core descriptions, and complete diagrams, explicit zoom/fit and keyboard scrolling, 48 bilingual geometry states, topic/step-specific reading and ordered notes, prefix 8/12, reduced motion without looping effects.');
  }finally{await cleanup();}
 })().catch(e=>{console.error(e);process.exit(1);});

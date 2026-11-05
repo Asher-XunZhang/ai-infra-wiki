@@ -597,13 +597,14 @@
 .ia-arrowDef--active { fill: var(--board-accent); }
 .ia-gridDot { fill: rgba(212, 226, 244, .11); }
 .ia-zoneRect {
-  fill: rgba(255, 255, 255, .018);
-  stroke: rgba(221, 232, 245, .14);
-  stroke-width: 1;
-  stroke-dasharray: 3 5;
+  fill: rgba(151, 177, 205, .045);
+  stroke: #8297b0;
+  stroke-width: 1.25;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
 }
 .ia-zoneLabel {
-  fill: #7d8b9f;
+  fill: #becde0;
   font-family: var(--ia-mono);
   font-size: 8.5px;
   letter-spacing: .02em;
@@ -738,8 +739,10 @@
 .ia-token.is-new .ia-tokenText { fill: var(--ia-warnScene); }
 .ia-blockBracket {
   fill: none;
-  stroke: rgba(226, 236, 248, .16);
-  stroke-dasharray: 2 3;
+  stroke: #8297b0;
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 4 3;
 }
 .ia-blockBracket.is-hit { stroke: var(--ia-hitScene); }
 .ia-blockBracket.is-new { stroke: var(--ia-warnScene); }
@@ -765,8 +768,10 @@
 }
 .ia-splitMarker {
   fill: none;
-  stroke: rgba(226, 236, 248, .18);
-  stroke-dasharray: 2 3;
+  stroke: #8297b0;
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 4 3;
 }
 .ia-splitMarker.is-active {
   stroke: var(--board-accent);
@@ -1278,7 +1283,6 @@ html[data-ds-dark-theme] .ia-page .ia-releaseCard:hover,
 @media (max-width: 1040px) {
   .ia-controls { flex-direction: column; align-items: stretch; }
   .ia-transport { justify-content: flex-start; padding-top: 4px; }
-  .ia-boardGrid { grid-template-columns: 1fr; }
   .ia-sectionHead { grid-template-columns: 1fr; gap: 9px; align-items: start; }
   .ia-sourceGrid { grid-template-columns: 1fr; gap: 24px; }
 }
