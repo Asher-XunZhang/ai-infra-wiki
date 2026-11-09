@@ -25,7 +25,7 @@
     register(name, capture) { checkpoints.set(name, capture); return () => { if (checkpoints.get(name) === capture) checkpoints.delete(name); }; },
     take(name) { const value = resume?.state?.[name]; if (resume?.state) delete resume.state[name]; return value; }
   };
-  let latest = null, checking = null, updating = false, checkedAt = 0, dismissed = '', footer, notice, status, checkButton, updateButton;
+  let latest = null, checking = null, reportCheck = false, updating = false, checkedAt = 0, dismissed = '', footer, notice, status, checkButton, updateButton;
   function render(message = '') {
     if (!footer) return;
     const available = latest && latest !== release;
@@ -51,9 +51,9 @@
   }
   async function check(manual = false) {
     if (updating) return;
-    if (checking) return checking;
+    if (checking) { if (manual) reportCheck = true; return checking; }
     if (!manual && (document.hidden || Date.now() - checkedAt < 60000)) return;
-    checkedAt = Date.now();
+    checkedAt = Date.now(); reportCheck = manual;
     checking = (async () => {
       try {
         const address = new URL('site-release.json', root);
@@ -61,9 +61,9 @@
         const data = JSON.parse(await fresh(address));
         if (data.schema !== 1 || !valid(data.release)) throw Error('invalid manifest');
         latest = data.release;
-        if (manual) dismissed = '';
-        return manual && latest === release ? '已是最新内容' : '';
-      } catch { return manual ? '暂时无法检查更新，当前页面可继续阅读。' : ''; }
+        if (reportCheck) dismissed = '';
+        return reportCheck && latest === release ? '已是最新内容' : '';
+      } catch { return reportCheck ? '暂时无法检查更新，当前页面可继续阅读。' : ''; }
     })();
     render();
     const message = await checking; checking = null; render(message);

@@ -9,14 +9,14 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
  if(shots){fs.mkdirSync(shots,{recursive:true});fs.writeFileSync(path.join(shots,'session.json'),JSON.stringify(identity));}
  const browser=await chromium.connect(server.wsEndpoint());
  try{
-  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[],fixture={release:current,ready:true,offline:false,assetsMissing:false,probes:0,navigations:0};
+  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[],fixture={release:current,ready:true,offline:false,assetsMissing:false,delay:0,probes:0,navigations:0};
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
    const request=route.request(),url=new URL(request.url());
    if(url.origin!==new URL(base).origin)return route.continue();
    if(request.resourceType()==='document')fixture.navigations++;
    if(url.pathname.endsWith('/site-release.json')){
-    fixture.probes++;assert.equal(request.headers()['cache-control'],'no-cache');
+    fixture.probes++;if(fixture.delay)await new Promise(resolve=>setTimeout(resolve,fixture.delay));assert.equal(request.headers()['cache-control'],'no-cache');
     if(fixture.offline)return route.abort('internetdisconnected');
     return route.fulfill({json:{schema:1,release:fixture.release}});
    }
@@ -40,6 +40,10 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
    assert.equal(new URL(page.url()).searchParams.has('_refresh'),false);
    assert.equal(new URL(page.url()).searchParams.has('v'),false);
   };
+  // A manual request joining an automatic probe still gets visible feedback.
+  fixture.delay=1000;await page.goto(base,{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>document.querySelector('[data-site-check]')?.getAttribute('aria-busy')==='true');
+  await check();assert.match(await page.locator('.site-update-tools').innerText(),/已是最新/);fixture.delay=0;
   // Stable URLs and current-version checks.
   await page.goto(base+'sglang/loop-journey/?v=legacy&step=4&color=loop&learn=first#pp');
   await check();assert.match(await page.locator('.site-update-tools').innerText(),/已是最新/);
