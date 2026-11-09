@@ -1,6 +1,6 @@
 # SGLang 模型状态与高级生成机制学习文档
 
-本文沿历史状态、候选验证和规则进度三条线，解释生成 token 时哪些对象会变化。配套 [Pages 交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/advanced-generation/) 可逐步观察状态增长、草稿拒绝和词表过滤。先修为 [KV 与生成过程](<../运行时/SGLang 推理全景学习指南.md>)、[请求运行时](<../运行时/README.md>)和[并行分工](<../并行方法/README.md>)。
+本文沿历史状态、候选验证和规则进度三条线，解释生成 token 时哪些对象会变化。配套 [Pages 交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/advanced-generation/) 可在同一教学时钟下观察 GPU 验证、CPU 账本、规则编译和候选树的临时试走。先修为 [KV 与生成过程](<../运行时/SGLang 推理全景学习指南.md>)、[请求运行时](<../运行时/README.md>)和[并行分工](<../并行方法/README.md>)。
 
 ## 0. 阅读基线与范围
 
@@ -10,10 +10,10 @@
 | 源码仓库 | https://github.com/sgl-project/sglang |
 | 分支 | 公开上游 main 固定快照，不声明为最新 main |
 | commit | `279339f113b79af84f27fd3ac92d0a13bd3f4cbd` |
-| 读取时间 | 2026-09-23 |
+| 读取时间 | 2026-09-23；实现与执行轨道复核 2026-11-09 |
 | 工作区状态 | 从本地已有 Git 对象只读分析；检出分支与分析快照不同，原有未跟踪文件保留 |
-| 操作边界 | 未启动服务、下载权重、运行 SGLang 或 GPU kernel |
-| 主线 | Attention / 递推状态差异；EAGLE 风格单链贪心验证；XGrammar 普通约束生成 |
+| 操作边界 | 只读固定 Git 对象；用 CPU 记录桩执行部分真实主机函数；未启动服务、下载权重、运行 SGLang 或 GPU kernel |
+| 主线 | EAGLE V2 验证与状态结算；XGrammar 编译准入；投机树 mask 与真实 matcher 提交；模型历史状态作为补充 |
 | 教学边界 | 小词表、数值递推、候选字母、固定分歧位置都是教学假设，不是模型结果或性能数据 |
 
 已有源码课程继续保留各自版本，本文不将历史实现改称同一版本。这里的“提交”指有效输出、KV 与相关状态生效的过程，不暗示存在统一处理一切的 `commit()` 函数。
@@ -60,76 +60,130 @@ flowchart LR
 
 MLA 池仍有 token 位置维度，存储维度包含 latent 与位置相关部分，而不是把所有历史合成一个递推状态。[MLA 池][mla]。稀疏注意力则涉及本轮读哪些历史位置；“本轮没有读取”不自动等于“已经从存储删除”。更完整的模型比较见[MLA、稀疏注意力与混合状态模型](<../source-study/09-model-specialization/04-MLA稀疏注意力与混合状态模型.md>)，保留该文独立源码基线。
 
-## 2. 投机：一次验证多行，只提交正确路径
+## 2. EAGLE V2：设备接受结果怎样成为下一轮输入和正式输出？
 
-### 根节点、草稿和预测之间错开一位
+### 本课的实现目标
 
-本节限定单请求、topk=1 的链、贪心验证、不启用 grammar / penalty / Overlap，也不触发 EOS、长度截断和模拟接受长度。已有输出末尾是 r，其目标 KV 尚未计算；草稿提出 `[a,b,c,d]`。[draft][draft]、[验证输入构造][build]。
+第一章已经说明草稿提出、目标验证、拒绝后的纠正。本课不再重复基础算法动画，而是沿 `EagleDraftInput → EagleVerifyInput → GenerationBatchResult → Req` 追踪三个不同提交边界：
 
-验证输入是 `[r,a,b,c,d]`。目标模型并行计算五行，但第 i 行的后继预测仍以对应合法前缀为条件；候选不能彼此忽略因果关系。[目标验证总控][verify]。
+| 边界 | 变化的对象 | 还不能由此推断什么 |
+| --- | --- | --- |
+| Verify 接受路径 | `accept_index / accept_lens / new_seq_lens`、目标 KV 与 hidden | CPU 输出已追加、预留空间已释放 |
+| Draft Extend | 下一轮 bonus、草稿 hidden 与 topk 等输入 | 当前 CPU Req 已完成结算 |
+| CPU 结果处理 | `kv_committed_len`、`output_ids`、结束状态 | 所有预留槽都属于有效前缀 |
 
-```mermaid
-flowchart TD
-    R[输入 r] --> A[预测 a：接受草稿 a]
-    AB[输入 a，前缀含 r] --> B[预测 b：接受草稿 b]
-    BB[输入 b，前缀含 r,a] --> Z[预测 z：拒绝草稿 c]
-    C[输入 c，前缀已偏离] --> X[后继即使算出，也不能续接]
-    Z --> O[本轮输出 a,b,z]
-```
+交互主线固定 CUDA、PP=TP=1、普通 Attention 目标、EAGLE V2、greedy、`page_size=1`，开启 Scheduler Overlap，关闭 plan stream、grammar、EOS、额外 penalty / bias 和自适应。普通单链和 `topk=2` 非连续树路径分别展示。时间是讲解安排，不是运行记录；具体拓扑、其他 worker 和特殊模型分支不能直接套用。
 
-图意：例子中接受了 2 个草稿，但输出了 3 个 token。若第一个候选就不同，本轮只补出 z；若四个全部一致，则输出 a、b、c、d、z。三种情况均可在交互页切换。
+### 先把验证行、输出和 KV 对齐
 
-贪心路径先对目标 logits 做 argmax，再由验证器沿候选路径寻找匹配；单链在首个分歧处停止接受，不能跳过 c 保留 d。验证器最后写入该接受边界的目标预测，`eagle_sample` 返回长度时使用 `num_correct_drafts + 1`。[验证采样][accept]、[贪心验证 kernel][greedy]。
+已有输出末尾 r，其目标 KV 尚未计算。单链候选为 a、b、c、d，验证输入为 `[r,a,b,c,d]`。本例接受 a、b，在 c 处分歧，`eagle_sample` 返回 `accept_lens=3`：2 个正确草稿加 1 个补出 token z。[验证总控][verify]、[验证采样][accept]。
 
-### 输出、KV、分配范围分别记账
+| 结果 | 本例内容 | 原因 |
+| --- | --- | --- |
+| 新输出 | a、b、z | z 是接受边界的目标预测 |
+| 新的有效目标 KV | r、a、b | root 是本轮实际输入；z 尚未作为目标输入 |
+| 下一轮 root | z | 其自身目标 KV 将在后续前向中计算 |
+| 未接受的验证位置 | c、d | 不属于有效前缀，不等于物理槽已 free |
 
-对于接受 a、b 的例子，本轮正式输出是 `[a,b,z]`；本轮新增的有效目标 KV 对应 `[r,a,b]`。两者长度都是 3，内容却不同：r 已经在上一轮输出，z 刚被预测，还没有作为输入生成自身的目标 K/V。
+树例的平坦节点为 `[r,a,x,b,y]`，有效路径为 `accept_index=[0,1,3]`。`_finalize_accept_tree_path` 将节点 3 对应的 KV、predict、hidden 挪到连续前部。单链 `topk=1` 不调用这个树压紧分支；不能把它画成每次都发生的搬运。[树路径整理][compact]。
 
-```mermaid
+分配器用 `max(已分配长度, 对齐后的已提交长度 + reserve)` 保留解码窗口。图中五个槽只是本轮窗口的截取；拒绝候选不会在这里自动减少 `kv_allocated_len`。[分配长度][allocation]。混合模型另有递推状态提交，见前面的状态差异，不将其假装成普通 Attention 的同一个 KV 操作。
+
+### 同一时钟：下一轮设备工作与本轮 CPU 收尾
+
+~~~mermaid
+sequenceDiagram
+    participant H as Scheduler CPU
+    participant F as GPU forward stream
+    participant C as GPU copy stream
+    H->>F: 提交 Draft、Verify
+    F->>F: 选路径、整理状态、发布长度
+    F->>F: Draft Extend 刷新下一轮种子
+    par 前轮结果回传
+        F-->>C: 前轮 forward 已完成
+        C-->>H: next_token_ids、accept_lens；copy_done
+        H->>H: 结算 KV 长度、追加输出
+    and 下一轮设备工作
+        F->>F: 使用刷新后的种子执行下一轮 Draft
+    end
+~~~
+
+图意：两条 CUDA 流属于同一 GPU。`on_publish(new_seq_lens)` 在 Verify 后、Draft Extend 前；发布长度不是发布全部后继草稿状态。Scheduler 的结果 D2H 等前轮 forward，但下一轮 forward stream 不必等当前轮 CPU 输出收尾。它仍依赖前轮的设备状态，不能把同一请求的 Draft、Verify、Draft Extend 画成互不依赖。[worker 顺序][worker]、[Draft Extend][extend]、[Overlap loop][loop]。
+
+`_resolve_spec_v2_tokens` 在结果已可读后按每请求 stride 切出 `accept_lens` 指定的有效部分，结算 `kv_committed_len`。`process_batch_result_decode` 再追加 `output_ids` 并检查结束。本例不触发结束；不能把 GPU 接受长度当成所有终止条件下的最终可输出长度。[结果解析][resolve]、[输出处理][output]。
+
+## 3. XGrammar：编译准入、设备 mask 与每请求状态
+
+### 请求先等什么，缓存复用什么？
+
+`GrammarManager.process_req_with_grammar` 用规则类型和文本构造 key。`BaseGrammarBackend.get_cached_or_future_value` 的缓存 miss 通过线程池返回 Future；请求留在 `grammar_queue`。Scheduler 轮询获取有效结果后，才具备正常进入 waiting queue 的条件。编译失败触发 abort，不进入本图的正常采样。[请求入口][manager]、[缓存与编译][compile]、[就绪处理][ready]。
+
+| 对象 | 所在位置与生命周期 | R1、R2 的关系 |
+| --- | --- | --- |
+| Future | CPU，编译完成前的异步结果 | 各请求的待准入句柄 |
+| ctx | CPU，已编译规则上下文 | 缓存命中时复用 |
+| matcher / accepted_tokens | CPU，每请求匹配进度 | 每次 copy 创建新 matcher，不继承别人的前缀 |
+| vocab bitmask | CPU 构造，非阻塞送 GPU | 每轮、每请求 batch 行的允许集合 |
+| logits / sampled token | GPU 计算，结果回 CPU | 模型在该行合法项中选择 |
+
+`XGrammarGrammar.copy()` 共享 ctx，重新构造 GrammarMatcher。[规则复制][grammarCopy]。动画只展开 R1 一次采样：R1 接受 y 后，R2 仍是空前缀；同一规则的编译复用和状态隔离可以同时成立。
+
+### 普通生成的主机与设备依赖
+
+本视角关闭 Scheduler Overlap。CPU 在前向主机调用返回后，通过 `ModelRunner._preprocess_logits → SamplingBatchInfo.update_regex_vocab_mask` 填写压缩位掩码，调用 `move_vocab_mask(..., non_blocking=True)`；随后应用 mask、Sampler 采样、CPU 接收结果并推进 R1 matcher。[模型接口][runner]、[batch mask][samplingInfo]、[mask 应用][mask]、[正式 accept][advance]。
+
+**关闭 Scheduler Overlap 不等于 CUDA 调用都同步。** CPU 填 mask 可与 GPU 前向交叠；同一设备流中的 mask 搬运、应用和采样仍排在前向之后。首次编译的线程也可与另一条已准入请求 B0 的设备工作并行。R1、R2 是否恰好组在同一 batch 由 Scheduler 决定；图里 R2 的 GPU 计算未展开，不代表 R2 必须等 R1 完成。
+
+教学词表 y / es / no / ! / EOS 和人工 logits 只用来标出哪些数据被搬运、修改和提交，不代表真实 tokenizer，也不再重复第一章的完整 yes/no 状态机。语法合法不保证内容事实正确。
+
+## 4. EAGLE + Grammar：临时试走和正式推进怎样协同？
+
+### 为什么本轮 Verify 要补上一轮的规则进度？
+
+有 Overlap 时，GPU 可以已经得到上一轮结果，而 CPU matcher 尚未消费它。当前候选树的 root 又正是上一轮输出末尾。若不先补齐 matcher，本轮 mask 就会基于过期前缀生成。
+
+固定实现先由 `GrammarTree.from_device` 启动树元数据 D2H，再提交 target forward。随后 `build_grammar_vocab_mask` 依次执行 grammar barrier、解析 CPU 树副本、DFS 生成 mask、mask H2D。[树与 barrier][treeMask]。
+
+~~~mermaid
 flowchart LR
-    V[验证行 r,a,b,c,d] --> K[有效目标 KV：r,a,b]
-    V --> U[c,d 的验证位置不提交]
-    P[验证预测 a,b,z,x,x] --> O[正式输出：a,b,z]
-    O --> N[z 成为下一轮根]
-```
+    P[上一轮 copy_done] --> B[CPU barrier：补齐正式 FSM]
+    D[本轮树元数据 D2H] --> T[CPU 树可读]
+    B --> DFS[CPU DFS 试走与回退]
+    T --> DFS
+    D --> V[本轮 GPU Target Verify]
+    DFS --> M[GPU mask 搬运与应用]
+    V --> M
+    M --> S[验证采样与状态整理]
+    S --> E[Draft Extend]
+    E --> C[本轮结果 D2H]
+    C --> A[正式推进 FSM 并结算输出]
+~~~
 
-图意：投机确实可能计算最终不会使用的 KV。有效前缀与物理分配不是同一个长度；未接受位置可能仍在预留空间中，不能把它们无效直接画成整页立即释放。树分支还需要索引选择与整理，不能照搬本课连续链的布局。[结果与 new_seq_lens][verify]。
+图意：Target Verify 不等 CPU DFS 才启动；CPU barrier / DFS 可与它重叠。若上一轮 copy_done 迟到，CPU barrier 会等；若 CPU mask 比 target 更晚，设备暂时没有可提交的后续采样，不虚构“等待 kernel”。采样同时依赖 target logits 和本轮 mask。
 
-混合模型还需将递推状态推进到相同接受边界，不能让 Attention 只保留 a、b，而递推状态却留在处理完 c、d 的位置。[状态提交][stateCommit]。
+### 候选树怎样走，怎样回到原状态？
 
-### 为什么不保证必然更快
+动画以已输出 root `{` 为起点，两个分支为 `"ok" → :` 和 `"err" → !`。root 已在上一轮被 accept；遍历不再接受它一次。
 
-接受更多候选可减少部分目标模型的串行轮次，但草稿计算、额外验证位置、通信和状态整理也有成本。图里的等长步骤不代表相同时间，不能从 5 个方框推导加速比。
+`traverse_tree` 对非 root 节点先查父节点的 mask。合法节点临时 `accept_token`，填写该节点的下一 token mask，递归孩子后 `rollback(1)`，然后从共同父状态访问兄弟。`!` 不符合 `"err"` 后只能接冒号的规则，直接跳过；未写 mask 行保持初始化值，不把它伪画成全零，合法采样路径也不会进入该节点。[真实 DFS][tree]。
 
-EAGLE、MTP、DFlash、Ngram 等路径的候选来源和组合条件不同。随机采样还需要目标与提议分布对应的接受 / 拒绝规则，不等同于逐 token 相等判断。继续阅读 [EAGLE 与 MTP](<../source-study/08-advanced-generation/04-EAGLE与MTP的源码主线.md>)、[其他候选路径](<../source-study/08-advanced-generation/05-DFlashNgram与自适应投机.md>)、[Overlap 与组合约束](<../source-study/08-advanced-generation/06-投机中的OverlapKV与组合约束.md>)。
+| 动作 | matcher 暂时前缀 | 留下的产物 |
+| --- | --- | --- |
+| root 填行 | `{` | 行 0 允许两个 key |
+| accept "ok"，再 accept : | `{"ok":` | 行 1 允许冒号，行 3 允许 true |
+| rollback :，rollback "ok" | `{` | 已写的 mask 行保留 |
+| accept "err"，拒绝 ! | `{"err"` | 行 2 允许冒号，行 4 未生成 |
+| rollback "err" | `{` | matcher 回到真实前缀，候选未正式提交 |
 
-## 3. 约束生成：规则筛选，模型在合法项中选择
+### 正式结果只推进一次，结束时只保留合法前缀
 
-目标语言只有 yes 或 no，教学词表为 `y / es / no / ! / EOS`。token 可以含多个字符；yes 在这个词表下由 y、es 两个 token 拼成，no 是一个 token。真实 tokenizer 的划分可以完全不同。
+本轮结果回 CPU 后，`advance_grammar_fsm` 才顺序接受已验证输出，缓存 `grammar_retained_tokens`，并设置 `grammar_advanced`。它可以由下一轮 Verify 的 barrier 提前调用，也可由结果处理器调用；同一结果再次进入时直接返回，不重复推进。[正式推进][formal]。
 
-模型给出 logits 后，规则根据本请求当前前缀生成下一 token mask。禁止项被屏蔽；在本课贪心示例中，从剩余合法项中选最大分数。[生成 bitmask][grammar]、[应用 mask][mask]、[采样][sample]。
+`_accept_grammar_tokens` 在 matcher 终止时停止，只返回保留前缀；结果解析器用这段前缀结算 CPU KV 长度和输出，不把终止后的过量后缀发给用户。非法 token 会触发 abort。[保留前缀][retain]。这与 GPU 验证接受长度不是同一层截断；本页主动画未触发终止，CPU 函数检查另覆盖终止截断和重复调用。
 
-```mermaid
-stateDiagram-v2
-    [*] --> Empty
-    Empty --> Y: 接受 y
-    Y --> YES: 接受 es
-    Empty --> NO: 接受 no
-    YES --> Done: 接受 EOS
-    NO --> Done: 接受 EOS
-```
+本例只覆盖 CUDA EAGLE V2 的 grammar overlap。NGRAM 等 host-draft 路径、随机采样、额外 logit bias 和特殊模型状态有不同条件。相关旧课程 [投机中的 Overlap、KV 与组合约束](<../source-study/08-advanced-generation/06-投机中的OverlapKV与组合约束.md>) 保留自己的固定提交，不与本文合并成同一版本结论。
 
-图意：初始允许 y 或 no，不允许 es、! 或 EOS。已输出 y 后，只允许 es；形成完整 yes 或 no 后，才允许 EOS。即使 ! 的原始分数最高，也不能破坏当前规则。
-
-交互中蓝条表示原始 logits，非法项应用 mask 后退到 −∞；绿色标出实际选中的 token。每次接受后都推进 matcher，再基于新前缀计算下一轮 mask。[accept_token][advance]。数值是 logits，不是归一化概率。
-
-### 编译模板可以复用，匹配进度不能共享
-
-XGrammar 的 `copy()` 用同一编译上下文创建新的 matcher。[copy][grammarCopy]。若 R1 已输出 y，R2 仍应从空前缀开始，不能继承 R1 的“下一步只允许 es”。规则复用与请求状态隔离是两个不同问题。
-
-本文只演示普通约束生成，没有把投机树上的临时 grammar 推进与 rollback 简化成这里的单链操作。约束保证的是给定规则下的形式，不保证回答内容真实。完整编译、缓存、队列与分支状态见[结构化输出与 Grammar 状态](<../source-study/08-advanced-generation/01-结构化输出与Grammar状态.md>)。
-
-## 4. 按模型特性继续
+## 5. 按模型特性继续
 
 - [MoE 专家分工交互](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/parallelism/)：把 token 路由与 Attention 历史保存分开理解。
 - [量化格式与计算路径](<../source-study/09-model-specialization/02-量化格式与计算路径.md>)：区分权重、激活、KV 格式及实际计算路径。
@@ -138,9 +192,9 @@ XGrammar 的 `copy()` 用同一编译上下文创建新的 matcher。[copy][gram
 
 以上是独立阅读分支，不表示每个模型都能同时启用所有特性。
 
-## 5. 自测与源码定位
+## 6. 自测与源码定位
 
-先预测再操作：第一个草稿失败时，输出数与有效目标 KV 数分别是多少？接受 a、b 后，z 的 KV 在哪里？回到 t2 时能否继续使用 t4 的递推状态？为什么 no 路径能直接绕过 y？
+先预测再操作：接受索引为 [0,1,3] 时，哪个 KV 要移动？GPU 长度已经增长时，CPU 账本能否仍是旧值？为什么拒绝草稿不等于立即 free？缓存命中为什么还要 new matcher？遍历第二条分支前必须回到哪个前缀？上一轮 copy_done 迟到会阻塞 CPU 哪一步，而本轮 GPU 此时能做什么？
 
 下面固定链接分别对应各行为，便于从图回到源码。
 
@@ -175,3 +229,20 @@ XGrammar 的 `copy()` 用同一编译上下文创建新的 matcher。[copy][gram
 [sample]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/layers/sampler.py#L139
 [mla]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/memory_pool.py#L4328
 [greedy]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/kernels/aot/csrc/speculative/eagle_utils.cu#L272
+
+[compact]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/speculative/eagle_worker_common.py#L406
+[allocation]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/allocation_sizing.py#L62
+[worker]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/speculative/eagle_worker_v2.py#L1272
+[extend]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/speculative/eagle_worker_v2.py#L1013
+[loop]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L1942
+[resolve]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_components/batch_result_processor.py#L744
+[output]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_components/batch_result_processor.py#L920
+[manager]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/constrained/grammar_manager.py#L145
+[compile]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/constrained/base_grammar_backend.py#L283
+[ready]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/constrained/grammar_manager.py#L203
+[runner]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/model_executor/model_runner.py#L1882
+[samplingInfo]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/sampling/sampling_batch_info.py#L263
+[treeMask]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/speculative/spec_utils.py#L649
+[tree]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/speculative/spec_utils.py#L473
+[formal]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_components/batch_result_processor.py#L851
+[retain]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_components/batch_result_processor.py#L820

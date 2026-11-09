@@ -704,18 +704,18 @@
     "revision": "882577451e764a515df2a386a055012e8f075a16"
   },
   "sglang/advanced-generation/index.html": {
-    "problem": "投机候选尚未被接受，规则也有各请求自己的进度。执行层必须把“计算过”“允许输出”“正式提交”分开，才能在分歧或约束出现时保持状态一致。",
+    "problem": "本课追踪 SGLang 中彼此相关却不同步提交的对象：GPU 接受路径、下一轮草稿状态、CPU Req 账本和每请求 matcher。重点是固定实现的模块、数据变化与执行依赖。",
     "topics": [
       {
         "id": "commit",
-        "title": "为什么验证后还要整理 KV 与模型状态？",
-        "why": "候选验证可能为以后被拒绝的位置执行过计算。如果只删掉输出文字而保留错误路径的状态，后续生成仍可能使用不属于正确前缀的历史。",
-        "mechanism": "EAGLE 验证路径根据接受结果组织有效输出与状态。本页用单链贪心例区别 root、接受候选和补出的 token；混合或递推模型还可能需要对应状态恢复。",
-        "tradeoff": "整理状态增加工作，且不同模型的回退方式不同。缩短 token 列表不等于所有状态都已恢复，接受率也不能单独证明加速。",
+        "title": "GPU 已接受，为什么 CPU 输出可能还没有提交？",
+        "why": "Overlap 将设备工作和 CPU 结果消费拆开。已计算的候选、有效路径、物理预留和用户输出需要分别记账。",
+        "mechanism": "EAGLE V2 Verify 产生 accept_index / accept_lens，树路径整理 KV、predict 与 hidden；发布新长度后 Draft Extend 刷新后继输入。结果 D2H 可与下一轮 Draft 交叠，CPU 随后结算 Req。",
+        "tradeoff": "更多草稿并不自动更快；单链与树、普通 Attention 与递推状态的整理路径不同。教学时钟只表达依赖，不表达性能。",
         "source": [
-          "speculative/eagle_worker_common.py",
-          461,
-          "run_eagle_verify"
+          "speculative/eagle_worker_v2.py",
+          1272,
+          "forward_batch_generation"
         ],
         "links": [
           [
@@ -726,16 +726,28 @@
       },
       {
         "id": "grammar",
-        "title": "为什么有了模型提示词，还需要语法约束状态？",
-        "why": "要求输出某种格式，并不等于模型每一步都只会选择合法 token。需要强制满足给定规则时，系统要根据当前已经生成的前缀限制下一步候选。",
-        "mechanism": "XGrammar 路径生成词表 mask，在采样前应用；选择 token 后推进 matcher（规则匹配器）。编译规则上下文可以复用，请求各自的匹配进度不能混用。",
+        "title": "编译规则可以共享，为什么 matcher 必须按请求创建？",
+        "why": "ctx 是可复用的编译结果，matcher 则记录某请求已接受的前缀。直接共享进度会让新请求从别人的规则中途开始。",
+        "mechanism": "缓存 miss 返回编译 Future 并进入 grammar_queue；hit 调用 XGrammarGrammar.copy 共享 ctx、新建 matcher。CPU 填请求行 mask、搬到 GPU 后应用，结果回 CPU 才推进该请求。",
         "tradeoff": "额外规则处理带来开销，并可能限制可选表达。语法合法只说明符合该规则，不保证字段内容符合事实或业务含义。",
         "source": [
           "constrained/xgrammar_backend.py",
-          118,
-          "fill_vocab_mask / apply_vocab_mask"
+          144,
+          "copy"
         ],
         "example": "规则为 yes 或 no：R1 已输出 y，它后面只能沿相应合法路径推进；R2 尚未输出，不能继承 R1 的 matcher 进度。"
+      },
+      {
+        "id": "grammar-tree",
+        "title": "树遍历为什么必须 rollback，正式推进为什么还要幂等？",
+        "why": "候选的多个兄弟分支必须从共同父状态判断；上一轮结果又可能在本轮 Verify 时尚未被 CPU 消费。",
+        "mechanism": "先运行 grammar barrier，再 DFS 临时 accept / rollback；这些 CPU 工作可与目标 GPU 前向重叠。正式结果用 grammar_advanced 防止重复推进，并缓存 grammar_retained_tokens。",
+        "tradeoff": "CPU 规则工作没有及时完成时会延迟后续采样。不能因此把 target forward 也画成必须等待 DFS。",
+        "source": [
+          "speculative/spec_utils.py",
+          649,
+          "build_grammar_vocab_mask"
+        ]
       }
     ],
     "background": {
@@ -751,9 +763,10 @@
           "https://blog.mlc.ai/2024/11/22/achieving-efficient-flexible-portable-structured-generation-with-xgrammar"
         ]
       ],
-      "scope": "候选接受、KV 整理和 matcher 更新按本课固定路径说明；结构合法不代表内容正确。",
-      "read_date": "2026-10-16"
-    }
+      "scope": "具体实现与执行轨道以 279339f113 固定 Git 对象为准；官方文档与作者文章只说明背景，不替代版本约束。",
+      "read_date": "2026-11-09"
+    },
+    "reviewed": "2026-11-09"
   },
   "sglang/serving-operations/index.html": {
     "problem": "服务管理要回答几个不同问题：能否接收连接、能否选中实例、请求是否进入计算、取消后是否已收尾。需要不同观测与控制，避免用一个健康状态替代全部判断。",

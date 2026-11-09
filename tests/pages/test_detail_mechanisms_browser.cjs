@@ -1,7 +1,8 @@
+// Independent advanced-generation player is covered by test_generation_browser.cjs.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/',output=process.env.MOTION_SCREENSHOT_DIR;
-const urls=[...['hardware','parallel','communication','speculation','serving'].map(k=>'foundations/'+k+'.html'),...['request-runtime','communication','advanced-generation','serving-operations'].map(k=>'sglang/'+k+'/index.html')];
+const urls=[...['hardware','parallel','communication','speculation','serving'].map(k=>'foundations/'+k+'.html'),...['request-runtime','communication','serving-operations'].map(k=>'sglang/'+k+'/index.html')];
 (async()=>{const server=await chromium.launchServer({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});const owned=server.process();console.log(JSON.stringify({session:'test_detail_mechanisms_browser.cjs',controller:process.pid,browser:owned.pid,profile:owned.spawnargs.find(a=>a.startsWith('--user-data-dir='))}));const browser=await chromium.connect(server.wsEndpoint());try{
  const page=await browser.newPage(),errors=[],overflow=[];page.on('pageerror',e=>errors.push(e.message));if(output)fs.mkdirSync(output,{recursive:true});
  const seek=p=>page.locator('.motion-scrub input').evaluate((e,p)=>{e.value=p;e.dispatchEvent(new Event('input',{bubbles:true}));},p);
@@ -22,5 +23,5 @@ const urls=[...['hardware','parallel','communication','speculation','serving'].m
  await page.goto(base+'foundations/speculation.html');await seek(3);assert.match(await page.locator('.mechanism-film svg').textContent(),/分歧.*不接受/);assert.equal(await page.locator('[data-motion-id^=committed-output][opacity="1.000"]').count(),0);await seek(4);assert.equal(await page.locator('[data-motion-id^=committed-output][opacity="1.000"]').count(),3);assert.equal(await page.locator('[data-motion-id^=valid-kv][opacity="1.000"]').count(),0);await seek(4);assert.equal(await page.locator('[data-motion-id^=valid-kv][opacity="1.000"]').count(),0,'foundations keep KV internals out of the main view');
  await page.goto(base+'foundations/serving.html');await seek(2.5);assert.equal(await page.locator('[data-motion-id^=resource].teach-empty').count(),0);await seek(5);assert.equal(await page.locator('[data-motion-id^=resource].teach-empty').count(),1);
  await page.goto(base+'foundations/attention.html');await seek(2.5);assert.match(await page.locator('.mechanism-film svg').textContent(),/归一化中/);assert.doesNotMatch(await page.locator('.mechanism-film svg').textContent(),/\d+\.\d+%/);
- assert.deepEqual(errors,[]);console.log('PASS 9 detail mechanisms: all variants and half-steps at 4 widths, 2 themes, source copies, fixed pages/ownership, commit boundaries and cancellation resource gating.');
+ assert.deepEqual(errors,[]);console.log('PASS 8 shared detail mechanisms: all variants and half-steps at 4 widths, 2 themes, source copies, fixed pages/ownership, commit boundaries and cancellation resource gating.');
 }finally{await browser.close();await server.close();try{process.kill(owned.pid,0);throw Error('owned browser still running');}catch(e){if(e.code!=='ESRCH')throw e;}}})().catch(e=>{console.error(e);process.exit(1);});

@@ -55,6 +55,7 @@ jobs:
           node tests/pages/test_parallelism.cjs
           node tests/pages/test_communication.cjs
           node tests/pages/test_generation.cjs
+          node tests/pages/test_generation_execution.cjs
           node tests/pages/test_serving.cjs
           node tests/pages/test_performance.cjs
           node tests/pages/test_execution.cjs

@@ -8,7 +8,7 @@
 
 先理解 [Prefill / Decode 与 KV](../%E8%BF%90%E8%A1%8C%E6%97%B6/SGLang%20%E6%8E%A8%E7%90%86%E5%85%A8%E6%99%AF%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97.md)、[请求运行时](../运行时/README.md)与[模型状态](../模型适配/README.md)。
 
-1. [模型状态与高级生成机制](SGLang%20%E6%A8%A1%E5%9E%8B%E7%8A%B6%E6%80%81%E4%B8%8E%E9%AB%98%E7%BA%A7%E7%94%9F%E6%88%90%E6%9C%BA%E5%88%B6%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/advanced-generation/)：用状态槽、验证列和词表筛选观察三种机制。
+1. [模型状态与高级生成机制](SGLang%20%E6%A8%A1%E5%9E%8B%E7%8A%B6%E6%80%81%E4%B8%8E%E9%AB%98%E7%BA%A7%E7%94%9F%E6%88%90%E6%9C%BA%E5%88%B6%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/advanced-generation/)：沿 EAGLE V2、Grammar 准入和投机树规则协同，观察同一时钟下的设备结果、CPU 账本与 matcher 提交。
 2. [Draft、Verify、Commit](../source-study/08-advanced-generation/03-投机解码的DraftVerifyCommit.md)：深入对象、采样、KV 账本与停止边界。
 3. [结构化输出与 Grammar](../source-study/08-advanced-generation/01-结构化输出与Grammar状态.md)：规则编译、缓存模板、matcher 与调度队列。
 

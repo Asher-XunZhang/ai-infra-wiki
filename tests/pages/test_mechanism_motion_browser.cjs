@@ -1,10 +1,11 @@
+// Independent advanced-generation player is covered by test_generation_browser.cjs.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/';
 const output=process.env.MOTION_SCREENSHOT_DIR;if(output)fs.mkdirSync(output,{recursive:true});
 const capture=async(target,file)=>{if(output)await target.screenshot({path:path.join(output,file)});};
 const foundation=['tokens','generation','attention','cache','batching','hardware','parallel','communication','deployment','speculation','serving','metrics'];
-const engine=['request-runtime','model-execution','kv-memory','scheduling','communication','advanced-generation','serving-operations'];
+const engine=['request-runtime','model-execution','kv-memory','scheduling','communication','serving-operations'];
 const pages=[...foundation.map(x=>`foundations/${x}.html`),...engine.map(x=>`sglang/${x}/index.html`)];
 (async()=>{const server=await chromium.launchServer({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});const owned=server.process();console.log(JSON.stringify({session:'test_mechanism_motion_browser.cjs',controller:process.pid,browser:owned.pid,profile:owned.spawnargs.find(a=>a.startsWith('--user-data-dir='))}));const browser=await chromium.connect(server.wsEndpoint());try{
  const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));

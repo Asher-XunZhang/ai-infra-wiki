@@ -67,7 +67,7 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 | 07 并行与执行拓扑 | [并行分工](sglang/parallelism/index.html)，TP 算例、PP 时间格、DP 路由、EP 任务和 CP 因果矩阵 | 已补独立课程与固定源码锚点；复杂组合和 backend 约束连接深入章节 |
 | 08 通信与传输 | [通信机制](sglang/communication/index.html)，消息 / 张量交接、三种 collective、KV 页映射、就绪与失败回收 | 已补独立课程和固定源码锚点；硬件传输实现与真实性能实验保留为深入方向 |
 | 09 分离部署与分布式状态交接 | [部署入门](sglang/inference-overview/deployment.html)、[PD 旅程](sglang/pd-prefill-lifecycle/index.html)、[数据流](sglang/pd-dataflow/index.html) | 已补 P 收尾 / D 就绪的两侧边界、通信 / 缓存 / 准入连接；各案例保留独立基线和假设 |
-| 10 模型结构与高级生成 | [状态与生成](sglang/advanced-generation/index.html)，历史状态、检查点回退、候选验证、输出 / KV 错位与语法筛选 | 已补独立课程及固定源码；量化、多模态与其他生成算法按子方向衔接源码专题 |
+| 10 模型结构与高级生成 | [状态与生成](sglang/advanced-generation/index.html)，EAGLE V2 状态结算、Grammar 编译准入、候选树试走 / 回退与正式提交 | 三种实现视角、10 个条件与同一时钟执行轨道；模型状态差异保留补充，其他算法按独立基线衔接 |
 | 11 服务部署与运行治理 | [服务治理](sglang/serving-operations/index.html)，启动探活、路由准入、队列拒绝、超时取消与退出收尾 | 已补独立课程；Gateway 额度、协议差异与管理变更按问题衔接源码专题 |
 | 12 性能分析与优化方法 | [指标与定位](sglang/performance-engineering/index.html)，请求时间轴、流式数据包、单变量执行条带与失败样本筛选 | 已补独立课程及固定源码；Profiler 与真实压测通过深入资料衔接 |
 | 13 综合案例与源码实践 | [PP loop](sglang/pd-prefill-pp-loop/quick.html)、[依赖分析](sglang/pd-prefill-pp-loop/index.html)、[源码阅读](sglang/pd-prefill-pp-loop/notes.html) | 已补计时边界、共享 KV 与 PD＋PP 三条跨模块练习；每条含预测、图上操作、固定源码与运行验证边界 |
@@ -97,7 +97,9 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 ## 生成课程的验证
 
 - `node tests/pages/test_generation.cjs`：状态检查点、连续接受前缀、输出与 KV 的偏移、规则语言与合法项选择；设置 `SGLANG_SOURCE_DIR` 核对固定源码锚点。
-- `node tests/pages/test_generation_browser.cjs`：三种机制与全部分支、参数、播放、键盘、减少动态效果、四档屏宽与深浅主题、无 JS 阅读。
+- `node tests/pages/test_generation_execution.cjs`：10 个条件的依赖、资源独占、可逆状态、KV / 输出对齐、规则隔离与异步执行轨道。
+- `SGLANG_SOURCE_DIR=… python3 -B tests/pages/test_generation_source.py`：抽取固定源码，检查真实 DFS 回退、mask 构造顺序、编译复制、幂等提交、终止截断与分配保留；不执行 GPU。
+- `node tests/pages/test_generation_browser.cjs`：三种机制、10 个条件、连续播放、回退、URL、键盘、减少动态效果、四档屏宽与深浅主题、无 JS 正文。
 
 ## 服务课程的验证
 
