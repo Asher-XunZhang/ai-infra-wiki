@@ -51,8 +51,10 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
   await page.goto(base+'sglang/loop-journey/?v=legacy&step=4&color=loop&learn=first#pp');
   await check();assert.match(await page.locator('.site-update-tools').innerText(),/已是最新/);
   assert.equal(new URL(page.url()).searchParams.has('v'),false);assert.equal(await page.locator('[data-loop-journey]').getAttribute('data-step'),'4');
+  await page.locator('#lj-seek').evaluate(e=>{e.value='8.35';e.dispatchEvent(new Event('input',{bubbles:true}));});await page.locator('#lj-speed').selectOption('1.5');
   await page.locator('#lj-view').selectOption('loop');await page.locator('#lj-focus').selectOption('P0:L1');
   await page.locator('.lj-state>summary').click();await announce();
+  await page.locator('a[href="#objects"]').click();
   const headerGeometry=async(label)=>{
    const result=await page.evaluate(()=>{
     const header=document.querySelector('.site-header'),h=header.getBoundingClientRect();
@@ -86,7 +88,8 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
   await page.waitForFunction(top=>Math.abs(document.querySelector('#lj-tracks-title').getBoundingClientRect().top-top)<2,beforeTop,{timeout:5000});
   assert.equal(await page.locator('[data-loop-journey]').getAttribute('data-step'),'4');
   assert.equal(await page.locator('#lj-view').inputValue(),'loop');assert.equal(await page.locator('#lj-focus').inputValue(),'P0:L1');
-  assert.equal(await page.locator('#lj-color').inputValue(),'loop');assert.equal(new URL(page.url()).searchParams.get('learn'),'first');assert.equal(new URL(page.url()).hash,'#pp');
+  assert.equal(await page.locator('[data-loop-journey]').getAttribute('data-time'),'8.350');assert.equal(await page.locator('#lj-speed').inputValue(),'1.5');assert.equal(await page.locator('#lj-play').getAttribute('aria-pressed'),'false');
+  assert.equal(await page.locator('#lj-color').inputValue(),'loop');assert.equal(new URL(page.url()).searchParams.get('learn'),'first');assert.equal(new URL(page.url()).hash,'#objects');
   assert.equal(await page.locator('.lj-state').evaluate(e=>e.open),true);assert.ok(Math.abs(await page.locator('#lj-tracks-title').evaluate(e=>e.getBoundingClientRect().top)-beforeTop)<2,'reading anchor retained after updating: '+JSON.stringify({beforeY,beforeTop,afterY:await page.evaluate(()=>scrollY),titleTop:await page.locator('#lj-tracks-title').evaluate(e=>e.getBoundingClientRect().top)}));
   // An intentional scroll during document verification takes precedence.
   fixture.release=current;await page.goto(base+'sglang/loop-journey/?step=3#overlap');await announce();

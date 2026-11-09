@@ -33,7 +33,7 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 
 - `node tests/pages/test_loop_journey.cjs`：依赖门槛、确定性回看、EOS 后有效输出不增加、未就绪不越过屏障、PP 两级完整收尾；90 个轨道活动的单一时钟、生产者完成前提与独占轨道无非法重叠。
 - `SGLANG_SOURCE_DIR=<checkout> python3 -B tests/pages/test_loop_journey_source.py`：从固定 Git 对象执行普通 / Overlap 的 CPU 调用顺序，并核对源码锚点；复用并行课的 PP 调用顺序测试。不是 GPU 实测。
-- `node tests/pages/test_loop_journey_browser.cjs`：三机制逐步推进、等待与解除、模式和历史、PP 聚焦、同一时钟轨道及依赖点选、键盘、窄屏、主题、无 JS；截图另作人工检查。
+- `node tests/pages/test_loop_journey_browser.cjs`：三机制连续播放、暂停、小数时刻拖动、倍速、节点步进、等待与解除、模式和历史、PP 聚焦、同一时钟轨道及依赖点选、键盘、窄屏、主题、无 JS；截图另作人工检查。
 - 旧课程保留独立用途：输入组织、选批入口、设备分层、KV 生命周期、资源预算；不把它们重复堆进完整旅程页。
 
 ## 第二章架构对照的验证

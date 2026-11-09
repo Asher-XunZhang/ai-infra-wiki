@@ -133,28 +133,31 @@
 <!-- learning-context:end -->
 <header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#loop-journey">模块 03 / 调度循环与批次执行旅程</a><span class="lesson-count">SGLang · 时间与依赖</span></div><h1>调度循环：Normal、Overlap 与 PP 的完整旅程</h1><p>先追完整一批，再看谁在等待谁：CPU 选批与提交，GPU 计算与接力，结果回到 CPU 后才改变请求状态。</p><div class="meta-tags"><span>Normal → Overlap → 普通 PP</span><span>源码 279339f113</span><span>事件顺序 · 非实测时长</span></div></header>
 <nav class="article-toc" aria-label="本课入口"><a href="#journey-lab">观察完整旅程</a><a href="#objects">对象与术语</a><a href="#lesson-evidence">源码与阅读边界</a></nav>
-<section id="journey-lab" class="lj-lab" data-loop-journey hidden aria-label="调度循环逐步演示">
+<section id="journey-lab" class="lj-lab" data-loop-journey hidden aria-label="调度循环时间演示">
 <div class="lj-modes" aria-label="选择循环机制"><button type="button" id="normal" data-mode="normal" aria-pressed="true">普通循环</button><button type="button" id="overlap" data-mode="overlap" aria-pressed="false">Overlap</button><button type="button" id="pp" data-mode="pp" aria-pressed="false">PP 循环</button></div>
 <h2 id="lj-question"></h2><p id="lj-scope" class="lj-scope"></p>
 <p class="lj-legend"><strong>R</strong> = 请求；<strong>B</strong> = 一次非 PP 执行批次；<strong>M</strong> = 一次 PP microbatch；<strong>L</strong> = 本地循环轮次。数字表示身份或次序。PP 的 slot 是可复用位置，两个 stage 的 L 编号不表示全局同一时刻。</p>
 <div class="lj-settings"><label><input id="lj-hold" type="checkbox"><span id="lj-hold-text"></span></label></div>
 <div id="lj-pp-controls" class="lj-pp-controls" hidden><label>观察角度 <select id="lj-view"><option value="all">完整旅程</option><option value="loop">看一轮</option><option value="batch">追一批</option></select></label><label id="lj-focus-label" hidden>高亮对象 <select id="lj-focus"></select></label></div>
-<div class="lj-toolbar"><button id="lj-prev" type="button">← 上一步</button><output id="lj-count" aria-label="当前步骤"></output><button id="lj-next" type="button">下一步 →</button><button id="lj-reset" type="button">重置</button><button id="lj-release" type="button" hidden>让依赖就绪</button><small id="lj-status" role="status"></small></div>
-<div class="lj-now" aria-live="polite"><h3 id="lj-title"></h3><p id="lj-summary"></p></div>
+<div class="lj-toolbar"><button id="lj-prev" type="button">← 上一步</button><button id="lj-play" type="button" aria-pressed="false">播放全程</button><button id="lj-next" type="button">下一步 →</button><button id="lj-reset" type="button">重置</button><label class="lj-speed animation-speed" for="lj-speed">速度 <select id="lj-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div>
+<div class="lj-time-control"><label for="lj-seek">教学时间</label><input id="lj-seek" type="range" min="0" max="15" step="0.01" value="0" aria-describedby="lj-time-note"><output id="lj-time" for="lj-seek" aria-live="off"></output></div>
+<p id="lj-time-note" class="lj-view-note">u 是假设教学时间，1× 每秒推进 1u，不代表真实耗时。拖动可回看任意时刻；上一步 / 下一步跳到讲解节点。</p>
+<div class="lj-playback-status"><output id="lj-count" aria-label="当前讲解节点"></output><small id="lj-status" role="status"></small><button id="lj-release" type="button" hidden>让依赖就绪</button></div>
 <section class="lj-tracks" aria-labelledby="lj-tracks-title"><h3 id="lj-tracks-title">同一时钟下的执行轨道</h3><p class="lj-view-note">所有轨道共用一只<strong>教学时钟（u）</strong>。条带长度为假设时长，只说明这组合法交错；不同机制不比较速度。点击条带可核对它的前提。</p>
 <div class="lj-color-controls"><label for="lj-color">轨道配色</label><select id="lj-color" aria-describedby="lj-color-note"><option value="batch">执行批次（B）</option><option value="loop">本地 Loop</option><option value="kind">活动类型</option></select></div>
 <p id="lj-color-note" class="lj-view-note" aria-live="polite"></p><div id="lj-track-legend" class="lj-track-legend" aria-label="轨道颜色图例"></div>
 <p id="lj-clock" class="lj-clock"></p><div class="lj-tracks-scroll" tabindex="0" role="region" aria-label="同一时钟的 CPU GPU 执行轨道，可横向滚动"><div id="lj-track-owners" class="lj-track-owners" aria-hidden="true"></div><svg id="lj-tracks-svg" role="group" aria-labelledby="lj-track-title lj-track-desc"></svg></div><p class="lj-view-note">填充表示已推进，轮廓表示教学排程；<span class="lj-wait-key">虚线条带</span>表示等待。窄屏可在图内左右滚动。</p><p id="lj-track-detail" class="lj-track-detail" aria-live="polite"></p><p id="lj-view-note" class="lj-view-note"></p></section>
+<div class="lj-now"><h3 id="lj-title"></h3><p id="lj-summary"></p><p id="lj-activity" class="lj-activity"></p></div>
 <details class="lj-event-detail"><summary>展开对象路线与逐事件记录</summary><div class="lj-path-scroll" tabindex="0" role="region" aria-label="载荷与结果旅程，可横向滚动"><div id="lj-path" class="lj-path"></div></div><p class="lj-payload">当前跟踪的载荷 / 状态：<strong id="lj-payload"></strong></p>
 
 <div id="lj-scroll" class="lj-scroll" tabindex="0" role="region" aria-label="CPU GPU 事件泳道，可横向滚动查看整个旅程"><div id="lj-timeline" class="lj-timeline"></div></div>
-<p class="lj-scroll-hint">左右滚动查看整个旅程；点击事件标题可回看。实线当前事件、虚线未来事件；高亮表示阅读位置。横向顺序是因果讲解，不是速度对比；细线活动效果不推进步骤。</p>
+<p class="lj-scroll-hint">左右滚动查看整个旅程；点击事件标题可回看。实线当前事件、虚线未来事件；高亮表示阅读位置。横向顺序是因果讲解，不是速度对比；事件记录与上方教学时间同步，状态在对应节点确认。</p>
 </details>
 <div class="lj-causality"><ul id="lj-deps" aria-label="当前事件的前提"></ul><span class="lj-causal-arrow" aria-hidden="true">→</span><div class="lj-causal-target"><small>前提满足后，当前事件才能成立</small><strong id="lj-causal-current"></strong></div></div>
 <p id="lj-dependency-note" class="lj-dependency-note"></p><p class="lj-source"><a id="lj-source" href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">固定源码</a></p>
-<details class="lj-state"><summary>此刻的请求、数据与资源</summary><dl id="lj-ledger" class="lj-ledger"></dl></details>
+<details class="lj-state"><summary>截至此刻已确认的请求、数据与资源</summary><dl id="lj-ledger" class="lj-ledger"></dl></details>
 </section>
-<noscript><p>启用 JavaScript 可操作上方逐步图。以下按普通循环、Overlap、PP 保留完整文字旅程与源码入口。</p></noscript>
+<noscript><p>启用 JavaScript 可播放、暂停或拖动上方时间图。以下按普通循环、Overlap、PP 保留完整文字旅程与源码入口。</p></noscript>
 <section class="lj-reading" data-loop-reading="normal"><h2 id="reading-topic-1">普通循环：先闭合本轮，再选择下一批</h2><p>用 R1 的一次 Extend 和一次 Decode 把链路接起来。一次请求跨过多轮 loop；一次 batch 的成员也可以在后续选批时改变。</p><ol><li><strong>接收与选择：</strong>接收 R1，选成 B0；准备 token 范围、长度、请求索引与 KV 地址。CPU 知道“写哪儿”，GPU 才负责写出各层 KV。</li><li><strong>设备执行：</strong>prompt H2D → 模型层 → logits → 采样 t1。输出 token 写入设备 FutureMap；它不是一份新的 KV。</li><li><strong>结果提交：</strong>CPU 需要可读结果后，更新 output_ids、输出和完成条件。R1 还未结束，继续保留上下文。</li><li><strong>下一轮：</strong>B1 Decode 在 GPU 从 FutureMap 取 t1，结合历史 KV 算出 EOS；CPU 读到它才将 R1 标为完成。</li><li><strong>收尾：</strong>后续选批过滤 R1，按缓存策略释放或保留 KV；没有当前批时进入 idle。普通循环的 Python 顺序不表示每个 CUDA 调用都同步阻塞。</li></ol>
 <div class="lj-quiz"><p><strong>预测：</strong>B0 的 run_batch 返回后，CPU 是否可以不检查结果可读性就提交 t1？</p><button data-answer="还不能。提交是 CPU 调用，GPU 完成与结果可读有各自的条件。普通循环也必须在结果读取处满足依赖。">还不能</button><button data-answer="不能只凭函数返回判断。请回看“让 B0 结果在 CPU 可读”，区分提交、设备完成与 CPU 消费。">可以，返回即算完</button><p role="status"></p></div>
 </section>

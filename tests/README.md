@@ -57,7 +57,7 @@ CI 保留原有模型、PP 生成与源码基线检查，并增加通用文档�
 
 ## 调度循环与批次旅程
 
-`node tests/pages/test_loop_journey.cjs` 检查依赖和排空不变量；`SGLANG_SOURCE_DIR=<checkout> python3 -B tests/pages/test_loop_journey_source.py` 核对固定 Git 对象中的 CPU 调用顺序；PP 顺序另由 `test_parallelism_source.py` 覆盖。浏览器使用 `node tests/pages/test_loop_journey_browser.cjs`，支持 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL` 与 `LOOP_SCREENSHOT_DIR`。共享导航仍运行 `test_topic_navigation_browser.cjs`。
+`node tests/pages/test_loop_journey.cjs` 检查依赖、排空不变量与连续时间下的状态提交边界；`SGLANG_SOURCE_DIR=<checkout> python3 -B tests/pages/test_loop_journey_source.py` 核对固定 Git 对象中的 CPU 调用顺序；PP 顺序另由 `test_parallelism_source.py` 覆盖。浏览器使用 `node tests/pages/test_loop_journey_browser.cjs`，支持 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL` 与 `LOOP_SCREENSHOT_DIR`。覆盖三机制的完整播放、暂停、倒拖、倍速、旧 `step` 链接与小数 `t` 链接、依赖门槛、键盘和响应式布局。`test_site_update_browser.cjs` 另验证显式更新后恢复时间、速度与阅读位置。共享导航仍运行 `test_topic_navigation_browser.cjs`。
 
 ## 发布版本与阅读位置
 

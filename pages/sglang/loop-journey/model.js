@@ -1,4 +1,4 @@
-/* Event order, not wall time. Every snapshot is rebuilt from immutable events. */
+/* Illustrative execution time, not wall time. State is rebuilt from milestones. */
 (function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('../parallelism/flow-model.js'):root.ParallelismFlow);if(typeof module==='object'&&module.exports)module.exports=api;else root.LoopJourney=api;})(typeof globalThis!=='undefined'?globalThis:this,P=>{
 'use strict';
 const revision='279339f113b79af84f27fd3ac92d0a13bd3f4cbd';
@@ -111,13 +111,13 @@ function execution(mode){
   add('schedule','input0','B0 输入 / 地址',.8,1.6,'local',[],'L0');add('cpu','submit0','提交 B0',1.6,2,'control',['plan0'],'L0');
   add('gpu','forward0','B0 模型层',2,6.6,'compute',['input0','submit0'],'L0');add('gpu','sample0','B0 采样 / 接力 t1',6.6,7.2,'compute',['forward0'],'L0');
   if(mode==='normal'){
-   duration=15;times=[.6,1.6,2.1,7.2,7.6,8.4,9.4,12.8,13.2,14,15];
+   duration=15;times=[0,1.6,2.1,7.2,7.6,8.4,9.4,12.8,13.2,14,15];
    add('copy','copy0','B0 结果可读',7.2,7.6,'tensor',['sample0'],'L0');add('cpu','wait0','等 B0 结果',2,7.6,'wait',['submit0'],'L0');add('cpu','process0','处理 B0',7.6,8.4,'control',['copy0','wait0'],'L0');
    add('cpu','plan1','准备 B1',8.4,9.4,'control',['process0'],'L1');add('schedule','input1','B1 输入 / 地址',8.7,9.4,'local',[],'L1');add('cpu','submit1','提交 B1',9.4,9.8,'control',['plan1'],'L1');
    add('gpu','forward1','B1 模型层',9.8,12.4,'compute',['submit1','input1','sample0'],'L1');add('gpu','sample1','B1 → EOS',12.4,12.8,'compute',['forward1'],'L1');
    add('copy','copy1','B1 结果可读',12.8,13.2,'tensor',['sample1'],'L1');add('cpu','wait1','等 B1 结果',9.8,13.2,'wait',['submit1'],'L1');add('cpu','process1','处理 EOS',13.2,14,'control',['copy1','wait1'],'L1','B1');add('cpu','idle','空闲检查',14,15,'control',['process1'],'L2');
   }else{
-   duration=14.8;times=[.6,1.6,2.1,3,3.8,7.2,7.8,8.4,10.3,11.6,14.2,14.8];
+   duration=14.8;times=[0,1.6,2.1,3,3.8,7.2,7.8,8.4,10.3,11.6,14.2,14.8];
    add('cpu','plan1','提前准备 B1',2.1,3.4,'control',['submit0'],'L1');add('cpu','submit1','提交 B1',3.4,3.8,'control',['plan1'],'L1');
    add('schedule','war0','B1 等 B0 共享读',2.2,6.2,'wait',['submit0'],'L1','B1');add('schedule','input1','B1 元数据写入',6.2,6.6,'local',['war0'],'L1');
    add('gpu','forward1','B1 模型层',7.2,9.8,'compute',['submit1','input1','sample0'],'L1');add('gpu','sample1','B1 → EOS',9.8,10.2,'compute',['forward1'],'L1');
@@ -132,13 +132,24 @@ function execution(mode){
  }
  return {lanes,events,duration,times,barrierEvent};
 }
-function executionSnapshot(mode,step,options={}){
- const scene=execution(mode),s=snapshot(mode,step,options);
+function sample(mode,value=0,options={}){
+ const scene=execution(mode);
  const barrier=scene.events.find(e=>e.id===scene.barrierEvent);
- const time=s.blocked?barrier.start:scene.times[s.index];
- return {...scene,time,blocked:s.blocked,active:scene.events.filter(e=>time>=e.start&&time<e.end),progress:Object.fromEntries(scene.events.map(e=>[e.id,Math.max(0,Math.min(1,(time-e.start)/(e.end-e.start)))]))};
+ const requested=Math.max(0,Math.min(scene.duration,Number(value)||0));
+ // A teaching pause at the withheld dependency, not a simulated global stall.
+ // Independent work is still visible at this instant; no delay is fabricated.
+ const blocked=Boolean(options.hold&&!options.released&&requested>=barrier.start);
+ const time=blocked?barrier.start:requested;
+ const index=blocked?configs[mode].steps.findIndex(s=>s.id===configs[mode].barrier):scene.times.findLastIndex(t=>t<=time);
+ const state=snapshot(mode,index,options);
+ const ex={...scene,time,blocked,active:scene.events.filter(e=>time>=e.start&&time<e.end&&!(blocked&&e.id===barrier.id)),progress:Object.fromEntries(scene.events.map(e=>[e.id,Math.max(0,Math.min(1,(time-e.start)/(e.end-e.start)))]))};
+ return {...state,time,execution:ex};
+}
+function executionSnapshot(mode,step,options={}){
+ const scene=execution(mode),index=Math.max(0,Math.min(scene.times.length-1,Math.floor(Number(step)||0)));
+ return sample(mode,scene.times[index],options).execution;
 }
 
 function validate(){for(const c of Object.values(configs)){const seen=new Set();for(const s of c.steps){if(seen.has(s.id))throw Error('Duplicate event');for(const d of s.deps)if(!seen.has(d))throw Error(`Invalid causal order ${s.id} <- ${d}`);for(const [lane]of s.a)if(!c.lanes.some(l=>l[0]===lane))throw Error('Unknown lane');if(!sources[s.source])throw Error('Unknown source');seen.add(s.id);}}return true;}
-validate();return {revision,sources,sourceURL,configs,snapshot,execution,executionSnapshot,validate};
+validate();return {revision,sources,sourceURL,configs,snapshot,execution,executionSnapshot,sample,validate};
 });

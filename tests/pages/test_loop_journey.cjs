@@ -62,3 +62,30 @@ assert.equal(ppActivity('relay1').targetLoop,ppActivity('process11').loop);
 assert.equal(ppActivity('waitProxySend1').batch,ppActivity('gpu02').batch,'M2 owns the wait for the previous send');
 assert.equal(ovEvent('war0').batch,ovEvent('input1').batch,'B1 owns the wait before writing its metadata');
 console.log('PASS: batch ownership, asynchronous loop origin, and message sender/receiver loop identities.');
+
+// Fractional time is reversible; state commits never precede the checkpoint.
+for(const mode of Object.keys(M.configs)){
+ const scene=M.execution(mode),byId=Object.fromEntries(scene.events.map(e=>[e.id,e]));
+ const times=[0,scene.duration,...scene.events.flatMap(e=>[Math.max(0,e.start-.001),e.start,(e.start+e.end)/2,e.end])];
+ for(const time of times){
+  const sample=M.sample(mode,time);M.sample(mode,scene.duration);
+  assert.deepEqual(M.sample(mode,time),sample,mode+': rewind must discard future state');
+  assert.equal(sample.time,time);assert.ok(scene.times[sample.index]<=time);
+  for(const e of scene.events){const p=sample.execution.progress[e.id];assert.ok(p>=0&&p<=1);if(p>0)for(const dep of e.depends)assert.equal(sample.execution.progress[dep],1,mode+': consumer advanced before '+dep);}
+ }
+ const gate=byId[scene.barrierEvent],blocked=M.sample(mode,scene.duration,{hold:true});
+ assert.equal(blocked.time,gate.start);assert.equal(blocked.execution.progress[gate.id],0);
+ assert.ok(!blocked.execution.active.some(e=>e.id===gate.id),'withheld transfer must not appear active');
+ assert.equal(blocked.blocked,true);assert.equal(blocked.last,false);
+ const released=M.sample(mode,blocked.time,{hold:true,released:true});
+ assert.equal(released.time,blocked.time);assert.equal(released.execution.progress[gate.id],0,'releasing a dependency does not skip its transfer');
+ assert.equal(released.blocked,false);
+ assert.equal(M.sample(mode,-5).time,0);assert.equal(M.sample(mode,Infinity).time,scene.duration);
+}
+for(const [mode,before,after] of [['normal',8.399,8.4],['overlap',11.599,11.6],['pp',11.199,11.2]])assert.notEqual(M.sample(mode,before).data.host,M.sample(mode,after).data.host,'CPU commit must happen at its boundary');
+assert.ok(M.sample('overlap',8).execution.active.some(e=>e.id==='process0'));
+assert.ok(M.sample('overlap',8).execution.active.some(e=>e.id==='forward1'));
+assert.equal(M.sample('overlap',14.8).data.host,M.sample('overlap',11.6).data.host,'draining never adds output after EOS');
+console.log('PASS: fractional clock, boundary commits, producer gates, reversible playback and release without jumping through transfer.');
+
+assert.ok(M.sample('overlap',10,{hold:true}).execution.active.some(e=>e.id==='forward1'),'independent GPU work remains visible at the teaching pause');
