@@ -73,7 +73,8 @@ MODULES = [
     ('disaggregation', '分离部署与分布式状态交接', 'distributed', False, [
         ('sglang/inference-overview/deployment.html', 'PD Disaggregation：Bootstrap、KV 接收与准入', 'SGLang · 源码导读'),
         ('sglang/pd-prefill-lifecycle/index.html', 'PD + PP：Prefill 请求生命周期与 KV 释放', 'SGLang · PD＋PP 案例'),
-        ('sglang/pd-dataflow/index.html', 'PD 数据流：激活、KV Transfer 与 Req 队列引用', 'SGLang · PD＋PP 案例')]),
+        ('sglang/pd-dataflow/index.html', 'PD 数据流：激活、KV Transfer 与 Req 队列引用', 'SGLang · PD＋PP 案例'),
+        ('sglang/pp-consensus/index.html', 'PP 共识：Bootstrap、Release 与 HiCache ACK', 'SGLang · 状态协调')]),
     ('advanced-generation', '模型结构与高级生成', 'serving', False, [('sglang/advanced-generation/index.html', 'Speculative Decoding 与约束生成：状态怎样提交？', 'SGLang · 高级生成')]),
     ('serving-operations', '服务部署与运行治理', 'serving', False, [('sglang/serving-operations/index.html', '服务治理：Health Check、Timeout 与 Cancellation', 'SGLang · 服务治理')]),
     ('performance', '性能分析与优化方法', 'practice', False, [('sglang/performance-engineering/index.html', 'TTFT、ITL、TPOT 与 P95：SGLang 性能观测', 'SGLang · 性能分析')]),
@@ -147,6 +148,8 @@ def foundation_bridge(page, module):
         focus = '沿 PP=3 请求核对分块前向、结果回流、异步 KV 搬运与本地释放；用共同时间轴区分计算完成、传输完成和资源收尾。'
     elif page.parent.name == 'pd-dataflow':
         focus = '分别追踪激活、结果、KV 和控制消息，并在同一时刻核对各 PP 进程本地 Req 的容器引用与资源持有。'
+    if page.parent.name == 'pp-consensus':
+        focus = '区分 Bootstrap、Release 与 HiCache ACK 的参与者、集合或计数、消息传播和本地放行条件；共用时钟观察依赖与异步活动。'
     return (f'<!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标">'
         f'<h2>本课追踪什么实现</h2><p>{escape(focus)}</p>'
         f'<a href="{href(page, "foundations/"+slug+".html")}">需要回顾原理：{escape(c["title"])}</a>'

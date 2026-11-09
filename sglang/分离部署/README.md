@@ -66,3 +66,7 @@ Pages 的[生命周期动画](../../pages/sglang/pd-prefill-lifecycle/index.html
 ## 相关机制选读
 
 [PD 与投机解码的状态交接](<../../大模型推理/高级生成/PD 与投机解码的状态交接、回滚及容量学习文档.md>)：跨引擎机制补充，先修投机流程；关注 Draft 初始化与回滚边界。
+
+## PP 共识深入阅读
+
+在三篇 PD 机制课程之后，进入 [PP 共识交互专题](../../pages/sglang/pp-consensus/index.html) · [源码学习文档](<../并行方法/SGLang PP 共识与缓存 ACK 机制学习文档.md>)。先修请求生命周期与数据流，重点理解 bootstrap 实际回流名单、release 本地复查，并与 HiCache ACK 的计数 / event 协调作区分；不重复完整 PP loop。

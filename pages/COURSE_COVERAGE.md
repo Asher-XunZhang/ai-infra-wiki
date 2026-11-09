@@ -25,7 +25,7 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 
 - `node tests/pages/test_foundations.cjs`：真实分词固定样例、因果权重、KV 所属与释放、批次成员守恒、通信与 PP 依赖、统计样本边界。
 - `node tests/pages/test_foundations_browser.cjs`：全部场景与步骤、320 / 390 / 1440 宽度、深浅主题、自测反馈、键盘、播放暂停、减少动态效果、链接恢复与无 JavaScript 正文。
-- `node tests/pages/test_topic_navigation_browser.cjs`：三章目录、第二章六主题入口、二十一节实现课导航、旧路线 URL、跨模块翻页与移动端侧栏。
+- `node tests/pages/test_topic_navigation_browser.cjs`：三章目录、第二章六主题入口、二十二节实现课导航、旧路线 URL、跨模块翻页与移动端侧栏。
 
 发布状态以对应提交的 Pages 工作流和线上验证为准。浏览器中的教学模型不代表运行过 GPU 推理。
 
@@ -153,3 +153,7 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 图的数据与证据维护在 `sglang/system-overview/architecture.json`，HTML/SVG 由 `scripts/system_architecture.py` 随导航构建生成；每个模块可进入职责、固定源码与详细课程。主图基线 `279339f113`，PD 数据流专题仍保留 `882577451e`。表达参考与适用范围均在页面中说明。
 
 验证入口：`test_system_overview.cjs` 检查固定源码行、目录和部署模型，`test_system_overview_browser.cjs` 检查完整图、视角、模块详情、深链接、键盘、四种宽度与深浅主题、无 JavaScript、首页和下一课。生成与链接校验沿用仓库共用脚本。
+
+## PP 共识专题的验证
+
+[独立专题](sglang/pp-consensus/index.html) 归模块 09 第四篇，模块 07/08/13 提供关联入口。三种机制分别评估并加入同一时钟轨道；11 个条件覆盖名单过滤、跨轮采样、失败终态、本地复查、ACK 前缀与后级并行。`test_pp_consensus.cjs` 检查依赖与状态，`test_pp_consensus_source.py` 从固定 Git 对象执行 CPU 替身检查，`test_pp_consensus_browser.cjs` 检查播放、回拖、状态恢复、主题与窄屏；不是 GPU 或 RDMA 实验。

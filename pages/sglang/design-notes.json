@@ -992,5 +992,42 @@
       "scope": "历史作者说明用于解释动机，不引用其性能结果，也不当作本课固定提交的实现证明。",
       "read_date": "2026-11-09"
     }
+  },
+  "sglang/pp-consensus/index.html": {
+    "revision": "279339f113b79af84f27fd3ac92d0a13bd3f4cbd",
+    "reviewed": "2026-11-09",
+    "problem": "各级看到的握手、KV 传输和缓存回载进度并不相同。先明确需要一致的是请求名单还是 ACK 消费数量，再核对本地仍需满足的条件。",
+    "background": {
+      "title": "分离角色之后，还要协调各级状态",
+      "text": "官方 PD 文档将 Prefill 与 Decode 划为不同服务角色。本文进一步沿固定实现追踪 Prefill 各 PP 级的准入与收尾，并将 HiCache 的缓存进度同步单独对照。",
+      "references": [
+        [
+          "SGLang 官方：PD Disaggregation",
+          "https://docs.sglang.io/docs/advanced_features/pd_disaggregation"
+        ]
+      ],
+      "scope": "官方文档只用于角色分离的概念背景；三种协调算法、分支和时序以本课固定源码为准。",
+      "read_date": "2026-11-09"
+    },
+    "topics": [
+      {
+        "id": "consensus-purpose",
+        "title": "为什么共同名单回来，仍不能直接认定本地可继续？",
+        "why": "名单反映某次采样的共同观察；metadata 容量、本地 sender 状态和 CUDA event 还分别决定此刻能否执行对应操作。",
+        "mechanism": "Bootstrap 用 good 交集与 bad 并集，再执行本地 finalize；release 汇合终态，再本地复查；HiCache 发布计数，再等待每条本地 ACK 的完成事件。",
+        "tradeoff": "根据固定分支解释不同门槛，不把三种路径合成通用 barrier；轨道时间只是一种合法教学安排。",
+        "source": [
+          "managers/scheduler_pp_mixin.py",
+          305,
+          "回流结果的本地处理与保存"
+        ],
+        "links": [
+          [
+            "先认识 Req 的完整生命周期",
+            "sglang/pd-prefill-lifecycle/index.html#walk-title"
+          ]
+        ]
+      }
+    ]
   }
 }

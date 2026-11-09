@@ -20,6 +20,7 @@ const courses=[
  ['sglang/inference-overview/deployment.html','disaggregation','distributed'],
  ['sglang/pd-prefill-lifecycle/index.html','disaggregation','distributed'],
  ['sglang/pd-dataflow/index.html','disaggregation','distributed'],
+ ['sglang/pp-consensus/index.html','disaggregation','distributed'],
  ['sglang/pd-prefill-pp-loop/quick.html','case-studies','practice'],
  ['sglang/pd-prefill-pp-loop/index.html','case-studies','practice'],
  ['sglang/pd-prefill-pp-loop/notes.html','case-studies','practice'],

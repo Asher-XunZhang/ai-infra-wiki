@@ -50,6 +50,7 @@ jobs:
           node tests/pages/test_inference_overview.cjs
           node tests/pages/test_pd_handoff.cjs
           node tests/pages/test_pd_execution.cjs
+          node tests/pages/test_pp_consensus.cjs
           node tests/pages/test_request_runtime.cjs
           node tests/pages/test_parallelism.cjs
           node tests/pages/test_communication.cjs

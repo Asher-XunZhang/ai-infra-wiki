@@ -92,6 +92,16 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
    await page.locator(seek).evaluate(e=>{e.value=Number(e.max)*.4;e.dispatchEvent(new Event('input',{bubbles:true}));});
    const before=await page.locator(host).getAttribute(attribute);await announce();await apply();assert.equal(await page.locator(host).getAttribute(attribute),before,route);
   }
+  // PP consensus retains the chosen branch, live clock and speed after an explicit update.
+  fixture.release=current;await page.goto(base+'sglang/pp-consensus/?mode=bootstrap&condition=metadata&t=8.25#consensus-title');
+  const consensus=page.locator('#consensus-lab');await consensus.locator('[data-role=speed]').selectOption('1.5');await announce();
+  await consensus.locator('[data-action=play]').click();await page.waitForTimeout(100);await apply();
+  assert.equal(await consensus.locator('[data-mode=bootstrap]').getAttribute('aria-pressed'),'true');
+  assert.equal(await consensus.locator('[data-role=condition]').inputValue(),'metadata');
+  assert.equal(await consensus.locator('[data-role=speed]').inputValue(),'1.5');
+  const resumedTime=Number(await consensus.getAttribute('data-time'));assert.ok(resumedTime>8.25&&resumedTime<18);
+  assert.equal(await consensus.locator('[data-action=play]').getAttribute('aria-pressed'),'false');
+  await page.waitForTimeout(100);assert.equal(Number(await consensus.getAttribute('data-time')),resumedTime);
   // Shared first-chapter player stores fractional progress in its existing URL.
   fixture.release=current;await page.goto(base+'foundations/generation.html?concept=sampling&ms=1.5#mechanism-process');
   await page.waitForSelector('.mechanism-film');await announce();const state=new URL(page.url()).searchParams.get('ms');await apply();assert.equal(new URL(page.url()).searchParams.get('ms'),state);

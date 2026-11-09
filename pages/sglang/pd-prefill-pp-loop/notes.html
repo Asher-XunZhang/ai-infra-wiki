@@ -99,6 +99,7 @@
 <a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
 <a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
 <a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
+<a class="lesson-link" href="../pp-consensus/index.html">PP 共识：Bootstrap、Release 与 HiCache ACK</a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-serving">
@@ -375,7 +376,7 @@ next_mb_id = (mb_id + 1) % pp_loop_size
 <li>output tensor 环也独立于这两条控制路径。接收到 token/output 不代表 Decode 已收全 KV。</li>
 </ul>
 <p>源码：<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L593">bootstrap:593</a>、<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L635">终态聚合:635</a>、<a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L972">release:972</a>。</p>
-<h3>UnifiedRadixCache + HiCache L2 ACK 与逐层 H2D 等待</h3>
+<p>Bootstrap 回流在本地执行 <code>process_bootstrapped_queue</code> 后，保存并转发实际成功 / 失败处理名单；metadata 不足可能使 good 名单缩小，不保证原样转发末级最初结果。可在 <a href="../pp-consensus/index.html?mode=bootstrap&amp;condition=metadata#consensus-title">metadata 条件场景</a> 逐跳核对。</p><h3>UnifiedRadixCache + HiCache L2 ACK 与逐层 H2D 等待</h3>
 <p>这里的 L2 是 host memory 层，不是 PD bootstrap，也不是 L3 storage。</p>
 <ol>
 <li>PP loop 在 <code>process_prefill_chunk()</code> 后、<code>get_new_batch_prefill()</code> 前调用 <code>_process_hicache_events()</code>，由它进入 <code>check_hicache_events()</code>；不再从选批函数内部调用。即使 waiting queue 为空，启用 HiCache 的 loop 仍会推进 L2 ACK。</li>
@@ -470,4 +471,4 @@ next_mb_id = (mb_id + 1) % pp_loop_size
 <p>这是一张固定成功路径、固定 batch 分配下的源码依赖示意，不是完整运行时 trace。图中共导出 1619 个已解析模型节点；这包括用于闭合边界的后续节点，不表示实际运行必然执行该数量的操作。</p>
 </article></main><!-- reading-pagers:start -->
 <!-- reading-pagers:end -->
-<nav class="lesson-pager" aria-label="框架内继续学习"><a href="index.html"><small>本模块 · 上一节</small><strong>← PP 依赖时间轴：计算、通信与流水线气泡</strong></a><a class="next" href="../../#reading-routes"><small>选择下一条路线</small><strong>回到整体学习框架 →</strong></a></nav><footer class="site-footer"><span>AI Infra Wiki <span class="footer-dot">/</span> 从机制到源码</span><span>图示时间为示意值 · 非性能测量</span><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>
+<p class="pc-related">专题深入：<a href="../pp-consensus/index.html#consensus-title">PP 共识：Bootstrap、Release 与 HiCache ACK</a>，逐跳检查集合、计数与本地放行条件。</p><nav class="lesson-pager" aria-label="框架内继续学习"><a href="index.html"><small>本模块 · 上一节</small><strong>← PP 依赖时间轴：计算、通信与流水线气泡</strong></a><a class="next" href="../../#reading-routes"><small>选择下一条路线</small><strong>回到整体学习框架 →</strong></a></nav><footer class="site-footer"><span>AI Infra Wiki <span class="footer-dot">/</span> 从机制到源码</span><span>图示时间为示意值 · 非性能测量</span><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

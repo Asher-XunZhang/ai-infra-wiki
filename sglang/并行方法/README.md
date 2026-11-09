@@ -49,3 +49,7 @@
 收录 SGLang 的 rank 拓扑、TP/PP/DP/EP/CP 实现与通信、负载分工。PD 与 PP 组合的完整交接流程归 disaggregation。
 
 后续文章先加入阅读表，标明先修、定位和学习重点。当形成多篇相互关联且需要独立导航的子主题时，再建立子目录；跨主题内容保留一份正文，由相关 README 交叉引用。
+
+## PP 状态协调专题
+
+完成 PP 与请求生命周期后，阅读 [SGLang PP 共识与缓存 ACK 机制](<SGLang PP 共识与缓存 ACK 机制学习文档.md>) · [交互课程](../../pages/sglang/pp-consensus/index.html)。这是深入选读：区分 bootstrap 名单、release 终态与 HiCache ACK 计数，跟随逐跳消息和共同时间轴检查本地放行条件。固定基线 `279339f113`，不覆盖其他资料的独立版本。
