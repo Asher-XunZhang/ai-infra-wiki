@@ -26,7 +26,9 @@ const courses=[
  ['sglang/pd-prefill-pp-loop/notes.html','case-studies','practice'],
 ];
 // Opening another chapter must keep its courses as separate readable links.
-async function checkFoundationNavigation(page,label){
+async function checkFoundationNavigation(page,label,interactive=true){
+ if(interactive)assert.equal(await page.locator('.site-header [data-site-check]').count(),1,label+': header update entry');
+ assert.equal(await page.locator('.site-footer [data-site-check]').count(),0,label+': no footer duplicate');
  const chapter=page.locator('.site-sidebar [data-chapter=foundations]');
  const wasOpen=await chapter.evaluate(el=>el.open);
  if(!wasOpen)await chapter.locator(':scope > summary').click();
@@ -201,7 +203,7 @@ async function checkFoundationNavigation(page,label){
   assert.equal(await staticPage.locator('.foundation-lessons:not(.engine-topic-links) a').count(),13);
   assert.equal(await staticPage.locator('.module-card').count(),13);
   await staticPage.goto(base+'engine-comparison/index.html');
-  await checkFoundationNavigation(staticPage,'chapter-2-no-JS');
+  await checkFoundationNavigation(staticPage,'chapter-2-no-JS',false);
   await staticPage.goto(base+'sglang/inference-overview/kv-cache.html');
   assert.equal(await staticPage.locator('[data-module=kv-memory] .lesson-link[aria-current=page]').isVisible(),true,'navigation is in HTML, not swapped after load');
   await staticPage.close();

@@ -61,4 +61,4 @@ CI 保留原有模型、PP 生成与源码基线检查，并增加通用文档�
 
 ## 发布版本与阅读位置
 
-`python3 -B tests/pages/test_site_update_build.py` 检查篇章 URL、元数据与资源哈希，随部署 CI 执行。构建并启动本地预览后，运行 `node tests/pages/test_site_update_browser.cjs`；支持上述浏览器环境变量、`OVERVIEW_TEST_URL` 与可选 `UPDATE_SCREENSHOT_DIR`。该检查使用本地双版本响应模拟更新，不触发远程发布，覆盖单次导航、场景 / 步骤 / 滚动恢复、资源缺失、离线、发布延迟、会话存储失败及历史恢复；结束时关闭独立浏览器并检查进程和 profile。
+`python3 -B tests/pages/test_site_update_build.py` 检查篇章 URL、元数据与资源哈希，随部署 CI 执行。构建并启动本地预览后，运行 `node tests/pages/test_site_update_browser.cjs`；支持上述浏览器环境变量、`OVERVIEW_TEST_URL` 与可选 `UPDATE_SCREENSHOT_DIR`。该检查使用本地双版本响应模拟更新，不触发远程发布，覆盖顶部入口、七种窗口宽度 / 深浅主题、吸顶控件留白、单次导航、场景 / 步骤 / 滚动恢复、资源缺失、离线、发布延迟、会话存储失败及历史恢复；结束时关闭独立浏览器并检查进程和 profile。

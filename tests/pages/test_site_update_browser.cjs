@@ -9,7 +9,7 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
  if(shots){fs.mkdirSync(shots,{recursive:true});fs.writeFileSync(path.join(shots,'session.json'),JSON.stringify(identity));}
  const browser=await chromium.connect(server.wsEndpoint());
  try{
-  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[],fixture={release:current,ready:true,offline:false,assetsMissing:false,delay:0,probes:0,navigations:0};
+  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[],fixture={release:current,ready:true,offline:false,assetsMissing:false,delay:0,documentDelay:0,probes:0,navigations:0};
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
    const request=route.request(),url=new URL(request.url());
@@ -22,9 +22,11 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
    }
    if(fixture.assetsMissing&&/\.[a-f0-9]{16}\.(?:js|css)$/.test(url.pathname))return route.fulfill({status:404,body:'missing old fingerprint'});
    if(url.searchParams.has('_refresh')){
+    if(fixture.documentDelay&&!request.isNavigationRequest())await new Promise(resolve=>setTimeout(resolve,fixture.documentDelay));
     const relative=decodeURIComponent(url.pathname.slice(new URL(base).pathname.length));
     const file=path.join(root,relative+(!relative||relative.endsWith('/')?'index.html':''));
-    const html=fs.readFileSync(file,'utf8').replace(/name="site-release" content="[a-f0-9]{16}"/,`name="site-release" content="${fixture.ready?fixture.release:current}"`);
+    let html=fs.readFileSync(file,'utf8').replace(/name="site-release" content="[a-f0-9]{16}"/,`name="site-release" content="${fixture.ready?fixture.release:current}"`);
+    html=html.replace('<script data-site-update-runtime>',`<script>window.testUpdateCheckpoint=JSON.parse(sessionStorage.getItem(${JSON.stringify('ai-infra-update:'+new URL(base).pathname)})||'null');</script><script data-site-update-runtime>`);
     return route.fulfill({contentType:'text/html',body:html});
    }
    return route.continue();
@@ -33,7 +35,8 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
   const announce=async()=>{await page.waitForFunction(()=>document.querySelector('[data-site-check]')?.getAttribute('aria-busy')==='false');fixture.release=next;await check();assert.equal(await page.locator('.site-update-notice').isVisible(),true,JSON.stringify({url:page.url(),footer:await page.locator('.site-update-tools').innerText(),release:fixture.release,probes:fixture.probes,meta:await page.locator('meta[name=site-release]').getAttribute('content')}));};
   const apply=async()=>{
    const previous=fixture.navigations;
-   await page.locator('.site-update-notice [data-site-update]').evaluate(e=>e.click());
+   const buttonBox=await page.locator('.site-header [data-site-update]').boundingBox();
+   await page.mouse.click(buttonBox.x+buttonBox.width/2,buttonBox.y+buttonBox.height/2);
    await page.waitForFunction(release=>document.querySelector('meta[name="site-release"]').content===release,next);
    await page.waitForLoadState('load');await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
    assert.equal(fixture.navigations,previous+1,'one navigation per accepted update');
@@ -50,23 +53,52 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
   assert.equal(new URL(page.url()).searchParams.has('v'),false);assert.equal(await page.locator('[data-loop-journey]').getAttribute('data-step'),'4');
   await page.locator('#lj-view').selectOption('loop');await page.locator('#lj-focus').selectOption('P0:L1');
   await page.locator('.lj-state>summary').click();await announce();
-  for(const width of [1440,390,320])for(const theme of ['light','dark']){
-   await page.setViewportSize({width,height:900});await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
-   await page.locator('.site-update-notice').scrollIntoViewIfNeeded();
-   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  const headerGeometry=async(label)=>{
+   const result=await page.evaluate(()=>{
+    const header=document.querySelector('.site-header'),h=header.getBoundingClientRect();
+    const controls=[...header.querySelectorAll('a,button,[role=status]')].filter(e=>e.checkVisibility()).map(e=>({text:e.textContent,...Object.fromEntries(['left','right','top','bottom'].map(k=>[k,e.getBoundingClientRect()[k]]))}));
+    const problems=[];
+    for(const e of controls)if(e.left<0||e.right>innerWidth||e.top<h.top||e.bottom>h.bottom)problems.push('outside header: '+e.text);
+    for(let i=0;i<controls.length;i++)for(let j=i+1;j<controls.length;j++){const a=controls[i],b=controls[j];if(Math.min(a.right,b.right)-Math.max(a.left,b.left)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>1)problems.push('overlap: '+a.text+'/'+b.text);}
+    if(Math.abs(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--site-header-height'))-h.height)>1)problems.push('stale header height');
+    if(document.documentElement.scrollWidth>innerWidth)problems.push('horizontal overflow');
+    return problems;
+   });assert.deepEqual(result,[],label);
+   assert.equal(await page.locator('.site-header [data-site-check]').count(),1);assert.equal(await page.locator('.site-footer [data-site-check]').count(),0);
+  };
+  for(const width of [1440,1024,768,760,600,390,320])for(const theme of ['light','dark']){
+   await page.setViewportSize({width,height:900});await page.evaluate(t=>{document.documentElement.dataset.theme=t;scrollTo({top:0,behavior:'instant'});},theme);
+   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+   await headerGeometry(`new version ${width}/${theme}`);
    assert.equal(await page.locator('.site-update-notice').evaluate(e=>getComputedStyle(e).position),'static');
+   assert.ok(await page.evaluate(()=>document.querySelector('main').getBoundingClientRect().top>=document.querySelector('.site-header').getBoundingClientRect().bottom));
+   assert.match(await page.locator('.site-header .site-update-tools').innerText(),/发现新版/);
    if(shots)await page.screenshot({path:path.join(shots,`notice-${width}-${theme}.png`)});
   }
+  // Dismissing the in-flow explanation never hides the header update entry.
+  await page.getByRole('button',{name:'稍后',exact:true}).click();assert.equal(await page.locator('.site-update-notice').isVisible(),false);
+  await page.locator('#lj-tracks-title').scrollIntoViewIfNeeded();assert.equal(await page.locator('.site-header [data-site-update]').isVisible(),true);await headerGeometry('scrolled, notice dismissed');
+  await announce();
   await page.setViewportSize({width:1440,height:1000});
+  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   await page.locator('#lj-tracks-title').evaluate(e=>scrollTo({top:e.getBoundingClientRect().top+scrollY-100,behavior:'instant'}));
-  const beforeY=await page.evaluate(()=>scrollY);await apply();
+  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+  const beforeY=await page.evaluate(()=>scrollY),beforeTop=await page.locator('#lj-tracks-title').evaluate(e=>e.getBoundingClientRect().top);await apply();
+  await page.waitForFunction(top=>Math.abs(document.querySelector('#lj-tracks-title').getBoundingClientRect().top-top)<2,beforeTop,{timeout:5000});
   assert.equal(await page.locator('[data-loop-journey]').getAttribute('data-step'),'4');
   assert.equal(await page.locator('#lj-view').inputValue(),'loop');assert.equal(await page.locator('#lj-focus').inputValue(),'P0:L1');
   assert.equal(await page.locator('#lj-color').inputValue(),'loop');assert.equal(new URL(page.url()).searchParams.get('learn'),'first');assert.equal(new URL(page.url()).hash,'#pp');
-  assert.equal(await page.locator('.lj-state').evaluate(e=>e.open),true);assert.ok(Math.abs(await page.evaluate(()=>scrollY)-beforeY)<100,'reading scroll retained');
+  assert.equal(await page.locator('.lj-state').evaluate(e=>e.open),true);assert.ok(Math.abs(await page.locator('#lj-tracks-title').evaluate(e=>e.getBoundingClientRect().top)-beforeTop)<2,'reading anchor retained after removing the notice: '+JSON.stringify({beforeY,beforeTop,afterY:await page.evaluate(()=>scrollY),titleTop:await page.locator('#lj-tracks-title').evaluate(e=>e.getBoundingClientRect().top)}));
+  // An intentional scroll during document verification takes precedence.
+  fixture.release=current;await page.goto(base+'sglang/loop-journey/?step=3#overlap');await announce();
+  fixture.documentDelay=600;const movingUpdate=apply();
+  await page.waitForFunction(()=>document.querySelector('.site-update-tools').dataset.state==='updating');
+  await page.evaluate(()=>{document.querySelector('.site-header').dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaY:100}));const title=document.querySelector('#lj-tracks-title');scrollTo({top:title.getBoundingClientRect().top+scrollY-100,behavior:'instant'});});
+  await movingUpdate;fixture.documentDelay=0;
+  await page.waitForFunction(()=>Math.abs(document.querySelector('#lj-tracks-title').getBoundingClientRect().top-100)<2,null,{timeout:5000}).catch(async e=>{console.log(await page.evaluate(()=>({checkpoint:window.testUpdateCheckpoint?.scroll,y:scrollY,top:document.querySelector('#lj-tracks-title').getBoundingClientRect().top})));throw e;});
   // Missing/cached bootstrap and partial publication cannot trap the reader.
   fixture.assetsMissing=true;fixture.release=current;await page.goto(base+'sglang/loop-journey/?step=2#overlap');await check();assert.ok(await page.evaluate(()=>Boolean(window.SiteUpdate)));fixture.assetsMissing=false;await page.goto(base+'sglang/loop-journey/?step=2#overlap');
-  fixture.offline=true;await check();assert.match(await page.locator('.site-update-tools').innerText(),/暂时无法检查/);fixture.offline=false;
+  fixture.offline=true;await check();assert.match(await page.locator('.site-update-tools [role=status]').getAttribute('aria-label'),/暂时无法检查/);await headerGeometry('offline feedback');fixture.offline=false;
   await announce();fixture.ready=false;const stays=page.url(),nav=fixture.navigations;
   await page.locator('.site-update-notice [data-site-update]').click();await page.waitForFunction(()=>document.querySelector('.site-update-tools').dataset.state==='available');
   assert.match(await page.locator('.site-update-notice').innerText(),/同步/);assert.equal(page.url(),stays);assert.equal(fixture.navigations,nav);
@@ -104,7 +136,12 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
   await page.waitForTimeout(100);assert.equal(Number(await consensus.getAttribute('data-time')),resumedTime);
   // Shared first-chapter player stores fractional progress in its existing URL.
   fixture.release=current;await page.goto(base+'foundations/generation.html?concept=sampling&ms=1.5#mechanism-process');
-  await page.waitForSelector('.mechanism-film');await announce();const state=new URL(page.url()).searchParams.get('ms');await apply();assert.equal(new URL(page.url()).searchParams.get('ms'),state);
+  await page.waitForSelector('.mechanism-film');await page.setViewportSize({width:390,height:844});
+  await page.locator('.foundation-theater .motion-controls').evaluate(e=>e.scrollIntoView({block:'start',behavior:'instant'}));
+  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+  await headerGeometry('mobile sticky lesson controls');
+  assert.ok(await page.evaluate(()=>document.querySelector('.motion-controls').getBoundingClientRect().top>=document.querySelector('.site-header').getBoundingClientRect().bottom),'header must not cover lesson controls');
+  await announce();const state=new URL(page.url()).searchParams.get('ms');await apply();assert.equal(new URL(page.url()).searchParams.get('ms'),state);await page.setViewportSize({width:1440,height:1000});
   // Discrete performance stages and the detailed PP dependency inspector.
   fixture.release=current;await page.goto(base+'sglang/performance-engineering/');
   await page.locator('[data-performance-lab] [data-mode=packet]').click();await page.locator('#perf-next').click();await page.locator('#perf-next').click();
@@ -128,6 +165,6 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
   await page.evaluate(()=>{Storage.prototype.setItem=()=>{throw new Error('blocked');};});
   const before=fixture.navigations;await page.locator('.site-update-notice [data-site-update]').click();await page.waitForFunction(()=>document.querySelector('.site-update-notice').textContent.includes('无法保存'));
   assert.equal(fixture.navigations,before);
-  assert.deepEqual(errors,[]);console.log('PASS: stable URLs, version checks, single update, state/scroll restore, 3 widths/2 themes, missing-asset recovery, offline/partial deploy/storage failures, bfcache and independent lesson clocks.');
+  assert.deepEqual(errors,[]);console.log('PASS: stable URLs, version checks, single update, state/scroll restore, 7 widths/2 themes, header visibility and non-overlap, missing-asset recovery, offline/partial deploy/storage failures, bfcache and independent lesson clocks.');
  }finally{await browser.close();await server.close();let exited=false;try{process.kill(proc.pid,0);}catch(e){exited=e.code==='ESRCH';}assert.ok(exited);if(shots)fs.writeFileSync(path.join(shots,'cleanup.json'),JSON.stringify({browserExited:exited,profileRemoved:!fs.existsSync(identity.profile.split('=').slice(1).join('='))}));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

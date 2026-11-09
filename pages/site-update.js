@@ -18,6 +18,8 @@
     result.searchParams.delete('v'); result.searchParams.delete('_refresh');
     return result;
   }
+  const nativeScrollMode = history.scrollRestoration;
+  if (resume) history.scrollRestoration = 'manual';
   const stable = clean(url);
   if (stable.href !== location.href) history.replaceState(history.state, '', stable);
   const checkpoints = new Map();
@@ -25,9 +27,9 @@
     register(name, capture) { checkpoints.set(name, capture); return () => { if (checkpoints.get(name) === capture) checkpoints.delete(name); }; },
     take(name) { const value = resume?.state?.[name]; if (resume?.state) delete resume.state[name]; return value; }
   };
-  let latest = null, checking = null, reportCheck = false, updating = false, checkedAt = 0, dismissed = '', footer, notice, status, checkButton, updateButton;
+  let latest = null, checking = null, reportCheck = false, updating = false, checkedAt = 0, dismissed = '', requestedPosition = null, toolbar, notice, status, checkButton, updateButton;
   function render(message = '') {
-    if (!footer) return;
+    if (!toolbar) return;
     const available = latest && latest !== release;
     checkButton.disabled = updating;
     checkButton.setAttribute('aria-busy', String(Boolean(checking)));
@@ -35,11 +37,16 @@
     updateButton.hidden = !available;
     updateButton.disabled = updating;
     updateButton.textContent = updating ? '正在更新…' : '更新并继续';
-    status.textContent = message || (available ? '有新内容可用' : '');
+    status.textContent = message ? (message.includes('最新') ? message : available ? '暂未更新' : '检查失败') : available ? '发现新版' : '';
+    status.setAttribute('aria-label', message || status.textContent);
+    status.title = message;
+    status.hidden = !status.textContent;
+    toolbar.dataset.available = String(Boolean(available));
     notice.hidden = !available || dismissed === latest;
     notice.querySelector('p').textContent = message || '有新内容，更新后继续当前阅读位置。';
     notice.querySelector('button').disabled = updating;
-    footer.dataset.state = updating ? 'updating' : available ? 'available' : checking ? 'checking' : 'current';
+    notice.querySelector('button').textContent = updateButton.textContent;
+    toolbar.dataset.state = updating ? 'updating' : available ? 'available' : checking ? 'checking' : 'current';
   }
   async function fresh(address) {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 10000);
@@ -72,12 +79,22 @@
     return element.id || ['module', 'chapter', 'topic'].map(k => element.dataset[k] ? k + ':' + element.dataset[k] : '').find(Boolean) || element.querySelector(':scope > summary')?.textContent.trim();
   }
   function readingPosition() {
-    const anchors = [...document.querySelectorAll('main [id]')].filter(e => e.checkVisibility() && e.getBoundingClientRect().top <= 100);
+    const readingTop = (document.querySelector('.site-header')?.getBoundingClientRect().bottom || 76) + 24;
+    const content = document.querySelector('main') || document.querySelector('.site-content');
+    const anchors = [...content.querySelectorAll('section[id], article[id], h1[id], h2[id], h3[id], [role=tabpanel][id]')].filter(e => e.checkVisibility() && e.getBoundingClientRect().top <= readingTop + 1);
     const anchor = anchors.sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0];
     return { x: scrollX, y: scrollY, anchor: anchor?.id, offset: anchor?.getBoundingClientRect().top };
   }
   async function update() {
     if (updating || !latest || latest === release) return;
+    const position = requestedPosition && performance.now() - requestedPosition.at < 1500 ? requestedPosition.value : readingPosition();
+    requestedPosition = null;
+    // Preserve what was being read before focusing the sticky update button.
+    // Explicit reading/scrolling during the fetch takes precedence over it.
+    let readerMoved = false;
+    const trackReader = event => { if (['wheel', 'touchmove'].includes(event.type) || !event.target.closest?.('.site-update-tools,.site-update-notice')) readerMoved = true; };
+    const inputs = ['pointerdown', 'keydown', 'wheel', 'touchmove'];
+    for (const type of inputs) document.addEventListener(type, trackReader, { passive: true });
     updating = true; render();
     try {
       const state = {};
@@ -95,29 +112,38 @@
       const destination = clean(location.href);
       if (destination.pathname !== address.pathname) throw Error('changed page');
       destination.searchParams.set('_refresh', token);
-      const saved = { schema: 1, nonce: token, to: targetRelease, at: Date.now(), path: destination.pathname, state, scroll: readingPosition(), details: [...document.querySelectorAll('details')].map(e => [detailKey(e), e.open]).filter(([k]) => k) };
+      const saved = { schema: 1, nonce: token, to: targetRelease, at: Date.now(), path: destination.pathname, state, scroll: readerMoved ? readingPosition() : position, details: [...document.querySelectorAll('details')].map(e => [detailKey(e), e.open]).filter(([k]) => k) };
       try { sessionStorage.setItem(key, JSON.stringify(saved)); }
       catch { throw Error('storage'); }
       location.replace(destination.href);
     } catch (error) {
       updating = false;
       render(error.message === 'syncing' ? '新版仍在同步，请稍后重试。' : error.message === 'storage' ? '无法保存当前位置，更新尚未执行。请稍后重试。' : '更新暂未完成，当前位置已保留，可重试。');
-    }
+    } finally { for (const type of inputs) document.removeEventListener(type, trackReader); }
   }
   function mount() {
-    const container = document.querySelector('.site-footer'), main = document.querySelector('main');
+    const container = document.querySelector('.site-header'), main = document.querySelector('main') || document.querySelector('.site-content');
     if (!container || !main) return;
-    footer = document.createElement('span'); footer.className = 'site-update-tools';
+    toolbar = document.createElement('div'); toolbar.className = 'site-update-tools';
+    toolbar.setAttribute('role', 'group'); toolbar.setAttribute('aria-label', '页面更新');
     checkButton = document.createElement('button'); checkButton.type = 'button'; checkButton.textContent = '检查更新'; checkButton.dataset.siteCheck = '';
     status = document.createElement('span'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
     updateButton = document.createElement('button'); updateButton.type = 'button'; updateButton.dataset.siteUpdate = ''; updateButton.hidden = true;
-    footer.append(checkButton, status, updateButton); container.append(footer);
+    toolbar.append(checkButton, status, updateButton); container.insertBefore(toolbar, container.querySelector('.site-actions'));
+    // The narrow header wraps in normal flow. Sticky lesson controls and anchor
+    // clearance follow its real height, including zoom and wrapped feedback.
+    const measureHeader = () => document.documentElement.style.setProperty('--site-header-height', container.getBoundingClientRect().height + 'px');
+    measureHeader(); new ResizeObserver(measureHeader).observe(container);
     notice = document.createElement('aside'); notice.className = 'site-update-notice'; notice.hidden = true; notice.setAttribute('aria-label', '内容更新');
     const text = document.createElement('p'); text.textContent = '有新内容，更新后继续当前阅读位置。';
     const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = '更新并继续'; apply.dataset.siteUpdate = '';
     const later = document.createElement('button'); later.type = 'button'; later.textContent = '稍后';
     notice.append(text, apply, later); main.prepend(notice);
     checkButton.onclick = () => check(true); updateButton.onclick = apply.onclick = update;
+    for (const button of [updateButton, apply]) for (const type of ['pointerdown', 'keydown']) button.addEventListener(type, event => {
+      if (type === 'keydown' && !['Enter', ' '].includes(event.key)) return;
+      requestedPosition = { at: performance.now(), value: readingPosition() };
+    });
     later.onclick = () => { dismissed = latest; render(); };
     // Page restoration is a one-use checkpoint, never a persistent auto-resume
     // preference. A normal mode switch/navigation still starts its own clock.
@@ -125,11 +151,12 @@
       let interacted = false;
       for (const name of ['pointerdown', 'keydown', 'wheel']) document.addEventListener(name, () => { interacted = true; }, { once: true, passive: true });
       const restore = () => requestAnimationFrame(() => requestAnimationFrame(() => {
-        if (interacted) return;
+        if (interacted) { history.scrollRestoration = nativeScrollMode; return; }
         const states = new Map(resume.details || []);
         for (const e of document.querySelectorAll('details')) if (states.has(detailKey(e))) e.open = states.get(detailKey(e));
         const s = resume.scroll, anchor = s?.anchor && document.getElementById(s.anchor);
         if (s) scrollTo({ left: s.x, top: anchor ? anchor.getBoundingClientRect().top + scrollY - s.offset : s.y, behavior: 'instant' });
+        requestAnimationFrame(() => { history.scrollRestoration = nativeScrollMode; });
       }));
       if (document.readyState === 'complete') restore(); else window.addEventListener('load', restore, { once: true });
       if (resume.to !== release) render('新版仍在同步，当前位置已恢复，可重新检查更新。');
