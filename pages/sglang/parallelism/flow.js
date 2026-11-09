@@ -222,5 +222,8 @@ const compactNav=matchMedia('(max-width:1160px)'),menu=document.querySelector('.
 function fitNavigation(){if(menu)menu.open=!compactNav.matches;}
 compactNav.addEventListener('change',fitNavigation);window.addEventListener('resize',fitNavigation);fitNavigation();
 host.hidden=false;fromLocation();
+const resume=window.SiteUpdate?.take('parallelism');
+if(resume&&M.modes.includes(resume.mode)){select(resume.mode,resume.option,false);time=Math.max(0,Math.min(timeline.duration,Number(resume.time)||0));render();}
+window.SiteUpdate?.register('parallelism',()=>{stop();render();return {mode,option,time};});
 if(location.hash==='#parallel-title')requestAnimationFrame(()=>$('parallel-title').scrollIntoView({block:'start',behavior:'instant'}));
 })();

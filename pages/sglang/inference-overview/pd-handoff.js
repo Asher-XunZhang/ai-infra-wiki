@@ -109,6 +109,9 @@ function seek(t){stop();time=t;render();}
 function select(option,updateURL=true){stop();tl=M.build(option);time=0;phaseKey='';$('pd-handoff-case').value=tl.option;$('pd-handoff-case-note').textContent=M.cases[tl.option][1];if(updateURL){const u=new URL(location.href);u.searchParams.set('pdcase',tl.option);history.replaceState(null,'',u);}render();}
 host.hidden=false;
 select(new URL(location.href).searchParams.get('pdcase')||'normal',false);
+const resume=window.SiteUpdate?.take('pd-handoff');
+if(resume){select(resume.option,false);seek(Math.max(0,Math.min(tl.duration,Number(resume.time)||0)));}
+window.SiteUpdate?.register('pd-handoff',()=>{stop();render();return {option:tl.option,time};});
 $('pd-handoff-case').addEventListener('change',e=>select(e.target.value));
 $('pd-handoff-toggle').addEventListener('click',()=>{if(playing)stop();else{if(time>=tl.duration)time=0;playing=true;last=0;raf=requestAnimationFrame(frame);}render();});
 $('pd-handoff-reset').addEventListener('click',()=>seek(0));

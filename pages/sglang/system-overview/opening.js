@@ -309,4 +309,7 @@
   function restore(state){const s=state?.modelContent;if(s?.schema!==schema||typeof s.progress!=='number'||!Number.isFinite(s.progress))return;playing=false;cancelAnimationFrame(raf);last=0;progress=clamp(s.progress);rate=rates.includes(s.speed)?s.speed:1;saved=snapshotKey(progress,rate);render();}
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing)pause();});
   const ro=new ResizeObserver(()=>build());ro.observe(svg);build();try{restore(JSON.parse(localStorage.getItem('ai-infra:sglang-pd-opening:v1')||'null'));}catch(e){}
+
+  const updateResume=window.SiteUpdate?.take('system-opening');if(updateResume)restore(updateResume);
+  window.SiteUpdate?.register('system-opening',()=>{pause();return {modelContent:{schema,progress,speed:rate}};});
 })();

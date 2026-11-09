@@ -7,4 +7,7 @@ function drawTopology(){const kind=$('#system-topology').value,d=M.topology(kind
  return {source:d.source,links:d.links,caption:kind==='tp'?'TP 按同层内的计算与参数切分协作。各 rank 有自己的调度执行参与者；它们共同完成同一副本的工作。':kind==='dp'?'DP 给不同请求分配不同副本，各副本分别调度并持有本地状态。共享服务入口，不等于共享一份 KV。':'PD 按 Prefill / Decode 阶段分工。两侧都要覆盖整套模型，不能理解为 P 跑前半层、D 跑后半层。',why:'三张拓扑分别选取 TP=2、DP=2 且每副本 TP=1、P/D 各单卡的独立教学配置。DP 采用当前 Python controller 的轮询路径，排除显式外部分派与异常副本。图只画三层代表权重；真实层数、TP 复制参数和通信方式由模型与配置决定。PD 的首 token 与元数据也属于交接，详细条件见通信和分离部署课程。这不是可以任意叠加的兼容性保证。'};
 }
 function render(){const d=drawTopology();$('#system-caption').textContent=d.caption;$('#system-why').textContent=d.why;const [file,line]=M.sources[d.source];$('#system-source').href=`https://github.com/sgl-project/sglang/blob/${M.revision}/${file}#L${line}`;$('#system-related').innerHTML=linkList(d.links);}$('#system-topology').onchange=render;render();
+
+const resume=window.SiteUpdate?.take('system-topology');if(resume&&['tp','dp','pd'].includes(resume.kind)){$('#system-topology').value=resume.kind;render();}
+window.SiteUpdate?.register('system-topology',()=>({kind:$('#system-topology').value}));
 })();

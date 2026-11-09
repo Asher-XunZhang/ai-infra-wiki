@@ -2,10 +2,10 @@
 (() => {
   'use strict';
   const root=document.querySelector('[data-pp-reader]');if(!root)return;
-  const a=LearningDiagram.create(root,{rank:0,loop:5,batch:3,mode:'loop',beat:0,dep:'0:5:recv_out'});
+  const a=LearningDiagram.create(root,{rank:0,loop:5,batch:3,mode:'loop',beat:0,dep:'0:5:recv_out',compareId:'slow-link'});
   const {s,$,esc,fmt,clamp,button,select,bind,controls,change,status,evidence,animationControls,animationBind,railChart,mark,phaseColor,ppLegend}=a;
   const catalog=window.PP_SCENARIOS,base=new URL('.',document.currentScript.src),cache=new Map();
-  let packet=null,original=null,comparison=null,compareId='slow-link',compareRequest=0;
+  let packet=null,original=null,comparison=null,compareRequest=0;
   const graph=p=>Object.fromEntries(Object.entries(p.model.graph).map(([id,n])=>[id,{id,...n}]));
   const name=id=>catalog.find(c=>c.id===id)?.name||'自定义时间';
   let activeId='baseline';
@@ -56,7 +56,7 @@
       status('激活沿 PP 传，KV 发给 Decode；各级 L# 是本地轮次，不是同步屏障。');
     }
   }
-  async function chooseCompare(id){const request=++compareRequest;a.stop();root.setAttribute('aria-busy','true');try{const p=await get(id);if(request!==compareRequest)return;compareId=id;comparison=p;a.render();}catch(e){if(request===compareRequest)status('对照场景加载失败，请重新选择。');}finally{if(request===compareRequest)root.removeAttribute('aria-busy');}}
+  async function chooseCompare(id){const request=++compareRequest;a.stop();root.setAttribute('aria-busy','true');try{const p=await get(id);if(request!==compareRequest)return;s.compareId=id;comparison=p;a.render();}catch(e){if(request===compareRequest)status('对照场景加载失败，请重新选择。');}finally{if(request===compareRequest)root.removeAttribute('aria-busy');}}
   function dependencyRows(p){
     const g=graph(p),n=g[s.dep];if(!n)return null;const deps=n.deps.map(id=>g[id]).filter(Boolean),prev=g[n.prev]||deps[0],other=deps.filter(d=>d!==prev),rows=[];
     if(prev)rows.push({label:'本地前序',bars:[mark(prev,prev.owner)],note:`PP${prev.r} ${prev.label} · ${fmt(prev.start)}–${fmt(prev.end)}`});
@@ -69,18 +69,18 @@
   function renderComparison(){
     const first=dependencyRows(original),second=dependencyRows(comparison);if(!first||!second){status('该事件不在两组共同模型中，请选择主要观察事件。');return;}
     const options=[['0:5:recv_out','M1 旧结果'],['0:5:proxy_work','M2 历史发送'],['0:5:gpu','M3 GPU 启动']];if(!options.some(x=>x[0]===s.dep))options.push([s.dep,'当前前驱 · '+second.n.label]);
-    controls(select('dependency-event','观察',options,s.dep)+select('dependency-compare','独立对照场景',catalog.map(c=>[c.id,c.name]),compareId)+(history.length?button('dependency-back','← 返回'):''));
+    controls(select('dependency-event','观察',options,s.dep)+select('dependency-compare','独立对照场景',catalog.map(c=>[c.id,c.name]),s.compareId)+(history.length?button('dependency-back','← 返回'):''));
     bind('dependency-event','change',e=>change(()=>{s.dep=e.target.value;history.length=0;}));bind('dependency-compare','change',e=>chooseCompare(e.target.value));bind('dependency-back','click',()=>change(()=>s.dep=history.pop()));
     const bars=[first,second].flatMap(v=>v.rows.flatMap(r=>r.bars)),min=Math.min(...bars.map(b=>b.start)),max=Math.max(...bars.map(b=>b.end));
-    let html=ppLegend();for(const [label,v] of [['原示例',first],[name(compareId),second]])html+=`<h3 class="wr-compare-title">${esc(label)} · 所选操作 ${fmt(v.n.start)} u 开始</h3>`+railChart(v.rows,min,max,label+'依赖时序');
-    html+=`<div class="wr-change">起点变化：${fmt(first.n.start)} → ${fmt(second.n.start)} u（${fmt(second.n.start-first.n.start)} u）。</div><details><summary>继续追溯直接前驱 · ${esc(name(compareId))}</summary><div class="wr-grid">${second.deps.map((n,i)=>button('dependency-'+i,`PP${n.r} · ${esc(n.owner)}<br><small>${esc(n.label)} · ${fmt(n.end)} u</small>`)).join('')||'已到模型依赖起点'}</div></details>`;
+    let html=ppLegend();for(const [label,v] of [['原示例',first],[name(s.compareId),second]])html+=`<h3 class="wr-compare-title">${esc(label)} · 所选操作 ${fmt(v.n.start)} u 开始</h3>`+railChart(v.rows,min,max,label+'依赖时序');
+    html+=`<div class="wr-change">起点变化：${fmt(first.n.start)} → ${fmt(second.n.start)} u（${fmt(second.n.start-first.n.start)} u）。</div><details><summary>继续追溯直接前驱 · ${esc(name(s.compareId))}</summary><div class="wr-grid">${second.deps.map((n,i)=>button('dependency-'+i,`PP${n.r} · ${esc(n.owner)}<br><small>${esc(n.label)} · ${fmt(n.end)} u</small>`)).join('')||'已到模型依赖起点'}</div></details>`;
     $('wr-scene').innerHTML=html;second.deps.forEach((n,i)=>bind('dependency-'+i,'click',()=>change(()=>{history.push(s.dep);s.dep=n.id;})));
     status('所需前驱都满足后，本操作才能推进；本面板独立对照预设场景，下方完整图继续使用页面顶部的场景。');
   }
   a.start(()=>{evidence('PP=3、depth=0；源码 279339f113。使用原完整依赖模型的数据，单位 u 为教学假设，不是实测或优化加速比。Work.wait 的实际影响依赖通信后端。');if(root.dataset.ppReader==='quick'){if(packet)renderQuick();else status('正在读取当前时间模型…');}else if(original&&comparison)renderComparison();else status('正在读取两组对照模型…');});
   if(root.dataset.ppReader==='quick'){
-    window.addEventListener('pp-timing-change',e=>{a.stop();packet=e.detail.packet;activeId=e.detail.id;s.beat=0;a.render();});
-    if(window.PP_SCENARIO_STATE){packet=window.PP_SCENARIO_STATE.packet;activeId=window.PP_SCENARIO_STATE.id;a.render();}
-    else get('baseline').then(p=>{if(!packet){packet=p;activeId='baseline';a.render();}}).catch(()=>status('时间模型加载失败，请刷新页面重试。'));
-  }else{root.setAttribute('aria-busy','true');Promise.all([get('baseline'),get(compareId)]).then(([p,c])=>{original=p;comparison=c;a.render();}).catch(()=>status('对照模型加载失败，请刷新页面重试。')).finally(()=>root.removeAttribute('aria-busy'));}
+    window.addEventListener('pp-timing-change',e=>{const first=!packet;a.stop();packet=e.detail.packet;activeId=e.detail.id;s.beat=0;if(first)a.restoreUpdate();a.render();});
+    if(window.PP_SCENARIO_STATE){packet=window.PP_SCENARIO_STATE.packet;activeId=window.PP_SCENARIO_STATE.id;a.restoreUpdate();a.render();}
+    else get('baseline').then(p=>{if(!packet){packet=p;activeId='baseline';a.restoreUpdate();a.render();}}).catch(()=>status('时间模型加载失败，请刷新页面重试。'));
+  }else{root.setAttribute('aria-busy','true');Promise.all([get('baseline'),get(s.compareId)]).then(([p,c])=>{original=p;comparison=c;a.render();}).catch(()=>status('对照模型加载失败，请刷新页面重试。')).finally(()=>root.removeAttribute('aria-busy'));}
 })();

@@ -287,6 +287,7 @@ function attentionDeepDive(d){
  supplement?.addEventListener('toggle',()=>{if(!supplement.open)pause();});
  let layoutFrame=0;const repaintForResize=()=>{if(!scenario)return;cancelAnimationFrame(layoutFrame);layoutFrame=requestAnimationFrame(()=>{paint();motionCamera?.refresh();});};
  active.add({pause});window.addEventListener('resize',()=>{requestAnimationFrame(updateScrollHint);if(foundation)repaintForResize();},{passive:true});if('ResizeObserver'in window){const ro=new ResizeObserver(()=>{requestAnimationFrame(updateScrollHint);if(foundation)repaintForResize();});ro.observe(viewport);}
+ window.SiteUpdate?.register('motion:'+key,()=>{pause();paint();save();});
  svg.addEventListener('attention-query',e=>{const idx=choices.findIndex(c=>c.variant===e.detail.variant);if(idx<0||idx===Number(select.value))return;load(idx);save();});
  svg.addEventListener('attention-focus',e=>{const id=e.detail?.focus;if(['qkv','weights','mask'].includes(id)){attentionFocus=id;attentionFocusPreview=true;pause();syncAttentionFocus();save();paint();}});
  svg.addEventListener('component-focus',e=>{const concept=e.detail?.concept;const idx=choices.findIndex(c=>c.concept===concept);if(idx<0)return;load(idx);const step=Number.isInteger(e.detail?.step)?e.detail.step:0;if(step>0){tl.time(timeAt(Math.min(step,scenario.frames.length-1)));}paint();save();});

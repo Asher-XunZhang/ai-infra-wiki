@@ -3,12 +3,15 @@
   'use strict';
   function create(root, initial={}) {
     const s={...initial}, $=id=>root.querySelector(`[data-id="${id}"]`);
+    const checkpoint='diagram:'+(root.id||root.dataset.diagram||root.dataset.ppReader);
+    let resume=window.SiteUpdate?.take(checkpoint);
     root.classList.add('lesson-diagram');
     root.innerHTML='<div class="wr-controls" data-id="wr-controls"></div><div class="wr-scene" data-id="wr-scene"></div><div class="wr-status" data-id="wr-status" role="status" aria-live="polite"></div><details data-id="wr-notes"><summary>模型边界</summary><div data-id="wr-evidence"></div></details>';
     let render=()=>{},timer=null;
     const status=t=>$('wr-status').textContent=t;
     const evidence=t=>{$('wr-evidence').textContent=t;};
     function stop(){window.LearningPlayback.stop(timer);timer=null;}
+    window.SiteUpdate?.register(checkpoint,()=>{stop();render();return {...s};});
     function controls(html){const active=document.activeElement;if(active?.type==='range'&&$('wr-controls').contains(active)&&html.includes('data-id="'+active.dataset.id+'"')){const strong=active.closest('label')?.querySelector('strong');if(strong)strong.textContent=active.value;}else $('wr-controls').innerHTML=html;}
     function bind(id,event,fn){const el=$(id);if(el)el['on'+event]=fn;}
     function change(fn){stop();const focus=document.activeElement?.dataset.id;fn();render();if(focus&&$(focus)&&!$(focus).disabled)$(focus).focus({preventScroll:true});}
@@ -50,7 +53,8 @@ function railChart(rows,min,max,label,at=null){
 
     let width=0;
     const api={s,$,esc,clamp,fmt,chip,node,path,button,select,slider,stepControls,stepBind,status,evidence,bind,controls,change,animationControls,animationBind,svgStart,tx,line,wrapText,phaseColor,ppLegend,mark,railChart,stop,
-      start(fn){render=fn;render();new ResizeObserver(()=>{const w=root.clientWidth;if(w>0&&Math.abs(w-width)>1){width=w;render();}}).observe(root);},render(){render();}};
+      restoreUpdate(){if(resume){Object.assign(s,resume);resume=null;}},
+      start(fn){if(resume)Object.assign(s,resume);render=fn;render();new ResizeObserver(()=>{const w=root.clientWidth;if(w>0&&Math.abs(w-width)>1){width=w;render();}}).observe(root);},render(){render();}};
     return api;
   }
   window.LearningDiagram={create};

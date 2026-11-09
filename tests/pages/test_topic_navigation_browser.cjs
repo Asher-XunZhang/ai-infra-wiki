@@ -182,7 +182,7 @@ async function checkFoundationNavigation(page,label){
   for(let i=0;i<firstRoute.length;i++){
    assert.equal(new URL(page.url()).pathname.endsWith(firstRoute[i]),true);
    assert.equal(new URL(page.url()).searchParams.get('learn'),'first');
-   assert.ok(new URL(page.url()).searchParams.get('v'),'generated route links carry the release version');
+   assert.equal(new URL(page.url()).searchParams.has('v'),false,'reading routes use stable URLs');
    assert.equal(await page.locator('.lesson-pager').isVisible(),false);
    assert.equal(await page.locator('.reading-route-pager:visible').count(),1);
    assert.match(await page.locator('.active-reading-route').innerText(),new RegExp(`${i+3} / 6`));

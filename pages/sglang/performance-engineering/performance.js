@@ -33,4 +33,8 @@ function render(){
 function reset(){stop();step=0;render();}
 lab.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{mode=b.dataset.mode;lab.querySelectorAll('[data-mode]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));lab.querySelectorAll('[data-settings]').forEach(x=>x.hidden=x.dataset.settings!==mode);$('.parallel-details').open=false;reset();}));
 lab.querySelectorAll('select').forEach(s=>s.addEventListener('change',reset));$('#perf-next').addEventListener('click',()=>{stop();step=Math.min(last(),step+1);render();});$('#perf-previous').addEventListener('click',()=>{stop();step=Math.max(0,step-1);render();});$('#perf-reset').addEventListener('click',reset);$('#perf-play').addEventListener('click',()=>{if(timer)return stop();if(step===last())step=0;$('#perf-play').textContent='暂停';$('#perf-play').setAttribute('aria-pressed','true');render();timer=window.LearningPlayback.repeat(()=>{step++;render();},2400);});document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});lab.hidden=false;render();
+
+const resume=window.SiteUpdate?.take('performance');
+if(resume){for(const [id,value] of Object.entries(resume.controls||{})){const e=document.getElementById(id);if(e)e.value=value;}const b=[...lab.querySelectorAll('[data-mode]')].find(b=>b.dataset.mode===resume.mode);if(b)b.click();step=Math.max(0,Math.min(last(),Number(resume.step)||0));render();}
+window.SiteUpdate?.register('performance',()=>{stop();return {mode,step,controls:Object.fromEntries([...lab.querySelectorAll('select[id]')].map(e=>[e.id,e.value]))};});
 })();

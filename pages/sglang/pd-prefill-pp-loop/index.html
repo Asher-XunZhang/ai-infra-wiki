@@ -1726,9 +1726,19 @@ html,body{background:var(--background)!important;color:var(--foreground);font-fa
     timeline.addEventListener(&#x27;dragstart&#x27;,e=&gt;e.preventDefault());
     timeline.addEventListener(&#x27;click&#x27;,e=&gt;{if(suppressClick){e.stopImmediatePropagation();e.preventDefault();suppressClick=false;}},true);
     timeline.addEventListener(&#x27;wheel&#x27;,e=&gt;{if(!e.ctrlKey&amp;&amp;!e.metaKey)return;e.preventDefault();const rect=timeline.getBoundingClientRect(),left=rect.width&lt;440?76:84,ratio=clamp((e.clientX-rect.left-left)/(rect.width-left-20),0,1);zoomBy(Math.exp(-e.deltaY*.005),viewStart+ratio*viewSpan);},{passive:false});
+    window.PPReadingState={capture:()=&gt;({scenario:root.dataset.scenario,rank,loop,selected:chosen&amp;&amp;(chosen.target||chosen.id),start:viewStart,span:viewSpan})};
+    function restoreReading(saved){
+      if(!saved||saved.scenario!==root.dataset.scenario)return;
+      const r=clamp(Number(saved.rank)||0,0,2),n=clamp(Number(saved.loop)||0,0,Math.max(...data.loops.filter(l=&gt;l.r===r).map(l=&gt;l.n)));
+      select(r,n);
+      if(saved.selected&amp;&amp;graph[saved.selected])showOp({id:saved.selected,...graph[saved.selected]});
+      setView(saved.start,saved.span);
+    }
     new ResizeObserver(draw).observe(root);
     window.addEventListener(&#x27;message&#x27;,event=&gt;{
       if(event.source!==parent)return;
+      if(event.data?.type===&#x27;pp-reading-capture&#x27;)parent.postMessage({type:&#x27;pp-reading-captured&#x27;,token:event.data.token,reading:window.PPReadingState.capture()},&#x27;*&#x27;);
+      if(event.data?.type===&#x27;pp-reading-restore&#x27;)restoreReading(event.data.reading);
       if(event.data?.type===&#x27;pp-timing-ping&#x27;)parent.postMessage({type:&#x27;pp-timing-ready&#x27;},&#x27;*&#x27;);
       if(event.data?.type===&#x27;pp-timing-model&#x27;){
         const selected=chosen&amp;&amp;(chosen.target||chosen.id);

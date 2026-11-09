@@ -122,4 +122,11 @@ function pause(){playing=false;last=0;cancelAnimationFrame(raf);render();}
 function reset(){playing=false;last=0;cancelAnimationFrame(raf);time=0;timeline=F.build(view,options());$('seek').max=timeline.duration;host.querySelectorAll('[data-sf-view]').forEach(e=>e.setAttribute('aria-pressed',String(e.dataset.sfView===view)));host.querySelectorAll('[data-sf-settings]').forEach(e=>e.hidden=e.dataset.sfSettings!==view);render();}
 function tick(now){if(!playing)return;if(last)time=Math.min(timeline.duration,time+(now-last)/1000*Number($('speed').value));last=now;if(time===timeline.duration)playing=false;render();if(playing)raf=requestAnimationFrame(tick);}
 $('toggle').onclick=()=>{if(playing)return pause();if(time===timeline.duration)time=0;playing=true;last=0;render();raf=requestAnimationFrame(tick);};$('seek').oninput=()=>{time=Number($('seek').value);pause();};$('reset').onclick=reset;$('speed').onchange=()=>{last=0;};$('next').onclick=()=>{time=timeline.phases[snap.phase.index+1]?.start??timeline.duration;pause();};$('prev').onclick=()=>{time=time>snap.phase.start+.3?snap.phase.start:timeline.phases[Math.max(0,snap.phase.index-1)].start;pause();};host.querySelectorAll('[data-sf-view]').forEach(e=>e.onclick=()=>{if(view===e.dataset.sfView)return;view=e.dataset.sfView;reset();});host.querySelectorAll('.sf-settings select').forEach(e=>e.onchange=reset);document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});window.addEventListener('pagehide',pause);reduced.addEventListener('change',render);host.hidden=false;reset();
+
+const resume=window.SiteUpdate?.take('scheduling');
+if(resume&&['batch','loop','admission','chunks','retract'].includes(resume.view)){
+ for(const [id,value] of Object.entries(resume.controls||{})){const e=$(id);if(e)e.value=value;}
+ view=resume.view;reset();time=Math.max(0,Math.min(timeline.duration,Number(resume.time)||0));render();
+}
+window.SiteUpdate?.register('scheduling',()=>{pause();return {view,time,controls:Object.fromEntries(['hit','policy','case','cap','recovery','speed'].filter(id=>$(id)).map(id=>[id,$(id).value]))};});
 })();

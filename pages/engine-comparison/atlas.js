@@ -4135,13 +4135,16 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       "nodes.crosscut.vl_mrv2": "roles.runner"
 };
 
+    const updateResume = window.SiteUpdate?.take('engine-comparison');
+    const resumeChapter = CHAPTERS.findIndex(chapter => chapter.id === updateResume?.chapter);
     function createAtlasPage(locale) {
       return function InferenceAtlasPage() {
         const [localeRevision, setLocaleRevision] = useState(0);
         const [reduceMotion, setReduceMotion] = useState(() => prefersReducedMotion());
-        const [chapterIndex, setChapterIndex] = useState(chapterFromHash);
-        const [step, setStep] = useState(0);
+        const [chapterIndex, setChapterIndex] = useState(() => resumeChapter >= 0 ? resumeChapter : chapterFromHash());
+        const [step, setStep] = useState(() => resumeChapter >= 0 ? Math.max(0,Math.min(Number(updateResume.step)||0,CHAPTERS[resumeChapter].steps-1)) : 0);
         const [selected, setSelected] = useState(null);
+        useEffect(() => window.SiteUpdate?.register('engine-comparison', () => ({chapter:CHAPTERS[chapterIndex].id,step})), [chapterIndex,step]);
 
         useEffect(() => locale.subscribe(() => setLocaleRevision((value) => value + 1)), [locale]);
 

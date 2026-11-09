@@ -69,7 +69,9 @@ jobs:
           node tests/pages/test_dynamic_batching.cjs
           node tests/pages/test_parallel_teaching.cjs
       - name: Build pages with content-versioned assets
-        run: python3 scripts/build_pages.py
+        run: |
+          python3 -B tests/pages/test_site_update_build.py
+          python3 scripts/build_pages.py
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:

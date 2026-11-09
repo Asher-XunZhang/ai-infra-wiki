@@ -9,6 +9,14 @@
   const scale=document.querySelector('#scenario-scale'), status=document.querySelector('#scenario-status');
   const params=new URLSearchParams(location.search);
   let active='baseline',packet=null,request=0,frameReady=false,extent=baseExtent;
+  let reading=window.SiteUpdate?.take('pp-timeline'),sentPacket=null,sentScale=null;
+  if(frame)window.SiteUpdate?.register('pp-timeline',()=>new Promise((resolve,reject)=>{
+    if(!frameReady)return resolve();
+    const token=Date.now()+':'+Math.random();
+    const receive=event=>{if(event.source!==frame.contentWindow||event.data?.type!=='pp-reading-captured'||event.data.token!==token)return;clearTimeout(timeout);window.removeEventListener('message',receive);resolve(event.data.reading);};
+    const timeout=setTimeout(()=>{window.removeEventListener('message',receive);reject(Error('timeline checkpoint timed out'));},2000);
+    window.addEventListener('message',receive);frame.contentWindow.postMessage({type:'pp-reading-capture',token},'*');
+  }));
   let worker=null,timer=null,seed=catalog[0],draft=null,savedTiming=null;
   const clone=value=>JSON.parse(JSON.stringify(value));
   const make=(tag,text,attrs={})=>Object.assign(document.createElement(tag),attrs,text==null?{}:{textContent:text});
@@ -37,8 +45,10 @@
   function persist(){const url=new URL(location.href);setParams(url);history.replaceState(null,'',url);links();}
   function sendToFrame(){
     if(!frameReady)return;
-    frame.contentWindow.postMessage({type:'pp-timing-scale',end:scale.checked?extent:0},'*');
-    if(packet)frame.contentWindow.postMessage({type:'pp-timing-model',id:active,model:packet.model},'*');
+    const end=scale.checked?extent:0;
+    if(sentScale!==end){frame.contentWindow.postMessage({type:'pp-timing-scale',end},'*');sentScale=end;}
+    if(packet&&sentPacket!==packet){frame.contentWindow.postMessage({type:'pp-timing-model',id:active,model:packet.model},'*');sentPacket=packet;}
+    if(reading&&reading.scenario===active){frame.contentWindow.postMessage({type:'pp-reading-restore',reading},'*');reading=null;}
   }
   function applyScale(save=true){
     document.querySelector('#scenario-scale-label').textContent='切换场景时统一全程时间轴（0–'+extent+' u），便于比较条块长度';

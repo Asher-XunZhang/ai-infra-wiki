@@ -28,6 +28,7 @@
     }
     function pause(){playing=false;cancelAnimationFrame(raf);button('play').textContent=t>=tl.duration?'重播':'播放全程';button('play').setAttribute('aria-pressed','false');}
     function write(){options.onPosition?.({t,rank,rid,event:tl.sample(t).focus.id});}
+    window.SiteUpdate?.register('pd-execution:'+options.kind,()=>{pause();write();});
     function seek(value,persist=true){t=Math.max(0,Math.min(tl.duration,Number(value)||0));pause();render();if(persist)write();}
     function advance(now){if(!playing)return;const delta=Math.min(0.1,(now-last)/1000);last=now;t=Math.min(tl.duration,t+delta*Number($('speed').value));render();if(t>=tl.duration){pause();write();return;}raf=requestAnimationFrame(advance);}
     function play(){if(playing){pause();write();return;}if(t>=tl.duration)t=0;playing=true;last=performance.now();button('play').textContent='暂停';button('play').setAttribute('aria-pressed','true');raf=requestAnimationFrame(advance);}

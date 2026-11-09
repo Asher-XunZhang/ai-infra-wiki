@@ -243,6 +243,9 @@
   $('#fit-batch').addEventListener('click',fitBatch);
   $('#all').addEventListener('click',()=>setView(0,total));
   $('#pan').addEventListener('input',e=>setView(Number(e.target.value),span));
+  let resume=window.SiteUpdate?.take('pp-quick');
+  const restoreUpdate=()=>{if(!resume||!('rank' in resume))return;rank=clamp(Number(resume.rank)||0,0,2);loop=Math.min(Number(resume.loop)||0,Math.max(...data.loops.filter(l=>l.r===rank).map(l=>l.n)));batch=clamp(Number(resume.batch)||0,0,5);lifePhase=Number(resume.lifePhase);render();setView(resume.start,resume.span);};
+  window.SiteUpdate?.register('pp-quick',()=>({rank,loop,batch,lifePhase,start,span}));
   const params=new URLSearchParams(location.search);
   if(params.has('batch')||params.get('view')==='batch')batch=clamp(Math.round(Number(params.get('batch')))||1,1,5);
   new ResizeObserver(draw).observe(svg);
@@ -252,11 +255,12 @@
     drag=null;start=0;span=total;refillLoops();render();
     svg.dataset.scenario=event.detail.id;
     comparisonEnd?setView(0,total):batch?fitBatch():focus();
+    if(resume){restoreUpdate();resume=null;}
   });
   window.addEventListener('pp-timing-scale',event=>{
     comparisonEnd=event.detail.end;total=comparisonEnd||Math.ceil(data.end/10)*10;
     comparisonEnd?setView(0,total):batch?fitBatch():focus();
   });
   svg.dataset.scenario='baseline';
-  render();batch?fitBatch():focus();
+  render();batch?fitBatch():focus();restoreUpdate();
 })();

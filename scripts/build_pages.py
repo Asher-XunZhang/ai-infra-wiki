@@ -6,6 +6,7 @@ with a fresh old cache entry cannot combine the new HTML with an old asset.
 The source pages remain directly previewable without a build.
 """
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -37,7 +38,7 @@ def build():
     for topic in PUBLIC_IMAGE_TOPICS:
         shutil.copytree(PUBLIC_IMAGES / topic, OUTPUT / "images" / topic)
     assets = {}
-    release_hash = hashlib.sha256()
+    release_hash = hashlib.sha256(Path(__file__).read_bytes())
     for source in sorted(p for p in SOURCE.rglob("*") if p.is_file()):
         release_hash.update(str(source.relative_to(SOURCE)).encode() + b"\0")
         release_hash.update(source.read_bytes() + b"\0")
@@ -54,12 +55,11 @@ def build():
         source = (page.parent / unquote(url.path)).resolve()
         relative = source.relative_to(SOURCE)
         if not url.path.endswith((".css", ".js")):
-            # Links from the fresh homepage must not reopen a cached old lesson.
+            # Reading URLs are stable; only CSS/JS filenames carry fingerprints.
             target = source / "index.html" if source.is_dir() else source
             if not match["prefix"].startswith("href") or target.suffix != ".html" or not target.is_file():
                 return match[0]
             query = [(k, v) for k, v in parse_qsl(url.query, keep_blank_values=True) if k != "v"]
-            query.append(("v", release))
             target = urlunsplit(("", "", url.path, urlencode(query), url.fragment))
             return match["prefix"] + match["quote"] + escape(target, quote=True) + match["quote"]
         if source not in assets:
@@ -74,10 +74,23 @@ def build():
 
     pages = sorted(SOURCE.rglob("*.html"))
     for page in pages:
-        rendered = REFERENCE.sub(lambda m: version_reference(m, page), page.read_text(encoding='utf-8'))
         depth = len(page.relative_to(SOURCE).parent.parts)
+        root = '../' * depth or './'
+        # Keep the tiny update runtime in HTML: a cached document must still
+        # offer recovery after its old fingerprinted assets leave the deployment.
+        # It runs before lesson controllers register their reading checkpoints.
+        updater = (SOURCE / 'site-update.js').read_text(encoding='utf-8').replace('</script', '<\\/script')
+        bootstrap = (f'<meta name="site-release" content="{release}">'
+                     f'<meta name="site-root" content="{root}">'
+                     f'<script data-site-update-runtime>{updater}</script>')
+        source = page.read_text(encoding='utf-8')
+        source, count = re.subn(r'(<meta charset="utf-8"\s*/?>)', lambda m: m[0] + bootstrap, source, count=1, flags=re.I)
+        if count != 1:
+            raise ValueError(f'{page}: expected charset before update bootstrap')
+        rendered = REFERENCE.sub(lambda m: version_reference(m, page), source)
         rendered = PUBLIC_ROOT.sub(f'data-public-root="{"../" * depth}"', rendered)
         (OUTPUT / page.relative_to(SOURCE)).write_text(rendered, encoding='utf-8')
+    (OUTPUT / 'site-release.json').write_text(json.dumps({'schema': 1, 'release': release}) + '\n', encoding='utf-8')
     print(f"Built {len(pages)} pages with {len(assets)} content-versioned assets in {OUTPUT}; release={release}")
 
 
