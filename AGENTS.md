@@ -322,6 +322,10 @@ rg -n 'og:title|name="author"|id="js_content"|var ct =|环境异常' \
 
 ## 4. 图片和图表规则
 
+### Pages 交互图
+
+新增、修改或审查 Pages 交互图时，遵循 [Pages 交互图补充与复核规则](pages/INTERACTION_GUIDELINES.md)。每处都要评估是否需要“同一时钟下的执行轨道”，有必要时加入；依据真实依赖表达先后、等待与异步并行，并与主图共用时间控制。无需加入时记录理由，不机械套用泳道布局。
+
 ### Mermaid 使用规则
 
 - 能用 Mermaid 清楚表达控制流、状态机、时序或简单架构时，优先使用 Mermaid，方便 diff 和维护。

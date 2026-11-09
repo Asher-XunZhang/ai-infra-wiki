@@ -5,7 +5,7 @@ const base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:18765/',out=process.
 const pages=[...['tokens','generation','attention','cache','hardware','batching','parallel','communication','deployment','speculation','serving'].map(k=>'foundations/'+k+'.html'),...['system-overview','request-runtime','model-execution','kv-memory','scheduling','parallelism','communication','advanced-generation','serving-operations','pd-dataflow','pd-prefill-lifecycle'].map(k=>'sglang/'+k+'/index.html')];
 (async()=>{const server=await chromium.launchServer({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE});const owned=server.process();console.log(JSON.stringify({session:'test_handoff_boundaries_browser.cjs',controller:process.pid,browser:owned.pid,profile:owned.spawnargs.find(a=>a.startsWith('--user-data-dir='))}));const browser=await chromium.connect(server.wsEndpoint());try{
  const p=await browser.newPage(),errors=[],links=new Set();p.on('pageerror',e=>errors.push(e.message));
- for(const url of pages){await p.goto(base+url);const panels=p.locator('[data-boundary-panel],.comm-context');assert.ok(await panels.count(),url+' has handoff context');
+ for(const url of pages){await p.goto(base+url);const panels=p.locator('[data-boundary-panel],.comm-context,.px-evidence');assert.ok(await panels.count(),url+' has handoff context');
   for(const width of [320,390,768,1440]){await p.setViewportSize({width,height:1000});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,url+' width '+width);}
   for(const href of await panels.locator('a').evaluateAll(es=>es.map(e=>e.href)))links.add(href);
  }

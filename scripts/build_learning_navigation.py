@@ -143,6 +143,10 @@ def foundation_bridge(page, module):
         'deployment.html': '分别沿 Prefill 与 Decode 的接口核对首 token、metadata、接收就绪和调度准入。',
     }
     focus = guide_focus.get(page.name, IMPLEMENTATION_FOCUS[module[0]])
+    if page.parent.name == 'pd-prefill-lifecycle':
+        focus = '沿 PP=3 请求核对分块前向、结果回流、异步 KV 搬运与本地释放；用共同时间轴区分计算完成、传输完成和资源收尾。'
+    elif page.parent.name == 'pd-dataflow':
+        focus = '分别追踪激活、结果、KV 和控制消息，并在同一时刻核对各 PP 进程本地 Req 的容器引用与资源持有。'
     return (f'<!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标">'
         f'<h2>本课追踪什么实现</h2><p>{escape(focus)}</p>'
         f'<a href="{href(page, "foundations/"+slug+".html")}">需要回顾原理：{escape(c["title"])}</a>'

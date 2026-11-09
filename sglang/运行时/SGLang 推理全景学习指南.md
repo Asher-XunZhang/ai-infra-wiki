@@ -117,9 +117,24 @@ flowchart TB
 | 收尾 | 本地请求与缓存管理 | 两侧各有请求、传输与资源生命周期 |
 | 取舍 | 省跨角色交接 | 隔离负载、独立配比；付出传输与双侧容量成本 |
 
-**交互：** [部署路径对照](../../pages/sglang/inference-overview/deployment.html) 用粗线框表示服务实例：合并部署只有一个框，P、D 共用框内的模型和 KV；分离部署有 P、D 两个框，各自加载模型、持有本地状态，框间箭头展示 KV、首 token 和元数据的交接。可以切换每实例 1/2 张 GPU，直观看到 GPU 数量和实例数量是两回事；实例边界也不等于物理服务器边界。
+**交互：** [P/D 状态交接与执行轨道](../../pages/sglang/inference-overview/deployment.html#pd-handoff-title) 将 P、D 各自的 CPU 模块、GPU KV 和传输 worker 放在同一时钟下。通用部署原理继续看[第一章 PD 分离](../../pages/foundations/deployment.html)，本页聚焦固定源码的推进条件。
 
-单步推进可以看到 P 写入 KV、D 接收状态、D 读取并追加 KV。取消 KV、元数据和本地资源三个教学条件中的任一个，D 保持等待而不会显示已经执行。这三类是整理者归纳，不是一组与源码一一对应的布尔变量。图中 GPU 数量不用于等成本性能比较，P 侧保留的状态也不是对实际传输收尾与释放时机的模拟。
+2026-11-09 复核：采用 `279339f113` 的普通 CUDA / Mooncake 路径，P/D 各 TP=PP=CP=1，Decode early allocation、乐观 Prefill 次数为 0，关闭 overlap scheduling、staging、HiCache 和投机，无前缀命中。两块 prompt 只缩小对象数量；时长为讲解安排，未运行 GPU 或网络实验。
+
+| 关键变化 | 对应模块与条件 |
+| --- | --- |
+| D 预留目标 | `DecodePreallocQueue.pop_preallocated` 检查容量，`_pre_alloc` 分配请求行和 KV 位置，再调用 receiver 的 `send_metadata`；预留不是已写入。 |
+| P 获准计算 | `bootstrap_thread` 接收目标信息；`pop_bootstrapped` 在 `WaitingForInput` 下完成 sender 初始化，移入等待队列，再选批。关闭乐观 Prefill 时不能绕过此门槛。 |
+| 前块搬运与后块计算交错 | 正常 loop 的 `process_prefill_chunk` 将已完成范围提交给 sender；`add_transfer_request` 入队返回，独立 `transfer_worker` 搬运。同步传输阻塞 worker，后续 chunk 的 GPU 计算可与它重叠。 |
+| 末块交接 | P 结果处理记录 y1，`_send_kv_chunk` 准备 aux。worker 先搬本块 KV，再搬 aux，最后记录并通知终态。首 token y1 尚无自身 KV。 |
+| D 确认与提交 | `pop_transferred` 先应用 metadata gate；room 为 0 暂不提交，非零但不匹配在 commit 中报错。可用状态提交到 D 的 Req 后进入等待队列。 |
+| PREBUILT 接续 | `prepare_for_prebuilt` 准备 batch 元数据；`process_prebuilt` 将 y1 放入 FutureMap；不执行 prompt 模型 forward。Scheduler 处理并合入 running_batch 后才准备 Decode。 |
+| 首次 Decode | 输入 y1，读 prompt KV，追加 y1 的 KV并采样 y2；结果处理后 D 的 output_ids 为 [y1,y2]，y2 的 KV 留到后续轮次。 |
+| P 独立收尾 | P 自己的 inflight poll 观察终态后解除本请求持有并清理 sender / metadata；D 不以 P 的清理完成为准入条件。缓存可保留，释放请求持有不等于清空缓存。 |
+
+四个条件分别观察正常交接、D 容量不足、Success 已观察到但 metadata 暂不可见、P Scheduler 稍后轮询。等待条描述 R1 的条件等待，不表示整个 CPU 停止；不同 CPU / GPU / worker 的活动可以交错。PP>1、多个来源、回载和异常排空分别由生命周期页与通信页展开；不将它们混为本图配置。
+
+源码入口：[P 准入与正常循环](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L450)、[D 预分配](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/decode.py#L1123)、[传输 worker](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/mooncake/conn.py#L1847)、[D PREBUILT 与首次 Decode 选批](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/decode.py#L2680)。
 
 **排障提示：** KV 到达并不等于马上可执行。固定基线的 Decode 接收路径包含 metadata gate，传输成功后还可能等待 HiCache restore，之后也要进入调度。PD 分离是否更快，需结合排队、传输、模型和资源配比测量。
 

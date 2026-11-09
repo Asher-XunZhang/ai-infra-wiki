@@ -6,7 +6,7 @@
 
 本文是学习导航，分类与阅读顺序由整理者归纳。技术资料继续保留各自的来源、版本和验证边界；导航不表示已完成运行或性能复现。
 
-先看 [推理全景：合并部署与 PD 分离](../../pages/sglang/inference-overview/deployment.html)，配合 [学习指南](../%E8%BF%90%E8%A1%8C%E6%97%B6/SGLang%20%E6%8E%A8%E7%90%86%E5%85%A8%E6%99%AF%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97.md) 理解完整模型与状态交接，再进入本领域。
+先看 [P/D 状态交接与执行轨道](../../pages/sglang/inference-overview/deployment.html)，配合 [学习指南](../%E8%BF%90%E8%A1%8C%E6%97%B6/SGLang%20%E6%8E%A8%E7%90%86%E5%85%A8%E6%99%AF%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97.md) 理解完整模型与状态交接，再进入本领域。
 
 ## 先修知识
 
@@ -30,6 +30,8 @@
 | 6 | [PD 分离下的 PP 源码](<PD 分离下的 PP 源码学习文档.md>) | 参考：历史 | 主体为历史 muxi-main 分析，独立补充章节另有官方基线；不能合并成同一版本。 |
 
 [数据流状态机](<PD Prefill 数据流状态机.md>)作为交互对照材料，补充正常、等待、分块与失败场景中的状态和资源边界；固定开源 `882577451e`，与上表资料分别核对版本。
+
+Pages 的[生命周期动画](../../pages/sglang/pd-prefill-lifecycle/index.html#pipeline-heading)重点解释 PP=3 下计算、异步 KV worker 与本级释放的关系；[数据流动画](../../pages/sglang/pd-dataflow/index.html#lab-title)重点区分激活、结果、KV 和本地 Req 引用。两页各自的主图与执行轨道共用一个时钟，保留上述独立基线；条块时长是教学安排，不是运行 trace。普通多 batch PP 流水的 CPU/GPU 重叠继续由[并行执行专题](../../pages/sglang/parallelism/index.html#parallel-title)展开。
 
 ## 对应源码课程
 
@@ -59,7 +61,7 @@
 
 [SGLang 通信与传输机制](<../并行方法/SGLang 通信与传输机制学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/communication/)：通过消息交接、collective、KV 页映射与就绪 / 回收门槛区分各层责任。文章使用独立固定提交，不替换本目录资料的历史基线。
 
-先用 [部署边界图](../../pages/sglang/inference-overview/deployment.html#handoff-boundaries) 分别判断 P 侧收尾和 D 侧就绪，再观察 [KV 持有与释放](../../pages/sglang/kv-memory/index.html)、[选批准入](../../pages/sglang/scheduling/index.html)。通信课程与生命周期页采用 `279339f113`；数据流状态机保留 `882577451e`。两侧条件之间的阅读连接不表示这些场景共享全局时钟，也不覆盖全部接收后端。
+先用 [P/D 状态交接与执行轨道](../../pages/sglang/inference-overview/deployment.html#pd-handoff-title) 跟随一条请求，再用 [部署边界图](../../pages/sglang/inference-overview/deployment.html#handoff-boundaries) 分别判断 P 侧收尾和 D 侧就绪，再观察 [KV 持有与释放](../../pages/sglang/kv-memory/index.html)、[选批准入](../../pages/sglang/scheduling/index.html)。通信课程与生命周期页采用 `279339f113`；数据流状态机保留 `882577451e`。两侧条件之间的阅读连接不表示这些场景共享全局时钟，也不覆盖全部接收后端。
 
 ## 相关机制选读
 
