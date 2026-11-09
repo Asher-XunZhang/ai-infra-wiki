@@ -2,6 +2,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const courses=[
+ ['sglang/loop-journey/index.html','loop-journey','instance'],
  ['sglang/system-overview/index.html','system-overview','foundations'],
  ['sglang/scheduling/index.html','scheduling','instance'],
  ['sglang/kv-memory/index.html','kv-memory','instance'],
@@ -12,10 +13,10 @@ const courses=[
  ['sglang/communication/index.html','communication','distributed'],
  ['sglang/parallelism/index.html','parallelism','distributed'],
  ['sglang/request-runtime/index.html','request-runtime','foundations'],
- ['sglang/inference-overview/journey.html','scheduling','instance'],
+ ['sglang/inference-overview/journey.html','loop-journey','instance'],
  ['sglang/inference-overview/transformer.html','model-execution','instance'],
  ['sglang/inference-overview/kv-cache.html','kv-memory','instance'],
- ['sglang/inference-overview/scheduling.html','scheduling','instance'],
+ ['sglang/inference-overview/scheduling.html','loop-journey','instance'],
  ['sglang/inference-overview/deployment.html','disaggregation','distributed'],
  ['sglang/pd-prefill-lifecycle/index.html','disaggregation','distributed'],
  ['sglang/pd-dataflow/index.html','disaggregation','distributed'],
@@ -57,10 +58,10 @@ async function checkFoundationNavigation(page,label){
   const base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/';
   await page.goto(base);
   const signature=()=>page.locator('.site-sidebar [data-module]').evaluateAll(nodes=>nodes.map(n=>n.dataset.module));
-  const expectedModules=await signature();assert.equal(expectedModules.length,12);
+  const expectedModules=await signature();assert.equal(expectedModules.length,13);
   assert.equal(await page.locator('.framework-stage').count(),5);
-  assert.equal(await page.locator('.module-card').count(),12);
-  assert.equal(await page.locator('.module-card[data-coverage=available]').count(),12);
+  assert.equal(await page.locator('.module-card').count(),13);
+  assert.equal(await page.locator('.module-card[data-coverage=available]').count(),13);
   assert.equal(await page.locator('a[href="#"],a:not([href]),button[disabled]').count(),0);
   assert.match(await page.locator('#communication').innerText(),/已有课程[\s\S]*开始学习/);
   assert.match(await page.locator('#performance').innerText(),/已有课程[\s\S]*开始学习/);
@@ -125,15 +126,15 @@ async function checkFoundationNavigation(page,label){
   assert.deepEqual(await signature(),expectedModules,'entering a lesson retains the entire framework');
   await page.locator('[data-module=kv-memory] > summary').click();
   await page.locator('[data-module=kv-memory] .lesson-link').first().click();await page.waitForLoadState('load');
-  assert.match(page.url(),/kv-cache.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/04 KV Cache/);
+  assert.match(page.url(),/kv-cache.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 KV Cache/);
   await page.locator('[data-topic=framework-practice]>summary').click();
   const wasOpen=await page.locator('[data-topic=framework-practice]').evaluate(e=>e.open);
   await page.reload();assert.equal(await page.locator('[data-topic=framework-practice]').evaluate(e=>e.open),wasOpen);
   // The framework pager follows the module sequence, not the old five-page topic order.
   await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
-  assert.match(page.url(),/kv-memory\/index.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/04 KV Cache/);
+  assert.match(page.url(),/kv-memory\/index.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 KV Cache/);
   await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
-  assert.match(page.url(),/journey.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 调度/);
+  assert.match(page.url(),/scheduling\/index.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/06 调度/);
   for(const [route,module,stage] of courses){
    await page.goto(base+route);await page.waitForLoadState('load');
    assert.equal(await page.locator('.topic-group').count(),5,route);
@@ -175,7 +176,7 @@ async function checkFoundationNavigation(page,label){
   }
   await page.goto(base+'sglang/inference-overview/index.html?v=old');await page.waitForURL('**/journey.html*');
   assert.equal(await page.locator('.topic-group').count(),5,'legacy URL also enters the new shell');
-  // Old bookmarked route URLs still keep their original sequence.
+  // Bookmarked routes retain their existing lesson sequence, with the new loop primer inserted before it.
   await page.goto(base+'sglang/inference-overview/journey.html?learn=first&v=legacy-review');
   const firstRoute=['journey.html','transformer.html','kv-cache.html','scheduling.html'];
   for(let i=0;i<firstRoute.length;i++){
@@ -184,7 +185,7 @@ async function checkFoundationNavigation(page,label){
    assert.ok(new URL(page.url()).searchParams.get('v'),'generated route links carry the release version');
    assert.equal(await page.locator('.lesson-pager').isVisible(),false);
    assert.equal(await page.locator('.reading-route-pager:visible').count(),1);
-   assert.match(await page.locator('.active-reading-route').innerText(),new RegExp(`${i+2} / 5`));
+   assert.match(await page.locator('.active-reading-route').innerText(),new RegExp(`${i+3} / 6`));
    assert.deepEqual(await signature(),expectedModules);
    if(i<firstRoute.length-1){await page.locator('.reading-route-pager:visible .next').click();await page.waitForLoadState('load');}
   }
@@ -197,7 +198,7 @@ async function checkFoundationNavigation(page,label){
   await staticPage.goto(base);
   assert.equal(await staticPage.locator('.chapter-choice a:visible').count(),3,'chapter links remain readable without JavaScript');
   assert.equal(await staticPage.locator('.foundation-lessons:not(.engine-topic-links) a').count(),13);
-  assert.equal(await staticPage.locator('.module-card').count(),12);
+  assert.equal(await staticPage.locator('.module-card').count(),13);
   await staticPage.goto(base+'engine-comparison/index.html');
   await checkFoundationNavigation(staticPage,'chapter-2-no-JS');
   await staticPage.goto(base+'sglang/inference-overview/kv-cache.html');

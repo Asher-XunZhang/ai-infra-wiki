@@ -1,6 +1,6 @@
 # Pages 学习课程覆盖与维护
 
-Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实现剖析”三章。第一章用十三课建立通用机制；第二章按固定 release 对照六主题、二十四步，并提供第三章深入入口；第三章保留五层十二模块、二十节原有课程与各自的源码依据。本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
+Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实现剖析”三章。第一章用十三课建立通用机制；第二章按固定 release 对照六主题、二十四步，并提供第三章深入入口；第三章保留五层十三模块、二十一节课程与各自的源码依据。本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
 
 ## 三章之间怎样衔接
 
@@ -25,9 +25,16 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 
 - `node tests/pages/test_foundations.cjs`：真实分词固定样例、因果权重、KV 所属与释放、批次成员守恒、通信与 PP 依赖、统计样本边界。
 - `node tests/pages/test_foundations_browser.cjs`：全部场景与步骤、320 / 390 / 1440 宽度、深浅主题、自测反馈、键盘、播放暂停、减少动态效果、链接恢复与无 JavaScript 正文。
-- `node tests/pages/test_topic_navigation_browser.cjs`：三章目录、第二章六主题入口、原有二十节实现课导航、旧路线 URL、跨模块翻页与移动端侧栏。
+- `node tests/pages/test_topic_navigation_browser.cjs`：三章目录、第二章六主题入口、二十一节实现课导航、旧路线 URL、跨模块翻页与移动端侧栏。
 
 发布状态以对应提交的 Pages 工作流和线上验证为准。浏览器中的教学模型不代表运行过 GPU 推理。
+
+## 第 03 模块：循环与依赖验证
+
+- `node tests/pages/test_loop_journey.cjs`：依赖门槛、确定性回看、EOS 后有效输出不增加、未就绪不越过屏障、PP 两级完整收尾；90 个轨道活动的单一时钟、生产者完成前提与独占轨道无非法重叠。
+- `SGLANG_SOURCE_DIR=<checkout> python3 -B tests/pages/test_loop_journey_source.py`：从固定 Git 对象执行普通 / Overlap 的 CPU 调用顺序，并核对源码锚点；复用并行课的 PP 调用顺序测试。不是 GPU 实测。
+- `node tests/pages/test_loop_journey_browser.cjs`：三机制逐步推进、等待与解除、模式和历史、PP 聚焦、同一时钟轨道及依赖点选、键盘、窄屏、主题、无 JS；截图另作人工检查。
+- 旧课程保留独立用途：输入组织、选批入口、设备分层、KV 生命周期、资源预算；不把它们重复堆进完整旅程页。
 
 ## 第二章架构对照的验证
 
@@ -51,20 +58,21 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 
 | 模块 | 已有入口与可视化 | 当前范围与深入方向 |
 | --- | --- | --- |
-| 01 推理系统全景 | [代码架构](sglang/system-overview/index.html)，一张全局图连接 API、分词、调度、执行、KV、模型与输出；附 TP / DP / PD 拓扑 | 已补系统边界与其余十一模块的按问题衔接；详细启动和运行时变体按独立源码课程展开 |
+| 01 推理系统全景 | [代码架构](sglang/system-overview/index.html)，一张全局图连接 API、分词、调度、执行、KV、模型与输出；附 TP / DP / PD 拓扑 | 已补系统边界与其余十二模块的按问题衔接；详细启动和运行时变体按独立源码课程展开 |
 | 02 请求生命周期与运行时架构 | [普通请求运行时](sglang/request-runtime/index.html)，当前步骤交接图、可展开的完整流程与四路径资源变化 | 已补独立入门课；深入分支连接原有源码章节 |
-| 03 模型执行、硬件与算子 | [Transformer](sglang/inference-overview/transformer.html) 与 [执行机制](sglang/model-execution/index.html)，执行交接、图重放补齐与成本下界 | 已补 Worker / Runner / backend / kernel 与硬件直觉；复杂模型、kernel 和执行模式连接独立基线源码课程 |
-| 04 KV Cache 与内存管理 | [KV 原理](sglang/inference-overview/kv-cache.html) 与 [映射和回收](sglang/kv-memory/index.html)，尾页续写、整页命中、共享保护与驱逐 | 已补普通分页路径与固定源码；分层存储、混合状态和容量规划连接独立基线资料 |
-| 05 调度与批处理 | [ScheduleBatch 输入准备](sglang/inference-overview/journey.html)、[批处理](sglang/inference-overview/scheduling.html) 与 [准入和回撤](sglang/scheduling/index.html)，候选流转、单项预算、chunk 份额与恢复路径 | 已补普通路径准入、长短请求和回撤；Overlap、优先级与其他预算按独立基线继续深入 |
-| 06 并行与执行拓扑 | [并行分工](sglang/parallelism/index.html)，TP 算例、PP 时间格、DP 路由、EP 任务和 CP 因果矩阵 | 已补独立课程与固定源码锚点；复杂组合和 backend 约束连接深入章节 |
-| 07 通信与传输 | [通信机制](sglang/communication/index.html)，消息 / 张量交接、三种 collective、KV 页映射、就绪与失败回收 | 已补独立课程和固定源码锚点；硬件传输实现与真实性能实验保留为深入方向 |
-| 08 分离部署与分布式状态交接 | [部署入门](sglang/inference-overview/deployment.html)、[PD 旅程](sglang/pd-prefill-lifecycle/index.html)、[数据流](sglang/pd-dataflow/index.html) | 已补 P 收尾 / D 就绪的两侧边界、通信 / 缓存 / 准入连接；各案例保留独立基线和假设 |
-| 09 模型结构与高级生成 | [状态与生成](sglang/advanced-generation/index.html)，历史状态、检查点回退、候选验证、输出 / KV 错位与语法筛选 | 已补独立课程及固定源码；量化、多模态与其他生成算法按子方向衔接源码专题 |
-| 10 服务部署与运行治理 | [服务治理](sglang/serving-operations/index.html)，启动探活、路由准入、队列拒绝、超时取消与退出收尾 | 已补独立课程；Gateway 额度、协议差异与管理变更按问题衔接源码专题 |
-| 11 性能分析与优化方法 | [指标与定位](sglang/performance-engineering/index.html)，请求时间轴、流式数据包、单变量执行条带与失败样本筛选 | 已补独立课程及固定源码；Profiler 与真实压测通过深入资料衔接 |
-| 12 综合案例与源码实践 | [PP loop](sglang/pd-prefill-pp-loop/quick.html)、[依赖分析](sglang/pd-prefill-pp-loop/index.html)、[源码阅读](sglang/pd-prefill-pp-loop/notes.html) | 已补计时边界、共享 KV 与 PD＋PP 三条跨模块练习；每条含预测、图上操作、固定源码与运行验证边界 |
+| 03 调度循环与批次执行旅程 | [完整旅程](sglang/loop-journey/index.html)、[输入准备](sglang/inference-overview/journey.html)、[选批与更新](sglang/inference-overview/scheduling.html)；Normal、Overlap、普通 PP 的事件泳道、结果与资源状态 | 固定 279339f113；CPU / GPU 依赖、EOS 排空、slot 与输出回环。普通 PP=2/TP=1/depth=0；PD 与 HiCache 在第 13 模块深入 |
+| 04 模型执行与设备协作 | [Transformer](sglang/inference-overview/transformer.html) 与 [执行机制](sglang/model-execution/index.html)，执行交接、图重放补齐与成本下界 | 已补 Worker / Runner / backend / kernel 与硬件直觉；复杂模型、kernel 和执行模式连接独立基线源码课程 |
+| 05 KV Cache 与资源生命周期 | [KV 原理](sglang/inference-overview/kv-cache.html) 与 [映射和回收](sglang/kv-memory/index.html)，尾页续写、整页命中、共享保护与驱逐 | 已补普通分页路径与固定源码；分层存储、混合状态和容量规划连接独立基线资料 |
+| 06 调度策略、批处理与资源约束 | [准入和回撤](sglang/scheduling/index.html)，排序、单项预算、chunk 份额与恢复路径 | 在第 03 模块的循环模型之后解释资源约束；保留不同策略与参数实验 |
+| 07 并行与执行拓扑 | [并行分工](sglang/parallelism/index.html)，TP 算例、PP 时间格、DP 路由、EP 任务和 CP 因果矩阵 | 已补独立课程与固定源码锚点；复杂组合和 backend 约束连接深入章节 |
+| 08 通信与传输 | [通信机制](sglang/communication/index.html)，消息 / 张量交接、三种 collective、KV 页映射、就绪与失败回收 | 已补独立课程和固定源码锚点；硬件传输实现与真实性能实验保留为深入方向 |
+| 09 分离部署与分布式状态交接 | [部署入门](sglang/inference-overview/deployment.html)、[PD 旅程](sglang/pd-prefill-lifecycle/index.html)、[数据流](sglang/pd-dataflow/index.html) | 已补 P 收尾 / D 就绪的两侧边界、通信 / 缓存 / 准入连接；各案例保留独立基线和假设 |
+| 10 模型结构与高级生成 | [状态与生成](sglang/advanced-generation/index.html)，历史状态、检查点回退、候选验证、输出 / KV 错位与语法筛选 | 已补独立课程及固定源码；量化、多模态与其他生成算法按子方向衔接源码专题 |
+| 11 服务部署与运行治理 | [服务治理](sglang/serving-operations/index.html)，启动探活、路由准入、队列拒绝、超时取消与退出收尾 | 已补独立课程；Gateway 额度、协议差异与管理变更按问题衔接源码专题 |
+| 12 性能分析与优化方法 | [指标与定位](sglang/performance-engineering/index.html)，请求时间轴、流式数据包、单变量执行条带与失败样本筛选 | 已补独立课程及固定源码；Profiler 与真实压测通过深入资料衔接 |
+| 13 综合案例与源码实践 | [PP loop](sglang/pd-prefill-pp-loop/quick.html)、[依赖分析](sglang/pd-prefill-pp-loop/index.html)、[源码阅读](sglang/pd-prefill-pp-loop/notes.html) | 已补计时边界、共享 KV 与 PD＋PP 三条跨模块练习；每条含预测、图上操作、固定源码与运行验证边界 |
 
-十二模块的主线入口现已补齐；深入资料继续按独立版本与主题维护。下列验证覆盖教学模型与页面，不能替代真实模型、设备或性能实验。
+十三模块的主线入口现已补齐；深入资料继续按独立版本与主题维护。下列验证覆盖教学模型与页面，不能替代真实模型、设备或性能实验。
 
 ## 运行时课程的验证
 
@@ -118,7 +126,7 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 
 ## 系统全景课程的验证
 
-- `node tests/pages/test_system_overview.cjs`：采样与可见先后、KV / 输出偏移、TP 与 DP / PD 的副本关系、其余十一模块的关联；设置 `SGLANG_SOURCE_DIR` 核对固定源码锚点。
+- `node tests/pages/test_system_overview.cjs`：采样与可见先后、KV / 输出偏移、TP 与 DP / PD 的副本关系、其余十二模块的关联；设置 `SGLANG_SOURCE_DIR` 核对固定源码锚点。
 - `node tests/pages/test_system_overview_browser.cjs`：两条逐步链路、三类拓扑、箭头方向、减少动态效果、播放与键盘、深浅主题和四档宽度、无 JS 阅读。
 
 ## 分离部署的跨模块验证
@@ -129,7 +137,7 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 
 ## 2026-09-23 主线验收
 
-- 五层十二模块已连接到 20 节课程，共享同一套首页、侧栏、面包屑与课程翻页；首页不再把已补齐的模块标为预留。
+- 五层十三模块已连接到 21 节课程，共享同一套首页、侧栏、面包屑与课程翻页；首页不再把已补齐的模块标为预留。
 - 逐模块检查的重点是图中的真实变化：请求交接、地址写入、队列准入、参数切分、载荷与条件门、候选回退、服务选择、计时区间与依赖等待。其余范围留在对应课程的展开说明和深入链接中。
 - 本地通过全部 15 份浏览器回归脚本，以及 Pages workflow 的模型与生成检查。覆盖关键分支、键盘、播放、深浅主题、移动端与桌面；无 JS 的可读路径按课程实现检查。
 - 新增系统地图的 16 个源码锚点、现有模型锚点和 PP 的 65 个精确锚点均从固定本地 Git 对象核对；新增文档与 HTML 的 145 处静态源码链接也核对了固定对象和行号范围。未切换或修改 SGLang 工作区。

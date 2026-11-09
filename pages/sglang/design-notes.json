@@ -962,5 +962,35 @@
       "scope": "bootstrap、终态与 HiCache ACK 的确切集合和条件只由本课固定源码支持。",
       "read_date": "2026-10-16"
     }
+  },
+  "sglang/loop-journey/index.html": {
+    "reviewed": "2026-11-09",
+    "problem": "CPU 的选批与结果处理、GPU 的计算、PP 的消息往返各有自己的完成条件。先沿一批工作闭环，才能判断哪里能提前做、哪里必须等。",
+    "topics": [
+      {
+        "id": "loop-dependency",
+        "title": "为什么要把本地一轮与一批完整旅程分开看？",
+        "why": "一轮可以提交当前批、处理旧批；一批又可能穿过多个 stage 和多轮结果回环。只按函数顺序背诵，会把不同批次混为一谈。",
+        "mechanism": "图中固定请求与批次身份，分别追踪输入、设备输出、CPU 已提交状态和可复用槽位。",
+        "tradeoff": "事件列只表达因果；非 PP 与 PP 的工作量和设备数不同，不用于速度比较。",
+        "source": [
+          "managers/scheduler_pp_mixin.py",
+          63,
+          "event_loop_pp"
+        ]
+      }
+    ],
+    "background": {
+      "title": "设计背景：用 CPU / GPU 泳道理解重叠窗口",
+      "text": "SGLang 团队的 v0.4 文章把 CPU 调度与 GPU 执行放到同一时间关系中，说明未来 token 与事件同步如何让 CPU 提前准备下一批。本课借鉴其执行实体分行的表达，增加共用教学时钟的执行轨道，保留可回看的事件序列；具体行为重新核对课程固定提交。",
+      "references": [
+        [
+          "SGLang v0.4 作者说明（2024-12-04）",
+          "https://www.lmsys.org/blog/2024-12-04-sglang-v0-4/"
+        ]
+      ],
+      "scope": "历史作者说明用于解释动机，不引用其性能结果，也不当作本课固定提交的实现证明。",
+      "read_date": "2026-11-09"
+    }
   }
 }

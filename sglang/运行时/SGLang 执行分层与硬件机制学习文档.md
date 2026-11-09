@@ -4,6 +4,8 @@
 
 [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/model-execution/) · [运行时导航](README.md)
 
+先建立时间与依赖模型：[调度循环与批次执行旅程](<SGLang 调度循环与批次执行旅程学习文档.md>)（独立固定提交 279339f113；普通循环、Overlap、普通 PP）。本篇继续保留自己的范围与源码基线。
+
 ## 0. 基线与范围
 
 | 项目 | 内容 |

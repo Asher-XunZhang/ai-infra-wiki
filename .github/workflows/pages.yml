@@ -58,6 +58,7 @@ jobs:
           node tests/pages/test_kv_memory.cjs
           node tests/pages/test_radix_lifecycle.cjs
           node tests/pages/test_scheduling.cjs
+          node tests/pages/test_loop_journey.cjs
           node tests/pages/test_system_overview.cjs
           node tests/pages/test_foundations.cjs
           node tests/pages/test_communication_teaching.cjs

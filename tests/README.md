@@ -54,3 +54,7 @@ CI 保留原有模型、PP 生成与源码基线检查，并增加通用文档�
 并行基础的 `test_parallel_teaching.cjs` 核对 TP 重构、PCP 因果配对与 DCP 的稳定归一化合并；`test_detail_mechanisms_browser.cjs` 覆盖各并行场景的中间态。删除旧播放器后，相关专题浏览器测试通过 `migrated_checks.cjs` 继续检查迁入主动画的原有分支，不因入口整合而删掉这些机制断言。
 
 通信基础的 `test_communication_teaching.cjs` 与 `test_communication_teaching_browser.cjs` 覆盖集合通信、点对点、单边访问及完成条件；浏览器测试记录独立进程与 profile，并在退出时清理。原 `test_communication*.cjs` 仍检查 SGLang 实现课程，不与基础语义混用。
+
+## 调度循环与批次旅程
+
+`node tests/pages/test_loop_journey.cjs` 检查依赖和排空不变量；`SGLANG_SOURCE_DIR=<checkout> python3 -B tests/pages/test_loop_journey_source.py` 核对固定 Git 对象中的 CPU 调用顺序；PP 顺序另由 `test_parallelism_source.py` 覆盖。浏览器使用 `node tests/pages/test_loop_journey_browser.cjs`，支持 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL` 与 `LOOP_SCREENSHOT_DIR`。共享导航仍运行 `test_topic_navigation_browser.cjs`。

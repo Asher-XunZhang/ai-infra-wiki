@@ -32,6 +32,10 @@
 | 3 | [SGLang Chunked Prefill 与调度器显存预算](<SGLang Chunked Prefill 与调度器显存预算学习文档.md>) | 深入 | 理解 chunk 额度与请求、KV、显存预算的共同约束。 |
 | 4 | [SGLang Breakable CUDA Graph 与 Prefill 捕获](<SGLang Breakable CUDA Graph 与 Prefill 捕获学习文档.md>) | 选读：执行 | 掌握执行分层和 CUDA Graph 基础后，再读动态形状与 Prefill 捕获。 |
 
+## 完整循环与批次旅程
+
+[调度循环与批次执行旅程](<SGLang 调度循环与批次执行旅程学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/loop-journey/)：第 03 模块的主线。先走完 Normal、Overlap 和普通 PP 的提交、设备依赖、结果处理与排空，再进入模型执行、KV 生命周期和调度策略。固定 279339f113；不替换旧源码课程的独立版本。
+
 ## 执行分层主线
 
 [执行分层与硬件机制](<SGLang 执行分层与硬件机制学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/model-execution/)：沿 Worker / Runner / backend / kernel 追踪输入变化，观察图重放补齐与计算、访存边界。先读模型 Forward，再衔接 CUDA Graph 深入资料。

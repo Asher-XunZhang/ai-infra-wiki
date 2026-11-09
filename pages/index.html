@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AI Infra Wiki · 推理系统学习手册</title>
-  <meta name="description" content="沿五个学习层次、十二个模块，理解请求、模型执行、KV、调度、并行、通信、分离部署与性能分析。各模块连接机制图、源码笔记与验证练习。">
+  <meta name="description" content="沿五个学习层次、十三个模块，理解请求、模型执行、KV、调度、并行、通信、分离部署与性能分析。各模块连接机制图、源码笔记与验证练习。">
   <link rel="stylesheet" href="site.css">
   <link rel="stylesheet" href="home.css">
   <script src="motion/integration.js" defer></script><script src="site.js" defer></script>
@@ -60,25 +60,30 @@
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-instance">
-<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">执行、缓存与调度</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">循环、执行、缓存与策略</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="loop-journey">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>调度循环与批次执行旅程</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="./#loop-journey">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="sglang/loop-journey/index.html">调度循环：Normal、Overlap 与 PP 的完整旅程</a>
+<a class="lesson-link" href="sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
+<a class="lesson-link" href="sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+</div></details>
 <details class="module-nav" data-module="model-execution">
-<summary class="module-heading"><span class="course-number">03</span><span><strong>模型执行、硬件与算子</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<summary class="module-heading"><span class="course-number">04</span><span><strong>模型执行与设备协作</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#model-execution">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
 <a class="lesson-link" href="sglang/model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
 </div></details>
 <details class="module-nav" data-module="kv-memory">
-<summary class="module-heading"><span class="course-number">04</span><span><strong>KV Cache 与内存管理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<summary class="module-heading"><span class="course-number">05</span><span><strong>KV Cache 与资源生命周期</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#kv-memory">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
 <a class="lesson-link" href="sglang/kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
 </div></details>
 <details class="module-nav" data-module="scheduling">
-<summary class="module-heading"><span class="course-number">05</span><span><strong>调度与批处理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<summary class="module-heading"><span class="course-number">06</span><span><strong>调度策略、批处理与资源约束</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#scheduling">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
-<a class="lesson-link" href="sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
 <a class="lesson-link" href="sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
 </div></details>
 </nav></details>
@@ -86,17 +91,17 @@
 <summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第三层 · 扩展到多卡多机">
 <details class="module-nav" data-module="parallelism">
-<summary class="module-heading"><span class="course-number">06</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<summary class="module-heading"><span class="course-number">07</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#parallelism">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
 </div></details>
 <details class="module-nav" data-module="communication">
-<summary class="module-heading"><span class="course-number">07</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<summary class="module-heading"><span class="course-number">08</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#communication">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
 </div></details>
 <details class="module-nav" data-module="disaggregation">
-<summary class="module-heading"><span class="course-number">08</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<summary class="module-heading"><span class="course-number">09</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#disaggregation">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
 <a class="lesson-link" href="sglang/pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
@@ -107,12 +112,12 @@
 <summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第四层 · 理解功能与服务">
 <details class="module-nav" data-module="advanced-generation">
-<summary class="module-heading"><span class="course-number">09</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<summary class="module-heading"><span class="course-number">10</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#advanced-generation">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
 </div></details>
 <details class="module-nav" data-module="serving-operations">
-<summary class="module-heading"><span class="course-number">10</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<summary class="module-heading"><span class="course-number">11</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#serving-operations">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation</a>
 </div></details>
@@ -121,12 +126,12 @@
 <summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
 <nav aria-label="第五层 · 综合验证">
 <details class="module-nav" data-module="performance">
-<summary class="module-heading"><span class="course-number">11</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<summary class="module-heading"><span class="course-number">12</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#performance">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
 </div></details>
 <details class="module-nav" data-module="case-studies">
-<summary class="module-heading"><span class="course-number">12</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<summary class="module-heading"><span class="course-number">13</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#case-studies">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="sglang/pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
 <a class="lesson-link" href="sglang/pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
@@ -147,7 +152,7 @@
 <section id="reading-routes" aria-label="三章学习入口">
 <div class="chapter-choice"><a href="#chapter-foundations"><span>第一章</span><strong>推理基础</strong><p>从一句话怎样变成数字开始，逐步认识生成、缓存、调度与多卡协作。</p><span>先建立直觉，再进入实现</span></a>
 <a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 并排查看两套引擎的进程、通信、缓存、调度与分离扩展。</p><span>六幅剖面 · 保留各自版本边界</span></a>
-<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十二模块 · 二十节实现课程</span></a></div></section>
+<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十三模块 · 二十一节实现课程</span></a></div></section>
 <section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>
 <p>第一章从文字、生成、Attention 与基础部件，走向缓存、调度、硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">
 <li><a href="foundations/tokens.html"><span class="lesson-no">01</span><span><strong>Tokenization 与 Embedding：文字怎样变成模型输入？</strong><small>能把一句话的文字片段、词表编号和输入向量对应起来。</small></span></a></li>
@@ -180,8 +185,8 @@
       </section>
 
       <span id="chapter-sglang"></span><section id="learning-path" class="home-section" aria-labelledby="learning-path-title">
-        <div class="section-heading"><div><p class="eyebrow">五个层次 · 十二个模块</p><h2 id="learning-path-title">第三章 · SGLang 实现剖析</h2></div><a class="text-link" href="#reading-routes">回到三章入口 ↑</a></div>
-        <p class="framework-intro">第三章回答“SGLang 由谁执行、改哪些状态、受什么约束”。十二模块保留各课独立的源码基线；需要跨引擎定位时先回到第二章的固定 release 对照。</p>
+        <div class="section-heading"><div><p class="eyebrow">五个层次 · 十三个模块</p><h2 id="learning-path-title">第三章 · SGLang 实现剖析</h2></div><a class="text-link" href="#reading-routes">回到三章入口 ↑</a></div>
+        <p class="framework-intro">第三章回答“SGLang 由谁执行、改哪些状态、受什么约束”。十三模块保留各课独立的源码基线；需要跨引擎定位时先回到第二章的固定 release 对照。</p>
         <p class="framework-legend">各模块已有学习入口；具体实现、配置与验证边界见对应课程。</p>
 
         <section id="stage-foundations" class="framework-stage" aria-labelledby="stage-foundations-title">
@@ -205,22 +210,27 @@
         </section>
 
         <section id="stage-instance" class="framework-stage" aria-labelledby="stage-instance-title">
-          <header class="stage-heading"><span class="stage-number" aria-hidden="true">二</span><div><p class="eyebrow">理解单实例</p><h3 id="stage-instance-title">算什么、存什么、何时执行</h3><p>沿 Worker / Runner、KV 映射与 Scheduler 检查实现责任。</p></div></header>
-          <div class="module-grid">
-            <article id="model-execution" class="lesson-card module-card" data-coverage="available">
+          <header class="stage-heading"><span class="stage-number" aria-hidden="true">二</span><div><p class="eyebrow">理解单实例</p><h3 id="stage-instance-title">先走通一轮，再拆开执行、状态与策略</h3><p>先建立 Normal / Overlap / PP 的时间与依赖模型，再理解设备执行、KV 生命周期和资源约束。</p></div></header>
+          <div class="module-grid module-grid-two">
+            <article id="loop-journey" class="lesson-card module-card" data-coverage="available">
               <div class="card-top"><span class="card-number">03</span><span class="module-status available">已有课程</span></div>
-              <h4>模型执行、硬件与算子</h4><p class="module-question">一个 batch 怎样落到设备上计算？</p><p>Worker / Runner、张量与算子、显存与带宽、kernel、CUDA stream / event / graph。</p><p class="module-prerequisite">先修：推理全景；后续衔接运行时</p>
+              <h4>调度循环与批次执行旅程</h4><p class="module-question">一轮算什么，谁在等待谁，结果怎样进入下一轮？</p><p>普通循环、Overlap、PP microbatch；CPU / GPU 依赖、结果排空与 slot 复用。</p><p class="module-prerequisite">先修：一次请求的生命周期、Prefill / Decode；PP 在本模块使用最小两级例子</p>
+              <div class="module-entry"><a href="sglang/loop-journey/index.html">开始学习 · 调度循环：Normal、Overlap 与 PP 的完整旅程 →</a><p class="module-related">完整旅程后，回到输入准备与选批入口；策略和精细预算留给第 06 模块。</p><a href="sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？ →</a><a href="sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新 →</a></div>
+            </article>
+            <article id="model-execution" class="lesson-card module-card" data-coverage="available">
+              <div class="card-top"><span class="card-number">04</span><span class="module-status available">已有课程</span></div>
+              <h4>模型执行与设备协作</h4><p class="module-question">一个 batch 怎样落到设备上计算？</p><p>Worker / Runner、张量与算子、显存与带宽、kernel、CUDA stream / event / graph。</p><p class="module-prerequisite">先修：请求运行时、调度循环与批次旅程</p>
               <div class="module-entry"><a href="sglang/inference-overview/transformer.html">开始学习 · DeepSeek-V3：Embedding、Decoder Layer 与输出头 →</a><p class="module-related">继续观察 Worker / Runner 交接、CUDA Graph 补齐与计算 / 访存边界。</p><a href="sglang/model-execution/">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？ →</a></div>
             </article>
             <article id="kv-memory" class="lesson-card module-card" data-coverage="available">
-              <div class="card-top"><span class="card-number">04</span><span class="module-status available">已有课程</span></div>
-              <h4>KV Cache 与内存管理</h4><p class="module-question">状态怎样分配、复用和回收？</p><p>逻辑 token 与物理页、KV Pool、前缀缓存、分页、引用寿命与分层存储。</p><p class="module-prerequisite">先修：推理全景、模型计算基础</p>
+              <div class="card-top"><span class="card-number">05</span><span class="module-status available">已有课程</span></div>
+              <h4>KV Cache 与资源生命周期</h4><p class="module-question">状态怎样分配、复用和回收？</p><p>逻辑 token 与物理页、KV Pool、前缀缓存、分页、引用寿命与分层存储。</p><p class="module-prerequisite">先修：调度循环、模型执行与设备协作</p>
               <div class="module-entry"><a href="sglang/inference-overview/kv-cache.html">开始学习 · RadixCache 与 Attention：前缀索引怎样连接 KV？ →</a><p class="module-related">继续观察物理页映射、整页命中与共享回收；分层存储按需深入。</p><a href="sglang/kv-memory/">KV Memory Pool：地址映射、分页与缓存回收 →</a></div>
             </article>
             <article id="scheduling" class="lesson-card module-card" data-coverage="available">
-              <div class="card-top"><span class="card-number">05</span><span class="module-status available">已有课程</span></div>
-              <h4>调度与批处理</h4><p class="module-question">谁决定这一轮算什么、算多少？</p><p>队列策略、准入预算、batching、chunk、抢占、公平性与 overlap。</p><p class="module-prerequisite">先修：请求、模型执行与 KV 基础</p>
-              <div class="module-entry"><a href="sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？ →</a><a href="sglang/inference-overview/scheduling.html">开始学习 · Scheduler：选批、Chunked Prefill 与 Decode 更新 →</a><p class="module-related">继续观察排序与准入、长短请求、容量回撤；Overlap 与 PP 按需深入。</p><a href="sglang/scheduling/">Batch 调度：准入预算、Chunked Prefill 与 Retract →</a></div>
+              <div class="card-top"><span class="card-number">06</span><span class="module-status available">已有课程</span></div>
+              <h4>调度策略、批处理与资源约束</h4><p class="module-question">理解循环之后，谁能进下一批、一次算多少？</p><p>候选排序、准入预算、连续批处理、Chunked Prefill 与容量回撤。</p><p class="module-prerequisite">先修：第 03 模块完整循环、模型执行与 KV 生命周期</p>
+              <div class="module-entry"><a href="sglang/scheduling/">开始学习 · Batch 调度：准入预算、Chunked Prefill 与 Retract →</a><p class="module-related">区分“循环怎样推进”与“资源约束下选谁、退谁”；不重复完整时间轴。</p></div>
             </article>
           </div>
         </section>
@@ -229,17 +239,17 @@
           <header class="stage-heading"><span class="stage-number" aria-hidden="true">三</span><div><p class="eyebrow">扩展到多卡多机</p><h3 id="stage-distributed-title">把工作切开，让数据接上</h3><p>在并行与通信基础上，核对进程组、实际接口和跨角色状态交接。</p></div></header>
           <div class="module-grid">
             <article id="parallelism" class="lesson-card module-card" data-coverage="available">
-              <div class="card-top"><span class="card-number">06</span><span class="module-status available">已有课程</span></div>
+              <div class="card-top"><span class="card-number">07</span><span class="module-status available">已有课程</span></div>
               <h4>并行与执行拓扑</h4><p class="module-question">多张卡怎样分担工作与状态？</p><p>rank、进程组、TP / PP / DP / EP / CP、负载分工与组合约束。</p><p class="module-prerequisite">先修：模型执行、KV 与调度基础</p>
               <div class="module-entry"><a href="sglang/parallelism/">开始学习 · TP / PP / DP / EP / CP：SGLang 并行分工 →</a><p class="module-related">将五种切分对应到 rank、进程组与模型路径；结合固定源码检查参数边界。</p></div>
             </article>
             <article id="communication" class="lesson-card module-card" data-coverage="available">
-              <div class="card-top"><span class="card-number">07</span><span class="module-status available">已有课程</span></div>
+              <div class="card-top"><span class="card-number">08</span><span class="module-status available">已有课程</span></div>
               <h4>通信与传输</h4><p class="module-question">组件间传什么，何时才可以使用？</p><p>控制消息、张量通信、collective、KV 搬运、同机与跨机路径、RDMA、完成与回收。</p><p class="module-prerequisite">先修：内存基础、并行与 rank 概览</p>
               <div class="module-entry"><a href="sglang/communication/">开始学习 · IPC、Collective 与 KV Transfer：数据何时可用？ →</a><p class="module-related">对照各通信接口，追踪消息类型、KV 目的页、可用条件和失败回收。</p></div>
             </article>
             <article id="disaggregation" class="lesson-card module-card" data-coverage="available">
-              <div class="card-top"><span class="card-number">08</span><span class="module-status available">已有课程</span></div>
+              <div class="card-top"><span class="card-number">09</span><span class="module-status available">已有课程</span></div>
               <h4>分离部署与分布式状态交接</h4><p class="module-question">拆开角色后，怎样共同完成请求？</p><p>P/D 分工、bootstrap、预分配、KV 交接、就绪，以及失败、取消与资源退役。</p><p class="module-prerequisite">先修：调度、缓存；补通信概览</p>
               <div class="module-entry"><a href="sglang/inference-overview/deployment.html">开始学习 · PD Disaggregation：Bootstrap、KV 接收与准入 →</a><details class="module-lessons" id="request-learning-path"><summary id="request-topic-title">深入 · PD Prefill 请求旅程</summary><ul><li><a href="sglang/pd-prefill-lifecycle/index.html?chunkSize=0">PD + PP：Prefill 请求生命周期与 KV 释放 →</a></li><li><a href="sglang/pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用 →</a></li><li><a href="sglang/pd-dataflow/index.html#queue-lab">队列与对象引用</a></li></ul></details><p class="module-related">交接条件连接通信模块；深入案例保留各自的后端、拓扑与固定版本。</p></div>
             </article>
@@ -250,12 +260,12 @@
           <header class="stage-heading"><span class="stage-number" aria-hidden="true">四</span><div><p class="eyebrow">理解功能与服务</p><h3 id="stage-serving-title">按模型和服务目标继续深入</h3><p>这些是按需选择的支线，不是进入性能分析之前的必修清单。</p></div></header>
           <div class="module-grid module-grid-two">
             <article id="advanced-generation" class="lesson-card module-card" data-coverage="available">
-              <div class="card-top"><span class="card-number">09</span><span class="module-status available">已有课程</span></div>
+              <div class="card-top"><span class="card-number">10</span><span class="module-status available">已有课程</span></div>
               <h4>模型结构与高级生成</h4><p class="module-question">模型与生成方式怎样改变执行？</p><p>MoE、特殊注意力与混合状态、量化、投机解码、约束生成和多模态，按子方向选读。</p><p class="module-prerequisite">先修：模型执行、缓存与调度；按需补并行</p>
               <div class="module-entry"><a href="sglang/advanced-generation/">开始学习 · Speculative Decoding 与约束生成：状态怎样提交？ →</a><p class="module-related">观察历史状态、候选验证与词表筛选；其他模型特性连接源码专题。</p></div>
             </article>
             <article id="serving-operations" class="lesson-card module-card" data-coverage="available">
-              <div class="card-top"><span class="card-number">10</span><span class="module-status available">已有课程</span></div>
+              <div class="card-top"><span class="card-number">11</span><span class="module-status available">已有课程</span></div>
               <h4>服务部署与运行治理</h4><p class="module-question">推理实例怎样组成可用的服务？</p><p>启动配置、资源规划、路由与负载均衡、背压、扩缩容、健康检查和故障恢复。</p><p class="module-prerequisite">先修：运行时与调度；按部署方式补并行或 P/D</p>
               <div class="module-entry"><a href="sglang/serving-operations/">开始学习 · 服务治理：Health Check、Timeout 与 Cancellation →</a><p class="module-related">观察启动、探活、路由准入、超时取消和退出收尾。</p></div>
             </article>
@@ -266,12 +276,12 @@
           <header class="stage-heading"><span class="stage-number" aria-hidden="true">五</span><div><p class="eyebrow">综合验证</p><h3 id="stage-practice-title">把机制连起来，用证据回答问题</h3><p>从入门就认识指标；积累机制理解后，再做完整案例与源码走读。</p></div></header>
           <div class="module-grid module-grid-two">
             <article id="performance" class="lesson-card module-card" data-coverage="available">
-              <div class="card-top"><span class="card-number">11</span><span class="module-status available">已有课程</span></div>
+              <div class="card-top"><span class="card-number">12</span><span class="module-status available">已有课程</span></div>
               <h4>性能分析与优化方法</h4><p class="module-question">瓶颈在哪里，怎样证明优化有效？</p><p>TTFT / ITL、吞吐与容量、负载和 SLO、benchmark、trace、瓶颈归因与版本回归。</p><p class="module-prerequisite">先修：请求与指标基础；按问题回补机制</p>
               <div class="module-entry"><a href="sglang/performance-engineering/">开始学习 · TTFT、ITL、TPOT 与 P95：SGLang 性能观测 →</a><p class="module-related">观察请求计时、流式分包、单变量对照与失败样本筛选。</p></div>
             </article>
             <article id="case-studies" class="lesson-card module-card" data-coverage="available">
-              <div class="card-top"><span class="card-number">12</span><span class="module-status available">已有课程</span></div>
+              <div class="card-top"><span class="card-number">13</span><span class="module-status available">已有课程</span></div>
               <h4>综合案例与源码实践</h4><p class="module-question">一套系统怎样同时运用这些机制？</p><p>从请求追踪计算、缓存、调度、并行和通信，再核对状态、依赖与资源生命周期。</p><p class="module-prerequisite">先修：按案例选择；PD＋PP 需并行与分离部署基础</p>
               <div class="module-entry"><a href="sglang/pd-prefill-pp-loop/quick.html#cross-module-practice">开始练习 · 从假设到源码验证 →</a><details class="module-lessons" id="loop-learning-path"><summary id="topic-title">查看 PD＋PP 案例阅读顺序</summary><ol><li><a href="sglang/pd-prefill-lifecycle/index.html?chunkSize=0">PD + PP：Prefill 请求生命周期与 KV 释放 →</a></li><li><a href="sglang/pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程 →</a></li><li><a href="sglang/pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡 →</a></li><li><a href="sglang/pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用 →</a></li><li><a href="sglang/pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识 →</a></li></ol></details><p class="module-related">练习：计时边界、共享 KV 回收与 PP 传输长尾；先预测，再改一个条件。</p></div>
             </article>

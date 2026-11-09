@@ -1,6 +1,6 @@
 # SGLang 系统边界与学习地图学习文档
 
-先用一张代码框架图找到主要模块，再沿请求辨认职责、进程、设备资源与模型副本。本篇连接 Pages 的十二模块；各深入资料保留自己的固定源码基线。
+先用一张代码框架图找到主要模块，再沿请求辨认职责、进程、设备资源与模型副本。本篇连接 Pages 的十三模块；各深入资料保留自己的固定源码基线。
 
 [交互课程：SGLang 代码架构与模块协作](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/system-overview/) · [本领域路线](README.md)
 
@@ -80,7 +80,7 @@ DeepSeek-V3 的模型例子对应 `models/deepseek_v2.py::DeepseekV3ForCausalLM`
 - `srt/speculative/`、`srt/constrained/`、`srt/observability/`：分别进入投机、约束生成和观测专题。
 - `python/sglang/lang/` 是语言前端；`python/sglang/multimodal_gen/` 是另一类生成路径。本图没有把它们混入普通文本请求链。
 
-这些目录归属已按本文固定提交核对。第二章主体使用 `279339f113`；[PD 数据流专题](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-dataflow/) 单独固定在 `882577451e`，不把它的细节当成本图版本的实现。
+这些目录归属已按本文固定提交核对。本篇主体使用 `279339f113`；[PD 数据流专题](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-dataflow/) 单独固定在 `882577451e`，不把它的细节当成本图版本的实现。
 
 **表达参考：** Ziyi Xu，[Mini-SGLang: Efficient Inference Engine in a Nutshell](https://www.lmsys.org/blog/2025-12-17-minisgl/)，LMSYS，2025-12-17；读取于 2026-10-19。参考其架构图中请求闭环与执行侧缓存相邻的组织方式，上图为按完整 SGLang 固定源码重新组织的代码框架，不直接采用 Mini-SGLang 的类名或进程划分。
 
@@ -137,11 +137,12 @@ Worker、Runner、模型层、Attention backend 和 kernel 之间还有更细的
 
 | 当前问题 | 对应模块 | 要追踪的证据 |
 | --- | --- | --- |
-| 请求进入后为什么没回答 | [02 请求运行时](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/request-runtime/) → [10 服务治理](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/serving-operations/) → [11 性能分析](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/performance-engineering/) | 最后完成的交接、就绪/准入状态、指标计时边界。 |
-| 谁决定本轮算哪些位置 | [05 调度](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/scheduling/) → [03 执行](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/model-execution/) | 候选列表、预算、执行输入与返回结果。 |
-| 历史状态存在哪里 | [04 KV 与内存](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/kv-memory/) → [09 模型与生成](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/advanced-generation/) | 地址映射、共享保护、检查点与提交语义。 |
-| 跨卡或跨实例传什么 | [06 并行](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/parallelism/) → [07 通信](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/communication/) → [08 分离部署](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/deployment.html) | 切分对象、通信组、数据就绪与资源退役。 |
-| 怎样验证机制判断 | [12 综合实践](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html) | 预测、单变量变化、固定源码与真实运行验证的边界。 |
+| 一轮怎样推进、CPU/GPU 为什么等待？ | [03 调度循环与批次旅程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/loop-journey/) | 当前批、旧结果、设备依赖、PP 本地轮次与输出回环。 |
+| 请求进入后为什么没回答 | [02 请求运行时](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/request-runtime/) → [11 服务治理](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/serving-operations/) → [12 性能分析](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/performance-engineering/) | 最后完成的交接、就绪/准入状态、指标计时边界。 |
+| 谁决定本轮算哪些位置 | [06 调度](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/scheduling/) → [04 执行](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/model-execution/) | 候选列表、预算、执行输入与返回结果。 |
+| 历史状态存在哪里 | [05 KV 与内存](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/kv-memory/) → [10 模型与生成](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/advanced-generation/) | 地址映射、共享保护、检查点与提交语义。 |
+| 跨卡或跨实例传什么 | [07 并行](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/parallelism/) → [08 通信](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/communication/) → [09 分离部署](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/deployment.html) | 切分对象、通信组、数据就绪与资源退役。 |
+| 怎样验证机制判断 | [13 综合实践](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/pd-prefill-pp-loop/quick.html) | 预测、单变量变化、固定源码与真实运行验证的边界。 |
 
 这些链接组织阅读关系，不合并所有页面的源码版本，也不保证所有特性可以任意同时启用。
 

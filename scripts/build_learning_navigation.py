@@ -26,10 +26,11 @@ ENGINE_TOPICS = [
 ]
 
 DESIGN_REVISION = '279339f113b79af84f27fd3ac92d0a13bd3f4cbd'
-BRIDGES = {'system-overview':'generation','request-runtime':'serving','model-execution':'hardware','kv-memory':'cache','scheduling':'batching','parallelism':'parallel','communication':'communication','disaggregation':'deployment','advanced-generation':'speculation','serving-operations':'serving','performance':'metrics','case-studies':'parallel'}
+BRIDGES = {'system-overview':'generation','request-runtime':'serving','loop-journey':'batching','model-execution':'hardware','kv-memory':'cache','scheduling':'batching','parallelism':'parallel','communication':'communication','disaggregation':'deployment','advanced-generation':'speculation','serving-operations':'serving','performance':'metrics','case-studies':'parallel'}
 
 IMPLEMENTATION_FOCUS = {'system-overview': '分清进程、组件职责与部署边界，再把问题定位到对应实现。',
  'request-runtime': '跟踪同一请求在 TokenizerManager、Scheduler 和 DetokenizerManager 之间的交接，以及完成与取消的责任方。',
+ 'loop-journey': '沿普通循环、Overlap 与普通 PP 跟踪一批工作的提交、设备依赖、结果消费和循环收尾。',
  'model-execution': '跟踪模型调用、Worker / Runner 交接、图重放资格与真实计算行。',
  'kv-memory': '核对请求索引如何映射到物理 KV 页，以及共享保护、缓存保留和驱逐条件。',
  'scheduling': '区分候选排序、资源准入、分块预算和回撤后的状态恢复。',
@@ -43,7 +44,7 @@ IMPLEMENTATION_FOCUS = {'system-overview': '分清进程、组件职责与部署
 
 STAGES = [
     ('foundations', '第一层 · 建立全局', '从请求认识系统'),
-    ('instance', '第二层 · 理解单实例', '执行、缓存与调度'),
+    ('instance', '第二层 · 理解单实例', '循环、执行、缓存与策略'),
     ('distributed', '第三层 · 扩展到多卡多机', '并行、通信与分离部署'),
     ('serving', '第四层 · 理解功能与服务', '模型特性与服务运行'),
     ('practice', '第五层 · 综合验证', '性能分析与源码实践'),
@@ -54,15 +55,17 @@ MODULES = [
         ('sglang/system-overview/index.html', 'SGLang 代码架构：模块划分与协作全景', 'SGLang · 架构入口')]),
     ('request-runtime', '请求生命周期与运行时架构', 'foundations', False, [
         ('sglang/request-runtime/index.html', '请求生命周期：Req、TokenizerManager 与 Scheduler', 'SGLang · 入门')]),
-    ('model-execution', '模型执行、硬件与算子', 'instance', False, [
+    ('loop-journey', '调度循环与批次执行旅程', 'instance', False, [
+        ('sglang/loop-journey/index.html', '调度循环：Normal、Overlap 与 PP 的完整旅程', 'SGLang · 时间与依赖'),
+        ('sglang/inference-overview/journey.html', 'ScheduleBatch：Extend 与 Decode 怎样准备输入？', 'SGLang · 源码导读'),
+        ('sglang/inference-overview/scheduling.html', 'Scheduler：选批、Chunked Prefill 与 Decode 更新', 'SGLang · 源码导读')]),
+    ('model-execution', '模型执行与设备协作', 'instance', False, [
         ('sglang/inference-overview/transformer.html', 'DeepSeek-V3：Embedding、Decoder Layer 与输出头', 'SGLang · 源码导读'),
         ('sglang/model-execution/index.html', 'ModelRunner 与 CUDA Graph：输入怎样交给 GPU？', 'SGLang · 执行机制')]),
-    ('kv-memory', 'KV Cache 与内存管理', 'instance', False, [
+    ('kv-memory', 'KV Cache 与资源生命周期', 'instance', False, [
         ('sglang/inference-overview/kv-cache.html', 'RadixCache 与 Attention：前缀索引怎样连接 KV？', 'SGLang · 源码导读'),
         ('sglang/kv-memory/index.html', 'KV Memory Pool：地址映射、分页与缓存回收', 'SGLang · 缓存机制')]),
-    ('scheduling', '调度与批处理', 'instance', False, [
-        ('sglang/inference-overview/journey.html', 'ScheduleBatch：Extend 与 Decode 怎样准备输入？', 'SGLang · 源码导读'),
-        ('sglang/inference-overview/scheduling.html', 'Scheduler：选批、Chunked Prefill 与 Decode 更新', 'SGLang · 源码导读'),
+    ('scheduling', '调度策略、批处理与资源约束', 'instance', False, [
         ('sglang/scheduling/index.html', 'Batch 调度：准入预算、Chunked Prefill 与 Retract', 'SGLang · 调度机制')]),
     ('parallelism', '并行与执行拓扑', 'distributed', False, [
         ('sglang/parallelism/index.html', 'TP / PP / DP / EP / CP：SGLang 并行分工', 'SGLang · 并行分工')]),
@@ -85,12 +88,14 @@ MODULES = [
 READING_ROUTES = [
     ('first', '从基础走向源码', '在已有原理之上，定位各机制的实现入口。', [
         ('sglang/system-overview/index.html', '先建立代码框架', '从完整架构找到各模块及其协作。'),
+        ('sglang/loop-journey/index.html', '一轮计算如何完整闭合？', '先理解普通循环、Overlap 与 PP 的 CPU/GPU 依赖。'),
         ('sglang/inference-overview/journey.html', 'SGLang 怎样准备两种生成批次？', '对应固定版本的实现入口。'),
         ('sglang/inference-overview/transformer.html', 'SGLang 怎样调用 DeepSeek-V3 模型层？', '对应固定版本的实现入口。'),
         ('sglang/inference-overview/kv-cache.html', 'SGLang 如何连接前缀索引与 KV 计算？', '对应固定版本的实现入口。'),
         ('sglang/inference-overview/scheduling.html', 'SGLang 怎样选出并更新下一批？', '对应固定版本的实现入口。')]),
     ('implementation', '已有基础，追踪实现', '从请求流转追到资源、调度和设备执行；各课保留自己的固定基线。', [
         ('sglang/request-runtime/index.html', '请求经过哪些对象？', '追踪接入、执行、返回与释放。'),
+        ('sglang/loop-journey/index.html', 'CPU 与 GPU 怎样接续？', '对照三种循环的完整执行旅程。'),
         ('sglang/kv-memory/index.html', 'KV 放哪，何时回收？', '区分地址映射、共享保护与物理空间。'),
         ('sglang/scheduling/index.html', '谁能进入下一批？', '把候选顺序与准入条件分开。'),
         ('sglang/model-execution/index.html', '工作怎样交给设备？', '连接调度、执行封装与设备计算。')]),
@@ -114,7 +119,7 @@ def learning_start(page):
     parts = ['<!-- learning-start:start -->', '<section id="reading-routes" aria-label="三章学习入口">',
         '<div class="chapter-choice"><a href="#chapter-foundations"><span>第一章</span><strong>推理基础</strong><p>从一句话怎样变成数字开始，逐步认识生成、缓存、调度与多卡协作。</p><span>先建立直觉，再进入实现</span></a>',
         '<a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 并排查看两套引擎的进程、通信、缓存、调度与分离扩展。</p><span>六幅剖面 · 保留各自版本边界</span></a>',
-        '<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十二模块 · 二十节实现课程</span></a></div></section>',
+        '<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十三模块 · 二十一节实现课程</span></a></div></section>',
         '<section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>',
         '<p>第一章从文字、生成、Attention 与基础部件，走向缓存、调度、硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">']
     for i, c in enumerate(FOUNDATIONS, 1):
@@ -270,7 +275,7 @@ def implementation_design(page):
         body.append(f'<section class="design-question" id="design-{t["id"]}"><h3>{escape(t["title"])}</h3><p>{escape(t["why"])}</p><details><summary>展开机制与具体例子</summary><p>{escape(t["mechanism"])}</p>{example}</details><p class="design-tradeoff"><strong>取舍与条件：</strong>{escape(t["tradeoff"])}</p><p class="design-source"><a href="{source_url}">{escape(label)} · 本课实现核对 ↗</a></p>' + (f'<ul class="design-links">{links}</ul>' if links else '') + '</section>')
     return ('<!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2>'
         f'<p class="design-problem">{escape(entry["problem"])}</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a>'
-        + context + navigation + ''.join(body) + f'<p class="design-baseline">本课实现核对：SGLang 固定提交 {revision[:10]}，2026-10-16。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end -->')
+        + context + navigation + ''.join(body) + f'<p class="design-baseline">本课实现核对：SGLang 固定提交 {revision[:10]}，{entry.get("reviewed", "2026-10-16")}。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end -->')
 
 
 def lesson_reading_nav(source):
@@ -395,7 +400,7 @@ def build(check=False):
                 page.write_text(result, encoding='utf-8')
     if stale:
         raise SystemExit('Navigation is stale; run scripts/build_learning_navigation.py: ' + ', '.join(stale))
-    print(f'{"Checked" if check else "Generated"} shared framework navigation: {len(targets)} pages, 3 chapters, {len(FOUNDATIONS)} foundations, {len(ENGINE_TOPICS)} comparison topics, 12 SGLang modules, 20 implementation courses.')
+    print(f'{"Checked" if check else "Generated"} shared framework navigation: {len(targets)} pages, 3 chapters, {len(FOUNDATIONS)} foundations, {len(ENGINE_TOPICS)} comparison topics, {len(MODULES)} SGLang modules, {sum(len(m[4]) for m in MODULES)} implementation courses.')
 
 
 if __name__ == '__main__':

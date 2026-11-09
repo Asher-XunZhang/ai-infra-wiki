@@ -30,17 +30,17 @@
 
 直接在浏览器中学习，无需安装推理引擎。通过播放、暂停、单步推进和修改参数，观察请求、batch、激活与 KV 如何在系统中流动，再从当前步骤跳到对应源码。
 
-首页按五个层次组织十二个学习模块。编号用于定位，不要求所有支线顺序学完；各模块明确区分已有课程、部分内容和预留模块，当前未建设的独立课程不会链接到空页面。
+首页按五个层次组织十三个学习模块。编号用于定位，不要求所有支线顺序学完；各模块明确区分已有课程、部分内容和预留模块，当前未建设的独立课程不会链接到空页面。
 
 | 学习层次 | 模块 | 首页位置 |
 | --- | --- | --- |
 | 建立全局 | 推理系统全景；请求生命周期与运行时架构 | [从请求认识系统](https://asher-xunzhang.github.io/ai-infra-wiki/#stage-foundations) |
-| 理解单实例 | 模型执行、硬件与算子；KV Cache 与内存管理；调度与批处理 | [执行、缓存与调度](https://asher-xunzhang.github.io/ai-infra-wiki/#stage-instance) |
+| 理解单实例 | 调度循环与批次执行旅程；模型执行与设备协作；KV Cache 与资源生命周期；调度策略、批处理与资源约束 | [循环、执行、缓存与策略](https://asher-xunzhang.github.io/ai-infra-wiki/#stage-instance) |
 | 扩展到多卡多机 | 并行与执行拓扑；通信与传输；分离部署与分布式状态交接 | [并行、通信与分离部署](https://asher-xunzhang.github.io/ai-infra-wiki/#stage-distributed) |
 | 理解功能与服务 | 模型结构与高级生成；服务部署与运行治理 | [按需选择深入方向](https://asher-xunzhang.github.io/ai-infra-wiki/#stage-serving) |
 | 综合验证 | 性能分析与优化方法；综合案例与源码实践 | [从机制到验证](https://asher-xunzhang.github.io/ai-infra-wiki/#stage-practice) |
 
-先走通单实例，再扩展到多卡多机；模型、服务与性能按目标选读。全站首页与课程页共用五层十二模块导航，每门课程有唯一的主要归属：请求生成属于推理全景，Transformer、KV、调度分别进入对应基础模块，部署与 PD Prefill 旅程归入分离部署，PP loop 成套演示归入综合案例。入门路线与关联模块可以引用同一页面，各页面保留自己的版本与适用范围。
+先走通单实例，再扩展到多卡多机；模型、服务与性能按目标选读。全站首页与课程页共用五层十三模块导航。第二层先在第 03 模块建立普通循环、Overlap 与普通 PP 的完整旅程，再依次进入设备执行、KV 生命周期和调度策略；旧输入准备与选批课归入第 03 模块。PD Prefill 旅程仍归分离部署，PD＋PP＋HiCache 成套案例归第 13 模块。每课只有一个主要归属，保留原网址和自己的源码版本。
 
 维护导航时修改 `scripts/build_learning_navigation.py` 中的模块与课程映射，再运行该脚本更新全部页面。Pages 构建会检查生成一致性，避免首页与课程页使用不同导航。逐模块的内容覆盖与补充范围见 [课程维护表](pages/COURSE_COVERAGE.md)。工具与测试分别见 [scripts](scripts/README.md) 和 [tests](tests/README.md)。
 
@@ -49,6 +49,7 @@
 | 学习专题 | 可以观察什么 | 在线入口 |
 | --- | --- | --- |
 | **SGLang 推理全景** | 理解请求、P/D 与 Transformer、KV 复用、合并与分离部署、调度与延迟。五节内容，配合逐步演示与静态对照图。 | [进入推理全景](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/inference-overview/journey.html) |
+| **调度循环与批次旅程** | 普通循环闭环、Overlap 的 GPU 依赖与 EOS 排空、PP 看一轮 / 追一批和输出回环；可暂缓依赖观察等待。 | [进入循环旅程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/loop-journey/) |
 | **系统边界与分工** | 在跨进程流转、进程内调用和 TP / DP / PD 拓扑之间切换，再进入对应学习模块。 | [进入系统地图](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/system-overview/) |
 | **调度准入与容量回撤** | 观察排序与预算如何形成 batch、长短请求如何分配份额，以及回撤后保留文本和重建 KV。 | [进入调度机制课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/scheduling/) |
 | **KV 映射与共享回收** | 用尾页槽位、前缀匹配与共享页，观察请求结束、可驱逐和归还池内的区别。 | [进入缓存机制课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/kv-memory/) |
