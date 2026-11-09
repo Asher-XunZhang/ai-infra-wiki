@@ -60,12 +60,42 @@ for(const mode of F.modes){
  const timeline=F.build(mode),end=F.sample(timeline,timeline.duration);assert.equal(end.finished,true);assert.ok(timeline.duration<26);
  for(const phase of timeline.phases){
   const before=F.sample(timeline,phase.start),middle=F.sample(timeline,phase.start+phase.duration/2),after=F.sample(timeline,phase.end);
-  assert.equal(before.progress[phase.id],0);assert.ok(Math.abs(middle.progress[phase.id]-.5)<1e-10);assert.equal(after.progress[phase.id],1);
-  for(const later of timeline.phases.slice(phase.index+1))assert.equal(middle.progress[later.id],0,'future work cannot complete early');
+  assert.equal(before.phase.id,phase.id,'narration chooses its own phase, not a global barrier');
   assert.deepEqual(F.sample(timeline,phase.start),before,'seeking backward has no accumulated state');
   for(const ref of phase.refs)assert.ok(F.sources[ref],ref);
  }
 }
+for(const mode of F.modes)for(const option of mode==='dp'?['default','skip']:mode==='sp'?['default','decode']:mode==='pcp'?['default','short']:['default']){
+ const tl=F.build(mode,option),events=tl.execution.events;
+ assert.ok(tl.execution.lanes.length>0&&tl.execution.lanes.length<=5);
+ for(const lane of tl.execution.lanes){
+  for(let i=0;i<lane.events.length;i++){
+   const e=lane.events[i];assert.ok(e.start>=0&&e.end>e.start&&e.end<=tl.duration,`${mode}: interval ${e.id}`);
+   if(i)assert.ok(e.start>=lane.events[i-1].end-1e-6,`${mode}/${lane.id}: exclusive resource overlap`);
+   for(const d of e.depends){assert.ok(events[d],`${e.id}: missing prerequisite ${d}`);assert.ok(events[d].end<=e.start+1e-6,`${e.id} started before ${d} completed`);}
+   for(const t of [0,e.start,(e.start+e.end)/2,e.end,tl.duration]){
+    const s=F.sample(tl,t);assert.ok(s.progress[e.id]>=0&&s.progress[e.id]<=1);
+    if(t<=e.start)assert.equal(s.progress[e.id],0);if(t>=e.end)assert.equal(s.progress[e.id],1);
+    assert.equal(s.active.some(x=>x.id===e.id),t>=e.start&&t<e.end);
+    assert.deepEqual(F.sample(tl,t),s,'reverse seek is deterministic');
+   }
+  }
+ }
+}
+const pp=F.build('pp'),pe=pp.execution.events;
+assert.ok(F.sample(pp,8).active.some(e=>e.id==='gpu02')&&F.sample(pp,8).active.some(e=>e.id==='gpu11'),'different batches overlap across stages');
+for(const [t,cpu,gpu]of [[10.8,'process01','gpu02']]){
+ const active=F.sample(pp,t).active.map(e=>e.id);assert.ok(active.includes(cpu)&&active.includes(gpu),'CPU previous result overlaps current GPU');
+}
+assert.ok(pe.submit11.end<pe.proxy1.end&&pe.gpu11.start>=pe.proxy1.end,'CPU submission may precede device readiness');
+assert.ok(pe.d2h11.start>=pe.out2.end,'last stage depth=0 copy stream follows output send dependencies');
+assert.ok(pe.proxy2.start>=pe.process01.end,'depth=0 posts current proxy after prior result processing');
+assert.ok(pe.relay1.end<=pe.process11.start&&pe.relay2.end<=pe.process12.start,'output ring reaches each stage before processing');
+const dp=F.build('dp');assert.ok(dp.data.jobs[0].start<dp.execution.events.route2.end,'no all-dispatched barrier');
+assert.notEqual(dp.data.jobs[0].start,dp.data.jobs[1].start,'replicas need no simultaneous start');
+const skip=F.build('dp','skip');assert.equal(skip.execution.lanes.find(l=>l.id==='replica0').events.length,0);assert.ok(skip.data.jobs[1].start>=skip.data.jobs[0].finish,'selected single-batch example waits for its own prior work');
+const tp=F.build('tp').execution.events;assert.ok(tp.down0.start<tp.gate1.end,'no fabricated barrier between local TP layers');
+for(const mode of ['sp','pcp'])assert.equal(F.build(mode,mode==='sp'?'decode':'short').execution.lanes[0].events.some(e=>e.kind==='collective'),false);
 assert.equal(F.build('sp','decode').phases.some(p=>p.id==='gather'),false);
 assert.equal(F.build('pcp','short').phases.some(p=>p.id==='kv'),false);
 assert.equal(F.build('sp','decode').data.active,false);

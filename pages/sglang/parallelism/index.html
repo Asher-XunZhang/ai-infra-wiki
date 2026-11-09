@@ -129,14 +129,15 @@
  <div class="parallel-intro"><p class="eyebrow" id="parallel-title">SGLang 实现过程 · 同一版本，独立配置</p><h2 id="parallel-question">线性层怎样接住上一层的分片？</h2><p id="parallel-config"></p><p id="parallel-boundary" class="parallel-boundary"></p><label class="parallel-settings" id="parallel-option-wrap" hidden>运行条件 <select id="parallel-option" aria-label="当前实现路径的运行条件"></select></label></div>
  <div class="parallel-controls"><button type="button" id="parallel-previous">上一步</button><button type="button" id="parallel-toggle" aria-pressed="false">播放</button><button type="button" id="parallel-next">下一步</button><button type="button" id="parallel-reset">重置</button><label>速度 <select id="parallel-rate" aria-label="播放速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div>
  <div class="parallel-time"><label for="parallel-seek">讲解时间</label><input id="parallel-seek" type="range" min="0" max="1" step="0.01" value="0"><output id="parallel-clock" for="parallel-seek"></output></div>
+ <p class="parallel-pan-tip">← 左右滑动，查看完整主图与时间轴 →</p>
  <div class="parallel-canvas-scroll" tabindex="0" role="region" aria-label="并行实现动画画布，窄屏可横向滚动"><svg id="parallel-scene" class="parallel-canvas" viewBox="0 0 900 480" role="img" aria-label="当前策略的模块、张量布局与处理状态"></svg></div>
- <div class="parallel-legend"><span style="--key:#a5bdfa">请求 / Q / 控制数据</span><span style="--key:#83bce1">激活 / 局部贡献</span><span style="--key:#e1bd70">KV</span><span style="--key:#77d8be">处理后的结果</span><span class="pan-hint">讲解秒数非实测耗时 · 窄屏可横向查看</span></div>
- <div class="parallel-comment"><h3 id="parallel-status" aria-live="polite"></h3><p id="parallel-caption"></p></div><nav id="parallel-events" class="parallel-events" aria-label="跳到实现阶段"></nav>
+ <div class="parallel-legend"><span style="--key:#a5bdfa">请求 / CPU 控制</span><span style="--key:#83bce1">GPU 张量 / 激活 / 局部贡献</span><span style="--key:#e1bd70">KV</span><span style="--key:#77d8be">处理后的结果</span><span class="pan-hint">模型 / 进程组已就绪 · 讲解秒数非实测 · 窄屏可横向查看</span></div>
+ <div class="parallel-comment"><h3 id="parallel-status" aria-live="polite"></h3><p id="parallel-caption"></p><div id="parallel-active" class="parallel-active" aria-label="当前时刻各轨道的完整状态"></div></div><nav id="parallel-events" class="parallel-events" aria-label="跳到讲解焦点，执行轨道仍共用同一时钟"></nav>
  <details class="parallel-evidence"><summary>本阶段的源码、条件与省略项</summary><p id="parallel-detail"></p><div id="parallel-source"></div></details>
 </section>
 <details class="parallel-static" open><summary>模块与载荷地图 · 不播放也能读</summary><h2 id="parallel-map-title">从并行参数追到实际调用</h2><div class="parallel-map"><table><thead><tr><th>实现路径</th><th>主要模块 / 调用</th><th>真正变化或传递的内容</th></tr></thead><tbody>
 <tr><td>TP</td><td>DeepseekV2MLP → Column / RowParallelLinear</td><td>本地中间维分片 → 局部输出贡献 → TP 求和。</td></tr>
-<tr><td>PP</td><td>SchedulerPPMixin → PPProxyTensors → 下一级模型</td><td>请求对象、hidden_states + residual、output_ids 分开；各级 KV 保持本地。</td></tr>
+<tr><td>PP</td><td>SchedulerPPMixin → PPProxyTensors → 下一级模型</td><td>请求控制、hidden_states + residual、output 张量分开；各级 KV 保持本地。</td></tr>
 <tr><td>普通 DP</td><td>DataParallelController → round_robin_scheduler → sock_send</td><td>请求进入某个独立 Scheduler；该副本持有自己的请求与 KV。</td></tr>
 <tr><td>Attention DP</td><td>LayerCommunicator.prepare_mlp / postprocess_layer</td><td>各组激活行 → MLP 所需全局行 → 本组输出行；KV 不参与 gather。</td></tr>
 <tr><td>EP</td><td>TopKOutput → dispatcher.dispatch → run_moe_core → combine</td><td>token / 专家任务及路由映射；专家输出按权重合成原 token 行。</td></tr>
@@ -151,7 +152,7 @@
 <details><summary>为什么 DCP 不能只把局部 Attention 输出取平均？</summary><p>每块 KV 的 softmax 分母不同。必须携带 LSE，以匹配的指数底校正贡献；本页独立算例得到 0.2×2+0.8×6=5.2，而简单平均为 4。</p></details>
 <p>Collective 算法、通信 backend 与完成条件继续看<a href="../communication/index.html">模块 07 · 通信与传输</a>；PD 的 KV 交接继续看<a href="../inference-overview/deployment.html">分离部署</a>。</p></section>
 
-<section class="overview-section parallel-source-note" id="source-baseline"><h2>固定源码与教学边界</h2><p>公开上游 <a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">sgl-project/sglang · main 固定提交 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>。本次实现复核：2026-11-04；只读取固定 Git 对象，保留源码工作区原有改动；未启动模型、GPU 或通信实验。</p><p>八条路径是独立配置，不能拼成一条全部开关同时启用的启动命令。除 SP 明确选择 Qwen3 dense、Prefill CP 选择 Qwen3-MoE / GQA 外，模型例子沿用 DeepSeek-V3。小 token 数、代表专家和标量结果是教学缩放，原文没有声称其为模型默认参数或测量结果。</p><p>第一章的<a href="../../foundations/parallel.html">并行策略课</a>解释切分对象和数学语义；本页聚焦对象、模块调用和张量布局。每个动画阶段都可展开固定提交源码链接。</p><ul>
+<section class="overview-section parallel-source-note" id="source-baseline"><h2>固定源码与教学边界</h2><p>公开上游 <a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">sgl-project/sglang · main 固定提交 279339f113b79af84f27fd3ac92d0a13bd3f4cbd</a>。本次实现复核：2026-11-09；只读取固定 Git 对象，保留源码工作区原有改动；未启动模型、GPU 或通信实验。</p><p>八条路径是独立配置，不能拼成一条全部开关同时启用的启动命令。除 SP 明确选择 Qwen3 dense、Prefill CP 选择 Qwen3-MoE / GQA 外，模型例子沿用 DeepSeek-V3。小 token 数、代表专家和标量结果是教学缩放，原文没有声称其为模型默认参数或测量结果。</p><p>第一章的<a href="../../foundations/parallel.html">并行策略课</a>解释切分对象和数学语义；本页聚焦对象、模块调用和张量布局。每个动画阶段都可展开固定提交源码链接。</p><ul>
 <li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/并行方法/SGLang%20并行分工与执行拓扑学习文档.md">并行分工与执行拓扑学习笔记</a></li>
 <li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/tree/main/sglang/source-study/06-parallelism">源码深读课程：Rank、TP、DP Attention、PP、EP、CP</a>（各篇保留自己的历史基线）</li></ul></section>
 <!-- reading-pagers:start -->

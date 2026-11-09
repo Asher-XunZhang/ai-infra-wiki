@@ -10,11 +10,11 @@
 | --- | --- |
 | 源码仓库 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
 | 分支与提交 | 公开 `main` 固定快照 `279339f113b79af84f27fd3ac92d0a13bd3f4cbd`；不声称是最新版本 |
-| 读取时间 | 2026-09-23 |
+| 读取时间 | 2026-09-23；执行轨道复核 2026-11-09 |
 | 工作区状态 | 只读取固定 Git 对象；已有未跟踪文件保留，未改动源码工作区 |
 | 操作边界 | 源码分析、独立 JavaScript 教学算术和网页验证；未启动 SGLang、初始化通信、运行 GPU 或测量性能 |
 | 选择的路径 | 普通 Column / Row 线性层；两级 PP 的依赖模型；健康副本上的普通 DP round-robin；EP dispatch / compute / combine 契约；无前缀的 Zigzag Prefill CP |
-| 教学假设 | 无 bias 小矩阵、等长 PP 时隙、标量专家函数、8 个上下文位置；不代表可直接启动的模型配置 |
+| 教学假设 | 无 bias 小矩阵、标量专家函数、8 个上下文位置；正文静态示意使用等长 PP 时隙，交互轨道使用非等长讲解时间；均不代表实测耗时 |
 
 本篇重新核对固定快照。仓内既有 [并行源码课程](../source-study/README.md) 使用其文首版本，不能把不同版本的 backend、平台和模式支持合并为一份兼容清单。
 
@@ -82,7 +82,7 @@ sequenceDiagram
     A->>B: M2 的激活
 ```
 
-**图意：** t1 / t2 是等长教学时隙。在线图将它画成两行时间格：同色 M 必须先出现在上一级，再在后一个时隙进入下一级。单个 microbatch 的依赖没有因为增加卡数消失。
+**图意：** 这里的 t1 / t2 是概念示意的等长时隙。实现课的交互图另按固定源码建立 CPU、GPU 和消息轨道，使用非等长的讲解时间；两者都要求同一 microbatch 先完成上一级输入依赖。不能用本图推导真实耗时。
 
 源码通过 PP group 的 tensor 字典传递跨级内容；实际传输细节、异步工作和调度重叠比本图复杂。[S5] 以 Llama 为例，非末级返回的 `PPProxyTensors` 包含 `hidden_states` 与 `residual`，用于下一组层继续计算。[S12] 普通层信息以 PP 的起止层计算有效层数，MHA KV 池再使用该层数和起止层构造；KV 因而属于本级负责的 Attention 层，不是每经过一个 PP stage 都把全部历史 KV 搬到后一级。[S13][S14]P/D 分离则是另一种服务角色与状态交接，另见 [分离部署](../分离部署/README.md)。
 
@@ -129,7 +129,7 @@ Zigzag Prefill CP 的元数据将每条序列分成 `2×CP` 段，再把靠前�
 - 连续切分对照：rank 0 得到位置 0–3，rank 1 得到 4–7。
 - Zigzag：rank 0 得到 0、1、6、7，rank 1 得到 2、3、4、5。
 
-因果 Attention 的查询 q 能看 0…q，共 q+1 个位置。在线三角矩阵每个有色格表示一对可见 Q–K 关系；连续切分是 10 / 26 对，Zigzag 是 18 / 18 对。它解释首尾配对的动机，不是 kernel 耗时模型。
+因果 Attention 的查询 q 能看 0…q，共 q+1 个位置。第一章并行基础的三角矩阵中，每个有色格表示一对可见 Q–K 关系；连续切分是 10 / 26 对，Zigzag 是 18 / 18 对。它解释首尾配对的动机，不是 kernel 耗时模型。
 
 ```mermaid
 flowchart LR
@@ -155,6 +155,35 @@ TP=2、PP=2 的分组是 TP `[0,1]`、`[2,3]`，PP `[0,2]`、`[1,3]`。[S3] 同�
 | 两个副本请求分配不一致 | 活跃集合、健康状态、外部路由与轮询策略 [S8] |
 | 专家数平均，任务却偏斜 | token→expert 路由、dispatcher 与专家放置 [S9] |
 | 开启 CP 后，KV 没按查询数量同比缩小 | 实际选中策略的 KV 汇合与写入 [S10][S11] |
+
+## 8. 同一时钟下观察实际执行关系
+
+实现课保留每种机制的数据变化主图，在其下方补充执行轨道。两者使用同一时钟；步骤按钮只选择讲解焦点，不会把其他执行实体冻结。建组和加载权重已经完成，不能把它们计为每轮 forward 的任务。轨道时长、两卡先后完成的差异和请求开算时刻都是满足依赖的教学设定，不代表测量结果或性能排名。
+
+| 路径 | 轨道揭示的依赖 | 本例边界 |
+| --- | --- | --- |
+| TP | 各 rank 的 gate/up 与 down 连续本地执行；局部贡献满足后参加 All-reduce | DeepSeek-V3 dense MLP，普通未融合结果规约；卡间没有人为增加的 gate/up 屏障 |
+| PP | 同批输入依赖、跨批跨级计算、CPU 提交与 GPU 执行、output 沿环转发 | 普通 CUDA，PP=2、TP=1、`pp_async_batch_depth=0`；选用 NCCL 非阻塞 CPU wait 语义；两批只示意一次 forward |
+| 普通 DP | Controller 派发后可继续路由；各副本独立选批 | ROUND_ROBIN；本例每次执行一个请求，后到请求可等本副本前批，不代表禁止 continuous batching |
+| Attention DP | 本组 Attention → 激活 Gather → MLP 局部贡献 / TP 规约 → 本地取片 | TP=2、Attention DP=2；dense 层、未融合路径；取片不画成网络传输 |
+| EP | Dispatch → 各 rank 本地专家计算 → Combine | 仅代表专家分支，不推断 token 数与耗时成比例，也不添加其他 overlap backend 的行为 |
+| SP | 本地切片 / Norm → Gather / Column GEMM → Row GEMM / Reduce-scatter → 出口 Gather | Qwen3 dense、EXTEND、普通未融合路径；DECODE 不产生 SP 通信轨道 |
+| Prefill CP | 本地 QKV → Gather K/V → 重排 / 写 KV → 本地 Attention → 出口 Gather hidden | Qwen3-MoE / GQA、Zigzag、FA3；短输入不激活 CP；每层 KV 汇合与模型出口 hidden 汇合区分开 |
+| Decode CP | Gather Q → 本地 O/LSE → Gather LSE / 本地校正 → Reduce-scatter O | DeepSeek-V3 MLA、FlashInfer、`ag_rs`；KV 始终分散持有 |
+
+### PP 的 CPU/GPU 重叠不能逐级照搬
+
+`event_loop_pp` 在 depth=0 时先提交当前 batch，再接收另一槽的输出、等待 D2H、处理该 batch 结果，之后才投递当前 proxy。`_pp_launch_batch` 令 forward stream 等 schedule stream，并在 forward stream 上记录完成事件。因此 CPU 已返回或开始处理其他结果，不表示对应 GPU 输入已经可用。首级示例中，GPU 执行 MB2 时 CPU 可以处理 MB1；两个 GPU 也可以分别执行 MB2 与 MB1。[S15][S16]
+
+末级还会先把当前 batch 的 output 发送排到 schedule stream，发送受该 batch 的完成事件约束；接收旧 output 后，copy stream 再等待 schedule stream。因而本例中末级的旧结果 D2H 不能越过当前输出路径依赖，不能照搬首级的 CPU/GPU 重叠画法。图中保留这段等待，再分别完成两批的各级结果处理。[S17]
+
+主图中 MB1、MB2 是微批次身份，不是槽位编号。`hidden_states + residual` 沿模型方向交接；output 消息沿 PP 环让各级更新 batch 状态。本级权重和 KV 不进入 proxy 载荷。轨道中的“跨级消息”只表达逻辑交接，不代表独占一条物理网卡链路，也不包含 P/D 分离的 KV 传输。
+
+NCCL 的 CUDA `Work.wait()` 在常规非阻塞 CPU 模式下建立流依赖；开启阻塞等待等其他配置会改变主机推进时机。这里将其作为明确运行条件，依据 [PyTorch 分布式通信 API](https://docs.pytorch.org/docs/stable/distributed.html#synchronous-and-asynchronous-collective-operations) 的语义，读取于 2026-11-09；该外部 API 说明不替代本课固定 SGLang 提交的调用顺序证据。
+
+### 验证范围
+
+`tests/pages/test_parallelism.cjs` 检查资源区间、前置依赖、回退和独立副本关系；`tests/pages/test_parallelism_source.py` 从固定 Git 对象执行选定函数体，使用记录调用的 CPU 替身核对 PP、DP、EP、SP 的调用顺序，并检查 DCP 的 LSE 校正顺序。浏览器检查覆盖同一时钟、完整播放、反向拖动、门槛分支、减少动态效果与窄屏。它们不运行真实 GPU、NCCL 或模型，不证明实测重叠程度。
 
 **固定源码锚点**
 
@@ -192,3 +221,7 @@ TP=2、PP=2 的分组是 TP `[0,1]`、`[2,3]`，PP `[0,2]`、`[1,3]`。[S3] 同�
 [S12]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/models/llama.py#L451
 [S13]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/model_executor/model_runner_components/layer_setup.py#L153
 [S14]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/mem_cache/kv_cache_configurator.py#L1975
+
+[S15]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L63
+[S16]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1221
+[S17]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1018
