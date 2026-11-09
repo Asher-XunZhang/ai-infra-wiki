@@ -14,6 +14,12 @@
 
 .scenario-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin:22px 0}.scenario-top{display:flex;align-items:center;justify-content:space-between;gap:20px}.scenario-top h2{font-size:18px;margin:5px 0}.scenario-top label{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px;min-width:190px}.scenario-top select{font-size:12px}.scenario-panel>p{font-size:12px;line-height:1.85;color:var(--muted)}.scenario-panel .scenario-observe{color:var(--fg);border-left:2px solid var(--accent);padding-left:12px}.scenario-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}.scenario-metrics>div{border-left:1px solid var(--border);padding-left:14px}.scenario-metrics span,.scenario-metrics small{display:block;font-size:10px;color:var(--muted)}.scenario-metrics strong{display:block;font:500 21px ui-monospace,monospace;color:var(--accent);margin:7px 0}.scenario-scale{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}.scenario-scale input{accent-color:var(--accent)}.scenario-status{min-height:1.5em;font-size:11px!important}.scenario-panel details{border-top:1px solid var(--border);padding-top:12px;font-size:12px;color:var(--muted)}.scenario-panel summary{color:var(--accent)}.scenario-parameters{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}.scenario-parameters caption{text-align:left;padding:10px;background:var(--soft)}.scenario-parameters td,.scenario-parameters th{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}.original-scene-note{background:var(--soft);border-left:3px solid var(--ochre);padding:10px 14px;font-size:12px;color:var(--muted)}@media(max-width:600px){.scenario-panel{padding:16px}.scenario-top{align-items:stretch;flex-direction:column;gap:12px}.scenario-metrics{gap:8px}.scenario-metrics>div{padding-left:8px}.scenario-metrics strong{font-size:16px}.scenario-parameters th,.scenario-parameters td{padding:7px}.scenario-scale{align-items:start}.scenario-top h2{font-size:17px}}
 
+/* Chapter navigation is shared by the home page and all three chapters. */
+.chapter-nav{margin:12px 0}
+.chapter-nav>summary{padding:10px 12px;border-radius:8px;font-size:14px;font-weight:650;line-height:1.6;color:var(--fg);cursor:pointer}
+.chapter-nav>summary:hover{background:var(--soft)}
+.chapter-nav>summary::marker{color:var(--muted)}
+.chapter-nav[open]>summary{color:var(--accent)}
 /* Topic headings own expandable child navigation; no separate guide entry. */
 .topic-group{margin:18px 0 0}.topic-group>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-radius:8px;list-style:none;cursor:pointer}.topic-group>summary::-webkit-details-marker{display:none}.topic-group>summary:hover{background:var(--soft)}.topic-heading{display:block;min-width:0}.topic-group .nav-label{display:block;margin:0 0 5px;font-size:10px}.topic-group .sidebar-title{display:block;margin:0;font-size:13px;line-height:1.6;font-weight:600}.topic-chevron{font-size:22px;color:var(--muted);transition:transform .15s;flex:none}.topic-group[open]>.topic-chevron,.topic-group[open]>summary>.topic-chevron{transform:rotate(90deg)}.topic-group>nav{margin:0 0 8px;padding-left:4px}.topic-group:has([aria-current=page])>summary .sidebar-title{color:var(--accent)}
 @media(max-width:900px){.sidebar-content .topic-group .nav-label{margin:0 0 5px}.topic-group{margin-top:8px}.topic-group>summary{padding:10px 12px}.sidebar-content .topic-group>nav{display:flex;flex-direction:column;gap:0}.topic-group .course-link{margin:2px 0}.topic-group .course-link small{display:none}}
@@ -28,16 +34,16 @@
 .module-heading[aria-current=location]{color:var(--accent);background:var(--accent-soft)}
 .module-chevron{font-size:18px;line-height:1.4;flex:none;transition:transform .15s}
 .module-nav[open]>.module-heading>.module-chevron{transform:rotate(90deg)}
-.module-lessons-nav{margin:4px 10px 12px 23px;padding-left:14px;border-left:1px solid var(--border);display:flex;flex-direction:column;gap:3px}
-.module-lessons-nav a{display:block;padding:8px 8px;font-size:12px;line-height:1.75;color:var(--muted);border-radius:6px}
-.module-lessons-nav a:hover{background:var(--soft);text-decoration:none;color:var(--accent)}
+.module-lessons-nav,.foundation-nav{margin:4px 10px 12px 23px;padding-left:14px;border-left:1px solid var(--border);display:flex;flex-direction:column;gap:3px}
+.module-lessons-nav a,.foundation-nav a{display:block;padding:8px 8px;font-size:12px;line-height:1.75;color:var(--muted);border-radius:6px}
+.module-lessons-nav a:hover,.foundation-nav a:hover{background:var(--soft);text-decoration:none;color:var(--accent)}
 .module-lessons-nav .module-overview-link{font-size:11px;color:var(--accent)}
-.module-lessons-nav [aria-current=page]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.module-lessons-nav [aria-current=page],.foundation-nav [aria-current=page]{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .learning-breadcrumb{display:flex;gap:5px 9px;flex-wrap:wrap;align-items:baseline;margin:0 0 24px;font-size:12px;line-height:1.8;color:var(--muted)}
 .learning-breadcrumb a{color:var(--muted)}
 .learning-breadcrumb a:hover{color:var(--accent)}
 .learning-breadcrumb [aria-current]{color:var(--fg)}
-@media(max-width:900px){.module-heading{padding:9px 12px}.module-lessons-nav{margin-left:24px}.module-lessons-nav a{padding:9px 8px}.learning-breadcrumb{font-size:11px;gap:4px 7px;margin-bottom:18px}}
+@media(max-width:900px){.module-heading{padding:9px 12px}.module-lessons-nav,.foundation-nav{margin-left:24px}.module-lessons-nav a,.foundation-nav a{padding:9px 8px}.learning-breadcrumb{font-size:11px;gap:4px 7px;margin-bottom:18px}}
 
 /* Classroom entry: preserve the full lesson while bringing its first figure up. */
 .site-content:has(.lesson-header){padding-top:20px}

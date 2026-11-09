@@ -23,6 +23,30 @@ const courses=[
  ['sglang/pd-prefill-pp-loop/index.html','case-studies','practice'],
  ['sglang/pd-prefill-pp-loop/notes.html','case-studies','practice'],
 ];
+// Opening another chapter must keep its courses as separate readable links.
+async function checkFoundationNavigation(page,label){
+ const chapter=page.locator('.site-sidebar [data-chapter=foundations]');
+ const wasOpen=await chapter.evaluate(el=>el.open);
+ if(!wasOpen)await chapter.locator(':scope > summary').click();
+ const links=chapter.locator('.foundation-nav a');
+ assert.equal(await links.count(),13,label);
+ if(process.env.NAV_SCREENSHOT_DIR&&label==='engine-process-1440'){
+  fs.mkdirSync(process.env.NAV_SCREENSHOT_DIR,{recursive:true});
+  await chapter.locator(':scope > summary').scrollIntoViewIfNeeded();
+  await page.locator('.site-sidebar').screenshot({path:path.join(process.env.NAV_SCREENSHOT_DIR,'foundation-sidebar.png')});
+ }
+ const rows=await links.evaluateAll(nodes=>nodes.map(el=>{
+  const b=el.getBoundingClientRect(),style=getComputedStyle(el);
+  return {top:b.top,bottom:b.bottom,left:b.left,right:b.right,display:style.display,fragments:el.getClientRects().length,client:el.clientWidth,scroll:el.scrollWidth};
+ }));
+ rows.forEach((row,i)=>{
+  assert.notEqual(row.display,'inline',`${label}: course ${i+1} must have its own row`);
+  assert.equal(row.fragments,1,`${label}: course ${i+1} is fragmented inline text`);
+  assert.ok(row.scroll<=row.client+1,`${label}: course ${i+1} overflows`);
+  if(i)assert.ok(row.top>=rows[i-1].bottom-1,`${label}: courses ${i} and ${i+1} overlap`);
+ });
+ if(!wasOpen)await chapter.locator(':scope > summary').click();
+}
 (async()=>{
  const server=await chromium.launchServer({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})}),owned=server.process();
  console.log(JSON.stringify({session:'architecture-navigation-review',controller:process.pid,browser:owned.pid,profile:owned.spawnargs.find(a=>a.startsWith('--user-data-dir='))}));
@@ -56,7 +80,22 @@ const courses=[
   await page.locator('[data-chapter=engine-comparison] .lesson-link').last().click();
   await page.waitForURL(url=>url.hash==='#crosscut');
   assert.match(await page.locator('.ia-chapterTab[aria-pressed=true]').innerText(),/生命周期/);
+  // Reproduce the reported chapter-1 sidebar problem from every chapter-2 topic.
+  for(const width of [1440,1024,390,320]){
+   await page.setViewportSize({width,height:1000});
+   for(const topic of ['process','wire','prefix','batch','disagg','crosscut']){
+    await page.goto(base+'engine-comparison/index.html#'+topic);await page.waitForLoadState('load');
+    if(width<901&&!await page.locator('.sidebar-menu').evaluate(e=>e.open))await page.locator('.sidebar-menu>summary').click();
+    await checkFoundationNavigation(page,`engine-${topic}-${width}`);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+   }
+  }
+  await page.setViewportSize({width:1440,height:1000});
+  await page.goto(base+'foundations/tokens.html');await page.waitForLoadState('load');
+  await checkFoundationNavigation(page,'chapter-1-current');
+  assert.equal(await page.locator('.foundation-nav a[aria-current=page]').count(),1);
   await page.goto(base);await page.waitForLoadState('load');
+  await checkFoundationNavigation(page,'home');
   await page.locator('[data-chapter=sglang]>summary').click();
   for(const group of await page.locator('.topic-group').all()){
    assert.equal(await group.evaluate(el=>el.open),false);
@@ -119,6 +158,7 @@ const courses=[
      await page.locator('.sidebar-menu>summary').click();
     }
     assert.equal(await page.locator(`[data-module=${module}] .lesson-link[aria-current=page]`).isVisible(),true);
+    await checkFoundationNavigation(page,`${route}-${width}`);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${route} ${width}`);
     if(process.env.NAV_SCREENSHOT_DIR&&['system-overview','kv-memory'].includes(module)&&width!==320){
      fs.mkdirSync(process.env.NAV_SCREENSHOT_DIR,{recursive:true});
@@ -158,9 +198,11 @@ const courses=[
   assert.equal(await staticPage.locator('.chapter-choice a:visible').count(),3,'chapter links remain readable without JavaScript');
   assert.equal(await staticPage.locator('.foundation-lessons:not(.engine-topic-links) a').count(),13);
   assert.equal(await staticPage.locator('.module-card').count(),12);
+  await staticPage.goto(base+'engine-comparison/index.html');
+  await checkFoundationNavigation(staticPage,'chapter-2-no-JS');
   await staticPage.goto(base+'sglang/inference-overview/kv-cache.html');
   assert.equal(await staticPage.locator('[data-module=kv-memory] .lesson-link[aria-current=page]').isVisible(),true,'navigation is in HTML, not swapped after load');
   await staticPage.close();
-  assert.deepEqual(errors,[]);console.log('PASS: one framework on home and all lessons; canonical module/current state, nested keyboard navigation, cross-module pager, breadcrumbs, placeholder anchors, desktop/mobile and no-JS navigation.');
+  assert.deepEqual(errors,[]);console.log('PASS: one framework on home and all lessons; canonical module/current state, nested keyboard navigation, cross-module pager, breadcrumbs, placeholder anchors, desktop/mobile and no-JS navigation; chapter-1 links remain separate rows in every chapter-2 topic and all chapter-3 lessons.');
  }finally{await browser.close();await server.close();try{process.kill(owned.pid,0);throw Error('owned browser remains');}catch(e){if(e.code!=='ESRCH')throw e;}}
 })().catch(e=>{console.error(e);process.exit(1);});
