@@ -69,7 +69,7 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 | 09 分离部署与分布式状态交接 | [部署入门](sglang/inference-overview/deployment.html)、[PD 旅程](sglang/pd-prefill-lifecycle/index.html)、[数据流](sglang/pd-dataflow/index.html) | 已补 P 收尾 / D 就绪的两侧边界、通信 / 缓存 / 准入连接；Pages 主线统一 279339f113；各案例分别说明配置与假设 |
 | 10 模型结构与高级生成 | [状态与生成](sglang/advanced-generation/index.html)，EAGLE V2 状态结算、Grammar 编译准入、候选树试走 / 回退与正式提交 | 三种实现视角、10 个条件与同一时钟执行轨道；模型状态差异保留补充，其他算法按独立基线衔接 |
 | 11 服务部署与运行治理 | [服务治理](sglang/serving-operations/index.html)，P/D 两端探活、成对 HTTP 派发、取消传播、KV 留置与单端退出；14 个条件共享主图与执行轨道 | 已补独立课程；Gateway 额度、协议差异与管理变更按问题衔接源码专题 |
-| 12 性能分析与优化方法 | [指标与定位](sglang/performance-engineering/index.html)，请求时间轴、流式数据包、单变量执行条带与失败样本筛选 | 已补独立课程及固定源码；Profiler 与真实压测通过深入资料衔接 |
+| 12 性能分析与优化方法 | [指标与定位](sglang/performance-engineering/index.html)，P/D 模块执行轨道、可选指标量尺、流式采样与成功集合 | 固定 279339f113；区分客户端 / P / D 计时端点、异步交接、末块 KV 回退及统计归属；Profiler 与真实压测通过深入资料衔接 |
 | 13 综合案例与源码实践 | [PP loop](sglang/pd-prefill-pp-loop/quick.html)、[依赖分析](sglang/pd-prefill-pp-loop/index.html)、[源码阅读](sglang/pd-prefill-pp-loop/notes.html) | 已补计时边界、共享 KV 与 PD＋PP 三条跨模块练习；每条含预测、图上操作、固定源码与运行验证边界 |
 
 十三模块的主线入口现已补齐；深入资料继续按独立版本与主题维护。下列验证覆盖教学模型与页面，不能替代真实模型、设备或性能实验。
@@ -117,8 +117,10 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 
 ## 性能课程的验证
 
-- `node tests/pages/test_performance.cjs`：许可内外计时、分包 ITL、TPOT 缺失、单变量收益与成功样本筛选；设置 `SGLANG_SOURCE_DIR` 核对固定锚点。
-- `node tests/pages/test_performance_browser.cjs`：四种图、全部分支与步骤、键盘和播放、四档宽度与两套主题、无 JS 阅读。
+- `node tests/pages/test_performance.cjs`：12 个 P/D 条件的依赖、观测边界、分块交叠、KV 回退、流式 ITL 与成功样本；设置 `SGLANG_SOURCE_DIR` 核对 41 个固定锚点及源码分支。
+- `SGLANG_SOURCE_DIR=<checkout> python3 -B tests/pages/test_performance_source.py`：抽取固定函数，用 CPU 替身验证分块计时、D 提交端点、sender 回退与缺失、P TTFT 分支及 ITL 权重；不导入 SGLang。
+- `node tests/pages/test_performance_browser.cjs`：四组 12 个条件的完整播放、指标切换、共同游标、回放、键盘、脉冲；五档宽度 × 两套主题、减少动态与无 JS 阅读。
+- `node tests/pages/test_performance_levels_browser.cjs`：默认总览可见性、三层视图保留同一时间与指标、播放中展开、恢复链接与键盘操作；四组主题的桌面和窄屏检查。
 
 ## 执行课程的验证
 

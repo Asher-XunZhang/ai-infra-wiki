@@ -15,7 +15,7 @@
 
 ## 指标与机制主线
 
-先读 [SGLang 指标口径与性能定位](<SGLang 指标口径与性能定位学习文档.md>)，并操作 [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/performance-engineering/)：请求秒表、流式观测、单变量对照与失败样本筛选。然后根据现象选择下面的 Trace 与调优案例。
+先读 [SGLang 指标口径与性能定位](<SGLang 指标口径与性能定位学习文档.md>)，并操作 [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/performance-engineering/)：P/D 指标采集位置、阶段统计窗口、流式回告与成功样本聚合。然后根据现象选择下面的 Trace 与调优案例。
 
 ## 阅读顺序
 

@@ -852,18 +852,18 @@
     "reviewed": "2026-11-10"
   },
   "sglang/performance-engineering/index.html": {
-    "problem": "相同名字的指标可能在不同代码位置开始计时。先找到采样事件、计数对象和成功样本范围，才能判断“更快”来自执行改善，还是统计口径变化。",
+    "problem": "P/D 有多个本地计时器与输出回程。把指标的采集模块、起止事件、observe 条件和样本来源对应起来，才能判断变化发生在计算、等待、传输还是统计筛选。",
     "topics": [
       {
         "id": "measurement",
-        "title": "为什么先读 benchmark 计时点，再看指标数字？",
-        "why": "客户端等许可、请求在服务端排队和 GPU 执行是不同区间。某段等待如果发生在计时开始之前，即使用户多等了，工具显示的 TTFT 也可能不变。",
-        "mechanism": "本页 native /generate adapter 从发请求前开始计时，按收到的有内容数据包更新指标；服务端 time_stats 有另一组起止点。流式包合并还会影响逐 token 间隔的推算。",
+        "title": "为什么先找采集模块与端点，再解释 P/D 指标？",
+        "why": "客户端、P TM、D TM 与 Scheduler 记录的不是同一段时间；P/D 阶段还可能交叠。",
+        "mechanism": "本课把 native adapter 的 st / 非空 text、D 的首次回程，以及各 Scheduler 队列打点放到同一教学时钟。P 跳过 TTFT histogram；decode_transferred 包含接收就绪前的等待和本地提交，并非纯网络时间。",
         "tradeoff": "客户端时间接近可见响应，但不能直接定位设备内部瓶颈；服务端 Trace 更细，却需关联请求和依赖。两者之差不能不加核对就命名为网络耗时。",
         "source": [
-          "python/sglang/benchmark/serving.py",
-          701,
-          "adapter 的 st 计时点"
+          "observability/req_time_stats.py",
+          746,
+          "set_wait_queue_entry_time"
         ],
         "links": [
           [
@@ -876,7 +876,7 @@
         "id": "samples",
         "title": "为什么成功率和延迟分布必须一起看？",
         "why": "如果较慢请求失败并退出成功样本，P95 可能下降，但服务并没有因此更可靠或处理更多有效输出。先明确谁进入统计，再解释曲线。",
-        "mechanism": "calculate_metrics 按成功状态筛选相应指标；本页通过 R4 成功／失败对照，保持其余样本不变，观察分布和输出量一起变化。",
+        "mechanism": "保留 outputs[] 原始结果后，calculate_metrics 才按 success 筛选延迟和输出计数；P/D 本地计数则必须保留 engine_type 与实例来源，不相加当客户端成功输出。",
         "tradeoff": "筛选能明确指标含义，也可能隐藏失败体验。对照实验要固定负载、长度和统计边界，并同时报告错误与完成量。",
         "source": [
           "python/sglang/benchmark/serving.py",
@@ -895,8 +895,9 @@
         ]
       ],
       "scope": "本课继续回查固定版本的计时点、成功样本筛选和输出字段；教学数字不是实测。",
-      "read_date": "2026-10-16"
-    }
+      "read_date": "2026-11-10"
+    },
+    "reviewed": "2026-11-10"
   },
   "sglang/pd-prefill-pp-loop/quick.html": {
     "problem": "流水线的一次循环可能同时安排新批次、处理前轮结果和回收更早请求。入门时需要区分“循环轮次”“微批次身份”和“保存状态的槽位”，才不会把不同工作误认为同一条请求。",

@@ -39,7 +39,7 @@ IMPLEMENTATION_FOCUS = {'system-overview': '分清进程、组件职责与部署
  'disaggregation': '追踪 bootstrap、接收匹配、回载等待与请求准入；分别核对 P 和 D 的资源生命周期。',
  'advanced-generation': '追踪具体生成路径的状态提交、回退与约束筛选，并对照各自源码入口。',
  'serving-operations': '沿 P/D 服务链区分两端探活、并发派发、取消传播、资源归还与单端退出。',
- 'performance': '把观测区间映射到实际执行阶段，核对流式响应、压测统计和失败样本口径。',
+ 'performance': '沿 P/D 请求核对指标的采集模块、统计端点、并行区间与样本归属。',
  'case-studies': '沿固定版本的 PP loop，核对 batch、slot、通信共识与本地状态复查的依赖。'}
 
 STAGES = [
