@@ -1,6 +1,6 @@
 # SGLang 服务生命周期与请求治理学习文档
 
-本文沿启动、探活、路由准入、超时取消和退出，区分“哪个组件已经做了什么”与“下一步还依赖什么”。配套 [Pages 交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/serving-operations/) 每次只展开一组机制。先修为[请求运行时](../运行时/README.md)、[调度](../source-study/03-scheduling/01-NormalEventLoop与调度主循环.md)和[通信边界](../%E5%B9%B6%E8%A1%8C%E6%96%B9%E6%B3%95/SGLang%20%E9%80%9A%E4%BF%A1%E4%B8%8E%E4%BC%A0%E8%BE%93%E6%9C%BA%E5%88%B6%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)。
+本文沿 P/D 服务链回答：两端探活通过意味着什么、Gateway 怎样成对派发、连接结束后谁继续处理取消、资源何时可归还，以及一个 Runtime 怎样独立退出。配套 [Pages 交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/serving-operations/) 用主图与执行轨道共享时钟；第一章介绍路由和取消的基础概念，本课追踪固定版本的真实实现。
 
 ## 0. 阅读基线与范围
 
@@ -10,187 +10,206 @@
 | 源码仓库 | https://github.com/sgl-project/sglang |
 | 分支 | 公开上游 main 固定快照，不声明为最新 main |
 | commit | `279339f113b79af84f27fd3ac92d0a13bd3f4cbd` |
-| 读取时间 | 2026-09-23 |
-| 工作区 | 只读本地已有 Git 对象；检出分支不同，原有未跟踪文件保留 |
-| 主线 | 普通 Python HTTP Runtime，非 P/D；Gateway Round-robin；未执行请求的取消；普通 SIGTERM 收尾 |
-| 操作边界 | 未启动模型、服务或集群；未发送请求、管理调用或退出信号 |
-| 教学假设 | A/B 两个固定候选、少量请求、单执行位置、明确事件顺序；不是并发或性能模拟器 |
+| 读取时间 | 2026-11-10；沿用原固定提交，补核 P/D 路径 |
+| 工作区 | 只读已有 Git 对象；检出分支不同，原有改动与未跟踪文件保留 |
+| 主线 | HTTP PDRouter + Python P/D Runtime；普通文本、各端 TP=PP=DP=1 |
+| 条件 | 无投机、HiCache、HiSparse 或 Decode KV offload；传输取消场景选 Mooncake 且相关 deferred-release 开关启用 |
+| 操作边界 | 源码阅读与教学页面验证；未启动模型、发送真实推理请求或验证 GPU / RDMA 行为 |
+| 教学时间 | `u` 是讲解单位；活动区间是符合依赖的一种交错，不代表耗时、吞吐或所有运行轨迹 |
 
-架构职责图、事件顺序和数值是整理者的教学模型；实现判断对应下文固定链接。已有[服务治理源码专题](../source-study/10-serving-operations/03-健康检查超时限流与优雅退出.md)使用独立基线，尤其不能把其退出实现直接套到本版本。
+已有[服务治理源码专题](../source-study/10-serving-operations/03-健康检查超时限流与优雅退出.md)保留自己的固定基线，不能把导航关系当作同一版本。请求内部状态详见[Req 状态与队列流转](../运行时/SGLang%20Req%20状态与队列流转学习文档.md)，传输与安全回收详见[通信机制](../并行方法/SGLang%20通信与传输机制学习文档.md)，P/D 准入和 PP 共识见[分离部署导航](../分离部署/README.md)。本课只在这些机制影响服务响应、取消和退出时引用它们。
 
-## 1. 先认清服务链上的三层
+### 术语与责任
+
+| 对象 | 本课关注的责任 |
+| --- | --- |
+| HTTP PDRouter | 分角色选一对 worker，注入 bootstrap 信息，并发派发及处理 HTTP 结果 |
+| TokenizerManager（TM） | 本端 `rid_to_state` 登记、回程、断连检测与取消派发 |
+| Scheduler | 按请求当前队列、batch 引用处理取消；运行中先记 `to_finish` |
+| receiver / sender | 传输的通知、状态轮询与退役；不是 HTTP 连接本身 |
+| room | 关联一次跨端交接及取消 ACK；本例用 42 作示意 |
+| drain ACK | P rank 确认该 room 在途传输排空的控制消息，不携带 KV |
+
+## 1. 先建立 P/D 服务链地图
 
 ```mermaid
-flowchart LR
-    C[客户端] --> G[Gateway：筛选与路由]
-    G --> T[Runtime HTTP / TokenizerManager：登记与回程]
-    T --> S[Scheduler：排队、组批与执行]
-    S --> T
-    T --> G
+flowchart TD
+    C[客户端] --> G[Gateway：HTTP PDRouter]
+    G -->|请求 JSON + bootstrap 元数据| P[P HTTP / TokenizerManager]
+    G -->|请求 JSON + 同一 room| D[D HTTP / TokenizerManager]
+    P --> PS[P Scheduler：bootstrap / waiting / inflight]
+    D --> DS[D Scheduler：prealloc / transfer / waiting / running]
+    PS --> PG[P GPU：计算本地 KV]
+    PG --> K[传输 worker：KV 与交接结果]
+    K --> DS
+    DS --> DG[D GPU：后续生成]
+    P -->|P 响应| G
+    D -->|D 响应或流| G
     G --> C
 ```
 
-图意：一次路由选择只负责把请求交给一个实例；实例内是否能组批还取决于自己的预算和队列。图只画职责，不表示 Gateway 与 Runtime 必须在不同机器，也不展开所有回程进程。
+图意：两个 Runtime 各自有 Req、前端登记、调度引用和资源。HTTP 携带请求或响应；KV 走独立传输面。图表达职责边界，不声称进程必然位于不同主机。
 
-| 对象 | 它回答的问题 |
-| --- | --- |
-| Gateway worker 名单 | 存在哪些地址、模型、角色和连接方式？ |
-| 可用候选集合 | 在本次选择中，哪些 worker 满足健康与熔断条件？ |
-| TM 的 rid_to_state | 前端还在跟踪哪些请求？ |
-| Scheduler waiting_queue | 哪些请求尚在等待调度？ |
-| 执行引用与资源 | 哪些 batch / 请求仍在用计算与缓存？ |
+本课区分四种证据：**健康接口成功、业务响应产生、后端请求退出、资源可重用**。它们由不同条件决定。时间轨道的实框是活动、虚框是等待、空白是本例未安排工作；不能把空白也读成阻塞。每条消息从活动开始就有完整连线，脉冲持续到该交接结束；脉冲数量不是包数。
 
-发现地址、注册对象、可选、已转发、已执行和已完成不是同一个事件。注册主线见[Model Gateway 注册与路由](../source-study/10-serving-operations/01-ModelGateway注册路由与缓存亲和.md)，完整进程启动见[从 CLI 到服务进程](../source-study/01-getting-started/03-从CLI到服务进程启动.md)。
+## 2. 启动与探活：两端独立，检查范围有限
 
-## 2. 启动：接口可响应不等于 warmup 完成
+### Runtime warmup 不是实际跨端请求
 
-普通启用 warmup 的 Python 路径会先等待 `/model_info` 应答，再发起 warmup 请求；成功后把 `server_status` 置为 Up。[warmup][warmup]。
+`_execute_server_warmup` 先等 `/model_info` 可访问。P/D 分支调用 `_send_disaggregation_warmup_requests`，向本端 `/generate` 发 fake bootstrap 请求；DP>1 时用 `asyncio.gather` 按本端 DP rank 并发，全部 HTTP 成功后置 Up。[warmup][warmup]、[P/D warmup][warmup-pd]。
 
-```mermaid
-flowchart LR
-    P[进程启动] --> H[model_info 可响应]
-    H --> W[warmup 请求]
-    W --> U[成功后状态 Up]
-    U --> Q[后续健康检查自己的活动窗口]
-```
+P 和 D 各自初始化，P 置 Up 不必等 D 完成。fake bootstrap 的成功不能证明真实 P→D KV 传输已经验证。页面默认 DP=1，避免画出未配置的多 rank 工作。
 
-图意：这不是把所有内部初始化压成四个真实函数，而是把对外可观察的依赖拆开。Up、warmup 成功和某次 `/health_generate` 返回 200 应分别记录；没有把“曾经 warmup 成功”当作后续所有请求的保证。
+### Gateway 探测选中的一对，Runtime 看本地活动
 
-此处不覆盖 skip_server_warmup、Rust server、弹性 joiner 与 P/D 等独立分支。图中的步骤没有时长比例，也不验证模型的全部功能。
+Gateway `/health_generate` 先选一对 P/D，再以 `tokio::join!` 并发 GET 两端的 `/health_generate`；等待两端返回，全部成功才回 200，否则 503。[Gateway 探活][pair-health]。它不检查全部副本。
 
-## 3. 探活：什么活动让检查通过？
-
-`/health` 与 `/health_generate` 共享入口，首先检查 gracefully_exit 与 Starting，满足时返回 503。之后才考虑诊断旁路，以及 `/health` 关闭生成检查的分支。[health_generate][health]。
-
-普通生成检查创建一个探针，但通过条件是 `last_receive_tstamp > tic`：在本次窗口内，TokenizerManager 观察到了新的回程活动。它不是只等待探针 rid 的完整答案。
+Runtime 健康入口先检查退出标记与 Starting。生成探测记录 `tic`、启动探针，并观察 `last_receive_tstamp > tic`；普通请求回程也可能满足条件。P/D 探针使用 fake bootstrap，结束后取消探针任务并清理对应登记。[Runtime 探活][health]。
 
 ```mermaid
 sequenceDiagram
-    participant H as 健康检查
-    participant T as TokenizerManager
-    participant S as Scheduler / 回程
-    H->>T: 记录 tic，启动探针任务
-    Note over S: R1 仍在排队
-    S-->>T: R2 的普通回包
-    T->>T: 更新全局活动时间
-    H->>T: 观察到活动晚于 tic
-    H-->>H: 返回 200
+    participant G as Gateway
+    participant P as P Runtime
+    participant D as D Runtime
+    par 一对中的 P
+      G->>P: GET /health_generate
+      P->>P: 本地 fake 探针 / 观察新回程活动
+      P-->>G: 200
+    and 一对中的 D
+      G->>D: GET /health_generate
+      D->>D: 独立检查本地活动窗口
+      D-->>G: 200 或 503
+    end
+    G->>G: 两端结果汇总
 ```
 
-图意：R2 的活动与 R1 的等待可以同时存在。探活通过不能单独证明 R1 已得到计算机会。窗口内无新活动则返回 503 并设置 UnHealthy；根因还可能在计算、通信、反分词或前端处理。
+图意：P 已通过时 D 可能仍在等活动；一端有新回程不代替另一端。两端 200 仍不能证明业务 R1 获得执行机会或真实 KV 链路正确。
 
-关闭 `/health` 生成检查后，在前置状态门通过的情况下可以直接 200；`/health_generate` 不因此自动变成同一静态路径。交互页把两种分支分开。这里不把源码注释中的成本描述当作实测性能结果。
+若关闭 `/health` 的生成检查，且前置状态门通过，该接口可直接 200；`/health_generate` 不随之改成同一静态路径。页面把这一条件标成直接访问 Runtime，不混入 Gateway 探活轨迹。
 
-## 4. 路由与准入：选中了实例，还要过它自己的队列
+## 3. 成对派发：HTTP 并发，响应处理有先后
 
-### Round-robin 只在可用候选中循环
+### 请求 JSON 怎样变化
 
-策略先取得健康且 circuit breaker 允许的 worker 索引，再以递增计数对候选数量取模。[策略选择][route]、[候选过滤][eligible]。
+`select_pd_pair` 分角色获取并筛选候选，各自按策略选择。缺少任何一个角色都会在派发前报错。[选对][pair]。Round-robin 的循环只作用于可用候选，相关健康、熔断过滤见[策略][route]和[候选过滤][eligible]；并非所有部署都使用轮转。
 
-```mermaid
-flowchart TD
-    R[新请求] --> F[已有模型 / 角色候选]
-    F --> A{健康且熔断器允许?}
-    A -->|是| P[Round-robin 选择]
-    A -->|否| X[本次不参与选择]
-    P --> W[一个 Runtime]
-```
+`inject_bootstrap_into_value` 将选中 P 的 host、port 和新 room 注入请求 JSON。本例单请求、非 DP-aware worker，P/D HTTP 请求关联相同 room；这里传的是交接元数据，不是 KV tensor。[注入元数据][inject]。
 
-图意：固定候选顺序 A/B、计数初始为 0 时，三个请求交给 A、B、A。若 B 不健康，或健康但熔断器不允许，则交给 A、A、A。若没有候选，策略返回 None；本图只声明未选择 worker，不替所有路由器假定同一 HTTP 状态码。
+### 两个 future 如何推进
 
-图不复刻完整熔断状态机、并发名单变化或 cache-aware 策略。网关记得文本历史也不等于已验证某个 worker 的 GPU KV 命中。
+`execute_dual_dispatch_internal` 建立 P/D 两个 `send` future，在同一个 handler 的 `tokio::select!` 中并发 poll。该段没有把 D 派发推迟到 P 完整结束之后，也没有用 detached spawn。[双派发][dual]。
 
-### Runtime 等待队列的上限是另一个边界
+- P 结果到达：跳出 poll 循环，先判断 P 是否失败。
+- D 结果先到：存入 `decode_early`，继续等待 P；不立即越过 P 的检查。
+- P 成功：取暂存的 D 结果，或继续 await D。
+- P 失败：按 P 的实际状态记账，返回 P 错误并丢弃 pending D future；不把连带取消当成 D 自身故障计入其熔断器。P 4xx 保留客户端错误含义，P 5xx / 传输失败走 502。
 
-关闭优先级调度时，若 `len(waiting_queue)+1 > max_queued_requests`，默认拒绝新请求并回告 503。[队列上限][queue]。本课假设 R0 已在执行，等待容量为 2：R1、R2 排队，R3 到达时被拒绝；R0 完成、R1 推进之后，等待队列又有空位，可以重新判断 R4 的准入。
+正常路径中，D 先准备接收空间并提供元数据，P 计算后交接 KV。D 满足接收条件后可以继续设备工作，同时 P 轮询传输完成并本地退役；D 不必等 P 的 HTTP 响应抵达 Gateway。[P 退役][p-retire]、[D 接收][transfer]。轨道选择一种合法交错，不能用等长格子假定实际 overlap 程度。
 
-```mermaid
-flowchart LR
-    R3[R3 到达] --> Q{等待队列 R1,R2 已满?}
-    Q -->|是| E[拒绝 R3，回告 503]
-    F[R0 完成] --> R1[R1 转入执行]
-    R1 --> S[等待队列腾出一个位置]
-```
+D 先报错的场景是显式注入条件：D 已接收 KV，但执行前返回 503，早于 P 的 HTTP 响应。本例非流式，Gateway 在确认 P 成功后按 D 错误路径返回 503；没有把“D 提前回错”画成“D 未收到 KV 就成功生成”。
 
-图意：执行位置与等待槽位分别占用。一个执行位置、预算足够及队首推进均为教学假设；队列上限不等于 Gateway 在途请求数，也不等于 GPU 利用率或 max_running_requests 的完整作用。开启优先级时可能淘汰已有低优先级请求，不能沿用这里的无条件拒绝新请求模型。
+### 普通队列规则不能直接移植到 P/D
 
-## 5. 超时取消：结束等待，还需要消息完成收尾
+| 条件 | 固定实现 | 本课边界 |
+| --- | --- | --- |
+| 普通模式新请求 | `_abort_on_queued_limit` 后加入 waiting_queue | 关闭优先级时，`len(waiting_queue)+1 > max_queued_requests` 默认拒绝新请求 |
+| Prefill 新请求 | 加入 bootstrap_queue | 不是在此入口套用普通 waiting 上限 |
+| Decode 新请求 | 加入 prealloc_queue | 其容量、接收空间及后续准入由 P/D 机制管理 |
+| waiting timeout | `_poll_timeout_aborts` 扫描 waiting_queue | 不统一覆盖 bootstrap、prealloc 或 transfer |
+| running timeout | 依据 batch 的 forward_entry_time | 不等于客户端、Gateway 与传输层共享一个总时限 |
 
-### 客户端断连不立即抹掉后端对象
+见[入队分支][pd-queue]、[队列上限][queue]、[超时轮询][timeout]。上表不表示 P/D 没有容量约束。普通 waiting 的容量为 2 时 R1/R2 可等待、R3 可被拒绝，这类一般容量例子交给调度课；本节主要看各实现入口的差别。
 
-选择普通非后台、非流式、尚未开始执行的请求。前端等待事件的超时分支会检查 `request.is_disconnected()`，发现断连才调用 abort_request。该短等待超时是再次检查的时机，不是请求自动失败的总时限。[前端等待][disconnect]、[派发取消][abort]。
+## 4. 失败与取消：跟随当前持有者
+
+### P 失败，D 仍在 prealloc
+
+页面选择 P HTTP 500、D 尚未分配 KV 的例子。Gateway 先返回 502 并丢弃 D pending future；D Runtime 在后续非后台、非流式等待检查中发现断连，再派发 AbortReq。[断连检查][disconnect]、[取消派发][abort]。
+
+Scheduler 对 prealloc 中的请求调用 receiver.abort；后续轮询 Failed 设置 abort，`pop_preallocated` 再输出终态、清理 receiver 和相关列表引用。[Scheduler 取消][dequeue]、[prealloc 退役][prealloc-retire]。前端从后端回程结束登记，不能画成连接一断对象立即消失。该例未分配 KV，所以没有虚构释放操作；P HTTP 500 也不能代替 P 内部资源已经清理的证据。
+
+### 流式客户端断连，D GPU 可能还在运行
+
+Gateway 的流转发任务选择 `tracked.next()` 或 `tx.closed()`；已就绪 chunk 的优先分支可能先处理。退出转发并丢弃上游流，后续 Runtime 的 StreamingResponse 后台 abort task 先 `sleep(2)`，仍有登记才发送取消。[流转发][stream]、[后台取消][abort-task]。这里的 2 秒是源码常数，动画 `u` 不等于秒。
+
+运行中的 Req 先设置 `to_finish=FINISH_ABORT`，后续结果处理再提交终态与资源收尾。[Scheduler 取消][dequeue]、[结果收尾][finish]。动画中的已提交 GPU 活动可以与断连、后台检查、CPU 标记重叠，不画 HTTP 取消抢占 kernel。本课关闭 KV offload 等独立分支；启用时释放还需它们自己的完成条件。
+
+### D waiting timeout：队列等待也可能占有 KV
+
+本例 D 已成功接收 KV 并进入 waiting_queue。等待时限启用、入队时间为正，且 `entry_time < now-timeout` 时，轮询产生携带 503 的 AbortReq；恰等于期限还不满足这个严格比较。[超时轮询][timeout]。
+
+后端从 waiting_queue 移除，向前端回告，再走 Decode 的 KV 释放路径；不能套用“普通未执行等待请求尚未分配 KV”的解释。[后端取消][dequeue]。本例响应头尚未发出，非流式前端可返回 HTTP 503；已发响应头的流式错误还涉及响应体与连接状态。
+
+### D 接收中取消：本地前端可以先结束，KV 继续留置
 
 ```mermaid
 sequenceDiagram
-    participant C as 客户端
-    participant T as TokenizerManager
-    participant S as Scheduler
-    C--xT: 断连 / 停止等待
-    Note over S: R1 仍在 waiting_queue
-    T->>S: 检测断连后发送 AbortReq
-    S->>S: 移除 R1，清理等待态
-    S-->>T: Abort 回告
-    T->>T: 删除登记，唤醒等待者
+    participant TM as D TokenizerManager
+    participant S as D Scheduler / transfer queue
+    participant P as P 传输 worker
+    TM->>S: 本地管理取消 AbortReq
+    S->>P: receiver.abort / 通知 ABORT
+    S->>S: 注册 room 的 ACK 记账
+    par D 失败路径
+      S->>S: poll Failed，输出终态，移入 deferred_releases
+      S-->>TM: 失败输出，登记可结束
+    and 在途传输排空
+      P->>P: 等该 room outstanding 归零
+      P-->>S: drain ACK（包含 room 与 rank）
+    end
+    S->>S: 后续轮询：ACK 数满足 required_acks
+    S->>S: 归还 KV、metadata，清理 room / receiver
 ```
 
-图意：客户端断开、取消消息发出、后端移除、前端清理是四个事件。断开的客户端不保证收到最后结果。Scheduler 的等待分支需要回告 TM，后者才能处理仍存在的请求登记。[后端移除][dequeue]、[前端回告处理][echo]。
+图意：这是 D 本地取消与资源回收的视角；Gateway 仍按 P 的结果决定业务响应，不因为 D 本地前端结束就宣布客户端已经收到最终结果。
 
-### 后端等待超时也要经过轮询和一致处理
+只有满足相关 deferred-release 开关和 `abort_notified` 等条件才走留置分支。`_defer_release` 快照 `required_acks=len(bootstrap_infos)`；`is_abort_release_safe` 统计通知集合中各 P rank 的 ACK。本例一个 P rank，所以 1/1 放行；多 rank 不能任取一个 ACK。[留置与归还][deferred]、[排空 ACK][ack]。
 
-`_poll_timeout_aborts` 按配置的等待时限检查正的入队时间；满足 `entry_time < now-timeout` 才产生 AbortReq，携带 503 原因。[超时轮询][timeout]。超过期限不等于在任意那一瞬间就删除队列对象；轮询产生取消，再由请求处理路径移除与回告。
+`resolve_deferred_releases` 另有 hold timeout 释放分支，超时策略不等于收到完整 drain 证明。页面选择 ACK 完整到达的路径，明确标出前端已结束但 KV / metadata 仍不可复用的窗口。不是每个内部暂存列表都受 `/abort_request` 覆盖，源码对部分等待列表有明确限制；本图只承诺展示具名队列。
 
-本图不展开运行中 kernel 的完成条件、P/D 传输退役、Grammar 等待和混合状态资源。相关差异见[普通请求运行时](../%E8%BF%90%E8%A1%8C%E6%97%B6/SGLang%20%E6%99%AE%E9%80%9A%E8%AF%B7%E6%B1%82%E8%BF%90%E8%A1%8C%E6%97%B6%E4%B8%8E%E8%B5%84%E6%BA%90%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)与[通信回收边界](../%E5%B9%B6%E8%A1%8C%E6%96%B9%E6%B3%95/SGLang%20%E9%80%9A%E4%BF%A1%E4%B8%8E%E4%BC%A0%E8%BE%93%E6%9C%BA%E5%88%B6%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)。非流式可用 HTTP 状态表达失败；流式已发响应头后，错误还涉及响应体与连接边界，不能只看一个最初的 200。
+## 5. 退出：P 本地排空，不是 P/D 全局屏障
 
-## 6. 退出：入口摘流、登记排空和进程消失分别证明
+SIGTERM handler 设置本端 TM 的 `gracefully_exit`，健康入口因此返回 503。该变量不保证所有代理、直连调用方或已建立连接都停止新投递。[信号处理][signal]。
 
-SIGTERM handler 设置 TM 的 gracefully_exit。健康入口因此返回 503，但这个标记不证明所有代理、直连调用方或已建立连接都已停止新投递。[信号处理][signal]。
+正常 `sigterm_watchdog` 等本端 `rid_to_state` 为空，再停止子进程 watchdog、派发 ShutdownReq，并等待 Scheduler 进程退出。[退出监视][drain]。Scheduler 设置自己的退出标记，事件循环返回，进程函数 finally 清理本地资源与分布式环境。[ShutdownReq][shutdown]、[进程 finally][process]。
 
-```mermaid
-flowchart TD
-    S[SIGTERM 设置退出标记] --> H[健康入口 503]
-    H -.部署侧协作.-> I[停止新投递]
-    S --> D[等待 rid_to_state 排空]
-    I --> D
-    D --> Q[发送 ShutdownReq]
-    Q --> E[Scheduler 离开事件循环]
-    E --> F[finally 清理资源与通信环境]
-    F --> O[观察进程退出，收尾服务]
-    Q -->|等待期限后仍存活| K[告警，升级到强制终止路径]
-```
+页面只向 P 发 SIGTERM，显式给定部署侧停止向 P1 新投递；D 已持有 KV 的请求可继续生成。P 退出不读取 D 的 rid_to_state，也不要求等 D 的输出完成。两个异常分支保留未完成状态：
 
-图意：正常场景假设部署侧停止新投递；若 R1/R2 陆续完成时 R3 又进来，登记仍不空，正常排空就无法继续。图中的虚线是协作假设，不是宣称运行时自动实现了整个入口摘流。
+- 空表检查前又有直连 R2 登记：继续等待本地排空，时间轴结束不自动触发 Shutdown。
+- 已派发 Shutdown，但等待期限后 Scheduler 仍在：记录 stragglers 并进入强制终止路径；不画成用户态清理已成功。
 
-`sigterm_watchdog` 等待前端登记排空后，停止子进程 watchdog，发送 ShutdownReq，再观察 Scheduler 进程。Scheduler 收到请求后设置自己的退出标记，离开循环，在 finally 的正常退出分支释放资源并拆通信环境。[退出 watchdog][drain]、[ShutdownReq handler][shutdown]、[进程收尾][process]、[资源释放函数][release]。
+UnHealthy 或 force shutdown 可以绕过正常排空，未在“正常退出”轨道内混用。本文没有实际发送退出信号。
 
-如果 Scheduler 在等待期限后仍存活，代码会告警并进入进程树强制终止路径；“已经尝试终止”不是“用户态清理已经完整执行”的证据。UnHealthy 或 SGL_FORCE_SHUTDOWN 可以跳过正常请求排空；本文没有实际发送信号或验证 GPU 资源释放。
+## 6. 现象与源码阅读路线
 
-## 7. 从现象回到相应证据
+| 现象 | 先分清 | 读哪里 |
+| --- | --- | --- |
+| 两端探活 200，但业务挂住 | 本地活动与实际 KV 交接 | Gateway health_generate → Runtime health_generate → P/D 队列 |
+| D 已回错，客户端还等待 | decode_early 与 P 结果门 | execute_dual_dispatch_internal |
+| P 失败后 D 还占着请求 | 连接关闭、断连检查、具名队列取消 | TM _stream_one_response → Scheduler abort_request |
+| D 前端结束但 KV 未归还 | transfer 退役与 deferred hold | pop_transferred → _defer_release → resolve_deferred_releases |
+| SIGTERM 后未退出 | 新流量、本地登记、进程退出各自的条件 | sigterm_handler → sigterm_watchdog → Scheduler finally |
 
-- 端口可访问但业务不能完成：分别查 warmup、健康生成窗口、候选名单与具体请求进度。
-- 健康 worker 未被选中：检查模型 / 角色候选、熔断条件与策略，而非只看一个 healthy 标记。
-- 收到 503：核对是启动 / 退出探活、队列已满、等待超时，还是其他边界；保留原始原因。
-- 客户端结束但后端仍占用：追踪取消发出、后端消费和回告，不凭客户端超时推断资源已释放。
-- SIGTERM 后长期不退出：区分新流量持续到达、在途请求不结束，以及 Scheduler 自身没有退出。
+继续阅读[服务运维导航](README.md)与[性能分析](../性能工程/README.md)。先固定请求、阶段与条件，再用指标判断等待位置；HTTP 200、图中进度条和教学时间均不是性能验收。
 
-继续阅读[服务治理领域导航](README.md)、[Metrics、日志与 Trace](../source-study/10-serving-operations/04-Metrics日志与Trace关联.md)与[性能分析](../性能工程/README.md)。
+## 7. 固定源码入口
 
-## 8. 固定源码锚点
+以下链接均固定到本课 commit；旧 source-study 资料保留自己的版本边界。
 
-- [_execute_server_warmup · `python/sglang/srt/entrypoints/http_server.py` L2203][warmup]
-- [health_generate · `python/sglang/srt/entrypoints/http_server.py` L664][health]
-- [select_worker · `sgl-model-gateway/src/policies/round_robin.rs` L31][route]
-- [get_healthy_worker_indices · `sgl-model-gateway/src/policies/mod.rs` L136][eligible]
-- [_abort_on_queued_limit · `python/sglang/srt/managers/scheduler.py` L3298][queue]
-- [_poll_timeout_aborts · `python/sglang/srt/managers/scheduler.py` L3344][timeout]
-- [_stream_one_response · `python/sglang/srt/managers/tokenizer_manager.py` L1755][disconnect]
-- [abort_request · `python/sglang/srt/managers/tokenizer_manager.py` L2024][abort]
-- [abort_request · `python/sglang/srt/managers/scheduler.py` L5257][dequeue]
-- [_handle_abort_req · `python/sglang/srt/managers/tokenizer_manager.py` L3281][echo]
-- [sigterm_handler · `python/sglang/srt/managers/tokenizer_manager.py` L3749][signal]
-- [sigterm_watchdog · `python/sglang/srt/managers/tokenizer_manager.py` L3212][drain]
-- [handle_shutdown · `python/sglang/srt/managers/scheduler.py` L5693][shutdown]
-- [release_host_resources · `python/sglang/srt/managers/scheduler.py` L1842][release]
-- [run_scheduler_process · `python/sglang/srt/managers/scheduler.py` L5830][process]
+- [python/sglang/srt/entrypoints/http_server.py · L2161][warmup-pd]
+- [sgl-model-gateway/src/routers/http/pd_router.rs · L1466][pair-health]
+- [sgl-model-gateway/src/routers/http/pd_router.rs · L978][pair]
+- [sgl-model-gateway/src/routers/http/pd_router.rs · L242][inject]
+- [sgl-model-gateway/src/routers/http/pd_router.rs · L652][dual]
+- [python/sglang/srt/disaggregation/prefill.py · L972][p-retire]
+- [python/sglang/srt/disaggregation/decode.py · L2364][transfer]
+- [python/sglang/srt/managers/scheduler.py · L3233][pd-queue]
+- [python/sglang/srt/disaggregation/decode.py · L1184][prealloc-retire]
+- [sgl-model-gateway/src/routers/http/pd_router.rs · L1110][stream]
+- [python/sglang/srt/managers/tokenizer_manager.py · L2202][abort-task]
+- [python/sglang/srt/managers/scheduler_components/batch_result_processor.py · L1310][finish]
+- [python/sglang/srt/disaggregation/decode.py · L2501][deferred]
+- [python/sglang/srt/disaggregation/common/conn.py · L669][ack]
 
 [warmup]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/entrypoints/http_server.py#L2203
 [health]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/entrypoints/http_server.py#L664
@@ -207,3 +226,18 @@ flowchart TD
 [shutdown]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L5693
 [release]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L1842
 [process]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L5830
+
+[warmup-pd]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/entrypoints/http_server.py#L2161
+[pair-health]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/sgl-model-gateway/src/routers/http/pd_router.rs#L1466
+[pair]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/sgl-model-gateway/src/routers/http/pd_router.rs#L978
+[inject]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/sgl-model-gateway/src/routers/http/pd_router.rs#L242
+[dual]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/sgl-model-gateway/src/routers/http/pd_router.rs#L652
+[p-retire]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/prefill.py#L972
+[transfer]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/decode.py#L2364
+[pd-queue]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L3233
+[prealloc-retire]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/decode.py#L1184
+[stream]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/sgl-model-gateway/src/routers/http/pd_router.rs#L1110
+[abort-task]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/tokenizer_manager.py#L2202
+[finish]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_components/batch_result_processor.py#L1310
+[deferred]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/decode.py#L2501
+[ack]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/disaggregation/common/conn.py#L669

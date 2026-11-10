@@ -770,13 +770,13 @@
     "reviewed": "2026-11-09"
   },
   "sglang/serving-operations/index.html": {
-    "problem": "服务管理要回答几个不同问题：能否接收连接、能否选中实例、请求是否进入计算、取消后是否已收尾。需要不同观测与控制，避免用一个健康状态替代全部判断。",
+    "problem": "P/D 服务链要分别证明：两端可被选中、请求正在推进、取消已传到后端、资源可以重用。沿同一教学时钟观察 Gateway、P、D 的独立状态，避免用一个 HTTP 结果代替整条链的完成条件。",
     "topics": [
       {
         "id": "health",
         "title": "为什么健康检查不能证明某条请求正在前进？",
-        "why": "探活检查的对象与具体业务请求可能不同。整体回程有活动时，一条因资源或其他原因等待的请求仍可能没有输出。",
-        "mechanism": "本页固定版本的生成探测路径会观察全局回程活动，因此“R2 活跃、R1 等待”可以同时发生；追踪 R1 仍需它自己的 rid、队列与执行证据。",
+        "why": "网关只并发探测选中的一对 P/D，Runtime 又以本地回程活动判断生成探测。健康成功与真实跨端交接是不同证据。",
+        "mechanism": "tokio::join! 并发调用两端 /health_generate；本地探针使用 fake bootstrap，last_receive_tstamp > tic 即可通过。两端 200 不验证真实 P→D KV 传输，也不覆盖所有副本。",
         "tradeoff": "探测能较轻量地判断某类服务状态，但覆盖范围有限。不能把 200 当作每个请求、每个 GPU 或整个数据面的完好证明。",
         "source": [
           "entrypoints/http_server.py",
@@ -785,10 +785,44 @@
         ]
       },
       {
+        "id": "paired-dispatch",
+        "title": "P/D 同时派发，为什么结果仍有处理顺序？",
+        "why": "两份 HTTP 请求并发推进，不意味着任一返回都能直接变成最终响应。",
+        "mechanism": "execute_dual_dispatch_internal 在同一 handler 中 poll 两个 send future。D 先完成会存入 decode_early；先检查 P 的结果，P 成功后才处理 D。P 失败则返回其错误并丢弃 pending D future，后端取消仍需 Runtime 检测与 Scheduler 处理。",
+        "tradeoff": "派发并发与结果依赖并存；关闭连接不是跨端原子回滚。",
+        "source": [
+          "sgl-model-gateway/src/routers/http/pd_router.rs",
+          652,
+          "execute_dual_dispatch_internal"
+        ]
+      },
+      {
+        "id": "cancel-resources",
+        "title": "为什么客户端失败后，D 还可能占着 KV？",
+        "why": "HTTP 完成、ReqState 删除与传输资源安全回收由不同主体负责。",
+        "mechanism": "D 接收中取消时，特定 deferred-release 条件会先输出失败、移出 transfer queue，再留置 KV 和 metadata。收齐被通知 P rank 的 drain ACK 后才走安全归还；源码另有 hold timeout 兜底。",
+        "tradeoff": "本课展示完整 ACK 的路径；超时释放策略本身不证明在途传输已排空。",
+        "source": [
+          "disaggregation/decode.py",
+          2525,
+          "resolve_deferred_releases"
+        ],
+        "links": [
+          [
+            "传输与回收的执行轨道",
+            "sglang/communication/index.html"
+          ],
+          [
+            "请求状态与队列流转",
+            "sglang/request-state/index.html"
+          ]
+        ]
+      },
+      {
         "id": "drain",
         "title": "为什么退出需要先停止新投递，再等待排空？",
         "why": "如果旧请求尚未结束，新请求又持续到达，服务很难达到可退出状态；直接终止也可能截断响应和在途工作。",
-        "mechanism": "本页分别观察不再接纳、前端登记排空、发送 ShutdownReq 与 Scheduler 实际退出。客户端断连、等待超时和进程退出也各有自己的处理入口。",
+        "mechanism": "这里只对 P 发 SIGTERM：本地健康入口返回 503，正常 watchdog 等本地 rid_to_state 排空，再派发 ShutdownReq 并观察 Scheduler 退出。已取得 KV 的 D 请求可继续执行；摘流是显式给定的部署条件。",
         "tradeoff": "等待排空有时间成本，也依赖上游是否停止投递。超时或已发退出消息，都不能单独证明执行进程已经消失或资源已释放。",
         "source": [
           "managers/tokenizer_manager.py",
@@ -814,7 +848,8 @@
       ],
       "scope": "健康接口与退出分支以固定源码为准，不从官方工具列表推出特定请求已完成。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-10"
   },
   "sglang/performance-engineering/index.html": {
     "problem": "相同名字的指标可能在不同代码位置开始计时。先找到采样事件、计数对象和成功样本范围，才能判断“更快”来自执行改善，还是统计口径变化。",

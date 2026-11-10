@@ -8,7 +8,7 @@
 
 先理解[请求生命周期](../运行时/README.md)、[并行实例](../并行方法/README.md)和[通信与回收](../%E5%B9%B6%E8%A1%8C%E6%96%B9%E6%B3%95/SGLang%20%E9%80%9A%E4%BF%A1%E4%B8%8E%E4%BC%A0%E8%BE%93%E6%9C%BA%E5%88%B6%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)。
 
-1. [服务生命周期与请求治理](SGLang%20%E6%9C%8D%E5%8A%A1%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E4%B8%8E%E8%AF%B7%E6%B1%82%E6%B2%BB%E7%90%86%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/serving-operations/)：观察启动探活、路由准入、超时取消与退出。
+1. [服务生命周期与请求治理](SGLang%20%E6%9C%8D%E5%8A%A1%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E4%B8%8E%E8%AF%B7%E6%B1%82%E6%B2%BB%E7%90%86%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/serving-operations/)：沿 P/D 服务链观察两端探活、成对派发、取消传播、KV 留置与单端退出；主图和执行轨道共用时钟。
 2. [Gateway 注册、路由与缓存亲和](../source-study/10-serving-operations/01-ModelGateway注册路由与缓存亲和.md)：深入实例名单与选择依据。
 3. [健康检查、超时、限流与优雅退出](../source-study/10-serving-operations/03-健康检查超时限流与优雅退出.md)：深入不同层的计时、额度和失败处理。
 4. [Metrics、日志与 Trace](../source-study/10-serving-operations/04-Metrics日志与Trace关联.md)：把一个现象与具体请求、阶段和原因关联。

@@ -38,7 +38,7 @@ IMPLEMENTATION_FOCUS = {'system-overview': '分清进程、组件职责与部署
  'communication': '按实际接口区分控制消息、张量通信与 KV 搬运，追踪可用和释放条件。',
  'disaggregation': '追踪 bootstrap、接收匹配、回载等待与请求准入；分别核对 P 和 D 的资源生命周期。',
  'advanced-generation': '追踪具体生成路径的状态提交、回退与约束筛选，并对照各自源码入口。',
- 'serving-operations': '核对启动、探活、路由、队列准入、取消和退出时各组件的责任。',
+ 'serving-operations': '沿 P/D 服务链区分两端探活、并发派发、取消传播、资源归还与单端退出。',
  'performance': '把观测区间映射到实际执行阶段，核对流式响应、压测统计和失败样本口径。',
  'case-studies': '沿固定版本的 PP loop，核对 batch、slot、通信共识与本地状态复查的依赖。'}
 
@@ -279,7 +279,7 @@ def implementation_design(page):
     navigation = ('<nav class="design-nav" aria-label="实现问题导航">' + ''.join(f'<a href="#design-{t["id"]}">{escape(t["title"])}</a>' for t in entry['topics']) + '</nav>') if len(entry['topics']) > 1 else ''
     for t in entry['topics']:
         file, line, label = t['source']
-        file = file if file.startswith('python/') else 'python/sglang/srt/' + file
+        file = file if file.startswith(('python/', 'sgl-model-gateway/')) else 'python/sglang/srt/' + file
         source_url = f'https://github.com/sgl-project/sglang/blob/{revision}/{file}#L{line}'
         example = f'<div class="design-example"><strong>用一个例子理解</strong><p>{escape(t["example"])}</p></div>' if t.get('example') else ''
         links = ''.join(f'<li><a href="{href(page, target)}">{escape(title)} →</a></li>' for title, target in t.get('links', []))
