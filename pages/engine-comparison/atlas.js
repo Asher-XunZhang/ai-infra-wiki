@@ -3999,10 +3999,11 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
     // Mount only the requested material. A new topic/step gets a fresh closed
     // disclosure, so an open comparison cannot spill into the next lesson.
-    function ReadingDisclosure({ title, t, children, className }) {
+    function ReadingDisclosure({ title, t, children, className, forced = false }) {
       const [open, setOpen] = React.useState(false);
+      const expanded=forced||open;
       return h('details', {
-        className, open,
+        className, open:expanded,
       },
         h('summary', { onClick: event => {
           event.preventDefault();
@@ -4010,13 +4011,13 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           setOpen(nextOpen);
         } },
           h('span', { className: 'ia-readingLabel' }, title),
-          h('small', { className: 'ia-readingAction' }, t(open ? 'reading.collapse' : 'reading.expand')),
+          h('small', { className: 'ia-readingAction' }, t(expanded ? 'reading.collapse' : 'reading.expand')),
         ),
-        open ? children : null,
+        expanded ? children : null,
       );
     }
 
-    function TopicReading({ chapter, step, t }) {
+    function TopicReading({ chapter, step, t, depth }) {
       const topic = chapter.id;
       const facet = topic === 'crosscut' ? ['finish', 'overload', 'abort', 'graph'][step] : topic;
       const table = topic === 'wire' ? h(WireTable, { t }) :
@@ -4029,7 +4030,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       return h('section', { className: 'ia-topicReading', 'data-topic': topic, 'data-reading': facet },
         h('p', { className: 'ia-readingEyebrow' }, t('reading.optional')),
         h(ReadingDisclosure, {
-          key: `${topic}:${step}`, t, className: 'ia-readingDetails', title: t(`reading.titles.${facet}`),
+          key: `${topic}:${step}`, t, forced:depth==='source', className: 'ia-readingDetails', title: t(`reading.titles.${facet}`),
         }, table),
       );
     }
@@ -4137,13 +4138,38 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
     const updateResume = window.SiteUpdate?.take('engine-comparison');
     const resumeChapter = CHAPTERS.findIndex(chapter => chapter.id === updateResume?.chapter);
+
+    function DepthOverview({chapter,step,t,selected,onSelect}) {
+      const notes={wire:['请求输入：接收方创建本地对象','回程传递输出 IDs / 文本','执行交接与管理调用分开','协议与管理通道按配置存在'],prefix:['共同前缀 10 个位置；查询尚未确认命中','按本例粒度可复用 8 个位置','其余 4 个位置需要补算','索引命中返回地址；分配与持有归属另看模块过程'],batch:['候选请求仍未通过准入','本轮预算决定接纳，排序不保证入选','本轮交给执行；局部 CPU / GPU 重叠见模块过程','输出推进请求状态；下一轮另作调度'],disagg:['为请求选择角色 / 实例','控制信息与 KV 数据分别交接','可选缓存层次；不是每次请求必经','可选集群扩展；不是请求流水线的下一站']};
+      return h(React.Fragment,null,['sg','vl'].map(side=>{
+        let content;
+        if(chapter==='prefix')content=h('svg',{viewBox:'0 0 520 170',className:'ia-svg',role:'img','aria-label':notes.prefix[step]},h(PrefixTokenRail,{side,step}),h('text',{x:30,y:131,className:'ia-sceneKicker'},step>=1?'复用 01–08；09–12 补算':'相同教学输入，等待各自索引查询'));
+        else {
+          const layout=({wire:WIRE_LAYOUT,batch:BATCH_LAYOUT,disagg:DISAGG_LAYOUT})[chapter][side],active=layout.active[step],uid='overview-'+side;
+          const edges=layout.edges.filter(e=>active.edges.includes(e.id));
+          // Keep original ports and ownership. Only remove secondary protocols and
+          // inactive regions; no invented one-to-one mapping between the engines.
+          const nodes=layout.nodes.filter(n=>n.id!=='protocol'&&(active.nodes.includes(n.id)||edges.some(e=>(['request','output'].includes(e.id)?['frontend','core']:e.id.split('-')).includes(n.id))));
+          const chosen=nodes.filter(n=>!n.card||n.id==='scale');
+          const low=Math.min(...chosen.map(n=>n.y),40)-35,high=Math.max(...chosen.map(n=>n.y+n.h),190)+35;
+          content=h('svg',{viewBox:`0 ${low} 520 ${high-low}`,className:'ia-svg',role:'group','aria-label':notes[chapter][step]},h(SvgDefs,{uid}),edges.map(e=>h(Edge,{key:e.id,edge:e,nodes:layout.nodes,active:true,uid})),chosen.map(n=>h(NodeBox,{key:n.id,node:{...n,tag:''},active:active.nodes.includes(n.id),selected:isNodeSelected(selected,side,n),onSelect:p=>onSelect({side,...p})})));
+        }
+        return h(EngineBoard,{key:side,side,chapter,step,stepCount:4,t},content,h('p',{className:'ia-depth-note'},notes[chapter][step]));
+      }));
+    }
     function createAtlasPage(locale) {
       return function InferenceAtlasPage() {
         const [localeRevision, setLocaleRevision] = useState(0);
         const [reduceMotion, setReduceMotion] = useState(() => prefersReducedMotion());
         const [chapterIndex, setChapterIndex] = useState(() => resumeChapter >= 0 ? resumeChapter : chapterFromHash());
-        const [step, setStep] = useState(() => resumeChapter >= 0 ? Math.max(0,Math.min(Number(updateResume.step)||0,CHAPTERS[resumeChapter].steps-1)) : 0);
+        const [step, setStep] = useState(() => resumeChapter >= 0 ? Math.max(0,Math.min(Number(updateResume.step)||0,CHAPTERS[resumeChapter].steps-1)) : Math.max(0,Math.min(3,Number(new URL(location.href).searchParams.get('step'))||0)));
         const [selected, setSelected] = useState(null);
+        const [depth,setDepth]=useState(()=>new URL(location.href).searchParams.get('depth')||'overview');
+        const [pulsePlaying,setPulsePlaying]=useState(true);
+        const pulseClock=React.useRef(Number(new URL(location.href).searchParams.get('pulse'))||0);
+        const pageRef=React.useRef(null);
+        useEffect(()=>{let id,last;const tick=now=>{if(last&&pulsePlaying&&!reduceMotion&&!document.hidden)pulseClock.current+=(now-last)/1000;last=now;const el=pageRef.current;if(el){el.style.setProperty('--ia-pulse-offset',String(-pulseClock.current*22/.9));el.style.setProperty('--ia-pulse-alt-offset',String(-pulseClock.current*22/1.2));el.dataset.pulseTime=pulseClock.current.toFixed(3);}id=requestAnimationFrame(tick);};id=requestAnimationFrame(tick);return()=>cancelAnimationFrame(id);},[pulsePlaying,reduceMotion]);
+
         useEffect(() => window.SiteUpdate?.register('engine-comparison', () => ({chapter:CHAPTERS[chapterIndex].id,step})), [chapterIndex,step]);
 
         useEffect(() => locale.subscribe(() => setLocaleRevision((value) => value + 1)), [locale]);
@@ -4169,6 +4195,9 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
         const t = useMemo(() => locale.bind(NS), [locale, localeRevision]);
         const chapter = CHAPTERS[chapterIndex];
+        const fullDepth=['wire','prefix','batch','disagg'].includes(chapter.id);
+        const shownDepth=!fullDepth&&depth==='overview'?'modules':depth;
+        const chooseDepth=next=>{setDepth(next);const u=new URL(location.href);u.searchParams.set('depth',next);u.searchParams.set('step',step);u.searchParams.set('pulse',pulseClock.current.toFixed(3));history.replaceState(null,'',u);};
         const stepCount = chapter.steps;
         const stepTitleKey = `chapters.${chapter.id}.steps.${step}.title`;
 
@@ -4176,7 +4205,8 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           const sync = () => {
             const next = chapterFromHash();
             setChapterIndex(next);
-            setStep(0);
+            setStep(Math.max(0,Math.min(3,Number(new URL(location.href).searchParams.get('step'))||0)));
+            setDepth(new URL(location.href).searchParams.get('depth')||'overview');
             setSelected(null);
           };
           window.addEventListener('hashchange', sync);
@@ -4228,7 +4258,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           h(
             'main',
             {
-              className: 'ia-page',
+              className: 'ia-page', ref:pageRef, 'data-depth':shownDepth, 'data-chapter':chapter.id, 'data-step':step,
               'data-reduced-motion': reduceMotion ? 'true' : 'false',
             },
             h('div', { className: 'ia-windowSafe', 'aria-hidden': 'true' }),
@@ -4302,6 +4332,8 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             ),
             h('p', { className: 'ia-controlHint' }, t('control.hint')),
             h(StepRail, { chapter, step, t, onStep: goToStep }),
+            h('div',{className:'ld-controls',role:'group','aria-label':'细节程度'},h('span',null,'细节程度'),(fullDepth?['overview','modules','source']:['modules','source']).map(d=>h('button',{key:d,type:'button','data-depth-choice':d,'aria-pressed':shownDepth===d,onClick:()=>chooseDepth(d)},{overview:'总览',modules:fullDepth?'模块过程':'过程',source:'源码细节'}[d])),h('button',{type:'button',onClick:()=>setPulsePlaying(p=>!p),'aria-pressed':pulsePlaying,'data-pulse-toggle':true},pulsePlaying?'暂停脉冲':'播放脉冲')),
+            h('p',{className:'ia-controlHint'},'切换细节保留当前阶段；脉冲表示本阶段活跃交接，不表示真实带宽或阶段耗时。'),
             h(
               'p',
               { className: 'ia-srOnly', 'aria-live': 'polite' },
@@ -4339,7 +4371,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                 h('div', {
                   className: 'ia-boardGrid', role: 'region', tabIndex: 0,
                   'aria-label': t('board.comparison'), 'aria-describedby': 'ia-comparison-hint',
-                }, h(Scene, {
+                }, h(shownDepth==='overview'?DepthOverview:Scene, {
                   chapter: chapter.id, step, t, selected, onSelect: handleSelectNode,
                 })),
               ),
@@ -4426,9 +4458,9 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                 h('p', null, stepData.diff),
               ),
             ),
-            h(TopicReading, { chapter, step, t }),
+            h(TopicReading, { chapter, step, t, depth:shownDepth }),
             h(ReadingDisclosure, {
-              key: `sources:${chapter.id}`, t, className: 'ia-referenceDetails', title: t('reading.sources'),
+              key: `sources:${chapter.id}`, t, forced:shownDepth==='source', className: 'ia-referenceDetails', title: t('reading.sources'),
             }, h(SourcesSection, { t, chapter })),
             h(
               'footer',

@@ -146,13 +146,9 @@
       const path=document.createElementNS(namespace,'path');
       path.setAttribute('d',points.map((p,i)=>(i?'L':'M')+p.join(',')).join(' '));
       path.setAttribute('class','memory-flow-line '+flow.kind);path.setAttribute('marker-end','url(#memory-arrow-'+flow.kind+')');path.dataset.from=flow.from;path.dataset.to=flow.to;paths.append(path);
-      const labelWidth=Array.from(flow.label).reduce((n,c)=>n+(c.charCodeAt(0)<128?6:10),14);
-      const [x,y]=pointAt(points,reduced?.5:flow.progress),width=Math.min(220,Math.max(56,labelWidth));
-      const packet=document.createElementNS(namespace,'g');packet.dataset.packet=flow.label;
-      // Keep the packet's label in the canvas even on the outer lookup rail.
-      packet.setAttribute('transform',`translate(${Math.max(width/2+3,Math.min(917-width/2,x))},${y})`);packet.setAttribute('class','memory-packet '+flow.kind);
-      packet.setAttribute('opacity',reduced?1:Math.min(1,flow.progress*8,(1-flow.progress)*8));
-      packet.innerHTML=rect(-width/2,-11,width,22)+text(-width/2+7,4,flow.label,'memory-packet-label');packets.append(packet);
+      path.style.strokeDasharray='4 7';path.style.strokeDashoffset=String(reduced?0:-time*22/.9);path.dataset.flowActive='true';
+      const title=document.createElementNS(namespace,'title');title.textContent=flow.label;path.append(title);
+      const label=document.createElementNS(namespace,'text');const point=points[Math.floor((points.length-1)/2)];label.setAttribute('x',Math.max(20,Math.min(700,point[0]+8)));label.setAttribute('y',point[1]-8);label.setAttribute('class','memory-packet-label');label.textContent=flow.label;packets.append(label);
     }
   }
   function render(force=false) {
@@ -161,6 +157,7 @@
     const key=[mode,timeline.target,timeline.hit,frame.phase.index,frame.event.at].join('/');
     if(force||key!==lastScene){lastScene=key;drawScene();}
     drawFlows();
+    depth.update({time,event:frame.event.label,explanation:$('#memory-why').textContent,rows:[['page_size',4],['目标长度',timeline.target],['命中位置',timeline.hit],['free_pages',frame.state.freePages.join(', ')],['持有页内空位',frame.state.heldEmpty]],href:$('#memory-source').href});
     seek.max=timeline.duration;seek.value=time;seek.setAttribute('aria-valuetext',`${time.toFixed(1)} 秒，${frame.event.label}`);
     $('#memory-time').textContent=`${time.toFixed(1)} / ${timeline.duration.toFixed(1)} s`;
     const status=`${frame.phase.index+1} / ${timeline.phases.length}`;
@@ -184,6 +181,7 @@
   lab.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.metaKey||e.ctrlKey||e.altKey)return;if(e.key==='ArrowRight'){e.preventDefault();$('#memory-next').click();}else if(e.key==='ArrowLeft'){e.preventDefault();$('#memory-previous').click();}else if(e.key==='Home'){e.preventDefault();jump(0);}else if(e.key==='End'){e.preventDefault();jump(timeline.duration);}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);
   reducedQuery.addEventListener('change',e=>{reduced=e.matches;render();});
+  const depth=LearningDepth.mount({host:lab,before:$('#memory-board').parentElement,compact:true,source:[$('.memory-details')],onChange:()=>render(true),persist:()=>save()});
   function load(){const p=new URL(location.href).searchParams;playing=false;previousTick=null;if(raf!==null)cancelAnimationFrame(raf);mode=['extend','reuse','sharing'].includes(p.get('mode'))?p.get('mode'):'extend';if([8,9,11].includes(Number(p.get('target'))))$('#extend-length').value=p.get('target');if([0,4,8].includes(Number(p.get('hit')))&&p.has('hit'))$('#reuse-length').value=p.get('hit');time=0;rebuild();time=Math.max(0,Math.min(timeline.duration,Number(p.get('t'))||0));render(true);}
   window.addEventListener('popstate',load);lab.hidden=false;load();
 })();

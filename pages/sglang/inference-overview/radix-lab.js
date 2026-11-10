@@ -333,6 +333,7 @@
     const key=`${activeDemo.id}/${index}/${sample.event.at}/${innerWidth}/${reduced}/${sample.morph===1}`;
     if(force||key!==sceneKey){sceneKey=key;renderRequests();renderMetrics();renderCaption();els.title.textContent=sample.label;treeScene();}
     treeMotion();flowMotion();updateControls();
+    depth.update({time,event:sample.label,explanation:view.meta.note,rows:Object.values(view.nodes).map(n=>[n.id,`key=[${(n.tokens||[]).join(', ')}] · value=[${n.slots.join(', ')}] · lock_ref=${n.lock}`]),href:M.sourceUrl(view.meta.source)});
   }
   function updateURL(){const url=new URL(location.href);if(activeDemo.id==='journey')url.searchParams.delete('mode');else url.searchParams.set('mode',activeDemo.id);if(index)url.searchParams.set('step',index);else url.searchParams.delete('step');if(time)url.searchParams.set('t',time.toFixed(3));else url.searchParams.delete('t');history.replaceState(null,'',url);}
   function pause(){playing=false;lastTick=null;if(raf!==null)cancelAnimationFrame(raf);raf=null;render();updateURL();}
@@ -344,5 +345,6 @@
   function reset(){jump(0);}
   function bind(){els.play.onclick=play;els.prev.onclick=()=>index>0?go(index-1):jump(0);els.next.onclick=()=>go(index+1);els.reset.onclick=reset;seek.oninput=()=>jump(Number(seek.value));speed.onchange=()=>{lastTick=null;};lab.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{if(b.dataset.mode!==activeDemo.id)setMode(b.dataset.mode);});lab.addEventListener('keydown',e=>{if(/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)||e.altKey||e.ctrlKey||e.metaKey)return;if(e.key==='ArrowRight'){e.preventDefault();els.next.click();}if(e.key==='ArrowLeft'){e.preventDefault();els.prev.click();}if(e.key==='Home'){e.preventDefault();reset();}if(e.key==='End'){e.preventDefault();jump(clock.duration);}});document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});window.addEventListener('pagehide',pause);window.addEventListener('resize',()=>{buildTimeline();render(true);});reducedQuery?.addEventListener('change',e=>{reduced=e.matches;render(true);});window.addEventListener('popstate',loadLocation);}
   function loadLocation(){const params=new URL(location.href).searchParams,demo=DEMOS.find(d=>d.id===params.get('mode'))||DEMOS[0];playing=false;lastTick=null;if(raf!==null)cancelAnimationFrame(raf);activeDemo=demo;demoSteps=demo.steps;demoStates=demo.states;LAST=demoStates.length-1;clock=M.timeline(demo.id);const step=Number(params.get('step'));time=params.has('t')?Math.max(0,Math.min(clock.duration,Number(params.get('t'))||0)):step>0?clock.phases[clamp(step)].end:0;updateModeUI();buildTimeline();render(true);}
+  const depth=LearningDepth.mount({host:lab,before:$('.radix-figure'),compact:true,onChange:()=>render(true),persist:()=>updateURL()});
   lab.hidden=false;bind();loadLocation();
 })();

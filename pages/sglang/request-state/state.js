@@ -106,6 +106,7 @@ function render(){const s=M.snapshot(tl,time);host.dataset.mode=tl.mode;host.dat
  $('question').textContent=tl.question;$('scope').textContent=tl.scope;$('cancel-choice').hidden=tl.mode!=='cancel';
  host.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===tl.mode)));
  main(s);tracks(s);
+ depth.update({time,body:DepthProjections.req(tl,s),event:s.focus.title,explanation:s.focus.detail,href:M.url(s.focus.source),rows:[['finished_reason',s.state.finished||'None'],['to_finish',s.state.pending||'None'],['is_retracted',s.state.retracted],['batch 引用',pointers(s.state).join('；')],['CPU 消费结果',s.state.consuming?.id||'无'],['result_queue',s.state.results.map(q=>q.id).join(', ')||'空']]});
  $('event-title').textContent=s.focus.title;$('event-detail').textContent=s.focus.detail;$('source').href=M.url(s.focus.source);$('source').textContent=M.sources[s.focus.source][0].split('/').at(-1)+':'+M.sources[s.focus.source][1]+' ↗';
  if(lastFocus!==s.focus.id){lastFocus=s.focus.id;$('announce').textContent=s.focus.title;}
  const nearest=tl.events.filter(e=>e.lane==='cpu'&&e.end<=time).at(-1);$('steps').value=nearest?.id||'start';
@@ -123,5 +124,6 @@ $('play').addEventListener('click',()=>{if(playing){pause();render();save();}els
 $('prev').addEventListener('click',()=>seek([...new Set([0,...tl.events.map(e=>e.end)])].sort((a,b)=>b-a).find(t=>t<time-.01)??0));
 $('next').addEventListener('click',()=>seek([...new Set(tl.events.map(e=>e.end))].sort((a,b)=>a-b).find(t=>t>time+.01)??tl.duration));
 $('reset').addEventListener('click',()=>seek(0));$('clock').addEventListener('input',()=>seek($('clock').value));$('steps').addEventListener('change',()=>seek(tl.events.find(e=>e.id===$('steps').value)?.end||0));
+const depth=LearningDepth.mount({host,before:$('diagram').parentElement,module:[$('diagram').parentElement],onChange:()=>render(),persist:()=>save()});
 window.addEventListener('popstate',readURL);window.addEventListener('pagehide',pause);document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();render();save();}});reduced.addEventListener('change',render);readURL();
 })();

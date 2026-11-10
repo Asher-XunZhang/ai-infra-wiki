@@ -58,7 +58,7 @@
   }
   function line(id,a,b,type='neutral',dashed=false){return path(id,`M${a[0]},${a[1]} L${b[0]},${b[1]}`,type,dashed);}
   function build(){
-    const W=Math.round(svg.getBoundingClientRect().width);if(!W||W===lastWidth)return;lastWidth=W;
+    const W=Math.round(svg.getBoundingClientRect().width||root.clientWidth-36);if(!W||W===lastWidth)return;lastWidth=W;
     const narrow=W<580,cw=narrow?W-24:(W-54)/2,px=12,dx=narrow?12:W-cw-12,py=70,dy=narrow?562:70;
     const H=narrow?1090:540;
     svg.replaceChildren();svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.style.height=H+'px';
@@ -245,11 +245,11 @@
       p.classList.add('active');visual.trail.style.display='';visual.trail.setAttribute('stroke',colors[e.type]);
       visual.trail.setAttribute('data-fraction',u.toFixed(4));
       if(e.mode==='reference'){
-        visual.trail.setAttribute('stroke-dasharray','3 4');visual.trail.setAttribute('stroke-dashoffset',String(-u*14));
-        visual.trail.setAttribute('opacity',String(.45+.5*Math.sin(Math.PI*u)));
+        visual.trail.setAttribute('stroke-dasharray','3 4');visual.trail.setAttribute('stroke-dashoffset','0');
+        visual.trail.setAttribute('opacity','.55');
       }else{
-        visual.trail.setAttribute('stroke-dasharray',tail+' '+(len+tail));visual.trail.setAttribute('stroke-dashoffset',String(e.reverse?-distance:tail-distance));
-        visual.g.style.display='';visual.g.setAttribute('transform',`translate(${q.x} ${q.y})`);
+        visual.trail.setAttribute('stroke-dasharray','4 7');visual.trail.setAttribute('stroke-dashoffset',String(matchMedia('(prefers-reduced-motion: reduce)').matches?0:(e.reverse?1:-1)*timeAt(progress)*22/.9));
+        visual.g.style.display='none';
         visual.g.dataset.fraction=u.toFixed(4);
       }
       active.push(e);
@@ -296,7 +296,8 @@
     text('op-status',pCalls[pi]);text('op-wire',flows.length?flows.map(e=>e.payload).join('；'):(progress>=.965?'R1 完成：y1、y2、y3 已依次返回；P/D 本请求资源已释放。':payloads[pi]));text('op-step',String(pi+1).padStart(2,'0')+' / 09 · '+names[pi]);
     const elapsed=timeAt(progress);text('op-clock',formatTime(progress>=1?Math.ceil(duration):elapsed)+' / '+formatTime(Math.ceil(duration)));
     slider.value=String(Math.round(elapsed/duration*1000));slider.setAttribute('aria-valuetext',names[pi]+'，'+formatTime(elapsed)+'，'+rate+' 倍速');speedControl.value=String(rate);button.textContent=playing?'暂停':progress>=1?'重播':progress>0?'继续':'播放';
-    root.dataset.progress=progress.toFixed(4);root.dataset.elapsed=elapsed.toFixed(4);root.dataset.duration=duration.toFixed(4);root.dataset.rate=String(rate);root.dataset.playing=String(playing);root.dataset.phase=['request','reserve','prepare','prefill','handoff','commit','decode1','decode2','output'][pi];root.dataset.activeModules=active.join(',');root.dataset.stage=stage>=0?'PP'+stage:'';root.dataset.ready='true';
+    depth.update({time:elapsed,body:DepthProjections.system(progress,elapsed,flows,scene.stages.map(q=>q.state.textContent)),event:pCalls[pi],explanation:payloads[pi],rows:[['活动模块',active.join(' / ')],...flows.map(e=>[e.edge,e.payload])],href:'https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd'});
+    root.dataset.time=elapsed.toFixed(4);root.dataset.progress=progress.toFixed(4);root.dataset.elapsed=elapsed.toFixed(4);root.dataset.duration=duration.toFixed(4);root.dataset.rate=String(rate);root.dataset.playing=String(playing);root.dataset.phase=['request','reserve','prepare','prefill','handoff','commit','decode1','decode2','output'][pi];root.dataset.activeModules=active.join(',');root.dataset.stage=stage>=0?'PP'+stage:'';root.dataset.ready='true';
   }
   function save(){const p=Math.round(progress*1000)/1000,key=snapshotKey(p,rate);if(saved===key)return;saved=key;try{localStorage.setItem('ai-infra:sglang-pd-opening:v1',JSON.stringify({modelContent:{schema,progress:p,speed:rate}}));}catch(e){}}
   function pause(persist=true){playing=false;cancelAnimationFrame(raf);last=0;render();if(persist)save();}
@@ -308,8 +309,10 @@
   speedControl.addEventListener('change',()=>{const next=Number(speedControl.value);if(!rates.includes(next))return;rate=next;last=0;render();save();});
   function restore(state){const s=state?.modelContent;if(s?.schema!==schema||typeof s.progress!=='number'||!Number.isFinite(s.progress))return;playing=false;cancelAnimationFrame(raf);last=0;progress=clamp(s.progress);rate=rates.includes(s.speed)?s.speed:1;saved=snapshotKey(progress,rate);render();}
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing)pause();});
+  const depth=LearningDepth.mount({host:root,before:svg,module:[svg],onChange:()=>render(),persist:()=>{save();const u=new URL(location.href);u.searchParams.set('p',progress.toFixed(4));history.replaceState(null,'',u);}});
   const ro=new ResizeObserver(()=>build());ro.observe(svg);build();try{restore(JSON.parse(localStorage.getItem('ai-infra:sglang-pd-opening:v1')||'null'));}catch(e){}
 
+  const savedP=new URL(location.href).searchParams.get('p');if(savedP!==null){progress=clamp(Number(savedP)||0);render();}
   const updateResume=window.SiteUpdate?.take('system-opening');if(updateResume)restore(updateResume);
   window.SiteUpdate?.register('system-opening',()=>{pause();return {modelContent:{schema,progress,speed:rate}};});
 })();

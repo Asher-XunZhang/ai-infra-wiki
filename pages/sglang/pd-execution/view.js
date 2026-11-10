@@ -42,7 +42,7 @@
       }).join('');
     }
     const line=(x1,y1,x2,y2,colour,dash='')=>`<path d="M${x1} ${y1} H${x2} V${y2}" fill="none" stroke="${colour}" stroke-width="2" ${dash?'stroke-dasharray="5 4"':''}/>`;
-    function packet(x1,x2,y,e,s,label){const p=reduced.matches?.5:s.progress(e),x=x1+(x2-x1)*p;return `<g data-motion="${esc(e.id)}" data-x="${x.toFixed(2)}"><rect x="${x-5}" y="${y-5}" width="10" height="10" rx="2" fill="${colours[e.type]??colours.control}"/><title>${esc(label)}</title></g>`;}
+    function packet(x1,x2,y,e,s,label){return `<g data-payload="${esc(label)}"><title>${esc(label)}</title><defs><marker id="px-arrow-${esc(e.id)}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="${colours[e.type]??colours.control}"/></marker></defs>${LearningDepth.pulse(`<path d="M${x1} ${y}H${x2}" fill="none" stroke="${colours[e.type]??colours.control}" stroke-width="2" marker-end="url(#px-arrow-${esc(e.id)})"/>`,s.t)}</g>`;}
     function routes(s){
       const x=[185,420,655],flow=s.active.find(e=>e.frame&&(e.frame.flow||e.frame.routes?.length)&&e.type!=='submit');
       let out='<text x="12" y="17">跨 PP：控制名单 / 激活 / 结果，按标签分辨</text><text x="860" y="17">Decode 接收</text>';
@@ -54,20 +54,20 @@
         }
         if(tl.kind==='lifecycle'&&['frontend','decode-bootstrap'].includes(flow.frame.routes[0].from)){out+=`<text x="185" y="43">${esc(label)}</text>`;}
         else
-        out+=line(x[from],43,x[to],43,colours[flow.type]??colours.control,flow.type==='control')+packet(x[from],x[to],43,flow,s,label)+`<text x="12" y="46">${esc(flow.type==='output'?'结果回流':flow.type==='activation'||flow.type==='proxy'?'激活前向':'控制流')}</text><text x="${Math.min(x[from],x[to])}" y="32">PP${from} → PP${to} · ${esc(label)}</text>`;
+        out+=line(x[from],43,x[to],43,'var(--border)',flow.type==='control')+packet(x[from],x[to],43,flow,s,label)+`<text x="12" y="46">${esc(flow.type==='output'?'结果回流':flow.type==='activation'||flow.type==='proxy'?'激活前向':'控制流')}</text><text x="${Math.min(x[from],x[to])}" y="32">PP${from} → PP${to} · ${esc(label)}</text>`;
       }else out+='<text x="185" y="43" class="px-muted">本时刻无跨 PP 消息；本地引用变化不会走这条通路</text>';
       for(let r=0;r<3;r++){
         const y=76+r*33,e=s.active.find(e=>e.type==='kv'&&e.rank===r),queued=tl.copies.filter(c=>c.rank===r&&c.start>s.t&&tl.events.find(e=>e.id===c.deps[0]).end<=s.t);
         out+=line(185,y,895,y,'var(--border)')+`<text x="12" y="${y+4}">PP${r} · 层 KV</text><rect x="895" y="${y-8}" width="50" height="16" rx="3" fill="var(--soft)" stroke="var(--border)"/><text x="900" y="${y+4}">本级层</text>`;
-        if(e){const payload=e.requests.map(q=>`${q.rid} [${q.start},${q.end})${q.last?' + aux':''}`).join(' · ');out+=line(185,y,895,y,colours.kv)+packet(185,895,y,e,s,payload)+`<text x="210" y="${y-8}">${esc(payload)} · worker 执行${queued.length?' / 后续任务已排队':''}</text>`;}
+        if(e){const payload=e.requests.map(q=>`${q.rid} [${q.start},${q.end})${q.last?' + aux':''}`).join(' · ');out+=packet(185,895,y,e,s,payload)+`<text x="210" y="${y-8}">${esc(payload)} · worker 执行${queued.length?' / 后续任务已排队':''}</text>`;}
       }
       $('routes').innerHTML=out;
     }
     function references(s){
       if(tl.kind!=='dataflow'){$('references').innerHTML='';return;}
       const refs=M.references(tl,s,rank,rid),labels={bootstrap:'bootstrap_queue',waiting:'waiting_queue',batch:'ScheduleBatch.reqs',chunk:'chunked_req',inflight:'inflight_queue'};
-      const boxes=Object.entries(refs).map(([key,on],i)=>{const x=10+i*190;return `<g data-ref="${key}" data-held="${on}"><rect x="${x}" y="5" width="180" height="27" rx="3"/><text x="${x+90}" y="23" text-anchor="middle">${labels[key]}</text>${on?`<path d="M${x+90} 32V50H480V68" fill="none" stroke="var(--accent)" stroke-width="1.5"/>`:''}</g>`;}).join('');
-      $('references').innerHTML=`<section id="queue-lab" class="px-refs"><h3 id="queue-heading">PP${rank}：谁还引用同一个 Req？</h3><div class="px-scroll"><svg class="px-ref-svg" viewBox="0 0 960 103" role="img" aria-label="PP${rank} 本地容器到 Req ${esc(rid)} 的引用">${boxes}<rect x="345" y="68" width="270" height="29" rx="5"/><text x="480" y="87" text-anchor="middle">Req ${esc(rid)} · PP${rank} 进程本地对象</text></svg></div><p>实线表示本地引用，不传 KV；batch 与 inflight 可以同时引用 Req。旧 batch 后续过滤的具体时刻不在此时钟中，收尾不等于 Python 对象已回收。</p></section>`;
+      const boxes=Object.entries(refs).map(([key,on],i)=>{const x=10+i*190;return `<g data-ref="${key}" data-held="${on}"><rect x="${x}" y="5" width="180" height="27" rx="3"/><text x="${x+90}" y="23" text-anchor="middle">${labels[key]}</text>${on?`<path d="M${x+90} 32V50H480V68" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 4"/>`:''}</g>`;}).join('');
+      $('references').innerHTML=`<section id="queue-lab" class="px-refs"><h3 id="queue-heading">PP${rank}：谁还引用同一个 Req？</h3><div class="px-scroll"><svg class="px-ref-svg" viewBox="0 0 960 103" role="img" aria-label="PP${rank} 本地容器到 Req ${esc(rid)} 的引用">${boxes}<rect x="345" y="68" width="270" height="29" rx="5"/><text x="490" y="62" class="px-muted">引用</text><text x="480" y="87" text-anchor="middle">Req ${esc(rid)} · PP${rank} 进程本地对象</text></svg></div><p>灰色虚线标记本地引用，不传 KV；batch 与 inflight 可以同时引用 Req。旧 batch 后续过滤的具体时刻不在此时钟中，收尾不等于 Python 对象已回收。</p></section>`;
     }
     function tracks(s){
       let start=0,end=tl.duration;
@@ -82,7 +82,7 @@
     }
     function render(){const s=tl.sample(t);host.dataset.time=t.toFixed(3);$('seek').value=t;$('time').textContent=`${t.toFixed(1)} / ${tl.duration.toFixed(1)} · 教学单位，非实际耗时`;
       $('title').textContent=(s.active.length?'进行中 · ':'已完成 · ')+(s.focus.type==='compute'?`PP${s.focus.rank} 执行 ${s.focus.id.split('-')[0]} 本级前向`:s.focus.title);$('detail').textContent=s.focus.type==='compute'?'GPU 执行本级模型层，读取已有前缀并写入新 KV。下方已计算边界在该动作完成后更新；后一级前向还要等待这批激活。':s.focus.detail;$('source').href=tl.sourceUrl(s.focus);$('steps').value=s.focus.frame?s.focus.id:s.done.at(-1)?.id??tl.commits[0].id;
-      stateCards(s);routes(s);references(s);tracks(s);button('prev').disabled=t===0;button('next').disabled=t>=tl.duration;
+      stateCards(s);routes(s);references(s);tracks(s);host.dataset.playing=String(playing);depth.update({time:t,body:DepthProjections.pd(tl,s,rank,rid),event:s.focus.title,explanation:s.focus.detail,href:tl.sourceUrl(s.focus),rows:M.rows(tl,s,rid).flatMap((q,r)=>[[`PP${r} computed / submitted / completed`,[q.computed,q.submitted,q.completed].join(' / ')],[`PP${r} queue / poll / KV`,`${q.queue} / ${q.poll} / ${q.kv}`]])});button('prev').disabled=t===0;button('next').disabled=t>=tl.duration;
     }
     $('seek').oninput=e=>seek(e.target.value);button('play').onclick=play;button('reset').onclick=()=>seek(0);
     button('prev').onclick=()=>seek([...tl.commits].reverse().find(e=>e.end<t-.01)?.end??0);
@@ -96,6 +96,8 @@
       $('steps').innerHTML=tl.commits.map(e=>`<option value="${esc(e.id)}">${esc(e.title)}</option>`).join('');$('request').innerHTML=(model.requests??[{rid:'R0'}]).map(r=>`<option>${r.rid}</option>`).join('');if(!$('request').querySelector(`option[value="${rid}"]`)&&!(model.requests??[{rid:'R0'}]).some(r=>r.rid===rid))rid='R0';$('request').value=rid;$('rank').value=rank;
       $('seek').max=tl.duration;$('worker-source').href=tl.sourceUrl({source:'worker'});seek(position.t??tl.events.find(e=>e.id===position.event)?.end??0,false);host.dataset.ready='true';
     }
+    const depth=LearningDepth.mount({host,before:host.querySelector('.px-controls'),module:[$('board').closest('details')||$('board'),$('routes').parentElement,$('references'),host.querySelector('.px-track-heading'),$('tracks').parentElement,host.querySelector('.px-key')],source:[host.querySelector('.px-evidence')],onChange:()=>render(),persist:()=>write()});
+    ($('board').closest('details')||$('board')).before(depth.overview);
     return {load,pause,seek,get timeline(){return tl;}};
   }};
 })();

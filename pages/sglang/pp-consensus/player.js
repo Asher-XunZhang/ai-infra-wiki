@@ -18,8 +18,8 @@
     const msg=s.active.find(e=>e.kind==='message');
     for(const [a,b]of [[0,1],[1,2],...(tl.mode==='hicache'?[]:[[2,0]])]){
       const r=route(a,b),active=msg?.from===a&&msg?.to===b;
-      out+=`<path d="${r.d}" class="pc-route${active?' active':''}" marker-end="url(#pc-arrow)"/>`;
-      if(active){const p=point(r.points,reduced.matches?.5:s.progress(msg));out+=`<g data-motion="${msg.id}" data-x="${p[0].toFixed(2)}" data-y="${p[1].toFixed(2)}"><rect x="${p[0]-7}" y="${p[1]-5}" width="14" height="10" rx="2" fill="var(--pc-purple)"/></g>`;out+=text((centres[a]+centres[b])/2,r.labelY,`${msg.back?'回流':'发送'} ${payload(msg.payload)}`,'pc-payload','text-anchor="middle"');}
+      out+=`<path d="${r.d}" class="pc-route" marker-end="url(#pc-arrow)"/>`;
+      if(active){out+=LearningDepth.pulse(`<path d="${r.d}" class="pc-route active" marker-end="url(#pc-arrow)"/>`,t);out+=text((centres[a]+centres[b])/2,r.labelY,`${msg.back?'回流':'发送'} ${payload(msg.payload)}`,'pc-payload','text-anchor="middle"');}
     }
     if(!msg)out+=text(500,18,tl.mode==='hicache'?'计数单向传播：PP0 → PP1 → PP2':'候选向后汇总；末级 → 首级 → 中间级 → 末级回流','pc-muted','text-anchor="middle"');
     s.stages.forEach((stage,r)=>{
@@ -65,7 +65,7 @@
   function render(){const s=tl.sample(t);host.dataset.time=t.toFixed(3);$('seek').value=t;$('time').textContent=`${t.toFixed(1)} / ${tl.duration.toFixed(1)} · 教学时间，非实测`;draw(s);tracks(s);
     const f=s.focus;const focusKey=f.id+(s.t<f.start?'pending':'active');if(focusKey!==renderedFocus){renderedFocus=focusKey;$('phase').textContent=(s.t<f.start?'即将开始 · ':'')+f.label;$('detail').textContent=f.detail;$('source').href=M.sourceURL(f.source);$('source').textContent='本阶段固定源码 ↗';$('steps').value=f.id;}
     $('result').innerHTML=s.stages.map((r,i)=>`<span><b>PP${i}</b> ${tl.mode==='hicache'?(['L0','L1','L2'].filter(id=>r.acks[id]==='finished').length+' 条 load ACK 已收尾'):M.ids.map(id=>`${id}：${esc(r.outcome[id]||'尚未判定')}`).join('；')}</span>`).join('');
-    btn('prev').disabled=t<=0;btn('next').disabled=t>=tl.duration;
+    host.dataset.playing=String(playing);depth.update({time:t,body:DepthProjections.consensus(tl,s),event:s.focus.label,explanation:s.focus.detail,href:M.sourceURL(s.focus.source),rows:s.stages.flatMap((q,r)=>[[`PP${r} 本地观察`,DepthProjections.value(q.observed)],[`PP${r} 汇合 / 回流`,DepthProjections.value(q.aggregate)+' / '+DepthProjections.value(q.returned)],[`PP${r} ACK / counts`,DepthProjections.value(q.acks)+' / '+DepthProjections.value(q.counts)]])});btn('prev').disabled=t<=0;btn('next').disabled=t>=tl.duration;
   }
   function persist(){const u=new URL(location.href);u.searchParams.set('mode',tl.mode);u.searchParams.set('condition',tl.condition);u.searchParams.set('t',t.toFixed(3));history.replaceState(null,'',u);}
   function pause(){playing=false;cancelAnimationFrame(raf);btn('play').textContent=tl&&t>=tl.duration?'重播':'播放全程';btn('play').setAttribute('aria-pressed','false');}
@@ -78,6 +78,7 @@
   btn('play').addEventListener('click',play);btn('reset').addEventListener('click',()=>seek(0));btn('prev').addEventListener('click',()=>seek([...tl.steps].reverse().find(n=>n<t-.01)||0));btn('next').addEventListener('click',()=>seek(tl.steps.find(n=>n>t+.01)??tl.duration));
   const eventSeek=e=>{const node=e.target.closest('[data-event]');if(node)seek(tl.events.find(x=>x.id===node.dataset.event).start);};$('tracks').addEventListener('click',eventSeek);$('tracks').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();eventSeek(e);}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden){pause();persist();}});window.addEventListener('pagehide',pause);reduced.addEventListener('change',render);
+  const depth=LearningDepth.mount({host,before:$('scene').parentElement,module:[$('scene').parentElement],onChange:()=>render(),persist});
   function restore(){const q=new URL(location.href).searchParams;load(q.get('mode'),q.get('condition'),q.get('t'),false);}window.addEventListener('popstate',restore);restore();
   const resume=window.SiteUpdate?.take('pp-consensus');
   if(resume&&M.modes[resume.mode]){

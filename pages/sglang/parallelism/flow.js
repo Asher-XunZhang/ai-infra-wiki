@@ -14,11 +14,7 @@ function panel(x,y,w,h,title,sub){backdrops.push(box(x,y,w,h,'rank-panel'));retu
 function module(x,y,w,name,sub,active=false){return `<g class="module ${active?'active':''}">${box(x,y,w,50)}${text(x+12,y+20,name,'code')}${text(x+12,y+39,sub,'sub')}</g>`;}
 function path(points,cls='activation',arrow=true){return `<path d="${points.map((a,i)=>(i?'L':'M')+a.join(',')).join(' ')}" class="wire ${cls}" ${arrow?`marker-end="url(#pf-arrow-${cls})"`:''}/>`;}
 function flow(id,points,label,cls='activation',width=102){
- if(p(id)<=0)return '';
- const lengths=points.slice(1).map((a,i)=>Math.hypot(a[0]-points[i][0],a[1]-points[i][1])),total=lengths.reduce((a,b)=>a+b,0);let distance=ease((p(id)-.08)/.84)*total,index=0;
- while(index<lengths.length-1&&distance>lengths[index])distance-=lengths[index++];
- const a=points[index],b=points[index+1],f=lengths[index]?distance/lengths[index]:1,x=a[0]+(b[0]-a[0])*f,y=a[1]+(b[1]-a[1])*f;
- return path(points,cls)+(!done(id)?`<g class="moving-payload" data-motion="${id}" data-x="${x.toFixed(3)}" data-y="${y.toFixed(3)}">${chip(x-width/2,y-13,label,cls,width)}</g>`:'');
+ if(p(id)<=0)return '';return `<g data-payload="${escape(label)}"><title>${escape(label)}</title>${LearningDepth.pulse(path(points,cls),time,moving(id))}</g>`;
 }
 function moveRows(id,labels,from,to,cls='activation',width=38){
  const f=ease((p(id)-.08)/.84);
@@ -179,7 +175,7 @@ function executionLanes(){
 }
 const definitions='<defs>'+['activation','control','kv','result'].map(c=>`<marker id="pf-arrow-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" class="${c}"/></marker>`).join('')+'</defs>';
 function render(){
- S=M.sample(timeline,time);backdrops=[];const foreground=draw[mode]();$('parallel-scene').setAttribute('viewBox',`0 0 900 ${550+timeline.execution.lanes.length*25}`);$('parallel-scene').innerHTML=definitions+backdrops.join('')+`<g id="parallel-drawing">${foreground}</g>`+executionLanes();$('parallel-scene').dataset.mode=mode;$('parallel-scene').dataset.phase=S.phase.id;$('parallel-scene').dataset.time=time.toFixed(3);
+ S=M.sample(timeline,time);host.dataset.time=time.toFixed(3);host.dataset.playing=String(playing);depth.allow(['pp','dpa','pcp','dcp'].includes(mode)?['overview','modules','source']:['modules','source']);depth.update({time,body:DepthProjections.parallel(timeline,S,time),event:S.phase.title,explanation:S.phase.detail,rows:[['配置',timeline.config],['当前活动',S.active.map(e=>e.label).join('；')],...Object.entries(S.progress).map(([k,v])=>[k,v>=1?'完成':v>0?'进行中':'未开始'])],href:M.url(S.phase.refs[0])});backdrops=[];const foreground=draw[mode]();$('parallel-scene').setAttribute('viewBox',`0 0 900 ${550+timeline.execution.lanes.length*25}`);$('parallel-scene').innerHTML=definitions+backdrops.join('')+`<g id="parallel-drawing">${foreground}</g>`+executionLanes();$('parallel-scene').dataset.mode=mode;$('parallel-scene').dataset.phase=S.phase.id;$('parallel-scene').dataset.time=time.toFixed(3);
  $('parallel-seek').value=time;$('parallel-clock').textContent=`${time.toFixed(1)} / ${timeline.duration.toFixed(1)} s`;
  $('parallel-previous').disabled=time===0;$('parallel-next').disabled=time>=timeline.duration;
  $('parallel-toggle').textContent=playing?'暂停':'播放';$('parallel-toggle').setAttribute('aria-pressed',String(playing));
@@ -191,7 +187,7 @@ function render(){
   host.querySelectorAll('[data-event]').forEach(b=>b.setAttribute('aria-current',String(Number(b.dataset.event)===S.phase.index)));
  }
 }
-function url(){const u=new URL(location.href);u.searchParams.set('mode',mode);if(option==='default')u.searchParams.delete('case');else u.searchParams.set('case',option);u.searchParams.delete('t');u.searchParams.delete('step');history.replaceState(null,'',u);}
+function url(){const u=new URL(location.href);u.searchParams.set('mode',mode);if(option==='default')u.searchParams.delete('case');else u.searchParams.set('case',option);u.searchParams.set('t',time.toFixed(3));u.searchParams.delete('step');history.replaceState(null,'',u);}
 function stop(){playing=false;cancelAnimationFrame(raf);raf=0;last=0;}
 function select(next,choice='default',update=true){
  stop();mode=next;option=choice;timeline=M.build(mode,option);time=0;lastPhase='';
@@ -214,13 +210,14 @@ $('parallel-next').addEventListener('click',()=>{stop();time=timeline.phases.fin
 $('parallel-previous').addEventListener('click',()=>{stop();time=[...timeline.phases].reverse().find(p=>p.start<time-.001)?.start||0;render();});
 $('parallel-events').addEventListener('click',e=>{const b=e.target.closest('[data-event]');if(b){stop();time=timeline.phases[Number(b.dataset.event)].start;render();}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){stop();render();}});window.addEventListener('pagehide',stop);
-function fromLocation(){const u=new URL(location.href),m=u.searchParams.get('mode');select(M.modes.includes(m)?m:'tp',u.searchParams.get('case')||'default',false);}
+function fromLocation(){const u=new URL(location.href),m=u.searchParams.get('mode');select(M.modes.includes(m)?m:'tp',u.searchParams.get('case')||'default',false);time=Math.max(0,Math.min(timeline.duration,Number(u.searchParams.get('t'))||0));render();}
 window.addEventListener('popstate',fromLocation);
 reduced.addEventListener('change',render);
 // Give the two-rank canvas the full width before the global mobile breakpoint.
 const compactNav=matchMedia('(max-width:1160px)'),menu=document.querySelector('.sidebar-menu');
 function fitNavigation(){if(menu)menu.open=!compactNav.matches;}
 compactNav.addEventListener('change',fitNavigation);window.addEventListener('resize',fitNavigation);fitNavigation();
+const depth=LearningDepth.mount({host,before:host.querySelector('.parallel-canvas-scroll'),module:[$('parallel-scene').parentElement,$('parallel-active'),$('parallel-events')],source:[host.querySelector('.parallel-evidence')],onChange:()=>render(),persist:()=>url()});
 host.hidden=false;fromLocation();
 const resume=window.SiteUpdate?.take('parallelism');
 if(resume&&M.modes.includes(resume.mode)){select(resume.mode,resume.option,false);time=Math.max(0,Math.min(timeline.duration,Number(resume.time)||0));render();}

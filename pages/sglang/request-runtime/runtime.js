@@ -45,6 +45,7 @@ const format=t=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');
 function options(){return {scenario:get('scenario').value,outputs:Number(get('outputs').value),cache:get('cache').checked};}
 function render(){
  const view=F.at(timeline,time),f=view.phase.frame,s=view.state;
+ depth.update({time,event:f.title,explanation:f.explanation,rows:['front','scheduler','batch','dispatched','abortSent','toFinish','finished','slot','kv','cached','sampled','visible'].map(k=>[k,DepthProjections.value(s[k])]),href:M.sourceURL(f.source)});
  host.dataset.playing=String(playing);get('runtime-snapshot').dataset.frame=f.id;host.dataset.time=time.toFixed(3);
  get('step').value=time;get('step').setAttribute('aria-valuetext',`${format(time)}，${f.title}`);
  get('runtime-time').textContent=format(time)+' / '+format(timeline.duration);
@@ -78,12 +79,7 @@ function render(){
  sampleCells.forEach((el,i)=>el.classList.toggle('filled',i<s.sampled));outCells.forEach((el,i)=>el.classList.toggle('filled',i<s.visible));
  batchCells.forEach((el,i)=>{const prefill=s.batch.includes('EXTEND');el.style.display=prefill||i===0?'':'none';el.classList.toggle('filled',s.slot);el.querySelector('text').textContent=prefill?'p'+(i+1):(s.batch.match(/y\d+/)||['—'])[0];});
  for(const e of view.active)if(!e.edge)for(const id of e.nodes)nodeEls[id].bar.setAttribute('width',String((F.nodes[id].w-24)*e.progress));
- packets.forEach((p,i)=>{
-  const e=view.active.filter(e=>e.edge)[i];if(!e||reduced.matches){p.g.setAttribute('visibility','hidden');return;}
-  const path=edgeEls[e.edge],point=path.path.getPointAtLength(path.length*e.progress);
-  p.g.setAttribute('visibility','visible');p.g.setAttribute('transform',`translate(${point.x} ${point.y})`);p.g.setAttribute('class','rf-packet '+e.kind);p.g.dataset.edge=e.edge;
-  p.shape.setAttribute('d',palette[e.kind]);p.label.textContent=e.kind==='request'?(e.edge==='http'?'R1':'ID'):e.kind==='text'?'文':'';
- });
+ for(const [id,e]of Object.entries(edgeEls)){const moving=view.active.some(a=>a.edge===id&&a.kind!=='local');e.path.style.strokeDasharray=moving?'4 7':'';e.path.style.strokeDashoffset=moving?String(reduced.matches?0:-time*22/.9):'';e.path.dataset.flowActive=String(moving);}packets.forEach(p=>p.g.setAttribute('visibility','hidden'));
 }
 function stop(){playing=false;cancelAnimationFrame(raf);raf=0;last=0;render();}
 function tick(now){if(!playing)return;if(last)time=Math.min(timeline.duration,time+(now-last)/1000*Number(get('runtime-speed').value));last=now;if(time===timeline.duration)playing=false;render();if(playing)raf=requestAnimationFrame(tick);}
@@ -95,5 +91,7 @@ get('previous').addEventListener('click',()=>{const p=F.at(timeline,time).phase;
 get('next').addEventListener('click',()=>{const p=F.at(timeline,time).phase;time=timeline.phases[p.index+1]?.start??timeline.duration;stop();});
 get('reset').addEventListener('click',rebuild);['scenario','outputs','cache'].forEach(id=>get(id).addEventListener('change',rebuild));
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);reduced.addEventListener('change',render);
-host.hidden=false;rebuild();
+const depth=LearningDepth.mount({host,before:svg.parentElement,compact:true,source:[host.querySelector('.runtime-step-details')],onChange:()=>render(),persist:()=>{const u=new URL(location.href);u.searchParams.set('t',time.toFixed(3));for(const id of ['scenario','outputs'])u.searchParams.set(id,get(id).value);history.replaceState(null,'',u);}});
+const params=new URL(location.href).searchParams;for(const id of ['scenario','outputs']){const el=get(id),v=params.get(id);if([...el.options].some(o=>o.value===v))el.value=v;}
+host.hidden=false;rebuild();if(params.has('t')){time=Math.max(0,Math.min(timeline.duration,Number(params.get('t'))||0));render();}
 })();

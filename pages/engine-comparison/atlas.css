@@ -1414,3 +1414,15 @@ html[data-ds-dark-theme] .ia-page .ia-releaseCard:hover,
     transition-duration: .001ms !important;
   }
 }
+
+/* A single phase clock survives depth changes. Stage choice is not a timed trace. */
+.ia-page .ia-edge.is-active{animation:none;stroke-dashoffset:var(--ia-pulse-offset,0)}
+.ia-page .ia-node.is-active .ia-nodeBorder{animation:none}
+.ia-page .ia-depth-note{padding:12px 20px;font-size:14px;line-height:1.7;color:#b7c5d5}
+.ia-page[data-depth=overview] .ia-boardHint{display:none}
+.ia-page .ld-controls{margin:20px 0;color:var(--ia-ink)}
+
+.ia-page .ia-splitMarker.is-active{animation:none;stroke-dashoffset:var(--ia-pulse-alt-offset,0)}
+.ia-page .ia-node.is-active .ia-nodeDot{animation:none}
+
+.ia-page .ia-nodePulse{animation:none;opacity:.8}

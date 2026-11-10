@@ -17,10 +17,8 @@ function create(svg,timeline){
  function vector(x,y,r,kind='h',a={}){const g=add('g',{transform:`translate(${x} ${y})`,class:`ex-vector ex-r${r}`,...a});for(let i=0;i<4;i++)g.append(make('rect',{x:i*6,y:0,width:4,height:18,rx:1,opacity:[.45,.85,.6,1][i]}));g.append(make('text',{x:29,y:14},kind));return g;}
  function fly(label,a,b,u,r=0,attrs={}){const t=reduced?(u>=1?1:0):clamp(u);return chip(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,label,r,{'data-moving':'true',...attrs});}
  function travel(label,points,u,r=0,attrs={}){
-  line(points,'ex-copy',{'marker-end':'url(#ex-arrow-copy)'});
-  const lengths=points.slice(1).map((p,i)=>Math.hypot(p[0]-points[i][0],p[1]-points[i][1])),total=lengths.reduce((a,b)=>a+b,0);let distance=total*(reduced?(u>=1?1:0):clamp(u)),pos=points.at(-1);
-  for(let i=0;i<lengths.length;i++){if(distance<=lengths[i]){const f=lengths[i]?distance/lengths[i]:0;pos=[points[i][0]+(points[i+1][0]-points[i][0])*f,points[i][1]+(points[i+1][1]-points[i][1])*f];break;}distance-=lengths[i];}
-  return chip(pos[0]-16,pos[1]-12,label,r,{'data-moving':'true',...attrs});
+  const path=line(points,'ex-copy',{'marker-end':'url(#ex-arrow-copy)','data-payload':label,...attrs});
+  if(u>0&&u<1){path.style.strokeDasharray='4 7';path.style.strokeDashoffset=String(reduced?0:-v.time*22/.9);path.dataset.flowActive='true';}return path;
  }
  function progress(id,a=0,b=1){const p=timeline.phases.find(p=>p.id===id);return p?clamp((v.time-p.start-a*p.duration)/((b-a)*p.duration)):0;}
  const running=id=>v.phase.id===id;

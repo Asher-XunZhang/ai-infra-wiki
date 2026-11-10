@@ -15,14 +15,7 @@ const geometry={
 };
 function wire(points,kind){return `<path d="${points.map((p,i)=>(i?'L':'M')+p.join(',')).join(' ')}" class="pd-wire ${kind}" marker-end="url(#pd-arrow-${kind})"/>`;}
 function chip(x,y,label,kind='data',w=48){return `<g class="pd-chip ${kind}">${rect(x,y,w,25)}${text(x+w/2,y+17,label,'pd-chip-label','middle')}</g>`;}
-function flow(id,points,label,kind,w=74,drawWire=true){
- const p=progress(id);let out=drawWire?wire(points,kind):'';if(p<=0||p>=1||reduced.matches)return out;
- const segments=points.slice(1).map((v,i)=>Math.hypot(v[0]-points[i][0],v[1]-points[i][1]));
- let remaining=segments.reduce((a,b)=>a+b,0)*p,k=0;
- while(k<segments.length-1&&remaining>segments[k])remaining-=segments[k++];
- const a=points[k],b=points[k+1],q=remaining/segments[k],x=a[0]+(b[0]-a[0])*q,y=a[1]+(b[1]-a[1])*q;
- return out+`<g data-motion="${id}" data-x="${x.toFixed(3)}" data-y="${y.toFixed(3)}">${chip(x-w/2,y-12.5,label,kind,w)}</g>`;
-}
+function flow(id,points,label,kind,w=74,drawWire=true){const p=progress(id);return `<g data-payload="${esc(label)}"><title>${esc(label)}</title>${p>0&&p<1?LearningDepth.pulse(wire(points,kind),time):drawWire?wire(points,kind):''}</g>`;}
 function bar(x,y,w,id){const p=progress(id),value=reduced.matches?(p===1?1:0):p;return rect(x,y,w,4,'pd-bar-base',2)+rect(x,y,w*value,4,'pd-bar-fill',2);}
 function kvCells(side,x){
  let out='';const isP=side==='p',complete=isP?S.pKV:S.dKV;
@@ -90,7 +83,7 @@ function draw(){
  return out+tracks();
 }
 function render(){
- S=M.state(tl,time);time=S.t;
+ S=M.state(tl,time);time=S.t;host.dataset.time=time.toFixed(3);host.dataset.playing=String(playing);depth.update({time,body:DepthProjections.handoff(tl,S,M),event:S.phase.title,explanation:S.phase.text,rows:['reserved','pKV','dKV','committed','released','dOutput'].map(k=>[k,DepthProjections.value(S[k])]),href:M.sourceUrl(S.phase.refs[0])});
  const scene=$('pd-handoff-scene');scene.innerHTML=draw();scene.dataset.time=time.toFixed(3);scene.dataset.case=tl.option;
  $('pd-handoff-seek').value=time;$('pd-handoff-seek').max=tl.duration;
  $('pd-handoff-clock').textContent=`${time.toFixed(1)} / ${tl.duration.toFixed(1)} s`;
@@ -107,8 +100,10 @@ function stop(){playing=false;cancelAnimationFrame(raf);last=0;}
 function frame(stamp){if(!playing)return;if(last)time+=Math.min(.1,(stamp-last)/1000)*rate;last=stamp;if(time>=tl.duration){time=tl.duration;stop();}render();if(playing)raf=requestAnimationFrame(frame);}
 function seek(t){stop();time=t;render();}
 function select(option,updateURL=true){stop();tl=M.build(option);time=0;phaseKey='';$('pd-handoff-case').value=tl.option;$('pd-handoff-case-note').textContent=M.cases[tl.option][1];if(updateURL){const u=new URL(location.href);u.searchParams.set('pdcase',tl.option);history.replaceState(null,'',u);}render();}
+const depth=LearningDepth.mount({host,before:$('pd-handoff-scene').parentElement,compact:true,compactOverview:true,module:[$('pd-handoff-scene').parentElement],onChange:()=>render(),persist:()=>{const u=new URL(location.href);u.searchParams.set('pdcase',tl.option);u.searchParams.set('t',time.toFixed(3));history.replaceState(null,'',u);}});
 host.hidden=false;
 select(new URL(location.href).searchParams.get('pdcase')||'normal',false);
+const savedTime=new URL(location.href).searchParams.get('t');if(savedTime!==null)seek(Math.max(0,Math.min(tl.duration,Number(savedTime)||0)));
 const resume=window.SiteUpdate?.take('pd-handoff');
 if(resume){select(resume.option,false);seek(Math.max(0,Math.min(tl.duration,Number(resume.time)||0)));}
 window.SiteUpdate?.register('pd-handoff',()=>{stop();render();return {option:tl.option,time};});
