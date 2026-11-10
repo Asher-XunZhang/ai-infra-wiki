@@ -1,4 +1,4 @@
-/* Approved PD architecture teaching animation; SGLang e00930c5489053f26d86b179cee0d087f846acbb. */
+/* Approved PD architecture teaching animation; SGLang 279339f113b79af84f27fd3ac92d0a13bd3f4cbd. */
 (()=>{
   'use strict';
   const root=document.getElementById('sglang-opening'),svg=root.querySelector('#op-map'),slider=root.querySelector('#op-range'),button=root.querySelector('#op-toggle'),restart=root.querySelector('#op-restart'),speedControl=root.querySelector('#op-speed');
@@ -189,7 +189,7 @@
   flow('d-prepare-receiver',.093,.110,'meta','D 内存池 → Receiver：接收位置 / metadata 地址');
   flow('d-queue-step',.110,.128,'meta','D PreallocQueue → TransferQueue：进入传输等待');
   flow('receive-info',.110,.160,'meta','D Receiver → P BootstrapQueue：接收位置 / 配对身份');
-  flow('p-queue-step',.160,.182,'req','P BootstrapQueue → waiting_queue：R1 就绪');
+  flow('p-queue-step',.160,.182,'req','P BootstrapQueue → waiting_queue：握手共识与本地 metadata 准备完成');
   flow('p-batch-cache',.182,.200,'meta','P 选批：查询前缀匹配',{mode:'reference'});
   flow('p-cache-ref',.182,.211,'meta','P tree_cache：引用 KV 映射与缓存池',{mode:'reference'});
   flow('p-queue-batch',.202,.222,'req','P waiting_queue → ScheduleBatch：选入 R1');

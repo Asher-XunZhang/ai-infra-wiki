@@ -3,6 +3,7 @@ const fs=require('node:fs'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const courses=[
  ['sglang/loop-journey/index.html','loop-journey','instance'],
+ ['sglang/request-state/index.html','loop-journey','instance'],
  ['sglang/system-overview/index.html','system-overview','foundations'],
  ['sglang/scheduling/index.html','scheduling','instance'],
  ['sglang/kv-memory/index.html','kv-memory','instance'],

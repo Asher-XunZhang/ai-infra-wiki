@@ -2,7 +2,7 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.PDExecution=api;})(globalThis,()=>{
   'use strict';
   const clone=x=>JSON.parse(JSON.stringify(x));
-  const revisions={lifecycle:'279339f113b79af84f27fd3ac92d0a13bd3f4cbd',dataflow:'882577451e764a515df2a386a055012e8f075a16'};
+  const revisions={lifecycle:'279339f113b79af84f27fd3ac92d0a13bd3f4cbd',dataflow:'279339f113b79af84f27fd3ac92d0a13bd3f4cbd'};
   const lanes=[...Array.from({length:3},(_,r)=>[{id:`cpu${r}`,label:`PP${r} · Scheduler / CPU`},{id:`gpu${r}`,label:`PP${r} · ModelRunner / GPU`},{id:`worker${r}`,label:`PP${r} · Mooncake worker`}]).flat(),{id:'link',label:'PP 消息 / 共识'}];
   function differences(a,b,path=[]){
     if(JSON.stringify(a)===JSON.stringify(b))return [];

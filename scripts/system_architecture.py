@@ -15,7 +15,7 @@ def render_architecture():
         return f'<a href="{base}blob/{rev}/{file}#L{line}"><code>{escape(file)}</code> · L{line}</a>'
     opening = (ROOT / 'scripts/templates/sglang_pd_opening.html').read_text(encoding='utf-8').strip()
     parts = ['<!-- system-architecture:start -->', opening,
-        '<p class="pd-opening-scope">开篇示例：Prefill 为 PP4 × CP4 × Attention-TP4，Decode 为逻辑接收与执行端；冷缓存、普通成功路径，展示两轮 Decode。动画时间用于讲解，不代表实测时延。<a href="https://github.com/sgl-project/sglang/tree/e00930c5489053f26d86b179cee0d087f846acbb">开篇源码 e00930c54890</a>（核对于 2026-11-03）；下方单实例参考保留独立基线 279339f113。</p>',
+        '<p class="pd-opening-scope">开篇示例：Prefill 为 PP4 × CP4 × Attention-TP4，Decode 为逻辑接收与执行端；冷缓存、普通成功路径，展示两轮 Decode。动画时间用于讲解，不代表实测时延。<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">开篇源码 279339f113</a>（复核于 2026-11-09）；与本章单实例、PD 与通信实现课程使用同一固定基线。</p>',
         '<noscript><p>启用 JavaScript 可播放开篇。请求主线：HTTP / TokenizerManager → D 预分配 → P 调度与 PP 计算 → KV / metadata 交接 → D 解码 → DetokenizerManager / HTTP 返回。下方单实例图与模块源码索引可直接阅读。</p></noscript>',
         '<section class="architecture" id="architecture" aria-labelledby="architecture-title">',
         '<h2 id="architecture-title">单实例模块职责与源码索引</h2>',
@@ -56,6 +56,6 @@ def render_architecture():
         parts.append(f'<dt><a href="{item["link"]}">{item["title"]}</a></dt><dd>{item["text"]}<p>{links}</p></dd>')
     parts += ['</dl></details><details class="arch-provenance"><summary>源码基线与架构图参考</summary>',
         f'<p>本图的模块、目录和连接已逐项核对 <a href="{base}tree/{rev}">SGLang {rev[:10]}</a>，读取于 {data["reviewed"]}。普通进程装配见 {source_link(data["startup"])}。读取的是固定 Git 对象，当前检出目录干净；未修改 SGLang 源码，未运行模型、GPU 或网络实验。</p>',
-        '<p>本章主体课程采用此提交；<a href="../pd-dataflow/">PD 数据流专题</a>独立固定在 <code>882577451e</code>，进入该课时以它自己的源码说明为准。</p>',
+        '<p>本章 Pages 的实现分析统一采用此提交，包括 <a href="../pd-dataflow/">PD 数据流专题</a>。链接到的历史 Markdown 文档仍以各自声明的基线为准。</p>',
         '<p>表达参考：Ziyi Xu 的 <a href="https://www.lmsys.org/blog/2025-12-17-minisgl/">Mini-SGLang 作者文章（2025-12-17）</a>及其中系统架构图（读取于 2026-10-19）。借鉴请求闭环、调度与缓存相邻的组织方式；这里的组件与边界重新按完整 SGLang 固定源码绘制。</p></details></section><!-- system-architecture:end -->']
     return '\n'.join(parts)

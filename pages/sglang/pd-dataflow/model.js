@@ -5,22 +5,22 @@
   else root.PDDataflow = api;
 })(globalThis, () => {
   'use strict';
-  const commit = '882577451e764a515df2a386a055012e8f075a16';
+  const commit = '279339f113b79af84f27fd3ac92d0a13bd3f4cbd';
   const sources = {
-    loop: ['managers/scheduler_pp_mixin.py', 198, 'def event_loop_pp_disagg_prefill'],
-    bootstrap: ['managers/scheduler_pp_mixin.py', 625, 'def _pp_pd_get_bootstrapped_ids'],
+    loop: ['managers/scheduler_pp_mixin.py', 171, 'def event_loop_pp_disagg_prefill'],
+    bootstrap: ['managers/scheduler_pp_mixin.py', 593, 'def _pp_pd_get_bootstrapped_ids'],
     admission: ['disaggregation/prefill.py', 450, 'def pop_bootstrapped'],
     metadata: ['disaggregation/prefill.py', 395, 'def finalize_bootstrap'],
     budget: ['managers/schedule_policy.py', 1267, 'def _select_prefill_admission'],
     commit: ['managers/schedule_policy.py', 1347, 'def _commit_prefill_admission'],
-    forward: ['managers/scheduler_pp_mixin.py', 1601, 'def _pp_launch_batch'],
-    proxy: ['managers/scheduler_pp_mixin.py', 913, 'def _pp_recv_proxy_tensors'],
-    output: ['managers/scheduler_pp_mixin.py', 742, 'def _pp_commit_send_output_work_and_preprocess_output_tensors'],
-    d2h: ['managers/scheduler_pp_mixin.py', 344, 'd2h_event.synchronize()'],
+    forward: ['managers/scheduler_pp_mixin.py', 1221, 'def _pp_launch_batch'],
+    proxy: ['managers/scheduler_pp_mixin.py', 858, 'def _pp_recv_proxy_tensors'],
+    output: ['managers/scheduler_pp_mixin.py', 710, 'def _pp_commit_send_output_work_and_preprocess_output_tensors'],
+    d2h: ['managers/scheduler_pp_mixin.py', 317, 'd2h_event.synchronize()'],
     result: ['disaggregation/prefill.py', 800, 'for i, (req, next_token_id) in enumerate('],
     chunk: ['disaggregation/prefill.py', 1210, 'def process_prefill_chunk'],
     send: ['disaggregation/prefill.py', 1311, 'def _send_kv_chunk'],
-    terminal: ['managers/scheduler_pp_mixin.py', 667, 'def _pp_pd_get_prefill_transferred_ids'],
+    terminal: ['managers/scheduler_pp_mixin.py', 635, 'def _pp_pd_get_prefill_transferred_ids'],
     release: ['disaggregation/prefill.py', 972, 'def process_disagg_prefill_inflight_queue'],
     failure: ['disaggregation/prefill.py', 1082, 'def handle_inflight_transfer_failure'],
     bootstrapFailure: ['disaggregation/prefill.py', 1150, 'def handle_bootstrap_failure'],

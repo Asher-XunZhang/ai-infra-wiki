@@ -36,6 +36,10 @@
 
 [调度循环与批次执行旅程](<SGLang 调度循环与批次执行旅程学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/loop-journey/)：第 03 模块的主线。先走完 Normal、Overlap 和普通 PP 的提交、设备依赖、结果处理与排空，再进入模型执行、KV 生命周期和调度策略。固定 279339f113；不替换旧源码课程的独立版本。
 
+## 请求状态与队列流转
+
+[Req 状态与队列流转](<SGLang Req 状态与队列流转学习文档.md>) · [交互课程](../../pages/sglang/request-state/index.html)：第 03 模块中紧接完整循环，按同一个 Req 对照正常、分块、回撤、取消和 Overlap。重点区分状态字段、列表成员、batch 引用及 KV 资源归属；固定 `279339f113`。先读普通请求运行时，再与调度预算、PD、约束生成专题衔接。旧源码课程保留各自基线。
+
 ## 执行分层主线
 
 [执行分层与硬件机制](<SGLang 执行分层与硬件机制学习文档.md>) · [交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/model-execution/)：沿 Worker / Runner / backend / kernel 追踪输入变化，观察图重放补齐与计算、访存边界。先读模型 Forward，再衔接 CUDA Graph 深入资料。

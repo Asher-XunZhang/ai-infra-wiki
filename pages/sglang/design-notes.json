@@ -662,7 +662,7 @@
         "tradeoff": "分开画能追踪所有权和数据依赖。图中的容器关系是某个过程的教学观察，不能直接当作所有 rank 在同一时刻的全局快照。",
         "source": [
           "managers/scheduler_pp_mixin.py",
-          198,
+          171,
           "event_loop_pp_disagg_prefill"
         ],
         "links": [
@@ -680,7 +680,7 @@
         "tradeoff": "减少某条通信的条件依赖当前工作类型；不能把一个场景的省略推广成所有 PP 控制或数据通信都可跳过。",
         "source": [
           "managers/scheduler_pp_mixin.py",
-          198,
+          171,
           "Prefill PP loop 的分块与结果路径"
         ]
       }
@@ -701,7 +701,8 @@
       "scope": "本课容器引用、分块结果和具体载荷沿固定源码解释。",
       "read_date": "2026-10-16"
     },
-    "revision": "882577451e764a515df2a386a055012e8f075a16"
+    "revision": "279339f113b79af84f27fd3ac92d0a13bd3f4cbd",
+    "reviewed": "2026-11-09"
   },
   "sglang/advanced-generation/index.html": {
     "problem": "本课追踪 SGLang 中彼此相关却不同步提交的对象：GPU 接受路径、下一轮草稿状态、CPU Req 账本和每请求 matcher。重点是固定实现的模块、数据变化与执行依赖。",
@@ -1039,6 +1040,36 @@
             "先认识 Req 的完整生命周期",
             "sglang/pd-prefill-lifecycle/index.html#walk-title"
           ]
+        ]
+      }
+    ]
+  },
+  "sglang/request-state/index.html": {
+    "reviewed": "2026-11-09",
+    "problem": "同一个 Req 可以被多个容器引用，GPU 工作与 CPU 输出提交也有不同完成时刻。必须把状态字段、容器成员与资源归属并排观察，才能判断请求正在推进还是在等待。",
+    "background": {
+      "title": "为什么要分别观察请求与执行批次？",
+      "text": "SGLang 团队的 v0.4 说明用 CPU/GPU 执行关系解释提前规划下一批与未来 token。这里以固定源码中的同一个 Req 为观察点，补上容器引用和资源归属；这种观察方式用于解释等待与收尾，不把某一条教学排程当作实际性能。",
+      "references": [
+        [
+          "SGLang v0.4 作者说明",
+          "https://www.lmsys.org/blog/2024-12-04-sglang-v0-4/"
+        ]
+      ],
+      "scope": "历史作者文章提供重叠调度背景；具体字段、队列与回收条件以本课固定 Git 对象为准。",
+      "read_date": "2026-11-09"
+    },
+    "topics": [
+      {
+        "id": "request-identity",
+        "title": "为什么不能用一条队列的位置代表全部请求状态？",
+        "why": "不同容器负责选批、续算或结果处理，可以同时保留同一个 Req。资源与完成条件还需要单独检查。",
+        "mechanism": "本课保留唯一的 R1 对象，引用随入队、过滤、合并和结果排空变化；输出提交与 KV 归还分别落在真实处理位置。",
+        "tradeoff": "动画展开普通文本路径，PD、Grammar 与特殊模型通过明确条件的索引衔接；不把所有队列串成必经流程。",
+        "source": [
+          "managers/scheduler.py",
+          1273,
+          "init_running_status"
         ]
       }
     ]

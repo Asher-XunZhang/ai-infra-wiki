@@ -8,7 +8,7 @@ from functools import lru_cache
 SOURCE = os.environ.get('SGLANG_SOURCE_DIR')
 if not SOURCE:
     raise SystemExit('SGLANG_SOURCE_DIR required; source checks not executed')
-REVISIONS = ['279339f113b79af84f27fd3ac92d0a13bd3f4cbd', '882577451e764a515df2a386a055012e8f075a16']
+REVISIONS = ['279339f113b79af84f27fd3ac92d0a13bd3f4cbd']
 
 @lru_cache(None)
 def source(rev, path):

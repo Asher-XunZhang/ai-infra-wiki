@@ -57,6 +57,7 @@ MODULES = [
         ('sglang/request-runtime/index.html', '请求生命周期：Req、TokenizerManager 与 Scheduler', 'SGLang · 入门')]),
     ('loop-journey', '调度循环与批次执行旅程', 'instance', False, [
         ('sglang/loop-journey/index.html', '调度循环：Normal、Overlap 与 PP 的完整旅程', 'SGLang · 时间与依赖'),
+        ('sglang/request-state/index.html', 'Req 状态与队列流转：请求为什么还没继续？', 'SGLang · 状态与引用'),
         ('sglang/inference-overview/journey.html', 'ScheduleBatch：Extend 与 Decode 怎样准备输入？', 'SGLang · 源码导读'),
         ('sglang/inference-overview/scheduling.html', 'Scheduler：选批、Chunked Prefill 与 Decode 更新', 'SGLang · 源码导读')]),
     ('model-execution', '模型执行与设备协作', 'instance', False, [
@@ -94,9 +95,10 @@ READING_ROUTES = [
         ('sglang/inference-overview/transformer.html', 'SGLang 怎样调用 DeepSeek-V3 模型层？', '对应固定版本的实现入口。'),
         ('sglang/inference-overview/kv-cache.html', 'SGLang 如何连接前缀索引与 KV 计算？', '对应固定版本的实现入口。'),
         ('sglang/inference-overview/scheduling.html', 'SGLang 怎样选出并更新下一批？', '对应固定版本的实现入口。')]),
-    ('implementation', '已有基础，追踪实现', '从请求流转追到资源、调度和设备执行；各课保留自己的固定基线。', [
+    ('implementation', '已有基础，追踪实现', '从请求流转追到资源、调度和设备执行；固定源码基线，各课说明具体配置。', [
         ('sglang/request-runtime/index.html', '请求经过哪些对象？', '追踪接入、执行、返回与释放。'),
         ('sglang/loop-journey/index.html', 'CPU 与 GPU 怎样接续？', '对照三种循环的完整执行旅程。'),
+        ('sglang/request-state/index.html', '请求现在由谁持有？', '区分状态、队列、batch 引用与资源归属。'),
         ('sglang/kv-memory/index.html', 'KV 放哪，何时回收？', '区分地址映射、共享保护与物理空间。'),
         ('sglang/scheduling/index.html', '谁能进入下一批？', '把候选顺序与准入条件分开。'),
         ('sglang/model-execution/index.html', '工作怎样交给设备？', '连接调度、执行封装与设备计算。')]),
@@ -143,7 +145,9 @@ def foundation_bridge(page, module):
         'scheduling.html': '找到选批、Prefill 组批和运行批次更新的入口，核对分块与内存回撤发生在哪里。',
         'deployment.html': '分别沿 Prefill 与 Decode 的接口核对首 token、metadata、接收就绪和调度准入。',
     }
-    focus = guide_focus.get(page.name, IMPLEMENTATION_FOCUS[module[0]])
+    focus = ('沿同一个 Req 核对队列成员、batch 引用、状态字段和资源归属；在同一时钟下观察普通、分块、回撤、取消与异步路径。'
+             if page.relative_to(PAGES).as_posix() == 'sglang/request-state/index.html'
+             else guide_focus.get(page.name, IMPLEMENTATION_FOCUS[module[0]]))
     if page.parent.name == 'pd-prefill-lifecycle':
         focus = '沿 PP=3 请求核对分块前向、结果回流、异步 KV 搬运与本地释放；用共同时间轴区分计算完成、传输完成和资源收尾。'
     elif page.parent.name == 'pd-dataflow':
@@ -378,7 +382,6 @@ def rendered(page, module=None, lesson=None):
                 if url not in source:
                     element = f'<link rel="stylesheet" href="{url}">' if tag == 'style' else f'<script src="{url}" defer></script>'
                     source = source.replace('</head>', element + '</head>', 1)
-            source = source.replace('<span>源码 279339f113</span>', '<span>开篇 e00930 · 单实例参考 279339</span>')
             source = re.sub(r'<!-- system-architecture:start -->.*?<!-- system-architecture:end -->', '', source, flags=re.S)
             source = source.replace('<!-- foundation-bridge:start -->', render_architecture() + '<!-- foundation-bridge:start -->', 1)
         source = lesson_reading_nav(source)
