@@ -3,14 +3,18 @@
 .lj-lab [hidden],.lj-reading[hidden]{display:none!important}
 .lj-modes{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
 .lj-lab button,.lj-quiz button{font:inherit;cursor:pointer;color:var(--fg);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;line-height:1.5}
-.lj-lab button:focus-visible,.lj-lab select:focus-visible,.lj-scroll:focus-visible,.lj-quiz button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.lj-lab button:focus-visible,.lj-lab select:focus-visible,.lj-lab input:focus-visible,.lj-scroll:focus-visible,.lj-quiz button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .lj-modes button[aria-pressed=true]{color:var(--surface);background:var(--accent);border-color:var(--accent)}
 .lj-lab h2{font-size:21px;margin:8px 0}.lj-scope,.lj-view-note{font-size:12px;line-height:1.75;color:var(--muted);margin:8px 0}
 .lj-legend{font-size:12px;line-height:1.8;padding:10px 12px;background:var(--soft);border-left:3px solid var(--accent)}
 .lj-settings,.lj-pp-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px;font-size:13px;margin:12px 0}
 .lj-settings label{display:flex;align-items:center;gap:7px}.lj-pp-controls select{max-width:100%;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--border);padding:7px;border-radius:5px}
-.lj-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:18px 0 12px}.lj-toolbar button:disabled{opacity:.42;cursor:default}.lj-toolbar #lj-next{background:var(--accent);color:var(--surface);border-color:var(--accent)}
-.lj-toolbar output{font:600 13px ui-monospace,monospace;min-width:56px;text-align:center}.lj-toolbar small{font-size:11px;color:var(--muted)}
+.lj-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:18px 0 12px}.lj-toolbar button:disabled{opacity:.42;cursor:default}.lj-toolbar #lj-play{background:var(--accent);color:var(--surface);border-color:var(--accent);min-width:96px}
+.lj-speed{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px}.lj-speed select{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px;min-height:40px}
+.lj-time-control{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;font-size:13px;padding:8px 0}.lj-time-control input{min-width:0;width:100%;margin:0;accent-color:var(--accent);cursor:pointer;min-height:28px}.lj-time-control output{font:600 13px ui-monospace,monospace;font-variant-numeric:tabular-nums;min-width:136px;text-align:right}
+.lj-playback-status{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:12px 0}.lj-playback-status output{font:600 13px ui-monospace,monospace}.lj-playback-status small{font-size:12px;color:var(--muted)}
+.lj-now .lj-activity{font-size:12px;color:var(--muted);border-top:1px solid var(--border);margin-top:10px;padding-top:10px}
+@media(max-width:600px){.lj-toolbar button{flex:1 1 calc(50% - 8px)}.lj-speed{margin-left:0;width:100%;justify-content:flex-end}.lj-time-control{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px}.lj-time-control input{grid-column:1/-1;grid-row:2;min-height:36px}.lj-time-control output{min-width:0}}
 .lj-now{padding:14px 16px;background:var(--accent-soft);border-left:4px solid var(--accent);margin:10px 0 16px}.lj-now h3{font-size:19px;line-height:1.5;margin:0 0 6px}.lj-now p{font-size:14px;line-height:1.85;margin:0;max-width:84ch}
 .lj-path-scroll{overflow-x:auto;margin:12px 0}.lj-path{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;min-width:600px;gap:18px;padding:5px 0 10px}
 .lj-stop{position:relative;text-align:center;border:1px solid var(--border);border-radius:7px;background:var(--soft);padding:10px 5px;line-height:1.5;transition:background .3s,border-color .3s}
@@ -26,7 +30,7 @@
 .lj-cell{min-height:102px;padding:9px;background:var(--surface);display:flex;align-items:center;position:relative}.lj-cell.is-current{background:var(--accent-soft);box-shadow:inset 2px 0 var(--accent),inset -2px 0 var(--accent)}
 .lj-action{padding:8px;border:1px solid var(--muted);border-radius:6px;width:100%;background:var(--soft);line-height:1.65;position:relative;overflow:hidden}
 .lj-action small{display:block;font:10px ui-monospace,monospace;color:var(--muted);margin-bottom:5px;line-height:1.4}.lj-action span{display:block;font-size:12px}.lj-action em{font-style:normal;font-size:10px;color:var(--accent);display:block;margin-top:4px}
-.lj-cell.is-current .lj-action{border-color:var(--accent)}.lj-cell.is-current .lj-action::after{content:'';position:absolute;bottom:0;left:0;width:35%;height:2px;background:var(--accent);animation:lj-activity 2.8s linear infinite}
+.lj-cell.is-current .lj-action{border-color:var(--accent)}
 .lj-cell.is-blocked .lj-action{border-style:dashed}.lj-cell.is-blocked .lj-action::after{animation:none;width:100%}.lj-cell.is-future .lj-action{border-style:dashed;color:var(--muted)}.lj-action.is-muted{opacity:.35}.lj-no-event{color:var(--muted);margin:auto;font-size:16px}
 .lj-scroll-hint{font-size:11px;color:var(--muted);margin:7px 0 18px;line-height:1.75}
 .lj-causality{display:grid;grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr);gap:8px;align-items:center;margin:18px 0}.lj-causality ul{padding:0;margin:0;list-style:none}.lj-causality li{font-size:12px;padding:7px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.lj-causality button{text-align:left;font-size:12px;padding:6px 8px}.lj-check{color:var(--accent)}.lj-causal-target{padding:14px;border:1px solid var(--accent);border-radius:7px;font-size:14px;line-height:1.75}.lj-causal-target small{display:block;color:var(--muted);font-size:11px}.lj-causal-arrow{font-size:26px;color:var(--accent)}
@@ -34,7 +38,6 @@
 .lj-reading{margin:25px 0}.lj-reading h2{font-size:22px}.lj-reading p,.lj-reading li{font-size:14px;line-height:1.95}.lj-reading ol{padding-left:24px}.lj-reading li+li{margin-top:8px}.lj-reading details{margin:16px 0;padding:14px 16px;border:1px solid var(--border);border-radius:7px}.lj-reading summary{cursor:pointer;font-size:14px;color:var(--accent)}
 .lj-quiz{border-top:1px solid var(--border);margin-top:18px;padding-top:16px}.lj-quiz button{font-size:13px;margin:4px 6px 4px 0}.lj-quiz [role=status]{min-height:1.8em;color:var(--accent)}
 .lj-next-reading{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;margin:16px 0}
-@keyframes lj-activity{from{transform:translateX(-110%)}to{transform:translateX(390%)}}
 @media(max-width:700px){.lj-lab{padding:12px}.lj-now{padding:12px}.lj-now h3{font-size:17px}.lj-toolbar{gap:6px}.lj-toolbar small{flex-basis:100%}.lj-ledger{grid-template-columns:1fr}.lj-causality{grid-template-columns:1fr}.lj-causal-arrow{transform:rotate(90deg);justify-self:center;line-height:1}.lj-timeline{grid-template-columns:112px repeat(var(--steps),168px)}.lj-lane-label{padding:8px}.lj-lab h2{font-size:19px}.lj-modes button{flex:1;padding:8px}.lj-settings{align-items:flex-start}.lj-pp-controls label{display:flex;gap:6px;align-items:center;flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.lj-cell.is-current .lj-action::after{animation:none}.lj-stop{transition:none}}
 @media print{.lj-lab{display:none}.lj-reading[hidden]{display:block!important}}

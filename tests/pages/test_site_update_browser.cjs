@@ -32,7 +32,7 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
    return route.continue();
   });
   const check=async()=>{await page.locator('[data-site-check]').focus();await page.locator('[data-site-check]').press('Enter');await page.waitForFunction(()=>document.querySelector('[data-site-check]').getAttribute('aria-busy')==='false');};
-  const announce=async()=>{await page.waitForFunction(()=>document.querySelector('[data-site-check]')?.getAttribute('aria-busy')==='false');fixture.release=next;await check();assert.equal(await page.locator('.site-update-notice').isVisible(),true,JSON.stringify({url:page.url(),footer:await page.locator('.site-update-tools').innerText(),release:fixture.release,probes:fixture.probes,meta:await page.locator('meta[name=site-release]').getAttribute('content')}));};
+  const announce=async()=>{await page.waitForFunction(()=>document.querySelector('[data-site-check]')?.getAttribute('aria-busy')==='false');fixture.release=next;await check();assert.equal(await page.locator('.site-header [data-site-update]').isVisible(),true,JSON.stringify({url:page.url(),header:await page.locator('.site-update-tools').innerText(),release:fixture.release,probes:fixture.probes,meta:await page.locator('meta[name=site-release]').getAttribute('content')}));};
   const apply=async()=>{
    const previous=fixture.navigations;
    const buttonBox=await page.locator('.site-header [data-site-update]').boundingBox();
@@ -51,8 +51,10 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
   await page.goto(base+'sglang/loop-journey/?v=legacy&step=4&color=loop&learn=first#pp');
   await check();assert.match(await page.locator('.site-update-tools').innerText(),/已是最新/);
   assert.equal(new URL(page.url()).searchParams.has('v'),false);assert.equal(await page.locator('[data-loop-journey]').getAttribute('data-step'),'4');
+  await page.locator('#lj-seek').evaluate(e=>{e.value='8.35';e.dispatchEvent(new Event('input',{bubbles:true}));});await page.locator('#lj-speed').selectOption('1.5');
   await page.locator('#lj-view').selectOption('loop');await page.locator('#lj-focus').selectOption('P0:L1');
   await page.locator('.lj-state>summary').click();await announce();
+  await page.locator('a[href="#objects"]').click();
   const headerGeometry=async(label)=>{
    const result=await page.evaluate(()=>{
     const header=document.querySelector('.site-header'),h=header.getBoundingClientRect();
@@ -70,15 +72,14 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
    await page.setViewportSize({width,height:900});await page.evaluate(t=>{document.documentElement.dataset.theme=t;scrollTo({top:0,behavior:'instant'});},theme);
    await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
    await headerGeometry(`new version ${width}/${theme}`);
-   assert.equal(await page.locator('.site-update-notice').evaluate(e=>getComputedStyle(e).position),'static');
+   assert.equal(await page.locator('.site-update-notice').count(),0,'no duplicate notice in lesson content');
+   assert.equal(await page.locator('[data-site-update]').count(),1,'only one update action');
    assert.ok(await page.evaluate(()=>document.querySelector('main').getBoundingClientRect().top>=document.querySelector('.site-header').getBoundingClientRect().bottom));
    assert.match(await page.locator('.site-header .site-update-tools').innerText(),/发现新版/);
-   if(shots)await page.screenshot({path:path.join(shots,`notice-${width}-${theme}.png`)});
+   if(shots)await page.screenshot({path:path.join(shots,`header-${width}-${theme}.png`)});
   }
-  // Dismissing the in-flow explanation never hides the header update entry.
-  await page.getByRole('button',{name:'稍后',exact:true}).click();assert.equal(await page.locator('.site-update-notice').isVisible(),false);
-  await page.locator('#lj-tracks-title').scrollIntoViewIfNeeded();assert.equal(await page.locator('.site-header [data-site-update]').isVisible(),true);await headerGeometry('scrolled, notice dismissed');
-  await announce();
+  // Scrolling into a lesson keeps the sole update entry reachable.
+  await page.locator('#lj-tracks-title').scrollIntoViewIfNeeded();assert.equal(await page.locator('.site-header [data-site-update]').isVisible(),true);await headerGeometry('scrolled, header-only update entry');
   await page.setViewportSize({width:1440,height:1000});
   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   await page.locator('#lj-tracks-title').evaluate(e=>scrollTo({top:e.getBoundingClientRect().top+scrollY-100,behavior:'instant'}));
@@ -87,8 +88,9 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
   await page.waitForFunction(top=>Math.abs(document.querySelector('#lj-tracks-title').getBoundingClientRect().top-top)<2,beforeTop,{timeout:5000});
   assert.equal(await page.locator('[data-loop-journey]').getAttribute('data-step'),'4');
   assert.equal(await page.locator('#lj-view').inputValue(),'loop');assert.equal(await page.locator('#lj-focus').inputValue(),'P0:L1');
-  assert.equal(await page.locator('#lj-color').inputValue(),'loop');assert.equal(new URL(page.url()).searchParams.get('learn'),'first');assert.equal(new URL(page.url()).hash,'#pp');
-  assert.equal(await page.locator('.lj-state').evaluate(e=>e.open),true);assert.ok(Math.abs(await page.locator('#lj-tracks-title').evaluate(e=>e.getBoundingClientRect().top)-beforeTop)<2,'reading anchor retained after removing the notice: '+JSON.stringify({beforeY,beforeTop,afterY:await page.evaluate(()=>scrollY),titleTop:await page.locator('#lj-tracks-title').evaluate(e=>e.getBoundingClientRect().top)}));
+  assert.equal(await page.locator('[data-loop-journey]').getAttribute('data-time'),'8.350');assert.equal(await page.locator('#lj-speed').inputValue(),'1.5');assert.equal(await page.locator('#lj-play').getAttribute('aria-pressed'),'false');
+  assert.equal(await page.locator('#lj-color').inputValue(),'loop');assert.equal(new URL(page.url()).searchParams.get('learn'),'first');assert.equal(new URL(page.url()).hash,'#objects');
+  assert.equal(await page.locator('.lj-state').evaluate(e=>e.open),true);assert.ok(Math.abs(await page.locator('#lj-tracks-title').evaluate(e=>e.getBoundingClientRect().top)-beforeTop)<2,'reading anchor retained after updating: '+JSON.stringify({beforeY,beforeTop,afterY:await page.evaluate(()=>scrollY),titleTop:await page.locator('#lj-tracks-title').evaluate(e=>e.getBoundingClientRect().top)}));
   // An intentional scroll during document verification takes precedence.
   fixture.release=current;await page.goto(base+'sglang/loop-journey/?step=3#overlap');await announce();
   fixture.documentDelay=600;const movingUpdate=apply();
@@ -100,8 +102,8 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
   fixture.assetsMissing=true;fixture.release=current;await page.goto(base+'sglang/loop-journey/?step=2#overlap');await check();assert.ok(await page.evaluate(()=>Boolean(window.SiteUpdate)));fixture.assetsMissing=false;await page.goto(base+'sglang/loop-journey/?step=2#overlap');
   fixture.offline=true;await check();assert.match(await page.locator('.site-update-tools [role=status]').getAttribute('aria-label'),/暂时无法检查/);await headerGeometry('offline feedback');fixture.offline=false;
   await announce();fixture.ready=false;const stays=page.url(),nav=fixture.navigations;
-  await page.locator('.site-update-notice [data-site-update]').click();await page.waitForFunction(()=>document.querySelector('.site-update-tools').dataset.state==='available');
-  assert.match(await page.locator('.site-update-notice').innerText(),/同步/);assert.equal(page.url(),stays);assert.equal(fixture.navigations,nav);
+  await page.locator('.site-header [data-site-update]').click();await page.waitForFunction(()=>document.querySelector('.site-update-tools').dataset.state==='available');
+  assert.match(await page.locator('.site-update-tools [role=status]').innerText(),/同步/);await headerGeometry('partial publication feedback');assert.equal(page.url(),stays);assert.equal(fixture.navigations,nav);
   fixture.ready=true;await apply();assert.equal(await page.locator('[data-loop-journey]').getAttribute('data-step'),'2');
   // A release gate already opened is not re-closed by an update.
   fixture.release=current;await page.goto(base+'sglang/loop-journey/?hold=1&step=100#pp');
@@ -160,10 +162,13 @@ const shots=process.env.UPDATE_SCREENSHOT_DIR;
   assert.equal(await page.locator('#chart').textContent(),quick);assert.equal(await page.locator('[data-pp-reader] [data-id=wr-scene]').textContent(),story);
   // Returning from bfcache triggers a check without user interaction/reload.
   fixture.release=current;await page.goto(base);await check();fixture.release=next;const count=fixture.probes;
-  await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));await page.waitForFunction(()=>!document.querySelector('.site-update-notice').hidden);assert.equal(fixture.probes,count+1);
+  await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));await page.waitForFunction(()=>document.querySelector('.site-update-tools').dataset.available==='true');assert.equal(fixture.probes,count+1);
   // Failure to checkpoint never silently discards the current reader state.
   await page.evaluate(()=>{Storage.prototype.setItem=()=>{throw new Error('blocked');};});
-  const before=fixture.navigations;await page.locator('.site-update-notice [data-site-update]').click();await page.waitForFunction(()=>document.querySelector('.site-update-notice').textContent.includes('无法保存'));
+  const before=fixture.navigations;await page.locator('.site-header [data-site-update]').click();await page.waitForFunction(()=>document.querySelector('.site-update-tools [role=status]').textContent.includes('无法保存'));
+  assert.match(await page.locator('.site-update-tools [role=status]').getAttribute('aria-label'),/无法保存当前位置/);
+  await page.setViewportSize({width:320,height:844});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));await headerGeometry('mobile storage failure feedback');
+  assert.equal(await page.locator('.site-update-notice').count(),0);
   assert.equal(fixture.navigations,before);
   assert.deepEqual(errors,[]);console.log('PASS: stable URLs, version checks, single update, state/scroll restore, 7 widths/2 themes, header visibility and non-overlap, missing-asset recovery, offline/partial deploy/storage failures, bfcache and independent lesson clocks.');
  }finally{await browser.close();await server.close();let exited=false;try{process.kill(proc.pid,0);}catch(e){exited=e.code==='ESRCH';}assert.ok(exited);if(shots)fs.writeFileSync(path.join(shots,'cleanup.json'),JSON.stringify({browserExited:exited,profileRemoved:!fs.existsSync(identity.profile.split('=').slice(1).join('='))}));}

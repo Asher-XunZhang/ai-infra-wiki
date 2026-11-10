@@ -16,6 +16,7 @@ const shots=process.env.LOOP_SCREENSHOT_DIR;
    await page.waitForFunction(m=>document.querySelector('[data-loop-journey]').dataset.mode===m,mode);
    assert.equal(await root.getAttribute('data-step'),'0');
    assert.equal(await page.locator('[data-loop-reading]:visible').count(),1);
+   assert.equal(await page.locator('.lj-toolbar .animation-speed').count(),1,'one working speed control');
    const stroke=id=>page.locator(`[data-track-event="${id}"] .lj-track-slot`).evaluate(e=>getComputedStyle(e).stroke);
    const batchPeers=mode==='pp'?['submit01','gpu01','proxy1','gpu11','out1','process01','process11']:['submit0','forward0','copy0','process0'];
    assert.equal(new Set(await Promise.all(batchPeers.map(stroke))).size,1,'a batch keeps its color across owners');
@@ -36,7 +37,7 @@ const shots=process.env.LOOP_SCREENSHOT_DIR;
    assert.equal(await page.locator('#lj-next').isDisabled(),true);
    await page.locator('#lj-hold').check();assert.equal(await root.getAttribute('data-step'),'0');
    const barrier=M.configs[mode].steps.findIndex(s=>s.id===M.configs[mode].barrier);
-   for(let i=0;i<barrier;i++)await page.locator('#lj-next').click();
+   for(let i=0;i<=barrier&&await root.getAttribute('data-blocked')!=='true';i++)await page.locator('#lj-next').click();
    assert.equal(await root.getAttribute('data-blocked'),'true');assert.equal(await page.locator('#lj-next').isDisabled(),true);
    const held=await page.locator('#lj-ledger').innerText();await page.waitForTimeout(350);assert.equal(await page.locator('#lj-ledger').innerText(),held);
    const heldClock=await page.locator('#lj-tracks-svg').getAttribute('data-clock');
@@ -48,12 +49,47 @@ const shots=process.env.LOOP_SCREENSHOT_DIR;
    }
    // Jumping to a future event cannot bypass unresolved dependency.
    await page.locator('.lj-event-detail>summary').click();await page.locator('.lj-column').last().click();assert.equal(await root.getAttribute('data-step'),String(barrier));
-   if(shots)await root.screenshot({path:path.join(shots,mode+'-blocked.png')});
+   if(shots){await page.locator('#lj-seek').evaluate(e=>scrollTo({top:e.getBoundingClientRect().top+scrollY-110,behavior:'instant'}));await page.screenshot({path:path.join(shots,mode+'-blocked.png')});}
    await page.locator('#lj-release').click();assert.equal(await root.getAttribute('data-blocked'),'false');
    await page.locator('#lj-color').selectOption('loop');assert.equal(await root.getAttribute('data-blocked'),'false');
-   await page.locator('#lj-next').click();assert.equal(await root.getAttribute('data-step'),String(barrier+1));
+   assert.equal(await page.locator('#lj-tracks-svg').getAttribute('data-clock'),heldClock,'release keeps the clock at the gate');
+   await page.locator('#lj-next').click();assert.equal(await root.getAttribute('data-step'),String(barrier));
    await page.locator('#lj-reset').click();await page.locator('#lj-hold').uncheck();await page.locator('.lj-event-detail>summary').click();
   }
+  // A continuous clock drives actual bar progress, state commits and controls.
+  const seek=async value=>{await page.locator('#lj-seek').evaluate((e,v)=>{e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},value);};
+  for(const mode of Object.keys(M.configs)){
+   await page.goto(base+'sglang/loop-journey/#'+mode);
+   assert.equal(await root.getAttribute('data-time'),'0.000');assert.equal(await page.locator('#lj-play').getAttribute('aria-pressed'),'false');
+   const event=mode==='pp'?'gpu01':'forward0',fill=page.locator(`[data-track-event="${event}"] .lj-track-fill`);
+   await seek(3.15);const before=Number(await fill.getAttribute('width'));
+   const ledger=await page.locator('#lj-ledger').innerText();
+   await seek(3.65);assert.ok(Number(await fill.getAttribute('width'))>before,'bar grows within one activity');
+   await seek(3.15);assert.equal(Number(await fill.getAttribute('width')),before);assert.equal(await page.locator('#lj-ledger').innerText(),ledger);
+   await page.locator('#lj-play').click();await page.waitForFunction(()=>Number(document.querySelector('[data-loop-journey]').dataset.time)>3.35);
+   await page.locator('#lj-play').click();const paused=await root.getAttribute('data-time');await page.waitForTimeout(180);assert.equal(await root.getAttribute('data-time'),paused);assert.equal(await page.locator('#lj-play').getAttribute('aria-pressed'),'false');
+   await page.locator('#lj-speed').selectOption('2');assert.equal(await root.getAttribute('data-time'),paused);
+   await page.locator('#lj-reset').click();await page.locator('#lj-play').click();
+   await page.waitForFunction(d=>Number(document.querySelector('[data-loop-journey]').dataset.time)===d,M.execution(mode).duration,{timeout:20000});
+   assert.equal(await page.locator('#lj-play').getAttribute('aria-pressed'),'false');assert.equal(await page.locator('#lj-next').isDisabled(),true);
+   await page.locator('#lj-play').click();await page.waitForFunction(()=>Number(document.querySelector('[data-loop-journey]').dataset.time)>0);assert.ok(Number(await root.getAttribute('data-time'))<1);
+   await seek(4.25);assert.equal(await page.locator('#lj-play').getAttribute('aria-pressed'),'false');
+   await page.reload();assert.equal(await root.getAttribute('data-time'),'4.250');
+   await page.locator('#lj-seek').focus();await page.keyboard.press('ArrowRight');assert.equal(await root.getAttribute('data-time'),'4.260');
+   await page.locator('#lj-hold').check();const barrier=M.execution(mode).events.find(e=>e.id===M.execution(mode).barrierEvent);
+   await seek(barrier.start-.1);await page.locator('#lj-play').click();
+   await page.waitForFunction(()=>document.querySelector('[data-loop-journey]').dataset.blocked==='true');
+   assert.equal(Number(await root.getAttribute('data-time')),barrier.start);assert.equal(await page.locator('#lj-play').getAttribute('aria-pressed'),'false');
+   await seek(M.execution(mode).duration);assert.equal(Number(await root.getAttribute('data-time')),barrier.start);
+   await page.locator('#lj-release').click();assert.equal(Number(await root.getAttribute('data-time')),barrier.start);
+   await page.locator('#lj-play').click();await page.waitForFunction(t=>Number(document.querySelector('[data-loop-journey]').dataset.time)>t,barrier.start+.05);
+   const different=mode==='pp'?'normal':'pp';await page.locator(`button[data-mode="${different}"]`).click();
+   assert.equal(await root.getAttribute('data-time'),'0.000');assert.equal(await page.locator('#lj-play').getAttribute('aria-pressed'),'false');
+   await page.waitForTimeout(180);assert.equal(await root.getAttribute('data-time'),'0.000','old frame loop cancelled');
+  }
+  await page.goto(base+'sglang/loop-journey/#pp');
+  await page.locator('#lj-play').click();await page.evaluate(()=>dispatchEvent(new PageTransitionEvent('pagehide')));assert.equal(await root.getAttribute('data-playing'),'false');
+  await page.locator('#lj-reset').click();
   await page.locator('button[data-mode=pp]').click();
   await page.locator('#lj-view').selectOption('loop');await page.locator('#lj-focus').selectOption('P0:L1');
   assert.equal(await page.locator('#lj-color').inputValue(),'loop');
@@ -87,19 +123,20 @@ const shots=process.env.LOOP_SCREENSHOT_DIR;
       const clippedLabels=await page.locator('.lj-track-event').evaluateAll(es=>es.filter(e=>{const t=e.querySelector('text'),r=e.querySelector('rect');if(!t)return false;const a=t.getBBox(),b=r.getBBox();return a.x<b.x-1||a.x+a.width>b.x+b.width+1;}).map(e=>e.dataset.trackEvent));assert.deepEqual(clippedLabels,[]);
      }
      await page.locator('#lj-color').selectOption('loop');
-     const outside=await page.locator('.lj-toolbar button,.lj-now,.lj-ledger').evaluateAll(nodes=>nodes.filter(e=>{if(!e.checkVisibility())return false;const r=e.getBoundingClientRect();return r.left<0||r.right>innerWidth+1;}).map(e=>e.id));assert.deepEqual(outside,[]);
+     const outside=await page.locator('.lj-toolbar button,.lj-toolbar select,.lj-time-control,.lj-time-control input,.lj-time-control output,.lj-now,.lj-ledger').evaluateAll(nodes=>nodes.filter(e=>{if(!e.checkVisibility())return false;const r=e.getBoundingClientRect();return r.left<0||r.right>innerWidth+1;}).map(e=>e.id));assert.deepEqual(outside,[]);
      if(shots&&[390,320].includes(width)&&mode==='pp'&&theme==='dark'){await page.locator('#journey-lab').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(shots,`pp-${width}-${theme}.png`)});}
     }
    }
   }
-  await page.emulateMedia({reducedMotion:'reduce'});assert.equal(await page.locator('.lj-cell.is-current .lj-action').first().evaluate(e=>getComputedStyle(e,'::after').animationName),'none');
+  await page.emulateMedia({reducedMotion:'reduce'});await seek(3.15);assert.equal(await root.getAttribute('data-time'),'3.150');assert.equal(await page.locator('.lj-cell.is-current .lj-action').first().evaluate(e=>getComputedStyle(e,'::after').animationName),'none');
   const nojs=await browser.newPage({javaScriptEnabled:false});await nojs.goto(base+'sglang/loop-journey/');
   assert.equal(await nojs.locator('[data-loop-reading]:visible').count(),3);assert.ok(await nojs.locator('[data-loop-reading] li').count()>=13);await nojs.close();
   if(shots){
    await page.setViewportSize({width:1440,height:1000});await page.emulateMedia({reducedMotion:'no-preference'});
    await page.goto(base+'sglang/loop-journey/');await page.evaluate(()=>document.documentElement.dataset.theme='light');
    await page.screenshot({path:path.join(shots,'default-desktop.png')});
-   await page.goto(base+'sglang/loop-journey/?step=4#pp');
+   await page.goto(base+'sglang/loop-journey/?t=8.35#pp');
+   await page.locator('#lj-seek').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(shots,'pp-time-controls.png')});
    await page.locator('.lj-tracks').screenshot({path:path.join(shots,'pp-parallel-window.png')});
    await page.locator('#lj-color').selectOption('loop');await page.reload();
    assert.equal(await root.getAttribute('data-step'),'4');assert.equal(await page.locator('#lj-color').inputValue(),'loop');
@@ -114,6 +151,6 @@ const shots=process.env.LOOP_SCREENSHOT_DIR;
    await page.goto(base);await page.locator('#stage-instance').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(shots,'modules-mobile.png')});
    await page.setViewportSize({width:1440,height:1000});await page.locator('#stage-instance').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(shots,'modules-desktop.png')});
   }
-  assert.deepEqual(errors,[]);console.log('PASS: 36 events, 3 blocked/release branches, 3 color modes, batch/loop ownership, PP focus, keyboard/history, 5 widths, 2 themes, reduced motion and no-JS reading.');
+  assert.deepEqual(errors,[]);console.log('PASS: continuous playback/scrub/pause/replay, fractional checkpoints, 36 events, 3 blocked/release branches, 3 color modes, batch/loop ownership, PP focus, keyboard/history, 5 widths, 2 themes, reduced motion and no-JS reading.');
  }finally{await browser.close();await server.close();try{process.kill(owned.pid,0);throw Error('owned browser remains');}catch(e){if(e.code!=='ESRCH')throw e;}if(shots)fs.writeFileSync(path.join(shots,'cleanup.json'),JSON.stringify({browserExited:true,profileRemoved:!fs.existsSync(identity.profile.split('=').slice(1).join('='))}));}
 })().catch(e=>{console.error(e);process.exit(1);});

@@ -30,6 +30,7 @@ const courses=[
 async function checkFoundationNavigation(page,label,interactive=true){
  if(interactive)assert.equal(await page.locator('.site-header [data-site-check]').count(),1,label+': header update entry');
  assert.equal(await page.locator('.site-footer [data-site-check]').count(),0,label+': no footer duplicate');
+ assert.equal(await page.locator('.site-update-notice').count(),0,label+': no body update notice');
  const chapter=page.locator('.site-sidebar [data-chapter=foundations]');
  const wasOpen=await chapter.evaluate(el=>el.open);
  if(!wasOpen)await chapter.locator(':scope > summary').click();

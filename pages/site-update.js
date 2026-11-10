@@ -27,7 +27,7 @@
     register(name, capture) { checkpoints.set(name, capture); return () => { if (checkpoints.get(name) === capture) checkpoints.delete(name); }; },
     take(name) { const value = resume?.state?.[name]; if (resume?.state) delete resume.state[name]; return value; }
   };
-  let latest = null, checking = null, reportCheck = false, updating = false, checkedAt = 0, dismissed = '', requestedPosition = null, toolbar, notice, status, checkButton, updateButton;
+  let latest = null, checking = null, reportCheck = false, updating = false, checkedAt = 0, requestedPosition = null, toolbar, status, checkButton, updateButton;
   function render(message = '') {
     if (!toolbar) return;
     const available = latest && latest !== release;
@@ -37,15 +37,11 @@
     updateButton.hidden = !available;
     updateButton.disabled = updating;
     updateButton.textContent = updating ? '正在更新…' : '更新并继续';
-    status.textContent = message ? (message.includes('最新') ? message : available ? '暂未更新' : '检查失败') : available ? '发现新版' : '';
+    status.textContent = message ? (message.includes('最新') ? message : message.includes('同步') ? '新版同步中' : message.includes('无法保存') ? '无法保存进度' : available ? '暂未更新' : '检查失败') : available ? '发现新版' : '';
     status.setAttribute('aria-label', message || status.textContent);
     status.title = message;
     status.hidden = !status.textContent;
     toolbar.dataset.available = String(Boolean(available));
-    notice.hidden = !available || dismissed === latest;
-    notice.querySelector('p').textContent = message || '有新内容，更新后继续当前阅读位置。';
-    notice.querySelector('button').disabled = updating;
-    notice.querySelector('button').textContent = updateButton.textContent;
     toolbar.dataset.state = updating ? 'updating' : available ? 'available' : checking ? 'checking' : 'current';
   }
   async function fresh(address) {
@@ -68,7 +64,6 @@
         const data = JSON.parse(await fresh(address));
         if (data.schema !== 1 || !valid(data.release)) throw Error('invalid manifest');
         latest = data.release;
-        if (reportCheck) dismissed = '';
         return reportCheck && latest === release ? '已是最新内容' : '';
       } catch { return reportCheck ? '暂时无法检查更新，当前页面可继续阅读。' : ''; }
     })();
@@ -92,7 +87,7 @@
     // Preserve what was being read before focusing the sticky update button.
     // Explicit reading/scrolling during the fetch takes precedence over it.
     let readerMoved = false;
-    const trackReader = event => { if (['wheel', 'touchmove'].includes(event.type) || !event.target.closest?.('.site-update-tools,.site-update-notice')) readerMoved = true; };
+    const trackReader = event => { if (['wheel', 'touchmove'].includes(event.type) || !event.target.closest?.('.site-update-tools')) readerMoved = true; };
     const inputs = ['pointerdown', 'keydown', 'wheel', 'touchmove'];
     for (const type of inputs) document.addEventListener(type, trackReader, { passive: true });
     updating = true; render();
@@ -134,17 +129,11 @@
     // clearance follow its real height, including zoom and wrapped feedback.
     const measureHeader = () => document.documentElement.style.setProperty('--site-header-height', container.getBoundingClientRect().height + 'px');
     measureHeader(); new ResizeObserver(measureHeader).observe(container);
-    notice = document.createElement('aside'); notice.className = 'site-update-notice'; notice.hidden = true; notice.setAttribute('aria-label', '内容更新');
-    const text = document.createElement('p'); text.textContent = '有新内容，更新后继续当前阅读位置。';
-    const apply = document.createElement('button'); apply.type = 'button'; apply.textContent = '更新并继续'; apply.dataset.siteUpdate = '';
-    const later = document.createElement('button'); later.type = 'button'; later.textContent = '稍后';
-    notice.append(text, apply, later); main.prepend(notice);
-    checkButton.onclick = () => check(true); updateButton.onclick = apply.onclick = update;
-    for (const button of [updateButton, apply]) for (const type of ['pointerdown', 'keydown']) button.addEventListener(type, event => {
+    checkButton.onclick = () => check(true); updateButton.onclick = update;
+    for (const type of ['pointerdown', 'keydown']) updateButton.addEventListener(type, event => {
       if (type === 'keydown' && !['Enter', ' '].includes(event.key)) return;
       requestedPosition = { at: performance.now(), value: readingPosition() };
     });
-    later.onclick = () => { dismissed = latest; render(); };
     // Page restoration is a one-use checkpoint, never a persistent auto-resume
     // preference. A normal mode switch/navigation still starts its own clock.
     if (resume) {
