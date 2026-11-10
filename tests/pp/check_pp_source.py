@@ -43,16 +43,14 @@ def check_artifacts():
     links = set()
     dataflow_links = set()
     dataflow_page = ROOT / 'pages/sglang/pd-dataflow/index.html'
-    dataflow_commit = '882577451e764a515df2a386a055012e8f075a16'
     for path in [*(ROOT / 'pages').rglob('*.html'), ROOT / 'sglang/分离部署/PD Prefill PP loop 步骤详解.md']:
         text = unescape(path.read_text(encoding='utf-8'))
         for commit, source, first, last in re.findall(
             r'https://github.com/sgl-project/sglang/blob/([0-9a-f]{40})/'
             r'(python/[^\s"<>\)]+?)#L(\d+)(?:-L(\d+))?', text
         ):
-            expected_commit = dataflow_commit if path == dataflow_page else SOURCE_COMMIT
-            assert commit == expected_commit, (path, commit)
-            # The independent dataflow baseline is audited by test_pd_queues.cjs.
+            assert commit == SOURCE_COMMIT, (path, commit)
+            # Dataflow function anchors are additionally audited by test_pd_queues.cjs.
             target = dataflow_links if path == dataflow_page else links
             target.add((source, int(first), int(last or first)))
     for name in ('index.html', 'quick.html', 'notes.html'):
