@@ -21,6 +21,8 @@
 
 前置阅读：[02-05 输出通路](../02-request-lifecycle/05-Detokenizer与流式输出.md)、[10-02 协议边界](02-HTTPgRPC与Rust服务边界.md)、[10-03 健康与生命周期](03-健康检查超时限流与优雅退出.md)。P/D 传输需要阶段 07 的对象和退役知识。
 
+跨版本与跨引擎延伸：[SGLang 与 vLLM 延迟指标对齐](<../../../大模型推理/推理基础/SGLang 与 vLLM V1 架构差异源码学习文档.md#latency-metric-alignment>)按 SGLang `baa9bef` / vLLM `5df63a7` 重新复核。该 SGLang 版本的非流式 TTFT、累计 queue 元数据和 TPOT 记录条件与本文基线有差异；本文仍解释 `72d5c5b`，不将后续行为覆盖到历史代码。
+
 下文代码行为是**源码事实**；图、时间账本与排查顺序是**整理者归纳**。Prometheus 分布统计原则另核对[官方 Histograms and summaries](https://prometheus.io/docs/practices/histograms/)（读取于 2026-09-10）。没有运行观察；官方页面不替代本基线的指标声明和调用位置。
 
 ## 1. 先把三种观测工具放回各自位置

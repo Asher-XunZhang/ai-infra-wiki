@@ -250,7 +250,7 @@ kv_available
   - pre_model_free * (1 - mem_fraction_static)
 ```
 
-`1 - mem_fraction_static` 相当于留给动态计算的比例。提高它会：
+`1 - mem_fraction_static` 相当于留给动态计算的预留比例。提高 `mem_fraction_static` 会减小这个预留比例；在上述近似及其他条件不变时，会：
 
 - 增大 KV pool；
 - 提高潜在并发；

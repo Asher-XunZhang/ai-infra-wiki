@@ -6,6 +6,8 @@
 
 [本领域阅读路线](README.md) · [先修：推理系统心智模型](<LLM 推理系统心智模型与 SGLang、vLLM 选型边界学习文档.md>) · [先修：Prefill 与 Decode](<LLM Prefill 与 Decode 阶段源码学习文档.md>)
 
+阅读建议：第 1–4 节建立进程与通信地图，第 5–7 节解释调度、缓存与扩展，第 8 节比较结束、压力、取消、图捕获、停止字符串和延迟指标。公众号文章《LLM推理引擎解剖:vLLM与SGLang的五层进程切分》的有效增量已按这些问题融入正文，来源与独立版本边界见第 0.5 节。
+
 ## 0. 固定基线、比较范围与术语
 
 ### 0.1 源码基线
@@ -19,7 +21,7 @@
 | 工作区状态 | 按固定提交下载相关文件只读核对，未建立或修改源码检出 | 按固定提交下载相关文件只读核对，未建立可运行检出 |
 | 操作边界 | 启动、调度、执行接口、消息通路及缓存接口的静态分析 | 前端、EngineCore、执行器、消息通路及 KV Connector 的静态分析 |
 
-Wiki 工作区已有未提交改动；本篇及关联引用在保留这些改动的基础上整理。上表是两个独立源码快照，不能与仓内其他文章的 commit 合并成一个“当前实现”。官方在线文档均读取于 2026-11-04，未固定版本的在线说明单独标识。
+Wiki 工作区已有未提交改动；本篇及关联引用在保留这些改动的基础上整理。上表是两个独立源码快照，不能与仓内其他文章的 commit 合并成一个“当前实现”。主基线的官方在线文档读取于 2026-11-04；第 0.5 节的文章与指标补充读取于 2026-11-13，未固定版本的在线说明单独标识。
 
 ### 0.2 把比较条件固定下来
 
@@ -50,6 +52,20 @@ Wiki 工作区已有未提交改动；本篇及关联引用在保留这些改动
 包内声明的基线是 SGLang `v0.5.23` 与 vLLM 展示版本 `v0.33.0` / tag `v0.33.0rc3`。本篇**借鉴它的问题组织与对照方法，技术结论仍逐项回到第 0.1 节的固定 commit**，不把 release tag、在线文档和 `main` 快照合并成同一个版本，也不沿用“最新正式版”的称呼。
 
 快速阅读时，先看第 1.4 节的差异地图，再选第 4 节通信、第 6 节缓存或第 8 节具体场景。每次对照按同一顺序读：**共同问题 → 两边的控制者和动作 → 真正的分叉点 → 完成条件与限制**。图中的步骤表示因果，不表示耗时或速度排名。
+
+### 0.5 五层进程切分文章及补充复核基线
+
+| 项目 | 内容 |
+| --- | --- |
+| 公众号原文 | [LLM推理引擎解剖:vLLM与SGLang的五层进程切分][W1]；AI圈的9527；2026-11-13 07:45（Asia/Shanghai，页面 `ct` 时间戳） |
+| 英文来源 | Aditya Kumar，[Anatomy of an LLM Serving Engine][B3]；2026-10-28 发布，2026-11-01 更新；页面标注 CC BY 4.0 |
+| 阅读时间与范围 | 2026-11-13；完整阅读正文、唯一一张技术图与英文来源，吸收职责划分、内存口径和测量问题；不重复搬入整篇摘要 |
+| vLLM 补充基线 | 公开上游 `v0.32.0` 版本语境，固定 commit `5df63a7203cdb9328d824a27b682e77c7b9928be` |
+| SGLang 补充基线 | 公开上游 `v0.5.22` 版本语境，固定 commit `baa9befa381511cd4d56f83980951e5a45fffc6d` |
+| 工作区与操作边界 | 按固定提交下载相关文件，只读复核，未建立或修改外部源码检出；Wiki 已有改动保留；未启动模型、运行作者测量脚本或进行 GPU 性能实验 |
+| 使用位置 | 第 1.3、2.1、4.4、6.3、8.5–8.7、9.5 节明确标识的补充内容；源码引用使用 `M` 前缀，与主基线引用分开 |
+
+原图见第 9.5 节及[图源记录][A2]。文章本身属于第三方资料；下文的补充源码复核和算例由整理者完成。**两组 commit 不合并为同一个“当前实现”**，原作者的架构偏好和未实测预测也不改写成性能结论。指标对齐限定普通 Python 文本服务、单请求 `n=1`、非 PD，先排除投机、重试与中途取消，再单独讨论边界。
 
 ## 1. 先建立整体地图：谁与谁住在一个进程里
 
@@ -97,7 +113,9 @@ vLLM 的 `UniProcExecutor` 直接创建 `driver_worker` 对象，不能用上图
 
 **小例子：** 从 SGLang 的 `Scheduler.run_batch` 跟进 Worker，在本篇条件下是本地方法调用；从 vLLM EngineCore 跟进多进程 Executor，则会遇到工作队列与远端执行入口。排查“这一层为什么慢”时，先判断它是本地调用、跨进程消息，还是设备通信。
 
-### 1.4 把差异落到六个共同问题
+**文章补充基线：** 在单 API、DP=1、PP=1、SGLang 单 detokenizer 的普通 Python 服务中，原文给出的主要服务进程数是 vLLM 的 TP=1/2 对应 2/4，SGLang 对应 3/4。vLLM 的单卡 `uni` 默认选择还有“未显式指定执行后端”的条件。[MVP][MSE] 这些是选定角色的计数，不是任意部署的 `ps` 结果。TP 从 1 改为 2 可能同时改变进程拓扑；单卡 CPU profile 没有测到多进程 Executor 的工作通路，也不能把多卡新增时间全部归为 IPC。
+
+### 1.4 把差异落到共同问题
 
 只记住“RadixAttention 对 PagedAttention”容易漏掉整个运行时。下面按同一个问题对齐，两边都有的能力直接说明共同点。
 
@@ -109,6 +127,7 @@ vLLM 的 `UniProcExecutor` 直接创建 `driver_worker` 对象，不能用上图
 | 缓存怎样找、怎样放？ | Radix 路径 + 请求到 KV 位置的映射 | block hash + 请求 block table | 查找索引、物理分配、恢复条件，不能由树/块名称推断命中率；第 6 节 |
 | 已完成、放不下或取消后怎么办？ | 结果收尾、cache checkpoint、retraction、分状态 abort | finish/free、block 引用、preemption、延迟释放 | 谁结束请求，谁仍持有资源；第 8 节 |
 | 怎样接入更多执行和存储能力？ | overlap、Runner/Backend、HiCache、PD 角色循环 | async scheduling、graph mode、KV Connector 两侧契约 | 接口与状态放在哪里，不能据此断言对方缺少同类能力；第 7、8 节 |
+| 延迟数字能否直接对照？ | TM、Scheduler、客户端分别记录；流式和非流式还有分支 | 前端接收计时、核心事件与客户端计时分开 | 起止事件、记录条件和样本权重；第 8.6–8.7 节按补充基线核对 |
 
 **读图提示：** 同一颜色只标识同一引擎或同类状态；一个框是否跨进程要看外框和说明。把“谁持有状态”与“通过什么线传数据”分开，就能把差异变成可追踪的代码问题，而不是功能标签。
 
@@ -125,6 +144,22 @@ vLLM 的 `UniProcExecutor` 直接创建 `driver_worker` 对象，不能用上图
 | 接入外部 KV | Scheduler 侧与 Worker 侧 KV Connector | HiCache 控制链；PD 专用队列、循环和 backend | HiCache 与 PD 不是同一条状态机 |
 
 本表是职责映射，不是一一对应的类继承图。vLLM 的 EngineCore、SGLang 的 Scheduler 都承担多项协调工作；对象名称不足以判断控制权。[V2]、[V5]、[V6]、[S2]、[S5]、[S6]
+
+### 2.1 五层职责怎样映射到两种进程切分
+
+原作者把一层理解为“某项决策及其所需状态”。这个视角补充了上面的对象对应表，但不是要求所有系统部署五个进程。[B3]
+
+| 职责 | 要回答的问题 | 对应到两种引擎时的重点 |
+| --- | --- | --- |
+| L1 前端 | 怎样把协议和文本变成输入，再组织输出？ | vLLM 的普通输出反分词在前端；SGLang 的前端职责分布于 Tokenizer、Detokenizer 等对象 |
+| L2 调度 | 本轮让谁推进多少工作？ | vLLM 的 EngineCore 调度计划与 SGLang 的各 rank 本地调度，需要不同的协同方式 |
+| L3 KV 管理 | 哪些位置属于谁、可否复用或回收？ | 账本、索引、引用与空闲位置，不等于物理数据本体 |
+| L4 执行 | 怎样准备输入并执行模型？ | 持有模型分片、KV 字节及执行资源；同进程调用也可能产生设备同步 |
+| L5 集群路由 | 把请求交给哪个服务副本？ | llm-d、Model Gateway 是原文举例，不是引擎必需或唯一的部署组件 |
+
+**分叉点：** 请求准入要参考 KV 容量，所以 L2 和 L3 紧密关联；但物理 KV 位于 Worker，并不让 Worker 自动获得请求分配与回收策略。原文“Worker 只存字节”适合强调管理权，不能按字面理解成 Worker 不再进行显存 profile、资源准备或计算。[MVM]
+
+同理，“每个 SGLang TP rank 跑完整引擎”是指调度、管理和执行链在各 rank 进程中装配；模型与 KV 仍按并行方式分片，不是每卡一个独立完整副本。原文关于无序集合或墙钟策略破坏 rank 一致性的论述是开发风险分析，不能当成已复现的故障或两种引擎的胜负依据。
 
 ## 3. 沿一条请求走完整个闭环
 
@@ -230,6 +265,8 @@ MessageQueue 在存在本机 readers 时使用共享内存环形缓冲区；消�
 
 SGLang 的普通 TP 输入同步先检查可用的共享内存 exchange；没有该 exchange 时，将请求列表通过 `broadcast_pyobj` 和 TP 的 CPU group 传播。它同步的是输入与控制信息，不能把这条边当成 GPU Attention 张量的 all-reduce。[S3] 这一事实也说明：共享内存不是只属于某一引擎的能力标签，必须指出所在通路和启用条件。
 
+**文章补充基线：** `baa9bef` 的普通 TP 请求同步分支使用 CPU group 上的 `broadcast_pyobj`，与上面主基线的 exchange 分支分开阅读；其入口还处理控制消息，不能把“各 rank 本地选批”扩写成“只在新请求到达时同步，之后完全零进程间同步”。模型 collective 和其他控制协同也没有因此消失。[MSR]
+
 ### 4.5 TP、PP 与 PD：三种“大数据通信”也不同
 
 在本篇 CUDA 语境中，两者都有 CPU group 与 device group。CPU group 的 Gloo 路径用于相应控制/对象通信；device group 和设备 communicator 承担模型张量操作，具体可以涉及 NCCL 或专用优化实现。看到 device group 为 NCCL，也不能推断每个 all-reduce 一定走同一个 NCCL 调用；源码还可能按条件选择其他设备通信实现。[C8]、[C9]
@@ -329,6 +366,21 @@ flowchart TB
 
 **分叉点：** 树节点与 hash 表负责“找到什么”，请求映射与 block table 负责“到哪里读写”；都还需要生命周期管理。尾部如何分配、是否 COW、是否能登记部分块，必须检查相应实现，不把离线包中的完整块示意推广到所有状态类型。详见 [恢复条件与状态所有权对比](<../KV缓存/前缀缓存命中后的恢复条件与状态所有权对比学习文档.md>)，各篇基线独立。
 
+### 6.3 同样的显存比例，为什么不代表同样的 KV 容量
+
+本节使用第 0.5 节的文章补充基线。跨引擎搬配置时，要比较实际容量与运行余量，不能仅让参数数值相同。
+
+| 观察点 | vLLM | SGLang |
+| --- | --- | --- |
+| 比例参数 | `gpu_memory_utilization` 参与自动内存预算 | `mem_fraction_static` 参与静态占用与运行预留的分配 |
+| KV 自动预算 | 预算减去 profile 的 non-KV 占用及适用的 CUDA Graph 估计 | 模型加载后可用量减去 `pre_model_load_memory × (1 − mem_fraction_static)`，再处理其他适用预留 |
+| 不能省略的分支 | 显式 `kv_cache_memory_bytes` 有独立路径，不再按 utilization 自动推导 KV 预算 | 特殊状态、多模态和捕图后定容有额外条件 |
+| 真正应记录 | 实际 KV 字节、block 数、模型/Graph/后端和运行余量 | 实际 token/page 容量、各类状态池、模型/Graph/后端和运行余量 |
+
+依据：[MVM][MSM]。两边都设成 `0.9` 不构成等容量对照；参数也不是操作系统强制执行的显存硬隔离。提高 `mem_fraction_static` 会减小公式中的运行预留，不等于增加设备总显存。进一步阅读 [vLLM KV 全生命周期](<../../vllm/KV缓存/vLLM V1 KV Cache 管理全生命周期源码学习文档.md>)与 [SGLang 显存预算](<../../sglang/运行时/SGLang Chunked Prefill 与调度器显存预算学习文档.md>)，各篇保留自己的版本。
+
+**存储格式也别读错：** 原文 vLLM 路径的 `int8` backing allocation 是按字节分配缓冲区，再按 cache spec 建立视图；不能据此认定 KV 已量化为 INT8。实际数值格式要继续查 spec、dtype 和 kernel。[MVB]
+
 ## 7. 重叠调度与跨实例接入分别改变什么
 
 ### 7.1 两者都能重叠 CPU 调度与 GPU 执行
@@ -358,7 +410,7 @@ HiCache 把 L1 GPU、L2 Host 与 L3 后端组织成缓存层次；L1/L2 属于�
 
 **整理者归纳：** vLLM 的接入对照适合先读 Connector 两侧契约；SGLang 适合先判断自己研究的是缓存分层还是 P/D 角色交接，再读相应状态机。两边都需要实际传输实现及外部服务组织，不能把模块化方式直接等同于某一方“功能更多”。
 
-## 8. 同题异路：沿四个场景看控制权与完成条件
+## 8. 同题异路：沿具体场景看控制权与完成条件
 
 这一组借鉴离线包的有效组织方式：两边面对同一个事件，依次比较**触发 → 状态变化 → 资源动作 → 后续影响**。以下聚焦普通生成与对应代码分支；特殊模型、PD 和异步传输的例外单独标出。图均为固定源码整理，不是实际执行 Trace。
 
@@ -466,9 +518,123 @@ flowchart TB
 
 **小例子：** 某一轮输入超过已捕获 token 桶，不能仅因“开启 CUDA Graph”就宣称已 replay。应分别检查本轮形状、命中的 key、被选中的 backend / mode，再讨论 launch 开销。
 
+### 8.5 停止字符串：谁最先知道请求应该结束
+
+本节及第 8.6–8.7 节采用第 0.5 节的补充基线。停止条件可以暴露前端与调度状态之间的边界，不能只比较参数名。
+
+| 观察点 | vLLM `5df63a7` | SGLang `baa9bef` |
+| --- | --- | --- |
+| 字符串匹配的位置 | 前端 `OutputProcessor` 调用增量反分词器，发现停止字符串 | Scheduler 的结果处理调用 `Req.update_finish_state`，经 `_check_str_based_finish` 检查字符串，必要时解码输出尾部 |
+| 怎样结束调度 | 若 EngineCore 尚未结束，前端把请求放进 `reqs_to_abort`，由 AsyncLLM 发送 abort | 匹配结果写入 Req 的结束状态，再进入该结果处理链的收尾 |
+| 资源何时回收 | 还要看核心处理 abort、在途工作及引用/传输条件 | 还要看结果收尾、缓存保护及在途工作条件 |
+
+依据：[MVA][MVO][MSB][MSBP]。SGLang 有独立 Detokenizer，不代表所有字符串工作都只发生在那里；vLLM 前端已经停止输出，也不代表核心同一时刻已经归还全部 KV。
+
+**小例子：** 停止字符串若由两个 token 组成，把它替换为其中一个 `stop_token_id` 会改变结束语义。只有语义等价时才适合比较两种停止方式；这里说明的是控制链差异，没有同负载实验可据此断言谁更快。
+
+<a id="latency-metric-alignment"></a>
+
+### 8.6 延迟指标：同名并不代表同一个观察位置
+
+**人话版：** 调度侧生成了结果、前端取到了结果、客户端看到了文字，是不同事件。指标在哪层停表，决定它包含哪些等待。下面先对齐事件，再对齐样本数量。
+
+```mermaid
+flowchart TB
+    subgraph V["vLLM（Python）"]
+        V0["前端起点<br/>arrival_time"] --> V1["EngineCore<br/>推进并输出"]
+        V1 --> V2["前端取出批次<br/>保存计时终点"]
+        V2 --> V3["反分词<br/>HTTP 返回"]
+    end
+    subgraph S["SGLang（Python · 流式）"]
+        S0["TM 起点<br/>created_time"] --> S1["Scheduler 推进<br/>Detokenizer"]
+        S1 --> S2["TM 处理批次<br/>保存计时终点"]
+        S2 --> S3["响应生成器<br/>HTTP 返回"]
+    end
+```
+
+**图意解读：** TTFT 使用首输出，E2E 使用终态输出。框和箭头仅表达普通路径的因果顺序，没有时间比例，两列长度不表示性能差异；最终客户端接收均发生在各自的 HTTP 返回链上。SGLang 图限定流式请求，非流式的 TTFT 有下面所列的独立分支。[MVA][MVO][MSTM]
+
+#### 起点和终点的对照
+
+| 指标或问题 | vLLM `5df63a7` | SGLang `baa9bef` | 可比边界 |
+| --- | --- | --- | --- |
+| TTFT，`time_to_first_token_seconds` | 前端取首批核心输出时的 `iteration_timestamp − arrival_time`，发生在该批次反分词之前 | 流式通常为 TM 处理首输出的 `first_token_time − created_time`；非流式可能采用 Scheduler 的首 token 时间 | 都不等于客户端首段文字延迟；先区分流式与非流式 |
+| E2E，`e2e_request_latency_seconds` | 终态批次的前端 `iteration_timestamp − arrival_time` | TM 的 `finished_time − created_time` | 前者终点在最终批次反分词前，后者普通文本回程已经过 Detokenizer；均早于客户端完整读取 |
+| 首次排队 Histogram | `request_queue_time_seconds`：首次 `SCHEDULED − QUEUED`，在请求结束记录 | `queue_time_seconds`：首次 forward 入口减等待队列入口，在首次 forward 记录 | 起点和记录时刻不同；两者都不直接表示全部中途等待 |
+| ITL，`inter_token_latency_seconds` | 非首轮核心输出的相邻 `engine_core_timestamp` 差；所读路径每次加入一个观测 | TM 处理输出时的观测间隔按新增 completion token 数平均分摊，再贡献相应数量的观测 | 一个样本可能对应一次输出，也可能对应一个分摊后的 token，不能直接比较 p99 |
+| 每请求 TPOT，`request_time_per_output_token_seconds` | 核心首末 token 区间除以 `N−1`；`N≤1` 时该实现记录 0 | TM 时间账本的首末区间除以 `N−1`，有终止原因、token 数和区间有效性筛选 | 即使公式相似，计时层次和有效样本集合仍不同 |
+| Prefill / Decode / Inference | 分别为首次调度→首 token、首→末 token、首次调度→末 token；不是 GPU kernel 专用计时 | 需查看 Scheduler 阶段、TM 时间账本及具体 collector；不能套用 vLLM 的指标分解 | 不把一个引擎的阶段 Histogram 当成另一引擎的同义项 |
+
+表中共同名字分别加 `vllm:` 或 `sglang:` 前缀；实现入口为 [vLLM 时间账本][MVT]、[记录器][MVL]、[SGLang TM][MSTM]、[时间账本][MST]与 [collector][MSC]。
+
+vLLM 普通 chat renderer 在渲染入口记录 `arrival_time`，输入处理也允许继承或显式传入时间；SGLang TM 接受 `received_time`，未提供时才在建立状态时取 `perf_counter`。两者都不能凭字段名解释为“网络收到第一个字节”。vLLM 的前端墙钟与核心单调时钟分开使用；SGLang 的时间账本也有跨进程传递规则，不能混合绝对时间戳相减。[MVR][MVI][MSTM][MST]
+
+#### SGLang 的非流式 TTFT，以及两种排队时间
+
+本次补充版本的 `_get_scheduler_first_token_time` 在非流式请求、存在返回时间账本、且 `created_time < prefill_finished_time ≤ 当前时刻` 时，尝试采用 Scheduler 的 `prefill_finished_time`；条件不满足则退回 TM 首输出时刻。它不是保证所有非流式调用都具有精确模型首 token 时间的承诺。[MSTM]
+
+这与仓内 [Metrics、日志与 Trace 课程](<../../sglang/source-study/10-serving-operations/04-Metrics日志与Trace关联.md>)的 `72d5c5b` 旧基线不同。旧文继续解释旧版本，本节不把两个版本合成一个默认行为。
+
+SGLang `baa9bef` 还把已结算的等待段累加到 `queue_duration_s`，通过 `get_queueing_time` 输出到请求元数据；重排后再次进入 forward 时可继续累计。而 Prometheus 的 `sglang:queue_time_seconds` 只在首次 forward 入口记录一个样本。**请求元数据中的累计 queue time 和同名观测领域的 Histogram 不是一笔账。**[MST][MSTM]
+
+vLLM 的 `scheduled_ts` 只记录首次调度，抢占后不覆盖；中途等待因此进入 Prefill/Decode/Inference 区间。该提交的 `metrics.md` 仍用“最近一次 SCHEDULED”解释区间，与实现不一致，本节按实现限定说明。[MVT][MVS][MVD]
+
+**教学例子：** 首次等待 20 ms，开始生成后又等待 60 ms。不能因为首次 queue Histogram 仍显示 20 ms，就断言请求没有中途排队；SGLang 的累计请求账本和 vLLM 的核心 Inference 区间可能从不同角度包含这段等待。异常终止、尚未重新进入 forward 的等待还需另查，不能机械相加。
+
+#### ITL 与 TPOT：先数清一个样本代表什么
+
+设两边在**各自的观察层**都有一个 200 ms 的间隔，随后一次收到 2 个新增输出 token；这是为了比较记账方法的假设，不是同条件压测：
+
+| 观测 | vLLM 所读路径 | SGLang 默认 collector |
+| --- | --- | --- |
+| 这次 ITL 的 `_count` 增量 | 1 | 2 |
+| 这次 ITL 的 `_sum` 增量 | 0.2 s | 0.2 s |
+| 写入的观测 | 一个 200 ms 区间 | 两个各 100 ms 的平均分摊值 |
+
+依据：[MVT][MVL][MSC]。这两个 100 ms 并没有测出两个 token 各自的准确生成或客户端到达时刻。因此“单请求时所有 Histogram 的 count 都应增 1”是错的；它最多适用于满足记录条件的每请求指标，不适用于 ITL。
+
+SGLang 本版本的 TPOT 仅在非 Prefill 角色、正常 `stop`/`length`、输出数 `N>1` 且首末区间为正时记录。vLLM 所读完成请求路径则会把 `N≤1` 算为 0，再写入 TPOT Histogram。短输出、取消、失败和 PD 流量混入后，两边的平均值即使同名也可能对应不同样本集合。[MSTM][MST][MVT][MVL] 统计上“没有观测”和“观测值为零”必须分开。
+
+### 8.7 怎样把架构差异变成可检查的测量
+
+**共同外部口径：** 比较用户体验时，先让同一个客户端用同一套解析规则记录 `发出请求→首个有效内容增量`、`发出请求→完整读取响应`。首个 HTTP 字节、角色字段、空 SSE 或 reasoning/tool 输出是否算“首内容”要提前定义；不能拿一边的内部 TTFT 与另一边的客户端 TTFT 排名。
+
+服务端指标随后用于解释各自内部发生了什么。先固定模型与 tokenizer、模板、实际输入/输出 token 数、停止语义、硬件、并行和执行后端、缓存、Graph、流式与输出合并条件；相同比例参数不自动代表相同内存容量。
+
+#### 单请求直方图增量的使用范围
+
+1. 热身后隔离实例，保证窗口内只有目标请求，无重启、counter reset 或其他流量；固定同一实例及完整 labels。
+2. 分别在请求前、请求结束且指标已写入后抓取值。对 E2E 等满足条件的每请求 Histogram，检查 `Δ_count=1`，再取 `Δ_sum`；ITL 和有条件记录的 TPOT 使用各自样本规则。
+3. 记录是否 streaming、实际输出数、结束原因、重排次数和客户端时间。缺失、跳过和零值分别保留，不用 0 补齐所有字段。
+4. 对齐同一请求后再讨论残差；跨实例、跨 rank 或不同采样窗口的数据不能直接拼接。
+
+Histogram 的 sum/count 与分位数口径参考 [Prometheus 官方说明][D2]（读取于 2026-11-13）。平均值可以由匹配样本的 sum/count 得到，但两组 p99 相减既不保留请求配对关系，也不是“p99 组件耗时”。
+
+#### vLLM 原文的残差公式能说明什么
+
+仅在原文的普通正常请求及上述隔离条件下，记客户端总时间为 C，vLLM E2E 为 E，首次队列为 Q，Prefill/Decode/Inference 为 P/D/I：
+
+```text
+I = P + D
+R_front = E − Q − I
+R_outer = C − E
+C = Q + I + R_front + R_outer
+```
+
+| 剩余区间 | 可能包含 | 不能直接当作 |
+| --- | --- | --- |
+| R_front | 输入准备、进入核心前的传递与等待、末次核心输出到前端取出之间的传递与等待 | 纯 ZMQ、序列化 CPU 时间或全部 token 的 IPC 总耗时 |
+| R_outer | `arrival_time` 之前的接入，以及最终输出批次计时之后的反分词、发送和客户端读取 | 纯反分词或纯网络时间 |
+
+**教学算例，非实测：** C=240 ms、E=210 ms、Q=20 ms、P=50 ms、D=110 ms，则 I=160 ms，两项残差都是 30 ms。只能确认这些计时区间留下的余量；不能把 30 ms 直接记到某个组件头上。这里减的是各自时钟的时间差，仍须排除墙钟跳变和采样错配；明显负残差应先查口径，不截断成 0。[MVT][MVA]
+
+这套公式不能直接替换成 SGLang 同名指标：观察位置、累计等待与样本条件已经不同。若要得到对称的组件拆分，需要在两边增加意义一致的事件点，并用 Trace 或 profile 验证；本文没有实施这些埋点或运行实验。
+
+原作者预测并发为 1 时，R_front 随输出变长应大致稳定，并明确未运行 GPU 测量脚本。[B3] 本文只把它作为待验证假设；曲线增长也可能受批次、队列、事件循环和计时误差影响，不能单凭曲线确认根因。原文引用的 API 33%、调度 29%、GPU 38%，属于 vLLM 官方 2024 年 Llama 3 8B、单 H100 的历史 profile，不是本节固定版本的比例。[B4]
+
 ## 9. 回看原始架构图：哪些信息被省略了
 
-以下原图作为资料证据保留，完整链接、页码、文件哈希及处理方式见 [图源清单](../../images/sglang-vllm-architecture/SOURCES.md)。前两张来自作者在 CMU 2025 春季课程中的讲义，反映历史解释；第三张来自本文固定 vLLM 提交。本文的 Mermaid 是整理者为各节明确条件绘制的图，不能与这些原图混成同一个版本。
+以下原图作为资料证据保留，第 9.1–9.4 节的链接、页码、文件哈希及处理方式见[架构图源清单](../../images/sglang-vllm-architecture/SOURCES.md)，第 9.5 节单独见[五层文章图源][A2]。前两张来自作者在 CMU 2025 春季课程中的讲义，反映历史解释；第三张来自本文固定 vLLM 提交。本文的 Mermaid 是整理者为各节明确条件绘制的图，不能与这些原图混成同一个版本。
 
 ### 9.1 SGLang 作者讲义，第 6 页
 
@@ -499,6 +665,14 @@ flowchart TB
 **图意解读：** 先展示相同问题，再把触发、回退、状态重置、重新入队放在相近位置，底部解释下一步代价。本文采用这种问题对齐方式，但不采用图中约 92% 的压力数值作为触发阈值，也不将 `new_token_ratio` 写成必然下降；固定源码结论见第 8.2 节。[A1]
 
 前缀画面的 [原始 10/12 对 8/12 例子](../../images/sglang-vllm-architecture/05-atlas-prefix.png)也保留以便核对。它的相同 token 刻度有教学价值，但混用了匹配粒度；本文第 6.1 节的图先统一边界，再解释索引方式。截图均未改写原图文字，来源、步骤和哈希见 [图源记录][A1]。
+
+### 9.5 五层进程切分文章的双卡图
+
+![公众号文章中的 SGLang 与 vLLM 双卡进程切分](../../images/inference-process-latency/01-process-boundaries.png)
+
+**图意解读：** 图对应第 0.5 节的 SGLang `baa9bef` 与 vLLM `5df63a7`，以 TP=2 展开“决策、账本、执行”怎样进入进程。上方集群层挑选副本，不直接接管实例内部的选批和 KV 位置。图中 L1 分散到多个进程，说明职责层不是进程数；左侧 rank 持有模型/KV 分片，不是两套完整副本。[W1][B3]
+
+原图省略了部分返回、collective 和辅助通路，不能将“new requests only”读成全系统之后再无同步，也不能由四个进程推导相同延迟。原图为 1080×353 的白底宽图，小屏可打开本地图片放大；正文第 2.1、4、8 节提供可独立阅读的表与解释。完整来源、许可说明和哈希见 [图源记录][A2]；未改字、裁剪或重绘。
 
 ## 10. 小白排障地图与源码阅读路线
 
@@ -545,6 +719,8 @@ flowchart TB
 7. 同样 10 个相同 token，为什么不能仅凭 Radix / hash 名称断言谁多复用两个？
 8. 为什么 `ref_cnt=0`、请求取消、GPU 写入完成与物理块可回收不是同一状态？
 9. BCG 的图外区域，与 vLLM 的 graph mode 分发，分别处于哪层？
+10. 同样一次收到两个新 token，为什么两边 ITL Histogram 的样本数可能不同？
+11. SGLang 非流式 TTFT、首次 queue Histogram 和累计 queue 元数据，各自有什么版本与计时条件？
 
 答案应落回进程边界、具体通路、接口载荷和生命周期；不要只回答一个库名。
 
@@ -581,9 +757,22 @@ flowchart TB
 
 复核了仓内普通请求生命周期、vLLM KV 全生命周期和 BCG 专项：它们已有各自深入主线，本次只补跨引擎的关联入口与基线提示，不重写其历史实现。四个场景已在本篇形成有依据的整合，没有再拆一篇重复对照文章的必要。
 
+### 11.2 五层文章与指标课程的整合结果
+
+| 新旧资料关系 | 正文中的处理 | 保留的证据边界 |
+| --- | --- | --- |
+| 公众号五层图与已有进程/模块对照大幅重叠 | 将职责视角融入第 2 节，原图保留在第 9.5 节；不再单独维护一篇架构摘要 | 原文的小引擎行数没有重算，不能作为复杂度排名；作者的架构偏好不作为性能结论 |
+| 显存参数可与已有容量文档衔接 | 第 6.3 节解释跨引擎同值配置为何不等容量；旧显存文明确提高的是 `mem_fraction_static` | 自动定容、显式字节和特殊状态分支各有条件，旧文历史基线保留 |
+| 原文停止字符串与已有结束/取消状态机互补 | 第 8.5 节补充前端匹配与 Scheduler 结果处理的不同控制位置 | 没有将匹配成功直接等同于物理 KV 立即可回收 |
+| 原文 vLLM 指标与仓内 SGLang Metrics 课程可以对齐问题 | 第 8.6–8.7 节按新固定快照重新复核两边的起止点、样本权重和记录条件 | SGLang 非流式 TTFT、累计 queue、TPOT 与旧课程存在版本差异，旧文不被静默覆盖 |
+
+Rust 前端仍是单独的扩展边界：文章补充版本的 vLLM README 保留 Rust 前端→Python EngineCore 的 ZMQ/MessagePack 接口；SGLang 的嵌入式 Rust 启动分支则跳过 Python Tokenizer/Detokenizer，并通过 rank-0 Scheduler 的进程内 ring 接收请求。[MVX][MSE][MSR] 这说明职责与进程装配可分开变化，不保证总进程数、功能覆盖或指标实现与 Python 主线相同。
+
+本篇已形成“进程归属 → 状态所有权 → 完成条件 → 指标可比范围”的整合。进一步的组件开销或双引擎性能排名需要同条件实验，当前资料不足以支持，不再拆出重复的对比文章。
+
 ## 12. 参考资料与证据索引
 
-所有源码链接固定到第 0 节的 commit。下表中的作者资料用于解释设计动机和原图；技术细节优先回到固定源码核对。完整图源及哈希另见 [SOURCES.md](../../images/sglang-vllm-architecture/SOURCES.md)。
+所有源码链接固定到第 0 节对应的 commit：`M` 前缀使用第 0.5 节的文章补充基线，其余源码引用使用第 0.1 节主基线。下表中的作者资料用于解释设计动机和原图；技术细节优先回到固定源码核对。图源及哈希分别见[架构图记录](../../images/sglang-vllm-architecture/SOURCES.md)与[五层文章图源][A2]。
 
 | 标识 | 资料、作者与日期 | 本篇使用范围 |
 | --- | --- | --- |
@@ -593,6 +782,9 @@ flowchart TB
 | B2 | SGLang Team，*SGLang v0.4: Zero-Overhead Batch Scheduler, Cache-Aware Load Balancer, Faster Structured Outputs*，2024-12-04 | overlap 的历史设计动机 |
 | D1 | SGLang 官方在线文档，*HiCache System Design and Optimization*；读取于 2026-11-04 | 层次范围与缓存工作流；不是本篇已运行的配置 |
 | V1 | vLLM 固定提交的 *Architecture Overview* | V1 进程职责、TP=4 原图；单卡例外另核对 V4 |
+| W1 / B3 | AI圈的9527 中文文章 / Aditya Kumar 英文原文；日期见第 0.5 节 | 五层职责、原始双卡图及待验证的测量思路 |
+| B4 | vLLM Team，*vLLM v0.6.0: 2.7x Throughput Improvement and 5x Latency Reduction*，2024-09-05 | 仅核对 33%/29%/38% 历史 profile，不作本文版本的测量 |
+| D2 | Prometheus 官方 *Histograms and summaries*，读取于 2026-11-13 | sum/count、分布与聚合口径；不代替引擎自身的记录条件 |
 
 [S1]: https://github.com/sgl-project/sglang/blob/a16830deb5ea5b1e8c9874ad646f3ba95542191c/python/sglang/srt/entrypoints/engine.py
 [S2]: https://github.com/sgl-project/sglang/blob/a16830deb5ea5b1e8c9874ad646f3ba95542191c/python/sglang/srt/managers/scheduler.py
@@ -642,3 +834,30 @@ flowchart TB
 [G1]: https://github.com/sgl-project/sglang/blob/a16830deb5ea5b1e8c9874ad646f3ba95542191c/python/sglang/srt/model_executor/runner_backend/breakable_cuda_graph_backend.py#L65
 [G2]: https://github.com/vllm-project/vllm/blob/9a56d4fec6b0a30a0a989f1cd06cd3c2f7325619/vllm/config/compilation.py#L695
 [G3]: https://github.com/vllm-project/vllm/blob/9a56d4fec6b0a30a0a989f1cd06cd3c2f7325619/vllm/v1/cudagraph_dispatcher.py#L233
+
+
+[W1]: https://mp.weixin.qq.com/s/pbzBiFfBR-KpVBpxYGSk4Q
+[B3]: https://hiraditya.github.io/posts/anatomy-of-an-llm-serving-engine/
+[B4]: https://vllm.ai/blog/2024-09-05-perf-update
+[MVT]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/v1/metrics/stats.py#L478
+[MVL]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/v1/metrics/loggers.py#L960
+[MVD]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/docs/design/metrics.md#L212
+[MVA]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/v1/engine/async_llm.py#L849
+[MVO]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/v1/engine/output_processor.py#L681
+[MVR]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/renderers/base.py#L1287
+[MVI]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/v1/engine/input_processor.py#L402
+[MVS]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/v1/core/sched/scheduler.py#L1571
+[MVM]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/v1/worker/gpu_worker.py#L635
+[MVB]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/v1/worker/utils.py#L570
+[MVP]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/vllm/config/parallel.py#L1080
+[MSR]: https://github.com/sgl-project/sglang/blob/baa9befa381511cd4d56f83980951e5a45fffc6d/python/sglang/srt/managers/scheduler_components/request_receiver.py#L112
+[MSM]: https://github.com/sgl-project/sglang/blob/baa9befa381511cd4d56f83980951e5a45fffc6d/python/sglang/srt/mem_cache/kv_cache_configurator.py#L2688
+[MSE]: https://github.com/sgl-project/sglang/blob/baa9befa381511cd4d56f83980951e5a45fffc6d/python/sglang/srt/entrypoints/engine.py#L1136
+[MVX]: https://github.com/vllm-project/vllm/blob/5df63a7203cdb9328d824a27b682e77c7b9928be/rust/README.md
+[MSTM]: https://github.com/sgl-project/sglang/blob/baa9befa381511cd4d56f83980951e5a45fffc6d/python/sglang/srt/managers/tokenizer_manager.py#L2729
+[MST]: https://github.com/sgl-project/sglang/blob/baa9befa381511cd4d56f83980951e5a45fffc6d/python/sglang/srt/observability/req_time_stats.py#L404
+[MSC]: https://github.com/sgl-project/sglang/blob/baa9befa381511cd4d56f83980951e5a45fffc6d/python/sglang/srt/observability/metrics_collector.py#L1976
+[MSB]: https://github.com/sgl-project/sglang/blob/baa9befa381511cd4d56f83980951e5a45fffc6d/python/sglang/srt/managers/schedule_batch.py#L1913
+[MSBP]: https://github.com/sgl-project/sglang/blob/baa9befa381511cd4d56f83980951e5a45fffc6d/python/sglang/srt/managers/scheduler_components/batch_result_processor.py#L1015
+[A2]: ../../images/inference-process-latency/SOURCES.md
+[D2]: https://prometheus.io/docs/practices/histograms/
