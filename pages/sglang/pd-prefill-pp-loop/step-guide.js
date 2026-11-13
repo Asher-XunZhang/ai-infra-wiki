@@ -129,11 +129,11 @@
     '本轮提交的可能是另一份新 batch；旧 batch 的结果稍后才沿环路返回，需要根据槽位和元数据找到正确的请求。',
     '接着在 copy stream 上预处理结果并记录就绪事件；等到后处理位置再同步事件、更新旧请求。',
     '本例 depth=0，结果接收位于当前前向提交之后；不能把这里的旧结果默认当作本轮刚 launch 的 batch。', ['pp:1072', 'pp:1084']);
-  define('copy', '预处理旧结果并记录就绪事件（图中 D2H）',
+  define('copy', '预处理旧结果并记录就绪事件',
     c => `为 ${c.owner} 构造 GenerationBatchResult，处理结果字段，并在 copy stream 上记录 d2h_event；该流先等待 schedule_stream 的先行工作。`,
     '后续 CPU 请求处理要使用这份结果，需要一个明确的完成点，确保预处理及按配置发起的异步拷贝已达到可使用的状态。',
     '后面的 wait_copy 同步这个事件，然后进入 process_batch_result_disagg_prefill。',
-    c => `图中 D2H 是结果预处理／就绪区间的简写。源码根据输出配置决定拷贝内容；本例关闭 sampling mask，相关分支只记录 event，不能理解为这里必然完整复制 token 张量，更不是 KV 回载。${c.last && c.current ? '末级 copy stream 还会继承等待当前前向完成事件的流依赖。' : ''}`,
+    c => `图中标记的是结果预处理／就绪事件，不能一概称为 D2H 复制。源码根据输出配置决定拷贝内容；本例关闭 sampling mask，相关分支只记录 event，不能理解为这里必然完整复制 token 张量，更不是 KV 回载。${c.last && c.current ? '末级 copy stream 还会继承等待当前前向完成事件的流依赖。' : ''}`,
     ['pp:1084', 'pp:1091', 'pp:1100']);
   define('wait_copy', '在使用旧结果前同步完成事件',
     c => `${c.pp} 调用 d2h_event.synchronize()，确认 ${c.owner} 的结果就绪事件已经完成，才允许 CPU 进入后处理。`,

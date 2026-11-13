@@ -5,7 +5,7 @@
   const names = ['检查状态', '缓存与选批', '输入 / 提交前向', '结果与共识', '转发保存'];
   const lifeNames = ['准入与排队', '准备缓存 / 输入', '本级 GPU 前向', '等结果 / 处理', 'KV 传输', '等共识 / 释放'];
   let total = Math.ceil(data.end / 10) * 10, comparisonEnd = 0;
-  let rank = 0, loop = 5, batch = 0, lifePhase = -1;
+  let rank = 0, loop = 3, batch = 1, lifePhase = -1;
   let start = 0, span = total;
   let drag = null, suppressClick = false;
   const actions = new WeakMap();
@@ -54,8 +54,8 @@
     const rs = currentBatch().ranks;
     fitRange(Math.min(...rs.map(r => r.phases[0].start)), Math.max(...rs.map(r => r.phases[5].end)));
   }
-  function goLoop(r, n) { rank = r; loop = n; render(); focus(); }
-  function goBatch(b) { batch = b; lifePhase = -1; render(); batch ? fitBatch() : focus(); }
+  function goLoop(r, n) { rank = r; loop = n; window.PP_JOURNEY?.update({rank:r,loop:n,mode:"loop"},"legacy"); render(); focus(); }
+  function goBatch(b) { batch = b; lifePhase = -1; window.PP_JOURNEY?.update({batch:b},"legacy"); render(); batch ? fitBatch() : focus(); }
   function selectLife(i, fit = true) {
     lifePhase = i; render();
     if (!fit) return;
@@ -142,6 +142,19 @@
     });
     draw();
   }
+  function drawClock() {
+    const time=window.PP_JOURNEY?.state.time??0,w=svg.getBoundingClientRect().width,h=Number(svg.getAttribute('height'));
+    let line=svg.querySelector('[data-shared-clock]');
+    if(!line)line=el(svg,'line',{'data-shared-clock':'1',stroke:'var(--p2)','stroke-width':2,'pointer-events':'none'});
+    const x=58+(time-start)/span*(w-70);
+    for(const [k,v] of Object.entries({x1:x,x2:x,y1:38,y2:h-20,visibility:time>=start&&time<=start+span?'visible':'hidden'}))line.setAttribute(k,v);
+  }
+  function syncObservation() {
+    const state=window.PP_JOURNEY?.state;if(!state)return;
+    rank=state.rank;loop=Math.min(state.loop,Math.max(...data.loops.filter(l=>l.r===rank).map(l=>l.n)));batch=state.batch;
+    render();
+  }
+  window.addEventListener('pp-observation',e=>{if(e.detail.reason==='model')return;if(e.detail.reason==='clock')drawClock();else syncObservation();});
   function draw() {
     const w = Math.floor(svg.getBoundingClientRect().width), left = 58, right = 12, top = 48, row = batch ? 154 : 116, h = top + 3*row + 24;
     if (w <= left + right) return;
@@ -162,7 +175,7 @@
       data.loops.filter(l => l.r===r && l.end>start && l.start<end).forEach(l => {
         const xx=x(Math.max(start,l.start)), ww=x(Math.min(end,l.end))-xx, selected=l.r===rank&&l.n===loop;
         const g=el(svg,'g',{'data-loop':r+':'+l.n});
-        selectable(g,()=>{rank=l.r;loop=l.n;render();},'PP'+r+' L'+(l.n+1)+'，提交'+batchName(l.current)+'，处理旧结果'+batchName(l.old)+'，'+fmt(l.start)+'至'+fmt(l.end)+' u');
+        selectable(g,()=>{goLoop(l.r,l.n);},'PP'+r+' L'+(l.n+1)+'，提交'+batchName(l.current)+'，处理旧结果'+batchName(l.old)+'，'+fmt(l.start)+'至'+fmt(l.end)+' u');
         el(g,'rect',{x:xx,y:y+3,width:ww,height:83,fill:'var(--surface)',stroke:selected?'var(--fg)':'var(--border)','stroke-width':selected?2:1});
         const cx=xx+ww/2;
         label(g,cx,y+22,'L'+(l.n+1),ww-4);
@@ -195,6 +208,7 @@
     }
     $('#window').textContent=start.toFixed(1)+'–'+end.toFixed(1)+' u';
     $('#pan-hint').textContent=(span===total?'全程已显示，放大后可左右拖动。':'按住图中任意位置左右拖动平移；Ctrl / ⌘ + 滚轮缩放。')+' 点击 loop 查看大步骤'+(batch?'，点击进度带查看对应生命周期。':'。');
+    drawClock();
     $('#pan').max=Math.max(0,total-span);$('#pan').value=start;$('#pan').disabled=span===total;
   }
   svg.addEventListener('click',e=>{if(suppressClick&&e.detail>0){e.preventDefault();e.stopImmediatePropagation();}},true);
@@ -252,7 +266,7 @@
   window.addEventListener('pp-timing-change',event=>{
     data=event.detail.packet.quick;total=comparisonEnd||Math.ceil(data.end/10)*10;
     loop=Math.min(loop,Math.max(...data.loops.filter(l=>l.r===rank).map(l=>l.n)));
-    drag=null;start=0;span=total;refillLoops();render();
+    drag=null;start=0;span=total;refillLoops();syncObservation();render();
     svg.dataset.scenario=event.detail.id;
     comparisonEnd?setView(0,total):batch?fitBatch():focus();
     if(resume){restoreUpdate();resume=null;}
@@ -262,5 +276,5 @@
     comparisonEnd?setView(0,total):batch?fitBatch():focus();
   });
   svg.dataset.scenario='baseline';
-  render();batch?fitBatch():focus();restoreUpdate();
+  syncObservation();render();batch?fitBatch():focus();restoreUpdate();
 })();

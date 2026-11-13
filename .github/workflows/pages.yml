@@ -51,6 +51,7 @@ jobs:
           node tests/pages/test_pd_handoff.cjs
           node tests/pages/test_pd_execution.cjs
           node tests/pages/test_pp_consensus.cjs
+          node tests/pages/test_pp_journey.cjs
           node tests/pages/test_request_runtime.cjs
           node tests/pages/test_request_state.cjs
           python3 -B tests/pages/test_sglang_page_baselines.py

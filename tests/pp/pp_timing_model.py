@@ -152,7 +152,7 @@ def build_model(config=None, *, export_template=False):
                 # schedule_stream before old-output recv. copy_stream then
                 # waits for that stream, even though the copied batch is older.
                 copy_gate=key(r,n,'gpu') if r==2 and m else None
-                add(key(r,n,'copy'),[recv,copy_gate],.24,r=r,n=n,kind='copy',phase='H',label='D2H',owner=f'M{o}',ref='pp:1084')
+                add(key(r,n,'copy'),[recv,copy_gate],.24,r=r,n=n,kind='copy',phase='H',label='结果预处理 / 就绪事件',owner=f'M{o}',ref='pp:1084')
             # Control consensus is independent from the output tensor ring.
             if r==2 or n>=3:
                 cpu('send_bc','发送 bootstrap 共识回流','G',.10,owner='请求候选集合',ref='pp:660')
@@ -319,7 +319,7 @@ def build_model(config=None, *, export_template=False):
         if name=='l2_counts':g['external']='PP loop 在 process_prefill_chunk 后、get_new_batch_prefill 前显式调用 _process_hicache_events；空 batch loop 也进入缓存事件轮。'
         if name=='release':g['external']+=' 成功路径依次 release_kv_cache → tree_cache.finish(handle, SUCCESS) → sender.clear，并归还 metadata；当前默认缓存继承的 finish(SUCCESS) 不取消异步缓存工作，也不新增等待。'
         if name=='h2d':g['external']='start_loading 的 start_event 在 schedule_stream 上记录；H2D 流等待该事件，因此承接上一轮 launch_event 的顺序约束。'
-        if name=='copy' and r==2 and current(n):g['external']='末级先在 schedule_stream 等当前 forward 的 q_event 再发送 output；copy_stream.wait_stream(schedule_stream) 将此约束传给旧结果 D2H。不是 CPU 在 wait_event 调用处同步等待。'
+        if name=='copy' and r==2 and current(n):g['external']='末级先在 schedule_stream 等当前 forward 的 q_event 再发送 output；copy_stream.wait_stream(schedule_stream) 将此约束传给旧结果就绪事件。不是 CPU 在 wait_event 调用处同步等待。'
         if name=='gpu' and current(n) in (2,4):g['external']='模型把逐层 KV 就绪粗化成整份 H2D 完成后再开始前向；源码按层 wait_event，可边回载边计算，没有这个整批 barrier。'
         if name=='select' and current(n):extra.append((key(r,2,'recv_bc'),'本例请求已通过 bootstrap 准入'))
         if name=='launch' and r and current(n):extra.append((key(r,n,'recv_proxy'),'当前 batch 的上级激活已接收'))

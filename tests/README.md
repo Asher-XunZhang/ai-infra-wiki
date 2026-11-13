@@ -62,3 +62,10 @@ CI 保留原有模型、PP 生成与源码基线检查，并增加通用文档�
 ## 发布版本与阅读位置
 
 `python3 -B tests/pages/test_site_update_build.py` 检查篇章 URL、元数据与资源哈希，随部署 CI 执行。构建并启动本地预览后，运行 `node tests/pages/test_site_update_browser.cjs`；支持上述浏览器环境变量、`OVERVIEW_TEST_URL` 与可选 `UPDATE_SCREENSHOT_DIR`。该检查使用本地双版本响应模拟更新，不触发远程发布，覆盖顶部入口、七种窗口宽度 / 深浅主题、吸顶控件留白、单次导航、场景 / 步骤 / 滚动恢复、资源缺失、离线、发布延迟、会话存储失败及历史恢复；结束时关闭独立浏览器并检查进程和 profile。
+
+
+## PD＋PP 综合实践
+
+`node tests/pages/test_pp_journey.cjs` 从十个已生成场景核对激活可用、前驱门槛、KV 结束与本地清理分界，以及并行区间和逆向状态重建。`node tests/pages/test_pp_journey_browser.cjs` 验证连续播放、暂停／回拖、脉冲活动区间、观察对象与完整图同步、跨三篇及刷新恢复、场景切换、响应式与减少动态效果。支持 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL` 和可选的 `PP_JOURNEY_QA_DIR`；自动清理独立浏览器及 profile。
+
+原有 `tests/pp/test_pp_timing_model.py`、`test_pp_custom_timing.py`、`test_pp_dependency_view.py`、`test_pp_step_guide.py` 和 `check_pp_source.py` 继续检查生成模型、参数求解、完整图几何、步骤说明及固定源码锚点。修改依赖模型或步骤说明后，用 `python3 -B tests/pp/build_pp_scenarios.py --refresh-baseline` 同步场景与嵌入数据，再核对生成 diff；只有明确审查过模型变化后才使用此选项。

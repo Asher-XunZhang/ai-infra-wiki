@@ -39,10 +39,10 @@
   function links() {
     document.querySelectorAll('a[href]').forEach(a=>{
       const url=new URL(a.href,location.href);
-      if(url.origin===location.origin&&/\/pd-prefill-pp-loop\/(?:quick\.html|index\.html)?$/.test(url.pathname)){setParams(url);a.href=url.href;}
+      if(url.origin===location.origin&&/\/pd-prefill-pp-loop\/(?:quick\.html|index\.html|notes\.html)?$/.test(url.pathname)){setParams(url);a.href=url.href;}
     });
   }
-  function persist(){const url=new URL(location.href);setParams(url);history.replaceState(null,'',url);links();}
+  function persist(){const url=new URL(location.href);setParams(url);history.replaceState(null,'',url);links();window.PP_JOURNEY?.links();}
   function sendToFrame(){
     if(!frameReady)return;
     const end=scale.checked?extent:0;
@@ -95,8 +95,8 @@
       }
       const next=await cache.get(scene.id);if(token!==request)return;
       seed=scene;install(next,scene);
-      state('已切换：'+scene.name+'。两张图使用相同的时间模型。');
-    }catch(error){if(token===request){picker.value=active;state('切换未完成，仍显示上次计算结果。请重试。',true);}}
+      state('已切换：'+scene.name+'。主图与完整轨道使用相同模型；场景改变后回到起点暂停。');
+    }catch(error){if(token===request){picker.value=active;if(!packet)window.dispatchEvent(new Event('pp-timing-error'));state('切换未完成，仍显示上次计算结果。请重试。',true);}}
     finally{if(token===request)picker.removeAttribute('aria-busy');}
   }
 
@@ -133,7 +133,7 @@
     entries.forEach(([key,label])=>{const item=make('label',label);field(item,cpu?['cpu',key]:[key],label,cpu ? .1 : 0,cpu?10:100);grid.append(item);});parent.append(group);
   }
   grid(advanced,'通信与复制（u）· 每次对应操作共用此时间',[
-    ['proxy','激活传输'],['output','output 回传'],['control','请求 / bootstrap / 终态候选传输'],['d2h','旧结果 D2H 复制']]);
+    ['proxy','激活传输'],['output','output 回传'],['control','请求 / bootstrap / 终态候选传输'],['d2h','结果预处理／就绪事件']]);
   grid(advanced,'CPU 阶段服务时间倍率（0.1–10）· 相对原示例，1 = 原时长',[
     ['A','A · 请求与状态轮询'],['B','B · chunk / 缓存事件'],['C','C · 选批与回载准备'],['D','D · 激活接收 / 回收'],['E','E · 提交前向'],['F','F · output 收发'],['G','G · 控制共识'],['H','H · 结果处理与清理'],['I','I · 转发与保存']],true);
   advanced.append(make('p','CPU 倍率只缩放该阶段中各个操作的服务时长，不缩放依赖等待，也不直接缩放 GPU、回载、KV 或通信。控制传输参数只作用于请求、bootstrap 候选和终态候选消息；其余控制操作沿用模型依赖与 CPU 时间。',{className:'muted'}));
@@ -195,7 +195,7 @@
   const initial=params.get('scenario');
   if(initial==='custom'){
     try{seed=catalog.find(s=>s.id===params.get('seed'))||catalog[0];enter(decode(params.get('timing')));}
-    catch(error){state('自定义链接无效：'+error.message+' 当前显示原示例。',true);persist();}
+    catch(error){choose('baseline').then(()=>state('自定义链接无效：'+error.message+' 已恢复原示例。',true));}
   } else if(initial&&initial!=='baseline')choose(initial);
-  else persist();
+  else choose('baseline');
 })();

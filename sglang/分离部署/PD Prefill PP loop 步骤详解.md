@@ -309,7 +309,7 @@ PP0/PP1/PP2 都在 Prefill 侧。M# 是 batch；L# 是本级槽位迭代。同�
 
 **源码：** [pp:1072](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1072) · [pp:1084](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1084)
 
-### 2.21. 预处理旧结果并记录就绪事件（图中 D2H）
+### 2.21. 预处理旧结果并记录就绪事件
 
 **当前例子：** PP1 · L6：本轮前向 M3；本轮旧结果 M1。所选步骤的对象：M1。
 
@@ -319,7 +319,7 @@ PP0/PP1/PP2 都在 Prefill 侧。M# 是 batch；L# 是本级槽位迭代。同�
 
 **完成后：** 后面的 wait_copy 同步这个事件，然后进入 process_batch_result_disagg_prefill。
 
-**读图边界：** 图中 D2H 是结果预处理／就绪区间的简写。源码根据输出配置决定拷贝内容；本例关闭 sampling mask，相关分支只记录 event，不能理解为这里必然完整复制 token 张量，更不是 KV 回载。
+**读图边界：** 图中标记的是结果预处理／就绪事件，不能一概称为 D2H 复制。源码根据输出配置决定拷贝内容；本例关闭 sampling mask，相关分支只记录 event，不能理解为这里必然完整复制 token 张量，更不是 KV 回载。
 
 **源码：** [pp:1084](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1084) · [pp:1091](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1091) · [pp:1100](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1100)
 
@@ -775,7 +775,7 @@ PP0/PP1/PP2 都在 Prefill 侧。M# 是 batch；L# 是本级槽位迭代。同�
 
 **源码：** [pp:983](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L983) · [pp:769](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L769)
 
-### 3.9. 预处理旧结果并记录就绪事件（图中 D2H）
+### 3.9. 预处理旧结果并记录就绪事件
 
 **当前例子：** PP2 · L6：本轮前向 M3；本轮旧结果 M1。所选步骤的对象：M1。
 
@@ -785,7 +785,7 @@ PP0/PP1/PP2 都在 Prefill 侧。M# 是 batch；L# 是本级槽位迭代。同�
 
 **完成后：** 后面的 wait_copy 同步这个事件，然后进入 process_batch_result_disagg_prefill。
 
-**读图边界：** 图中 D2H 是结果预处理／就绪区间的简写。源码根据输出配置决定拷贝内容；本例关闭 sampling mask，相关分支只记录 event，不能理解为这里必然完整复制 token 张量，更不是 KV 回载。末级 copy stream 还会继承等待当前前向完成事件的流依赖。
+**读图边界：** 图中标记的是结果预处理／就绪事件，不能一概称为 D2H 复制。源码根据输出配置决定拷贝内容；本例关闭 sampling mask，相关分支只记录 event，不能理解为这里必然完整复制 token 张量，更不是 KV 回载。末级 copy stream 还会继承等待当前前向完成事件的流依赖。
 
 **源码：** [pp:1084](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1084) · [pp:1091](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1091) · [pp:1100](https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L1100)
 

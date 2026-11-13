@@ -133,11 +133,11 @@
 <a class="lesson-link" href="sglang/performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测</a>
 </div></details>
 <details class="module-nav" data-module="case-studies">
-<summary class="module-heading"><span class="course-number">13</span><span><strong>综合案例与源码实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<summary class="module-heading"><span class="course-number">13</span><span><strong>PD＋PP 综合实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="./#case-studies">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="sglang/pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程</a>
-<a class="lesson-link" href="sglang/pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡</a>
-<a class="lesson-link" href="sglang/pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识</a>
+<a class="lesson-link" href="sglang/pd-prefill-pp-loop/quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾</a>
+<a class="lesson-link" href="sglang/pd-prefill-pp-loop/index.html">Prefill 流水线的等待与依赖：空档从哪里来</a>
+<a class="lesson-link" href="sglang/pd-prefill-pp-loop/notes.html">Prefill PP 主循环源码：槽位复用与异步收尾</a>
 </div></details>
 </nav></details>
 </details>
@@ -284,8 +284,8 @@
             </article>
             <article id="case-studies" class="lesson-card module-card" data-coverage="available">
               <div class="card-top"><span class="card-number">13</span><span class="module-status available">已有课程</span></div>
-              <h4>综合案例与源码实践</h4><p class="module-question">一套系统怎样同时运用这些机制？</p><p>从请求追踪计算、缓存、调度、并行和通信，再核对状态、依赖与资源生命周期。</p><p class="module-prerequisite">先修：按案例选择；PD＋PP 需并行与分离部署基础</p>
-              <div class="module-entry"><a href="sglang/pd-prefill-pp-loop/quick.html#cross-module-practice">开始练习 · 从假设到源码验证 →</a><details class="module-lessons" id="loop-learning-path"><summary id="topic-title">查看 PD＋PP 案例阅读顺序</summary><ol><li><a href="sglang/pd-prefill-lifecycle/index.html?chunkSize=0">PD + PP：Prefill 请求生命周期与 KV 释放 →</a></li><li><a href="sglang/pd-prefill-pp-loop/quick.html">PP Event Loop：追踪 Microbatch 的完整旅程 →</a></li><li><a href="sglang/pd-prefill-pp-loop/index.html">PP 依赖时间轴：计算、通信与流水线气泡 →</a></li><li><a href="sglang/pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用 →</a></li><li><a href="sglang/pd-prefill-pp-loop/notes.html">PP Event Loop 源码：Batch、Slot 与通信共识 →</a></li></ol></details><p class="module-related">练习：计时边界、共享 KV 回收与 PP 传输长尾；先预测，再改一个条件。</p></div>
+              <h4>PD＋PP 综合实践</h4><p class="module-question">一套系统怎样同时运用这些机制？</p><p>从请求追踪计算、缓存、调度、并行和通信，再核对状态、依赖与资源生命周期。</p><p class="module-prerequisite">先修：按案例选择；PD＋PP 需并行与分离部署基础</p>
+              <div class="module-entry"><a href="sglang/pd-prefill-pp-loop/quick.html#cross-module-practice">开始练习 · 从假设到源码验证 →</a><details class="module-lessons" id="loop-learning-path"><summary id="topic-title">查看 PD＋PP 案例阅读顺序</summary><ol><li><a href="sglang/pd-prefill-lifecycle/index.html?chunkSize=0">PD + PP：Prefill 请求生命周期与 KV 释放 →</a></li><li><a href="sglang/pd-prefill-pp-loop/quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾 →</a></li><li><a href="sglang/pd-prefill-pp-loop/index.html">Prefill 流水线的等待与依赖：空档从哪里来 →</a></li><li><a href="sglang/pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用 →</a></li><li><a href="sglang/pd-prefill-pp-loop/notes.html">Prefill PP 主循环源码：槽位复用与异步收尾 →</a></li></ol></details><p class="module-related">练习：计时边界、共享 KV 回收与 PP 传输长尾；先预测，再改一个条件。</p></div>
             </article>
           </div>
         </section>

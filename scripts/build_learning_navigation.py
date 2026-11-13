@@ -40,7 +40,7 @@ IMPLEMENTATION_FOCUS = {'system-overview': '分清进程、组件职责与部署
  'advanced-generation': '追踪具体生成路径的状态提交、回退与约束筛选，并对照各自源码入口。',
  'serving-operations': '沿 P/D 服务链区分两端探活、并发派发、取消传播、资源归还与单端退出。',
  'performance': '沿 P/D 请求核对指标的采集模块、统计端点、并行区间与样本归属。',
- 'case-studies': '沿固定版本的 PP loop，核对 batch、slot、通信共识与本地状态复查的依赖。'}
+ 'case-studies': '在 PD 分离下串联 Prefill 调度、跨级计算与异步收尾；核对 Batch、槽位、事件与本地放行条件。'}
 
 STAGES = [
     ('foundations', '第一层 · 建立全局', '从请求认识系统'),
@@ -79,10 +79,10 @@ MODULES = [
     ('advanced-generation', '模型结构与高级生成', 'serving', False, [('sglang/advanced-generation/index.html', 'Speculative Decoding 与约束生成：状态怎样提交？', 'SGLang · 高级生成')]),
     ('serving-operations', '服务部署与运行治理', 'serving', False, [('sglang/serving-operations/index.html', '服务治理：Health Check、Timeout 与 Cancellation', 'SGLang · 服务治理')]),
     ('performance', '性能分析与优化方法', 'practice', False, [('sglang/performance-engineering/index.html', 'TTFT、ITL、TPOT 与 P95：SGLang 性能观测', 'SGLang · 性能分析')]),
-    ('case-studies', '综合案例与源码实践', 'practice', False, [
-        ('sglang/pd-prefill-pp-loop/quick.html', 'PP Event Loop：追踪 Microbatch 的完整旅程', 'SGLang · 综合实践'),
-        ('sglang/pd-prefill-pp-loop/index.html', 'PP 依赖时间轴：计算、通信与流水线气泡', 'SGLang · PD＋PP 案例'),
-        ('sglang/pd-prefill-pp-loop/notes.html', 'PP Event Loop 源码：Batch、Slot 与通信共识', 'SGLang · PD＋PP 案例')]),
+    ('case-studies', 'PD＋PP 综合实践', 'practice', False, [
+        ('sglang/pd-prefill-pp-loop/quick.html', 'Prefill Batch 的执行旅程：跨级计算与异步收尾', 'SGLang · 综合实践'),
+        ('sglang/pd-prefill-pp-loop/index.html', 'Prefill 流水线的等待与依赖：空档从哪里来', 'SGLang · PD＋PP 案例'),
+        ('sglang/pd-prefill-pp-loop/notes.html', 'Prefill PP 主循环源码：槽位复用与异步收尾', 'SGLang · PD＋PP 案例')]),
 ]
 
 # Reading order is independent of the stable module taxonomy. Links are rendered
@@ -308,6 +308,8 @@ def lesson_reading_nav(source):
     if len(links) < 4:
         return source
     nav = '<!-- lesson-reading:start --><nav class="lesson-reading-nav" aria-label="本课阅读入口"><span>按问题阅读</span>' + ''.join(f'<a href="#{anchor}">{title}</a>' for anchor, title in links) + '</nav><!-- lesson-reading:end -->'
+    if 'data-reading-outline="compact"' in source:
+        nav = nav.replace('<!-- lesson-reading:start -->', '<!-- lesson-reading:start --><details class="lesson-reading-outline"><summary>本页内容与深入入口</summary>').replace('<!-- lesson-reading:end -->', '</details><!-- lesson-reading:end -->')
     return re.sub(r'(<header class="lesson-header".*?</header>)', lambda m: m[0] + nav, updated, count=1, flags=re.S)
 
 
