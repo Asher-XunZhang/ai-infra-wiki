@@ -1,0 +1,18 @@
+.rv-diagram .rv-heading{font-size:14px;font-weight:650;fill:var(--ia-scene-ink)}
+.rv-diagram .rv-title{font:600 12px var(--ia-mono);fill:var(--ia-scene-ink)}
+.rv-diagram .rv-sub,.rv-diagram .rv-label{font-size:10px;fill:var(--ia-scene-muted)}
+.rv-diagram .rv-node rect{fill:var(--ia-scene-2);stroke:var(--ia-scene-muted);stroke-width:1}
+.rv-diagram .rv-node.is-active rect{stroke:var(--ia-vlScene);fill:color-mix(in srgb,var(--ia-vlScene) 10%,var(--ia-scene-2));stroke-width:1.5}
+.rv-diagram a:hover .rv-title,.rv-diagram a:focus .rv-title{fill:var(--ia-vlScene);text-decoration:underline}
+.rv-line,.rv-pulse{fill:none;stroke:var(--ia-vlScene);stroke-width:1.4}
+.rv-line.is-control{stroke-dasharray:4 4;opacity:.65}
+.rv-pulse{stroke-width:3;stroke-dasharray:5 17;stroke-dashoffset:var(--ia-pulse-offset)}
+.rv-pulse.is-control{stroke-width:2;stroke-dasharray:2 20}
+.ia-page[data-reduced-motion=true] .rv-pulse{display:none}
+.rv-trace{margin-top:20px;padding:18px;border:1px solid var(--ia-line);border-radius:8px;line-height:1.65;color:var(--ia-ink)}
+.rv-trace h3{margin:0;font-size:17px}.rv-trace p{font-size:14px}
+.rv-trace ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;list-style:none;margin:16px 0;padding:0}
+.rv-trace li{min-width:0;border-left:2px solid var(--ia-vl);padding-left:10px}.rv-trace a{color:var(--ia-vl);text-decoration:underline}
+.rv-trace code{display:block;overflow-wrap:anywhere;font:11px/1.7 var(--ia-mono)}
+.rv-trace summary{cursor:pointer;font-size:14px}
+@media(max-width:600px){.rv-trace ul{grid-template-columns:1fr}}

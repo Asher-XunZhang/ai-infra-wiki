@@ -1,5 +1,79 @@
 # Pages 可视化细节层级复核
 
+## 第二章 ModelRunner V2 调用链复核（2026-11-13）
+
+第二章保留 SGLang `297e54fd105e974cdf401e5b4d20253a22c16f90` 与 vLLM `4ba787ec9959e566d3b587a796dff07673324da5` 两个固定版本。vLLM 路径明确为 **V1 引擎 + ModelRunner V2**；不更换第三章的 `279339f113`，也不把第三方文章的旧提交混入本章。
+
+### 七个主题逐项处理
+
+| 主题 | 源码确认与可见调整 | 分层与执行轨道取舍 |
+| --- | --- | --- |
+| 01 进程骨架 | 前端/EngineCore/Executor 边界保留；明确 Worker 选择 `gpu/model_runner.py` 的 V2；区分 `execute_model`、`sample_tokens`、CPU 可读输出。TP1 uni 与 TP2 mp 仍是不同进程布局 | 保留职责/请求两种观察方式与局部源码展开；进程包含关系无需另加时间轨道 |
+| 02 通信面 | IPC 协议保留；展开 SchedulerOutput → RequestState → idx_mapping → 输入缓冲，区分计划、索引、token 数据与 GPU KV；结果须等 copy event 后进入 response MQ | 总览保留原通信边界；模块过程显示 V2 输入准备；源码入口分别指向 WorkerProc 与 V2，借调度主题解释并发，不复制播放器 |
+| 03 前缀缓存 | 前缀查找仍归 KVCacheManager/BlockPool；V2 按请求槽位维护 BlockTables，再 gather / compute_slot_mappings。沿用 B17/B18 命中、B19 旧分支保留、B31 新尾部的对象身份；下一轮示例追加 B32 | 地址映射与数值变化更适合查表图，不添加甘特。总览保留命中与补算；模块过程展开请求槽位、block ID、KV slot 三层地址；源码再看 staged writes / UVA 与公式 |
+| 04 调度心跳 | 预算仍由 Scheduler 决定；前向保存 ExecuteModelState 后采样；AsyncOutput 的 D2H 可与 GPU postprocess_sampled 重叠；async scheduling 下 mp 输出线程等待 event、Core batch queue 可继续派发 | 保留四个手动讲解阶段；模块图按 main/copy stream 分泳道，显式等待箭头表达同批次依赖。没有实测时长，不把条块画成定量甘特；脉冲沿用全页共享时钟，切细节不会另起播放 |
+| 05 分离扩展 | V2 ActiveKVConnector.pre_forward 绑定 metadata；sync load 在前向前启动，其余 load 延至 post_forward；finished_recving 回 Scheduler，目标请求通过就绪与预算检查后才运行；零 token 轮仍可 no_forward | 模块过程区分控制箭头与 KV 载荷脉冲，展示两种加载分支的适用条件。同步加载“启动”不等于整批完成；按层等待由后端实现。无统一后端时序时不画假的跨机耗时条 |
+| 06 生命周期与执行边界 | Scheduler block 引用回收与 V2 请求槽位清理分开。完成/抢占 ID 经 SchedulerOutput 消费；abort 不抢占已发 GPU kernel；connector 可 delay_free。图选择改为 V2 CudaGraphManager：FULL / PIECEWISE（compiled 或 breakable）/ NONE | 生命周期用分支依赖图防止把两种资源回收合并；图模式用互斥分支，捕获列为初始准备而非每轮行为。不把 breakable 宣称为 SGLang 独有 |
+| 07 延迟口径 | V2 sampler → AsyncOutput event → Scheduler / EngineCoreOutputs → AsyncLLM；既有 TTFT/E2E/queue/ITL 端点仍成立，V2 不移动前端停表位置 | 保留事件区间与 ITL 样本图；源码细节补执行端到观测端的入口；不为 Runner 版本添加第二套计时器 |
+
+**本地验证。** 构建、共享导航和学习资料链接检查通过；浏览器覆盖七主题源码入口、十个 V2 模块场景的中英双语/文字边界、总览与模块分离、地址状态回退、共享脉冲暂停、四档视口和主题。人工查看地址映射、采样双 stream、P/D 加载和图模式四幅对照图。原有归属/指标及六主题 24 阶段回归通过。测试创建的独立浏览器与 profile 已清理；预览服务保留供本地查看。
+
+### 关键源码依据
+
+均为公开固定提交的静态阅读；没有修改上游源码，也未执行 GPU、RDMA 或性能测试。以下是选定普通自回归、CUDA、非投机路径的依据，不构成所有模型/connector 的兼容矩阵。
+
+- [Runner 选择](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/config/vllm.py#L731)与 [Worker 工厂](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu_worker.py#L570)：默认支持路径使用 V2；显式环境变量优先、HiSparse/watermark 强制分支及自动不支持回退须分别判断。
+- [RequestState](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/states.py#L9)：请求槽位稳定于本地驻留期间；all_token_ids 默认可用 UVA，不能画成全部状态常驻显存。`prefill_len` 恢复时可含既有输出，不总等于 `prompt_len`。
+- [V2 状态更新](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L1170)、[prepare_attn](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L1595)与 [slot mapping kernel](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/block_table.py#L334)：图中的 `block × block_size + offset` 限单 KV group、CP1；block_size=4 只为教学。
+- [V2 execute_model](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L1764)与 [sample_tokens](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L2149)：先采样、建立 AsyncOutput，再 postprocess_sampled；[copy stream](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/async_utils.py#L116) 等之前的主流依赖；`get_output` 同步 copy_event 后读 CPU 数组，不把调用返回画成结果完成。
+- [EngineCore batch queue](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/engine/core.py#L708)、[mp 输出线程](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/executor/multiproc_executor.py#L1096)：线程与多批派发条件明确为 async scheduling；V2 的 async copy 本身不等于所有部署都能跨批重叠。
+- [ActiveKVConnector](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/kv_connector.py#L54)与 [Scheduler readiness](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/core/sched/scheduler.py#L3520)：两种 start_load_kv 时机、结果回传与请求准入是不同事件；`finish_forward` 不是通用“传输已完成”屏障。
+- [图候选选择](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/cudagraph_utils.py#L523)与 [执行分支](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L2053)：FULL 用已填输入缓冲 replay；PIECEWISE 可编译或 breakable；NONE 直接调模型，不强制 `FULL_AND_PIECEWISE`。
+
+**实现范围。** `engine-comparison/runner-v2.js` 集中管理 V2 路径说明、模块图与固定源码入口；总览复用原图，源码层追加与当前主题有关的执行细节。其他章节和配套文章的独立历史基线保留。先前文章带来的进程归属、内存预算和指标补充继续有效，无需再造重复学习文章。
+
+
+## 2026-11-13：第二章进程归属与指标口径补充
+
+本次完整阅读 [《LLM推理引擎解剖：vLLM与SGLang的五层进程切分》](https://mp.weixin.qq.com/s/pbzBiFfBR-KpVBpxYGSk4Q)及其唯一技术图，并对照仓内[架构差异学习文档](../大模型推理/推理基础/SGLang%20与%20vLLM%20V1%20架构差异源码学习文档.md)、第二章原有六主题、第三章性能观测课。原文、配图和作者归属已经保留在[图源记录](../images/inference-process-latency/SOURCES.md)，不重复下载或新增架构摘要。
+
+第二章新增第 07 主题“延迟口径”，其余增量落在现有第 01、03 主题。下方 2026-11-10 的六主题清单是原复核快照，不代表补充后的主题数量。
+
+| 位置与学习问题 | 细节方案 | 执行轨道、连线和交互取舍 |
+| --- | --- | --- |
+| [01 进程骨架](engine-comparison/index.html?view=ownership&tp=2#process)：同样的职责分别住在哪个进程，谁拥有 KV 账本与 GPU 数据？ | 保留原请求路径；增加同阶段的“职责与 KV 归属”观察方式。它是观察问题选择，不伪称第三层细节。TP1/TP2 改变真实进程包含关系，源码深读复用现有入口 | 不加泳道：这里解释包含关系及资源状态，不模拟执行耗时。R1 的未分配、已预留、已写入状态可逆；KV 使用 rank-local 数据措辞，不预设均匀切片；同 rank 的写入在同一阶段出现。仅 Runner→GPU 的相邻写入使用连接端点的脉冲；跨进程交接作为命名说明，真实路径仍由原图表达。未画出的 collective 不等于不存在 |
+| [03 前缀缓存选读](engine-comparison/index.html?depth=source#prefix)：为何两个显存比例参数不表示相同 KV 容量？ | 复用选读展开，加入静态份额、运行时预留、profile 与实际 KV 容量之间的关系；不增加播放器 | 不加泳道或比例条：定容公式和适用分支才是问题，不虚构显存测量。地址索引、资源分配与实际数据不混为一物 |
+| [07 延迟口径](engine-comparison/index.html#metrics)：TTFT、E2E、queue、ITL 各测什么？ | 四个观察问题，分别显示双引擎的停表点、首次等待范围、可操作的合并输出算例；源码层补当前公式、字段和例外 | 复用手动阶段切换；不增加假想运行时钟或甘特：所需证据是同一请求的事件先后与采样端点，事件间距不表示耗时。就近说明前端输出处理可与核心后续执行交叠，不能把事件链读成 GPU 等前端。ITL 的 200 ms 是各自观察层的教学假设，不是共同 Trace |
+
+**源码边界。** 所有新增实现解释按第二章 SGLang `297e54fd105e974cdf401e5b4d20253a22c16f90`、vLLM `4ba787ec9959e566d3b587a796dff07673324da5` 的原始文件重新核对；没有把文章的 `baa9bef` / `5df63a7` 或第三章 `279339f113` 混进第二章。未修改已有 Markdown 的独立基线。新来源入口见 [boundaries.js](engine-comparison/boundaries.js)，每条链接固定到对应提交及文件。
+
+| 行为 | 本次读取的固定源码 |
+| --- | --- |
+| SGLang rank 内包含 Worker、缓存池与请求同步；一个独立 Detokenizer 的条件 | `scheduler.py::init_tp_model_worker/init_memory_pools`、`scheduler_components/request_receiver.py`、`entrypoints/engine.py::_launch_scheduler_processes/_launch_detokenizer_subprocesses` |
+| vLLM 单卡 uni 与 TP2 本机 mp；Core 的 KV 配置与账本 | `config/parallel.py`、`v1/executor/uniproc_executor.py`、`v1/engine/core.py` |
+| SGLang 静态预留与 vLLM 非 KV 扣减 | `mem_cache/kv_cache_configurator.py::_profile_available_bytes`；`v1/worker/gpu_worker.py::determine_available_memory` |
+| SGLang 前端首末输出、非流式例外、首次/累计等待、ITL 分摊 | `managers/tokenizer_manager.py`、`observability/req_time_stats.py`、`observability/metrics_collector.py::observe_inter_token_latency` |
+| vLLM 前端取批计时、首末输出、首次 schedule、ITL 与 TPOT | `v1/engine/async_llm.py::output_handler`、`v1/engine/output_processor.py`、`v1/metrics/stats.py::IterationStats`、`v1/metrics/loggers.py` |
+
+**保留的条件与未采纳内容。** 进程数只在单节点、单 API、单 Detokenizer、PP=DP=1、Python 文本入口及指定执行器条件下说明，辅助进程不计入。指标主图限普通流式、非 PD、非投机、无重试/取消且启用指标；非流式 TTFT、记录时机、累计等待在相应源码层解释。原文的代码行数、架构优劣偏好、历史 33%/29%/38% 和未运行的性能预测不作为本章性能结论。显存图不把 Mamba、多模态、显式 KV 字节或图捕获条件简化成一个通用容量公式。
+
+### 调用链复核后的修正
+
+公众号的措辞不作为当前页面事实依据。二次复核从两个固定 commit 的原始文件追到调用方、数据生产方和分支条件，发现并修正下列教学假设：
+
+| 需要收紧的说法 | 固定源码证据与最终呈现 |
+| --- | --- |
+| 把旧 `RadixCache` 类名当作默认实例 | [Scheduler 构造缓存](https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/managers/scheduler.py#L575)进入 `kv_cache_builder.build_kv_cache → registry.create_tree_cache`；[默认工厂](https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/mem_cache/registry.py#L83)的普通 Full Attention、无外部后端路径返回 `UnifiedRadixCache`。旧 `radix_cache.py` 文件仍存在，不代表运行时默认构造它。同步纠正第 01/03 相关类名、生命周期说明中的引用名称和源码入口；图内小节点用变量名 `tree_cache`，不让长类名溢出。纯 SWA、外部后端等保留工厂分支边界 |
+| 把两边都设为“普通非投机、一次核心/前端输出两个 token” | [SGLang output_streamer.accept](https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/managers/scheduler_components/output_streamer.py#L445)允许中途按 `stream_interval` 合并；首 token 立即回传、终态强制回传。vLLM [普通 _sample 分支](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu_model_runner.py#L3403)调用 [Sampler](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/sample/sampler.py#L208)，每请求的采样结果为单 token；[Scheduler](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/core/sched/scheduler.py#L2512)创建对应核心输出。控制器因此只改变 SGLang 的合并，vLLM 保留单 token 输出。200 ms 分别是假设的各自观察区间，不能称同工作量对比 |
+| 仅链接旧 Runner 的采样实现 | [VllmConfig.use_v2_model_runner](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/config/vllm.py#L730)在无强制覆盖、支持特性和平台条件下默认 V2。[V2 ModelRunner 普通分支](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L1681)进入 [V2 Sampler](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/sample/sampler.py#L217)，返回 `sampled.view(-1, 1)`；普通 ModelState 每步一个新采样 token。上行的 V1 调用链作为回退证据保留，页面源码入口改为 V2 并链接选择条件 |
+| “每张 GPU 的 KV 都是均匀分片” | 两边模型配置均有至少一个 KV head 的下限及复制语义：[SGLang get_num_kv_heads](https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/configs/model_config.py#L1700)、[vLLM get_num_kv_heads](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/config/model.py#L1663)。图中改为“本 rank 的 K/V”，不由进程拓扑推断所有模型的数据切片方式 |
+| “最终核心输出→前端停表”适用于所有停止方式 | vLLM [OutputProcessor](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/engine/output_processor.py#L808)可在反分词中匹配 stop string，再向核心发 abort。本图进一步限定 EOS/长度终止、无 stop 字符串；不能让该图替代前端发现终止的返回控制路径 |
+| 源码文件/函数名沿用印象 | 当前 SGLang 函数为 `Scheduler.init_tp_model_worker`；缓存构造位于 [`mem_cache/kv_cache_builder.py`](https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/mem_cache/kv_cache_builder.py#L350)，其 pool/allocator 来自本进程的 TpModelWorker。已纠正审查表中的函数名，不用文章模块名字替代当前调用链 |
+
+TTFT/E2E 的端点则通过生产/消费两侧确认：vLLM `AsyncLLM.output_handler` 先取核心批次并建 `IterationStats(time.time())`，`OutputProcessor.process_outputs` 再更新统计、反分词、输出；完成统计仍使用已保存的批次时间戳。SGLang 走 `OutputStreamer → DetokenizerManager → TokenizerManager`，在 TM 处理输出时保存 `first_token_time/finished_time`，`collect_metrics` 再将对应值写入 collector。首输出可能没有可见文本；内部 TTFT 不保证等于客户端首内容延迟。vLLM 内部核心事件为另一时钟域，不把前端绝对时间戳和核心时间戳直接相减。
+
+**验证。** [浏览器回归](../tests/pages/test_engine_boundaries_browser.cjs)覆盖 TP1/TP2 包含关系与进程数、R1 状态前进/回退、脉冲暂停/恢复、细节切换、链接刷新/历史返回、四种指标端点、SGLang 1/2/4 token 合并与 vLLM 单 token 核心输出的 ITL sum/count、中英双语、五档宽度、主题及减少动态效果；并冒烟检查原有 24 个阶段。人工查看桌面归属图、TTFT/ITL 和窄屏画面；局部横向滑动沿用双引擎对照约定。仅做源码静态复核与前端验证，未启动推理服务、GPU 或压测。配套文章已形成完整的进程/内存/指标对照，无需再拆出重复学习文档；组件耗时排名仍需同条件实验。
+
 本次判断哪些课程适合采用“总览／模块过程／源码细节”，以及怎样复用已有图、轨道与源码入口。目标是降低首次阅读的负担，同时保留实现细节和真实依赖。下文保留逐课取舍与版本边界；本地实施结果和验证范围见文末。
 
 ## 复核范围与依据

@@ -57,6 +57,8 @@ CI 保留原有模型、PP 生成与源码基线检查，并增加通用文档�
 
 ## 调度循环与批次旅程
 
+第二章补充的 `node tests/pages/test_engine_boundaries_browser.cjs` 验证 TP1/TP2 进程包含关系、KV 地址预留/写入的逆向状态、脉冲暂停和细节保持，以及 TTFT/E2E/queue 的端点与合并输出的 ITL sum/count。支持 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL` 和可选 `ENGINE_TEST_SCREENSHOTS`；记录并清理独立浏览器及 profile。它同时对原六主题的 24 阶段做冒烟检查，并覆盖 ModelRunner V2 的十个模块场景、七主题源码入口、请求/KV 槽位算例回退、双语 SVG 文字边界及同一脉冲时钟；不替代上游 GPU 运行验证。
+
 `node tests/pages/test_loop_journey.cjs` 检查依赖、排空不变量与连续时间下的状态提交边界；`SGLANG_SOURCE_DIR=<checkout> python3 -B tests/pages/test_loop_journey_source.py` 核对固定 Git 对象中的 CPU 调用顺序；PP 顺序另由 `test_parallelism_source.py` 覆盖。浏览器使用 `node tests/pages/test_loop_journey_browser.cjs`，支持 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL` 与 `LOOP_SCREENSHOT_DIR`。覆盖三机制的完整播放、暂停、倒拖、倍速、旧 `step` 链接与小数 `t` 链接、依赖门槛、键盘和响应式布局。`test_site_update_browser.cjs` 另验证显式更新后恢复时间、速度与阅读位置。共享导航仍运行 `test_topic_navigation_browser.cjs`。
 
 ## 发布版本与阅读位置

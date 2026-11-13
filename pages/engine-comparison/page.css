@@ -1,6 +1,6 @@
 /* Chapter 2 lives inside the wiki shell: no separate offline frame. */
 .ec-site-content{padding-top:22px}
-.ec-topic-map{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:14px 16px;margin:0 0 26px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.ec-topic-map{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:14px 16px;margin:0 0 26px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .ec-topic-map a{display:block;padding:8px 10px;border-left:2px solid var(--border);color:var(--fg);min-width:0}
 .ec-topic-map a:hover{border-left-color:var(--accent);background:var(--accent-soft);text-decoration:none}
 .ec-topic-map b{display:block;font-size:13px;line-height:1.5}

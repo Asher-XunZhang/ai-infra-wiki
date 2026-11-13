@@ -225,8 +225,8 @@ const chapterFromHash = () => {
             {
               title: ['进入调度', 'Enter scheduling'],
               sg: [
-                '固定教学拓扑为 TP=2：两个 TP rank 各有一个进程，每个进程内同时有 Scheduler 与 TpModelWorker；rank 0 接收请求。RadixCache、PrefillAdder 与本 rank 的 TpModelWorker 共同组织执行。',
-                'The teaching topology fixes TP=2: each of the two TP ranks has its own process, and each process contains both a Scheduler and a TpModelWorker; rank 0 receives requests. RadixCache, PrefillAdder, and that rank’s TpModelWorker organize execution.',
+                '固定教学拓扑为 TP=2：两个 TP rank 各有一个进程，每个进程内同时有 Scheduler 与 TpModelWorker；rank 0 接收请求。UnifiedRadixCache、PrefillAdder 与本 rank 的 TpModelWorker 共同组织执行。',
+                'The teaching topology fixes TP=2: each of the two TP ranks has its own process, and each process contains both a Scheduler and a TpModelWorker; rank 0 receives requests. UnifiedRadixCache, PrefillAdder, and that rank’s TpModelWorker organize execution.',
               ],
               vl: [
                 '默认多进程拓扑下，EngineCore 独立进程里汇合 Scheduler、KVCacheManager 与 Executor；它每一步产出 SchedulerOutput。',
@@ -342,8 +342,8 @@ const chapterFromHash = () => {
             {
               title: ['把前缀变成地址', 'Turn a prefix into an address'],
               sg: [
-                'Token 序列进入 RadixCache。每条边承载一段 token 路径；匹配长度按 page_size 向下对齐，只在完整单位边界分裂。',
-                'A token sequence enters RadixCache. Each edge carries a token path; match length is rounded down to page_size and splits only on a complete-unit boundary.',
+                'Token 序列进入 UnifiedRadixCache。每条边承载一段 token 路径；匹配长度按 page_size 向下对齐，只在完整单位边界分裂。',
+                'A token sequence enters UnifiedRadixCache. Each edge carries a token path; match length is rounded down to page_size and splits only on a complete-unit boundary.',
               ],
               vl: [
                 'Prompt 切成固定大小 block，逐块计算 chain hash；hash 表把完整块映射到物理 block。',
@@ -380,8 +380,8 @@ const chapterFromHash = () => {
                 'New blocks are allocated for the unmatched tail; the block table only updates logical-to-physical mappings, while KV lives in paged buffers. Partial-block indexing and copy-on-write are conditional branches and are not shown here.',
               ],
               diff: [
-                'RadixCache 的共享单位是页对齐的路径片段；vLLM 的共享单位是完整 block/hash 单位。',
-                'RadixCache shares path segments; vLLM shares complete blocks.',
+                'UnifiedRadixCache 的共享单位是页对齐的路径片段；vLLM 的共享单位是完整 block/hash 单位。',
+                'UnifiedRadixCache shares path segments; vLLM shares complete blocks.',
               ],
             },
             {
@@ -436,7 +436,7 @@ const chapterFromHash = () => {
               ],
             },
             {
-              title: ['让下一拍提前跑', 'Overlap the next beat'],
+              title: ['提交前向与采样', 'Submit forward and sampling'],
               sg: [
                 'overlap scheduler：当前 batch 在 GPU 上 forward 时，CPU 处理上一批结果并准备下一批。',
                 'Overlap scheduler: while the current batch runs forward on the GPU, the CPU processes the previous result and prepares the next batch.',
@@ -451,7 +451,7 @@ const chapterFromHash = () => {
               ],
             },
             {
-              title: ['回收 token', 'Return the tokens'],
+              title: ['结果回传与提交', 'Return and commit results'],
               sg: [
                 '本批结果进入下一步处理，采样出的 token 沿 detokenizer 返回；下一拍继续填预算。',
                 'Batch results flow into the next processing stage. Sampled tokens return through the detokenizer, and the next step refills the budget.',
@@ -589,8 +589,8 @@ const chapterFromHash = () => {
                 'Decode uses captured CUDA graphs for fixed shapes; prefill can use piecewise CUDA graphs. Optional breakable CUDA graph (BCG) breaks at explicit eager boundaries such as attention/mamba and recomputes metadata outside the captured segment; it does not remove shape/address constraints or let arbitrary variable-length work enter a captured graph.',
               ],
               vl: [
-                '由图模式（CompilationConfig 与 CUDAGraphMode）决定是否捕获及捕获粒度：NONE、PIECEWISE、FULL 是可选模式，FULL 并不强制依赖 torch.compile，PIECEWISE 有自己的编译条件。dispatcher 按 batch descriptor、允许的模式与已捕获 keys 选择，不能一概画成必选默认。',
-                'Graph mode (CompilationConfig and CUDAGraphMode) decides whether and at what granularity to capture: NONE, PIECEWISE, and FULL are selectable modes. FULL does not require torch.compile, and PIECEWISE has its own compilation conditions. The dispatcher chooses by batch descriptor, allowed modes, and captured keys, so this is not a mandatory default path.',
+                '由图模式（CompilationConfig 与 CUDAGraphMode）决定是否捕获及捕获粒度：NONE、PIECEWISE、FULL 是可选模式，FULL 并不强制依赖 torch.compile，PIECEWISE 可选编译分段或 breakable 路径。CudaGraphManager 按 batch descriptor、允许的模式与已捕获 keys 选择，不能一概画成必选默认。',
+                'Graph mode (CompilationConfig and CUDAGraphMode) decides whether and at what granularity to capture: NONE, PIECEWISE, and FULL are selectable modes. FULL does not require torch.compile, and PIECEWISE can use compiled or breakable segments. The CudaGraphManager chooses by batch descriptor, allowed modes, and captured keys, so this is not a mandatory default path.',
               ],
               diff: [
                 '两者都在消除逐层 launch 开销；SGLang 的差异是显式 eager 边界的可断开重放与已有 shape_key，vLLM 的差异是 graph mode、batch descriptor、允许模式与已捕获 keys 的联合选择。都依赖形状桶/填充，具体支持随模型与后端变化。',
@@ -709,8 +709,8 @@ const chapterFromHash = () => {
             'Owns tokenization, request validation, streaming output, and request state. It exchanges internal requests with the scheduler over ZMQ.',
           ],
           sg_scheduler: [
-            '每个模型 rank 进程内有一个 Scheduler：RadixCache、PrefillAdder、ScheduleBatch 与本地模型执行入口。可选 overlap scheduler 将 CPU 侧处理与 GPU forward 错开。',
-            'Each model-rank process has a Scheduler: RadixCache, PrefillAdder, ScheduleBatch, and the local model execution entry. The optional overlap scheduler offsets CPU-side work from GPU forward.',
+            '每个模型 rank 进程内有一个 Scheduler：UnifiedRadixCache、PrefillAdder、ScheduleBatch 与本地模型执行入口。可选 overlap scheduler 将 CPU 侧处理与 GPU forward 错开。',
+            'Each model-rank process has a Scheduler: UnifiedRadixCache, PrefillAdder, ScheduleBatch, and the local model execution entry. The optional overlap scheduler offsets CPU-side work from GPU forward.',
           ],
           sg_workers: [
             '每个 rank 进程内的本地执行对象 TpModelWorker，驱动本 rank 的 TP/PP 组并执行 forward；attention backend、KV 池与采样由具体模型和后端决定。',
@@ -789,8 +789,8 @@ const chapterFromHash = () => {
         },
         prefix: {
           sg_radix: [
-            'RadixCache 用树形路径保存前缀；每条边是一段连续 token，命中长度对齐到 page_size 后才分裂。',
-            'RadixCache stores prefixes as a tree of paths. Each edge is a contiguous token range and splits only after match length is aligned to page_size.',
+            'UnifiedRadixCache 用树形路径保存前缀；每条边是一段连续 token，命中长度对齐到 page_size 后才分裂。',
+            'UnifiedRadixCache stores prefixes as a tree of paths. Each edge is a contiguous token range and splits only after match length is aligned to page_size.',
           ],
           sg_path: [
             '命中路径会被锁住（引用计数），避免被回收；节点是缓存索引，物理 KV 页另由内存池管理。',
@@ -900,8 +900,8 @@ const chapterFromHash = () => {
         },
         crosscut: {
           sg_finish: [
-            '请求完成时仍持有 RadixCache 的使用关系与节点锁。release 路径先做 checkpoint，再撤销请求关系与保护，最后回收不再受保护的 KV；不是把请求结束等同于缓存驱逐。',
-            'A finished request still holds a RadixCache usage relationship and node locks. The release path checkpoints first, then drops the request relationship and protection, and finally reclaims KV that is no longer protected. Request finish is not cache eviction.',
+            '请求完成时仍持有 UnifiedRadixCache 的使用关系与节点锁。release 路径先做 checkpoint，再撤销请求关系与保护，最后回收不再受保护的 KV；不是把请求结束等同于缓存驱逐。',
+            'A finished request still holds a UnifiedRadixCache usage relationship and node locks. The release path checkpoints first, then drops the request relationship and protection, and finally reclaims KV that is no longer protected. Request finish is not cache eviction.',
           ],
           sg_radix: [
             'release_kv_cache(req, checkpoint=True) 先调用 tree_cache.checkpoint()，再退出请求的使用关系、解锁保护，随后回收非保护 KV。受保护的前缀仍留在 radix 树上。',
@@ -952,8 +952,8 @@ const chapterFromHash = () => {
             'retract_decode withdraws selected decode requests, frees KV, resets them, and requeues them in waiting while re-estimating new_token_ratio. It may also wait for in-flight results about to free KV; not every OOM is recoverable.',
           ],
           sg_release: [
-            'retraction 释放 KV 时不把请求路径插回 RadixCache，以便立刻拿回页；请求状态重置后再由 PrefillAdder 重新准入。',
-            'Retraction releases KV without inserting the request path back into RadixCache so pages are immediately available. The request resets and later re-enters through PrefillAdder.',
+            'retraction 释放 KV 时不把请求路径插回 UnifiedRadixCache，以便立刻拿回页；请求状态重置后再由 PrefillAdder 重新准入。',
+            'Retraction releases KV without inserting the request path back into UnifiedRadixCache so pages are immediately available. The request resets and later re-enters through PrefillAdder.',
           ],
           sg_ratio: [
             'retract 后 SGLang 会重新估计 new_token_ratio 并 clamp 为 ≤1；它不保证比旧值小。不是所有 OOM 都能靠 retract 恢复；最后一个请求也放不下时会中止它。',
@@ -988,8 +988,8 @@ const chapterFromHash = () => {
             'Removing a request from queues only answers whether it can be scheduled again. Already-held KV must still be released, and TokenizerManager must learn that the stream ended.',
           ],
           sg_kv: [
-            '释放请求持有的 KV 页与 RadixCache 锁；如果请求已经不在 batch 中，仍要保证重复释放不会破坏树。',
-            'Release the request KV pages and RadixCache locks; even if the request is no longer in the batch, double-free protection must preserve the tree.',
+            '释放请求持有的 KV 页与 UnifiedRadixCache 锁；如果请求已经不在 batch 中，仍要保证重复释放不会破坏树。',
+            'Release the request KV pages and UnifiedRadixCache locks; even if the request is no longer in the batch, double-free protection must preserve the tree.',
           ],
           sg_reply: [
             'Scheduler 向 TokenizerManager 发送 AbortReq 回执，后者清理请求状态并结束流；Detokenizer 不再收到后续 token。',
@@ -1036,8 +1036,8 @@ const chapterFromHash = () => {
             'SGLang’s capture strategy is therefore more than a set of shape buckets: it also chooses where to break and when to resume replay. Capability and defaults vary by model and backend.',
           ],
           vl_compile: [
-            'vLLM 的 compilation 与 graph replay 是两层。CompilationConfig / CUDAGraphMode 给出 NONE、PIECEWISE、FULL 等模式；FULL 可以使用也可以不使用 torch.compile，PIECEWISE 有各自的编译条件。',
-            'Compilation and graph replay are separate layers in vLLM. CompilationConfig / CUDAGraphMode exposes modes such as NONE, PIECEWISE, and FULL; FULL may be used with or without torch.compile, and PIECEWISE has its own compilation conditions.',
+            'vLLM 的 compilation 与 graph replay 是两层。CompilationConfig / CUDAGraphMode 给出 NONE、PIECEWISE、FULL 等模式；FULL 可以使用也可以不使用 torch.compile，PIECEWISE 可选编译分段或 breakable 路径。',
+            'Compilation and graph replay are separate layers in vLLM. CompilationConfig / CUDAGraphMode exposes modes such as NONE, PIECEWISE, and FULL; FULL may be used with or without torch.compile, and PIECEWISE can use compiled or breakable segments.',
           ],
           vl_full: [
             'FULL 为解码批次捕获整段模型执行图，减少每一步的 Python 与 kernel launch 开销；是否启用、是否经过 torch.compile 由配置与后端决定。',
@@ -1048,12 +1048,12 @@ const chapterFromHash = () => {
             'PIECEWISE stitches captureable regions together for variable-length prefill and dynamic control flow; it has its own compilation conditions, and only the necessary parts leave the graph.',
           ],
           vl_mix: [
-            'FULL_AND_PIECEWISE 只是允许组合之一，不是所有后端或模型的必然默认；dispatcher 还会看 batch descriptor 与已捕获 keys。',
-            'FULL_AND_PIECEWISE is only one allowed combination, not an inevitable default for every backend or model; the dispatcher also checks the batch descriptor and captured keys.',
+            'FULL_AND_PIECEWISE 只是允许组合之一，不是所有后端或模型的必然默认；CudaGraphManager 还会看 batch descriptor 与已捕获 keys。',
+            'FULL_AND_PIECEWISE is only one allowed combination, not an inevitable default for every backend or model; the CudaGraphManager also checks the batch descriptor and captured keys.',
           ],
           vl_mrv2: [
-            'Model Runner V2 接收 dispatcher 的选择结果；命中哪条图路径取决于 batch descriptor、允许模式、已捕获 keys 以及形状/后端能力。',
-            'Model Runner V2 receives the dispatcher’s selection; which graph path is hit depends on the batch descriptor, allowed modes, captured keys, and shape/backend support.',
+            'Model Runner V2 接收 CudaGraphManager 的选择结果；命中哪条图路径取决于 batch descriptor、允许模式、已捕获 keys 以及形状/后端能力。',
+            'Model Runner V2 receives the CudaGraphManager’s selection; which graph path is hit depends on the batch descriptor, allowed modes, captured keys, and shape/backend support.',
           ],
         },
       },
@@ -1498,8 +1498,8 @@ const chapterFromHash = () => {
                 'BCG is optional; some release features default on, with support varying by backend, model, and quantization.',
               ],
               vl: [
-                'FULL_AND_PIECEWISE 只是允许组合之一；dispatcher 按 batch descriptor、允许模式与已捕获 keys 选择，不支持时会调整或回退。',
-                'FULL_AND_PIECEWISE is only one allowed combination; the dispatcher chooses by batch descriptor, allowed modes, and captured keys, then adjusts or falls back when unsupported.',
+                'FULL_AND_PIECEWISE 只是允许组合之一；CudaGraphManager 按 batch descriptor、允许模式与已捕获 keys 选择，不支持时会调整或回退。',
+                'FULL_AND_PIECEWISE is only one allowed combination; the CudaGraphManager chooses by batch descriptor, allowed modes, and captured keys, then adjusts or falls back when unsupported.',
               ],
             },
           ],
@@ -1539,8 +1539,8 @@ const chapterFromHash = () => {
             'The Rust frontend continues closing parity gaps with the Python path; v0.33 rounds out the serving surface.',
           ],
           [
-            'Model Runner V2 是引擎核心主线；异步调度、PP 与 CUDA Graph 在它上面组合。',
-            'Model Runner V2 is a core engine theme; async scheduling, PP, and CUDA graphs compose on top of it.',
+            'ModelRunner V2 是 Worker 内的执行主线；异步调度仍由 EngineCore / Scheduler 组织，PP 与 CUDA Graph 须按支持条件组合。',
+            'ModelRunner V2 is the Worker execution path; EngineCore / Scheduler still organize async scheduling, and PP / CUDA graphs depend on supported configurations.',
           ],
           [
             'PyTorch 2.14 与默认 CUDA 13；ROCm 10 成为默认 ROCm 镜像。',
@@ -1574,7 +1574,7 @@ const chapterFromHash = () => {
         vlExecutor: ['vLLM executor 源码', 'vLLM executor source'],
         sgGraph: ['SGLang breakable CUDA graph 源码', 'SGLang breakable CUDA graph source'],
         vlCompile: ['vLLM CompilationConfig / CUDAGraphMode', 'vLLM CompilationConfig / CUDAGraphMode'],
-        sgRadix: ['SGLang RadixCache 源码', 'SGLang RadixCache source'],
+        sgRadix: ['SGLang UnifiedRadixCache 源码', 'SGLang UnifiedRadixCache source'],
         vlBlockPool: ['vLLM BlockPool 源码', 'vLLM BlockPool source'],
         vlSched: ['vLLM Scheduler / preemption 源码', 'vLLM Scheduler / preemption source'],
         checked: ['最后核对 2026-11-05', 'Last checked 2026-11-05'],
@@ -1691,8 +1691,8 @@ const chapterFromHash = () => {
               'Router and PD/EPD roles determine where KV comes from; HiCache tiers prefix storage further.',
             ],
             vl: [
-              'connector metadata 随 SchedulerOutput 下发；远端 KV 最终落到本地 block table。',
-              'Connector metadata rides with SchedulerOutput; remote KV ends up in the local block table.',
+              'connector metadata 随 SchedulerOutput 下发；远端 KV 写入本地 KV 缓冲；block table 只保存地址映射。',
+              'Connector metadata rides with SchedulerOutput; remote KV is written into local KV buffers; block tables hold address mappings.',
             ],
           },
           foot: {
@@ -1767,7 +1767,7 @@ const chapterFromHash = () => {
               ],
               vl: [
                 'CompilationConfig / CUDAGraphMode 选择 NONE / PIECEWISE / FULL；torch.compile 可选，FULL 不强制依赖它，组合由 batch descriptor、允许模式与已捕获 keys 决定。',
-                'CompilationConfig / CUDAGraphMode selects NONE, PIECEWISE, or FULL; torch.compile is optional and not required by FULL, while the dispatcher decides combinations by batch descriptor, allowed modes, and captured keys.',
+                'CompilationConfig / CUDAGraphMode selects NONE, PIECEWISE, or FULL; torch.compile is optional and not required by FULL, while the CudaGraphManager decides combinations by batch descriptor, allowed modes, and captured keys.',
               ],
             },
           },
@@ -1841,6 +1841,8 @@ const chapterFromHash = () => {
       }
     }
 
+    window.AtlasBoundaries.extend(COPY, CHAPTERS);
+    window.AtlasV2.extend(COPY, CHAPTERS);
     const DICT_ZH = {};
     const DICT_EN = {};
     flattenBilingual(COPY, '', DICT_ZH, DICT_EN);
@@ -1985,7 +1987,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         nodes: [
           { id: 'http', x: 36, y: 54, w: 156, h: 56, label: 'HTTP / OpenAI', tag: 'FastAPI', detailKey: 'nodes.process.sg_http' },
           { id: 'tokenizer', x: 36, y: 142, w: 156, h: 56, label: 'TokenizerManager', tag: 'tokenize + stream', detailKey: 'nodes.process.sg_tokenizer' },
-          { id: 'scheduler', x: 244, y: 64, w: 236, h: 66, label: 'Scheduler', tag: 'RadixCache · PrefillAdder', detailKey: 'nodes.process.sg_scheduler' },
+          { id: 'scheduler', x: 244, y: 64, w: 236, h: 66, label: 'Scheduler', tag: 'prefix cache · PrefillAdder', detailKey: 'nodes.process.sg_scheduler' },
           { id: 'workers', x: 244, y: 190, w: 236, h: 56, label: 'TpModelWorker', tag: 'per rank · local forward', detailKey: 'nodes.process.sg_workers' },
           { id: 'detok', x: 36, y: 254, w: 156, h: 48, label: 'Detokenizer', tag: 'incremental text', detailKey: 'nodes.process.sg_detok' },
         ],
@@ -2015,7 +2017,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           { id: 'frontend', x: 36, y: 54, w: 156, h: 56, label: 'OpenAI / Python', tag: 'HTTP · Rust optional', detailKey: 'nodes.process.vl_frontend' },
           { id: 'async', x: 36, y: 142, w: 156, h: 56, label: 'AsyncLLM', tag: 'input + output', detailKey: 'nodes.process.vl_async' },
           { id: 'engine', x: 244, y: 64, w: 236, h: 66, label: 'EngineCore', tag: 'busy loop · scheduler', detailKey: 'nodes.process.vl_engine' },
-          { id: 'workers', x: 244, y: 202, w: 236, h: 56, label: 'Workers ×2', tag: 'per rank · MRV2 · CUDA graphs', detailKey: 'nodes.process.vl_workers' },
+          { id: 'workers', x: 244, y: 202, w: 236, h: 56, label: 'Workers ×2', tag: 'GPUModelRunner V2 · per rank', detailKey: 'nodes.process.vl_workers' },
           { id: 'stream', x: 36, y: 254, w: 156, h: 48, label: 'SSE stream', tag: 'async response', detailKey: 'nodes.process.vl_stream' },
         ],
         edges: [
@@ -2108,7 +2110,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           { id: 'queue', x: 34, y: 136, w: 136, h: 54, label: 'waiting + running', tag: 'one queue set', detailKey: 'nodes.batch.vl_queue' },
           { id: 'budget', x: 186, y: 136, w: 128, h: 54, label: 'token budget', tag: 'max tokens', detailKey: 'nodes.batch.vl_budget' },
           { id: 'scheduler', x: 330, y: 136, w: 154, h: 54, label: 'SchedulerOutput', tag: 'per step', detailKey: 'nodes.batch.vl_schedout' },
-          { id: 'workers', x: 186, y: 214, w: 128, h: 54, label: 'Workers', tag: 'ModelRunner', detailKey: 'nodes.batch.vl_workers' },
+          { id: 'workers', x: 186, y: 214, w: 128, h: 54, label: 'Workers', tag: 'ModelRunner V2', detailKey: 'nodes.batch.vl_workers' },
           { id: 'output', x: 330, y: 214, w: 154, h: 54, label: 'EngineCoreOutputs', tag: 'frontend', detailKey: 'nodes.batch.vl_output' },
           { id: 'async', x: 30, y: 278, w: 460, h: 76, label: 'async scheduling / PP batch queue', tag: 'multiple steps in flight', detailKey: 'nodes.batch.vl_async', card: true },
         ],
@@ -2157,10 +2159,10 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       },
       vl: {
         nodes: [
-          { id: 'router', x: 30, y: 48, w: 138, h: 56, label: 'Frontend / DP', tag: 'coordinator', detailKey: 'nodes.disagg.vl_router' },
+          { id: 'router', x: 30, y: 48, w: 138, h: 56, label: 'External router', tag: 'select P/D instances', detailKey: 'nodes.disagg.vl_router' },
           { id: 'prefill', x: 190, y: 48, w: 134, h: 56, label: 'Prefill pool', tag: 'KV producer', detailKey: 'nodes.disagg.vl_prefill' },
           { id: 'decode', x: 354, y: 48, w: 136, h: 56, label: 'Decode pool', tag: 'KV consumer', detailKey: 'nodes.disagg.vl_decode' },
-          { id: 'connector', x: 190, y: 128, w: 134, h: 52, label: 'KVConnectorV1', tag: 'meta + RDMA', detailKey: 'nodes.disagg.vl_connector' },
+          { id: 'connector', x: 190, y: 128, w: 134, h: 52, label: 'KVConnectorV1', tag: 'V2 hooks', detailKey: 'nodes.disagg.vl_connector' },
           { id: 'meta', x: 30, y: 212, w: 138, h: 52, label: 'Scheduler meta', tag: 'per step', detailKey: 'nodes.disagg.vl_meta' },
           { id: 'remote', x: 190, y: 212, w: 134, h: 52, label: 'remote KV', tag: 'block load', detailKey: 'nodes.disagg.vl_offload' },
           { id: 'offload', x: 354, y: 212, w: 136, h: 52, label: 'offload / HMA', tag: 'block owner', detailKey: 'nodes.disagg.vl_offload' },
@@ -2250,7 +2252,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         sg: {
           nodes: [
             { id: 'req', x: 30, y: 48, w: 124, h: 56, label: 'Finished req', tag: 'usage relation', detailKey: 'nodes.crosscut.sg_finish' },
-            { id: 'radix', x: 180, y: 48, w: 150, h: 56, label: 'RadixCache', tag: 'tree_cache.checkpoint', detailKey: 'nodes.crosscut.sg_radix' },
+            { id: 'radix', x: 180, y: 48, w: 150, h: 56, label: 'tree_cache', tag: 'checkpoint', detailKey: 'nodes.crosscut.sg_radix' },
             { id: 'pool', x: 356, y: 48, w: 134, h: 56, label: 'KV pool', tag: 'unprotected return', detailKey: 'nodes.crosscut.sg_pool' },
             { id: 'reuse', x: 30, y: 150, w: 124, h: 52, label: 'Next request', tag: 'longest prefix', detailKey: 'nodes.crosscut.sg_reuse' },
             { id: 'evict', x: 180, y: 150, w: 150, h: 52, label: 'Evictable leaf', tag: 'no lock', detailKey: 'nodes.crosscut.sg_evict' },
@@ -2594,7 +2596,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       );
     }
 
-    function EngineBoard({ side, chapter, step, stepCount, t, footKey, children }) {
+    function EngineBoard({ side, chapter, step, stepCount, t, footKey, children, v2Detail=true }) {
       const engine = ENGINE[side];
       const release = RELEASES[side];
       const [zoomed, setZoomed] = React.useState(false);
@@ -2634,7 +2636,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             role: 'region',
             'aria-label': t(zoomed ? 'board.scrollHint' : 'board.fullView'),
           },
-          h('div', { className: 'ia-boardSvgWrap' }, children),
+          h('div', { className: 'ia-boardSvgWrap' }, v2Detail && side==='vl' && window.AtlasV2.supports(chapter,step) ? h(window.AtlasV2.Diagram,{chapter,step,en:atlasLocale.lang==='en'}) : children),
         ),
         zoomed ? h('p', { className: 'ia-boardScrollHint' }, t('board.scrollHint')) : null,
         h('p', { className: 'ia-sceneNote' }, t(noteKey)),
@@ -2938,7 +2940,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           !isVl ? h(
             'text',
             { x: 38, y: 126, className: 'ia-sceneKicker is-inside' },
-            'RadixCache · longest prefix',
+            'UnifiedRadixCache · longest prefix',
           ) : null,
           layout.edges.map((edge) =>
             h(Edge, {
@@ -3531,7 +3533,11 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       );
     }
 
-    function Scene({ chapter, step, t, selected, onSelect }) {
+    function Scene({ chapter, step, t, selected, onSelect, ownership, tp, tokens }) {
+      if (chapter === 'metrics' || (chapter === 'process' && ownership)) return h(React.Fragment, null,
+        ['sg','vl'].map(side => h(EngineBoard, {key:side,side,chapter:chapter==='process'?'ownership':chapter,step,stepCount:4,t},
+          h(chapter === 'metrics' ? window.AtlasBoundaries.Metrics : window.AtlasBoundaries.Ownership,
+            {side,step,en:atlasLocale.lang==='en',tp,tokens}))));
       if (chapter === 'wire') return h(WireScene, { step, t, selected, onSelect });
       if (chapter === 'prefix') return h(PrefixScene, { step, t, selected, onSelect });
       if (chapter === 'batch') return h(BatchScene, { step, t, selected, onSelect });
@@ -3591,7 +3597,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       },
       {
         key: 'sources.sgRadix',
-        url: 'https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/mem_cache/radix_cache.py#L510',
+        url: 'https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/mem_cache/unified_radix_cache.py#L613',
       },
       {
         key: 'sources.vlBlockPool',
@@ -3602,6 +3608,8 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         url: 'https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/core/sched/scheduler.py',
       },
     ];
+
+    SOURCE_LINKS.push(...window.AtlasBoundaries.sources, ...window.AtlasV2.sources);
 
     function pad2(value) {
       return String(value).padStart(2, '0');
@@ -4020,8 +4028,9 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
     function TopicReading({ chapter, step, t, depth }) {
       const topic = chapter.id;
       const facet = topic === 'crosscut' ? ['finish', 'overload', 'abort', 'graph'][step] : topic;
-      const table = topic === 'wire' ? h(WireTable, { t }) :
-        topic === 'prefix' ? h(ProfileTable, { id: 'kv', t }) :
+      const table = topic === 'metrics' ? h(window.AtlasBoundaries.MetricReading,{step,en:atlasLocale.lang==='en'}) :
+        topic === 'wire' ? h(WireTable, { t }) :
+        topic === 'prefix' ? h(React.Fragment,null,h(ProfileTable, { id: 'kv', t }),h(window.AtlasBoundaries.MemoryBudget,{en:atlasLocale.lang==='en'})) :
         topic === 'crosscut' ? h(ProfileTable, { id: ['kv', 'overload', 'abort', 'graph'][step], t }) :
         h(ComparisonTable, {
           t, rows: { process: [0], batch: [3, 4], disagg: [5] }[topic],
@@ -4031,7 +4040,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         h('p', { className: 'ia-readingEyebrow' }, t('reading.optional')),
         h(ReadingDisclosure, {
           key: `${topic}:${step}`, t, forced:depth==='source', className: 'ia-readingDetails', title: t(`reading.titles.${facet}`),
-        }, table),
+        }, table, topic==='process'?h(window.AtlasBoundaries.Provenance,{en:atlasLocale.lang==='en'}):null),
       );
     }
 
@@ -4154,7 +4163,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           const low=Math.min(...chosen.map(n=>n.y),40)-35,high=Math.max(...chosen.map(n=>n.y+n.h),190)+35;
           content=h('svg',{viewBox:`0 ${low} 520 ${high-low}`,className:'ia-svg',role:'group','aria-label':notes[chapter][step]},h(SvgDefs,{uid}),edges.map(e=>h(Edge,{key:e.id,edge:e,nodes:layout.nodes,active:true,uid})),chosen.map(n=>h(NodeBox,{key:n.id,node:{...n,tag:''},active:active.nodes.includes(n.id),selected:isNodeSelected(selected,side,n),onSelect:p=>onSelect({side,...p})})));
         }
-        return h(EngineBoard,{key:side,side,chapter,step,stepCount:4,t},content,h('p',{className:'ia-depth-note'},notes[chapter][step]));
+        return h(EngineBoard,{key:side,side,chapter,step,stepCount:4,t,v2Detail:false},content,h('p',{className:'ia-depth-note'},notes[chapter][step]));
       }));
     }
     function createAtlasPage(locale) {
@@ -4164,6 +4173,9 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         const [chapterIndex, setChapterIndex] = useState(() => resumeChapter >= 0 ? resumeChapter : chapterFromHash());
         const [step, setStep] = useState(() => resumeChapter >= 0 ? Math.max(0,Math.min(Number(updateResume.step)||0,CHAPTERS[resumeChapter].steps-1)) : Math.max(0,Math.min(3,Number(new URL(location.href).searchParams.get('step'))||0)));
         const [selected, setSelected] = useState(null);
+        const [ownership,setOwnership]=useState(()=>new URL(location.href).searchParams.get('view')==='ownership');
+        const [tp,setTp]=useState(()=>new URL(location.href).searchParams.get('tp')==='1'?1:2);
+        const [tokens,setTokens]=useState(()=>[1,2,4].includes(Number(new URL(location.href).searchParams.get('tokens')))?Number(new URL(location.href).searchParams.get('tokens')):2);
         const [depth,setDepth]=useState(()=>new URL(location.href).searchParams.get('depth')||'overview');
         const [pulsePlaying,setPulsePlaying]=useState(true);
         const pulseClock=React.useRef(Number(new URL(location.href).searchParams.get('pulse'))||0);
@@ -4200,6 +4212,11 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         const chooseDepth=next=>{setDepth(next);const u=new URL(location.href);u.searchParams.set('depth',next);u.searchParams.set('step',step);u.searchParams.set('pulse',pulseClock.current.toFixed(3));history.replaceState(null,'',u);};
         const stepCount = chapter.steps;
         const stepTitleKey = `chapters.${chapter.id}.steps.${step}.title`;
+        const en=atlasLocale.lang==='en';
+        const label=(zh,english)=>en?english:zh;
+        // All reader choices survive reload/history; changing depth keeps the
+        // observation question, topology, and shared pulse phase intact.
+        useEffect(()=>{const u=new URL(location.href);u.searchParams.set('step',step);u.searchParams.set('view',ownership?'ownership':'request');u.searchParams.set('tp',tp);u.searchParams.set('tokens',tokens);history.replaceState(null,'',u);},[step,ownership,tp,tokens]);
 
         useEffect(() => {
           const sync = () => {
@@ -4207,6 +4224,9 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             setChapterIndex(next);
             setStep(Math.max(0,Math.min(3,Number(new URL(location.href).searchParams.get('step'))||0)));
             setDepth(new URL(location.href).searchParams.get('depth')||'overview');
+            setOwnership(new URL(location.href).searchParams.get('view')==='ownership');
+            setTp(new URL(location.href).searchParams.get('tp')==='1'?1:2);
+            const n=Number(new URL(location.href).searchParams.get('tokens'));setTokens([1,2,4].includes(n)?n:2);
             setSelected(null);
           };
           window.addEventListener('hashchange', sync);
@@ -4221,7 +4241,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           setChapterIndex(index);
           setStep(0);
           setSelected(null);
-          try { history.pushState(null, '', '#' + CHAPTERS[index].id); } catch {}
+          try { const u=new URL(location.href);u.hash=CHAPTERS[index].id;u.searchParams.set('step','0');history.pushState(null, '', u); } catch {}
         };
 
         const goToStep = (index) => {
@@ -4251,6 +4271,10 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           vl: t(`chapters.${chapter.id}.steps.${step}.vl`),
           diff: t(`chapters.${chapter.id}.steps.${step}.diff`),
         };
+        if(chapter.id==='process'&&ownership){
+          for(const side of ['sg','vl'])stepData[side]=window.AtlasBoundaries.ownershipText(side,step,tp,en);
+          stepData.diff=label('同样的职责可以住进不同的进程。TP 规模改变执行边界，但不是按进程数排名性能。','The same roles can occupy different processes. TP size changes execution boundaries; process counts do not rank performance.');
+        }
 
         return h(
           React.Fragment,
@@ -4332,6 +4356,13 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             ),
             h('p', { className: 'ia-controlHint' }, t('control.hint')),
             h(StepRail, { chapter, step, t, onStep: goToStep }),
+            chapter.id==='process'?h('div',{className:'ib-controls',role:'group','aria-label':label('进程观察方式','Process view')},
+              h('button',{type:'button','data-process-view':'request','aria-pressed':!ownership,onClick:()=>{setOwnership(false);setSelected(null);}},label('请求路径','Request path')),
+              h('button',{type:'button','data-process-view':'ownership','aria-pressed':ownership,onClick:()=>{setOwnership(true);setSelected(null);}},label('职责与 KV 归属','Roles & KV ownership')),
+              ownership?h('label',null,'TP ',h('select',{'aria-label':label('张量并行规模','Tensor parallel size'),value:tp,onChange:e=>setTp(Number(e.target.value))},h('option',{value:1},'1'),h('option',{value:2},'2'))):null):null,
+            chapter.id==='process'&&ownership?h('p',{className:'ia-controlHint'},label('L1–L5 是职责，不是五个进程。此图限定单机 Python 文本服务、单 API / 单 Detokenizer、PP=DP=1，普通 Full Attention 缓存且无外部后端；vLLM 采用 TP1 uni / TP2 mp，不计 launcher、监控和辅助进程。','L1–L5 are roles, not five processes. Single-node Python text service, one API / one Detokenizer, PP=DP=1, ordinary full-attention cache without an external backend; vLLM uses TP1 uni / TP2 mp. Launcher, monitoring, and helper processes are excluded.')):null,
+            chapter.id==='metrics'?h('p',{className:'ia-controlHint'},label('范围：普通 Python 文本流式服务，开启指标；非 PD、无投机/重试/取消、无 stop 字符串，按 EOS 或长度终止。四步是四个观察问题，不是四段串行执行。','Scope: ordinary Python text streaming with metrics; no PD, speculation, retries, cancellation, or stop strings; EOS/length termination. These are four observation questions, not four serial execution phases.')):null,
+            chapter.id==='metrics'&&step===3?h('label',{className:'ib-controls'},label('SGLang 每次合并几个 token？（vLLM 保持单 token 核心输出）','SGLang tokens per return? (vLLM keeps single-token core outputs)'),h('select',{'aria-label':label('SGLang 合并 token 数','SGLang tokens per return'),value:tokens,onChange:e=>setTokens(Number(e.target.value))},[1,2,4].map(n=>h('option',{key:n,value:n},n)))):null,
             h('div',{className:'ld-controls',role:'group','aria-label':'细节程度'},h('span',null,'细节程度'),(fullDepth?['overview','modules','source']:['modules','source']).map(d=>h('button',{key:d,type:'button','data-depth-choice':d,'aria-pressed':shownDepth===d,onClick:()=>chooseDepth(d)},{overview:'总览',modules:fullDepth?'模块过程':'过程',source:'源码细节'}[d])),h('button',{type:'button',onClick:()=>setPulsePlaying(p=>!p),'aria-pressed':pulsePlaying,'data-pulse-toggle':true},pulsePlaying?'暂停脉冲':'播放脉冲')),
             h('p',{className:'ia-controlHint'},'切换细节保留当前阶段；脉冲表示本阶段活跃交接，不表示真实带宽或阶段耗时。'),
             h(
@@ -4372,7 +4403,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                   className: 'ia-boardGrid', role: 'region', tabIndex: 0,
                   'aria-label': t('board.comparison'), 'aria-describedby': 'ia-comparison-hint',
                 }, h(shownDepth==='overview'?DepthOverview:Scene, {
-                  chapter: chapter.id, step, t, selected, onSelect: handleSelectNode,
+                  chapter: chapter.id, step, t, selected, onSelect: handleSelectNode,ownership,tp,tokens,
                 })),
               ),
               h(
@@ -4459,6 +4490,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
               ),
             ),
             h(TopicReading, { chapter, step, t, depth:shownDepth }),
+            shownDepth==='source' ? h(window.AtlasV2.Trace,{chapter:chapter.id,step,en}) : null,
             h(ReadingDisclosure, {
               key: `sources:${chapter.id}`, t, forced:shownDepth==='source', className: 'ia-referenceDetails', title: t('reading.sources'),
             }, h(SourcesSection, { t, chapter })),

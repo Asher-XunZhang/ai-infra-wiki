@@ -23,6 +23,7 @@ ENGINE_TOPICS = [
     ('batch', '04 调度心跳', 'Scheduling beat'),
     ('disagg', '05 分离扩展', 'Disaggregation'),
     ('crosscut', '06 生命周期与执行边界', 'Crosscuts'),
+    ('metrics', '07 延迟口径', 'Metric boundaries'),
 ]
 
 DESIGN_REVISION = '279339f113b79af84f27fd3ac92d0a13bd3f4cbd'
@@ -121,7 +122,7 @@ def route_href(page, target, route):
 def learning_start(page):
     parts = ['<!-- learning-start:start -->', '<section id="reading-routes" aria-label="三章学习入口">',
         '<div class="chapter-choice"><a href="#chapter-foundations"><span>第一章</span><strong>推理基础</strong><p>从一句话怎样变成数字开始，逐步认识生成、缓存、调度与多卡协作。</p><span>先建立直觉，再进入实现</span></a>',
-        '<a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 并排查看两套引擎的进程、通信、缓存、调度与分离扩展。</p><span>六幅剖面 · 保留各自版本边界</span></a>',
+        '<a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 并排查看两套引擎的进程、通信、缓存、调度、分离扩展与延迟口径。</p><span>七个主题 · 保留各自版本边界</span></a>',
         '<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十三模块 · 二十一节实现课程</span></a></div></section>',
         '<section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>',
         '<p>第一章从文字、生成、Attention 与基础部件，走向缓存、调度、硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">']
@@ -317,7 +318,7 @@ def engine_breadcrumb(page):
     return ('<!-- learning-context:start -->\n<nav class="learning-breadcrumb" aria-label="当前位置">'
             f'<a href="{href(page)}">学习首页</a><span aria-hidden="true">/</span>'
             f'<a href="{href(page, anchor="chapter-engine")}">第二章 · SGLang 与 vLLM 架构对照</a><span aria-hidden="true">/</span>'
-            '<span aria-current="page">六主题架构对照</span></nav>\n<!-- learning-context:end -->')
+            '<span aria-current="page">架构与观测对照</span></nav>\n<!-- learning-context:end -->')
 
 
 def engine_pager(page):
