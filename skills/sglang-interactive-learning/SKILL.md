@@ -15,7 +15,7 @@ description: 设计、重构或审查面向初学者的 SGLang 交互学习网�
 
 在 ai-infra-wiki 中，先按 [仓库工作流](references/repository-workflow.md) 核对课程、构建入口和验证方式。不要把 GitHub Pages 的静态托管误称为没有动态交互：HTML/CSS/JS 可以在浏览器中运行完整的教学模拟。
 
-本仓前端实现由 DeepSeek Harness（Flash-1017 / Max）承担，Codex 负责资料、交接与验收；按 `deepseek-harness-frontend` Skill 执行。Harness 内的实现者直接应用本教学规范，不递归委派。
+本仓前端默认由 Codex 自行完成分析、设计、实现、测试与返修。只有用户明确要求使用 DeepSeek Harness 协同时，才按 `deepseek-harness-frontend` Skill 交接，使用 Flash-1017 / Max，Codex 负责资料与验收。Harness 内的实现者直接应用本教学规范，不递归委派。
 
 整站复核或把成功案例推广到其他课时，按 [逐章复核与迁移规则](references/lesson-review.md) 盘点每个子机制，记录保留、补过程、重画或整合的判断和验收依据。不要把所有页面强行改成成功案例的布局。
 

@@ -21,6 +21,7 @@
 
 | Skill | 用途 | 文件 |
 | --- | --- | --- |
+| deepseek-harness-frontend | 仅在用户明确要求 Harness 协同时交接前端任务，以 Flash-1017 / Max 实现并独立验收；默认由 Codex 自行完成 | [入口](deepseek-harness-frontend/SKILL.md) |
 | sglang-interactive-learning | 学习路线、机制动画、术语、交接边界、概念动机与证据；包含逐章检查和仓库工作流 | [入口](sglang-interactive-learning/SKILL.md) |
 | ai-infra-wiki-pages-publication | 交互课程的构建、检查、隔离发布与线上内容核对 | [入口](ai-infra-wiki-pages-publication/SKILL.md) |
 | publish-exact-files-from-dirty-worktree | 只发布明确文件集合并保留原工作区；整站发布使用上一项 | [入口](publish-exact-files-from-dirty-worktree/SKILL.md) |
@@ -33,3 +34,5 @@
 可按工具约定从本目录加载，也可以将需要的子目录复制到本机 Skill 目录。外部 Skill 按名称从可信上游安装。本目录不替代依赖安装，也不自动开启发布、hook 或后台任务。
 
 本仓课程规范以 `sglang-interactive-learning/` 为可审查副本。修改本机版本时同步该目录，检查相对引用与 frontmatter；共享前核对没有机器专属目录。使用官方说明解释概念、固定提交核对实现，不能把两类证据混为同一版本事实。
+
+本项目的前端分工遵循根 `AGENTS.md`：默认由 Codex 自行完成，只有用户明确要求 Harness 协同时才按交接流程执行。
