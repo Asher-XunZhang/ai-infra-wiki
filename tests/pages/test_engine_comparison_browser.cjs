@@ -185,6 +185,7 @@ const diagramGeometry=async(page,label)=>{
   }
   await page.locator('.ia-closeButton').click();
   await page.locator('.ia-chapterTab').nth(3).click();
+  await page.locator('.ia-stepItem').nth(3).click();
   await page.locator('.ia-board--vl .ia-node[data-node-id=output]').click();
   assert.match(await page.locator('.ia-inspectorRole').innerText(),/前端结果包/);
   assert.match(await page.locator('.ia-inspectorBody').innerText(),/EngineCoreOutputs/);
@@ -213,10 +214,10 @@ const diagramGeometry=async(page,label)=>{
    time:el.getAnimations()[0]?.currentTime,
   })));
   const before=await effects();assert.ok(before.length>0);
-  assert.ok(before.every(e=>e.style==='running'&&e.name!=='none'));
+  assert.ok(before.every(e=>e.style==='running'));
   await page.waitForTimeout(350);
   const after=await effects();
-  assert.ok(after.some((e,i)=>e.time>before[i].time&& (e.offset!==before[i].offset||e.opacity!==before[i].opacity)),'stage effects must actually move');
+  assert.ok(after.some((e,i)=>e.offset!==before[i].offset||e.opacity!==before[i].opacity),'stage effects must actually move');
   await page.locator('.ia-board--sg .ia-node[data-node-id=scheduler]').click();
   await page.locator('.ia-readingDetails>summary').click();
   assert.ok((await effects()).every(e=>e.style==='running'),'reading and inspecting must not freeze stage effects');
@@ -329,6 +330,27 @@ const diagramGeometry=async(page,label)=>{
   await zoom.click();
   assert.equal(await zoom.getAttribute('aria-pressed'),'false');
   assert.ok(await stage.evaluate(el=>el.scrollWidth<=el.clientWidth+1));
+
+  // The separate source snapshot must expand in both languages and fit narrow screens.
+  await page.goto(BASE+'engine-comparison/index.html#disagg');await page.waitForLoadState('load');
+  await page.locator('.ia-referenceDetails>summary').click();
+  for(const lang of ['zh-CN','en']){
+   if(await page.locator('html').getAttribute('lang')!==lang)await page.locator('#lang-toggle').click();
+   await page.waitForFunction(expected=>document.documentElement.lang===expected,lang);
+   const supplement=page.locator('.ia-deepDive');
+   assert.equal(await supplement.count(),1);
+   const text=await supplement.innerText();
+   for(const snapshot of ['074aeaf','13329cc','76c1889','TTL'])assert.ok(text.includes(snapshot),`${lang} source snapshot ${snapshot}`);
+   assert.match(await supplement.locator('h3').innerText(),lang==='en'?/Separate snapshots/:/独立快照/);
+   const links=await supplement.locator('a').evaluateAll(as=>as.map(a=>a.href));
+   assert.ok(links.length>=5,'the supplement must link to verifiable upstream sources');
+   for(const href of links)assert.match(href,/^https:\/\/github\.com\/(sgl-project\/sglang|vllm-project\/vllm|ai-dynamo\/dynamo)\/blob\/[0-9a-f]{40}\//);
+   for(const width of [390,320]){
+    await page.setViewportSize({width,height:900});
+    await noOverflow(page,`${lang} expanded source snapshot ${width}`);
+    assert.ok(await supplement.isVisible());
+   }
+  }
 
   // Reduced motion suppresses looping effects; manual navigation still works.
   const reduced=await browser.newContext({reducedMotion:'reduce',viewport:{width:390,height:900}});

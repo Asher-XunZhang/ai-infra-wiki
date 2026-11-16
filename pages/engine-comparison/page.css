@@ -90,9 +90,11 @@
 .ia-referenceDetails{margin-top:24px;border:1px solid var(--ia-line2);border-radius:8px;padding:16px 18px;background:var(--ia-surface)}
 .ia-referenceDetails>summary{font-size:14px;font-weight:600;line-height:1.6;cursor:pointer}
 .ia-referenceDetails>.ia-section:first-of-type{margin-top:20px}
+.ia-page .ia-deepDive{overflow-wrap:anywhere}
 @media(max-width:700px){
  .ia-page .ia-chapterTabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
  .ia-page .ia-chapterTab{text-align:left;min-width:0;justify-content:start}
+ .ia-page .ia-chapterName{min-width:0;white-space:normal;overflow-wrap:anywhere}
  .ia-page .ia-stepRail{grid-template-columns:repeat(2,minmax(0,1fr))}
  .ia-page .ia-boardStamp{font-size:10px}
  .ia-page .ia-boardZoom{margin-left:auto}

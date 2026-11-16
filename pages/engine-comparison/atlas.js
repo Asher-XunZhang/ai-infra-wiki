@@ -105,6 +105,28 @@ const chapterFromHash = () => {
           { href: '../sglang/pd-dataflow/index.html', label: ['PD 数据流', 'PD data flow'] },
           { href: '../sglang/inference-overview/deployment.html', label: ['分离部署', 'Disaggregation deployment'] },
         ],
+        deepDives: [
+          {
+            href: 'https://github.com/sgl-project/sglang/blob/074aeaf67499d06cc61300971fae90bcf4297670/sgl-router/src/policies/cache_aware.rs',
+            label: ['SGLang 074aeaf · sgl-router cache-aware 选点', 'SGLang 074aeaf · sgl-router cache-aware selection'],
+          },
+          {
+            href: 'https://github.com/ai-dynamo/dynamo/blob/76c1889aeb078219eb4fbd2b0c0fc21df75d8d0b/lib/llm/src/kv_router.rs',
+            label: ['Dynamo 76c1889 · KV router 事件与预测索引', 'Dynamo 76c1889 · KV router events and prediction index'],
+          },
+          {
+            href: 'https://github.com/sgl-project/sglang/blob/074aeaf67499d06cc61300971fae90bcf4297670/python/sglang/srt/managers/kv_hints.py',
+            label: ['SGLang 074aeaf · KV Hint 协议', 'SGLang 074aeaf · KV hint protocol'],
+          },
+          {
+            href: 'https://github.com/vllm-project/vllm/blob/13329cca5ca75daa9cbb83446e695cdd97cae427/vllm/v1/kv_hints/protocol.py',
+            label: ['vLLM 13329cc · KV Hint 协议', 'vLLM 13329cc · KV hint protocol'],
+          },
+          {
+            href: 'https://github.com/sgl-project/sglang/blob/074aeaf67499d06cc61300971fae90bcf4297670/docs/docs/advanced_features/session_radix_cache.mdx',
+            label: ['SGLang 074aeaf · session radix cache 文档', 'SGLang 074aeaf · session radix cache docs'],
+          },
+        ],
       },
       {
         id: 'crosscut',
@@ -132,7 +154,8 @@ const chapterFromHash = () => {
         },
         disagg: {
           title: ['跨实例扩展与 KV 交接边界', 'Cross-instance scaling and KV handoff'],
-          lede: ['路由、传输和缓存分层承担不同职责；对照上图逐一辨认。', 'Routing, transfer, and cache tiers have different responsibilities; identify each in the diagram.'],
+          lede: ['把跨 Worker 选点、实例内准入/排序与 KV 交接拆到同一组层上比较；Router 索引与 Worker 缓存树不是同一个对象。', 'Compare cross-worker selection, in-instance admission/ordering, and KV handoff at their own layers; the router index and the worker cache tree are different objects.'],
+          note: ['本表仍按本页固定 release 对照。Router/前端生成跨 Worker 候选并做选点，但选点不等于 KV 交接或实例内准入；Connector/传输后端负责 KV 交接。实例内 Scheduler 负责准入与排序（SGLang 的 LPM 是这一侧的调度策略），缓存树/池则按自己的保护和引用策略决定回收，不能用一个“前缀命中”跨层概括。', 'This table still compares this page’s pinned releases. A router/frontend generates cross-worker candidates and selects one, but selection is neither KV handoff nor in-instance admission; a connector or transfer backend handles KV handoff. The in-instance scheduler owns admission and ordering (SGLang’s LPM is a scheduling policy on that side), while the cache tree/pool decides reclamation under its own protection and reference rules. No single “prefix hit” summarizes all of them.'],
         },
         optional: ['选读', 'Further reading'],
         expand: ['展开阅读', 'Read more'],
@@ -365,7 +388,7 @@ const chapterFromHash = () => {
                 'Look up hashes by block: only the first two full blocks hit, 8 of 12 tokens. The cached third block (9–12) does not match because tokens 11–12 differ and stays retained; the trailing four input tokens allocate a new block.',
               ],
               diff: [
-                '本例双方都只复用完整单位，边界同为 8/12；真正的差异是索引形状（树路径 vs 链式块 hash）与地址表示（节点/页 vs block table）。4 只是示例粒度，不是推荐配置。',
+                '本例双方都只复用完整单位，边界同为 8/12；真正的差异是索引形状（树路径 vs 链式块 hash）与地址映射表示（节点/页 vs block table 编号）。4 只是示例粒度，不是推荐配置。',
                 'Both sides reuse only complete units here, with the same 8/12 boundary. The real difference is index shape (tree path vs chained block hash) and address representation (node/page vs block table). Four is an illustrative granularity, not a recommended configuration.',
               ],
             },
@@ -376,8 +399,8 @@ const chapterFromHash = () => {
                 'The unmatched third page (9–12) grows as a new branch and its KV pages bind to the request path. The cached 9–12 page stays on the old branch; the two branches split after page 2.',
               ],
               vl: [
-                '给未命中的尾部 token 分配新块；block table 只更新逻辑位置到物理块的映射，KV 本体在分页缓冲区。部分块索引与 copy-on-write 属于特定分支，本例不展开。',
-                'New blocks are allocated for the unmatched tail; the block table only updates logical-to-physical mappings, while KV lives in paged buffers. Partial-block indexing and copy-on-write are conditional branches and are not shown here.',
+                '给未命中的尾部 token 分配新块；block table 只更新逻辑位置到物理块编号的映射元数据，KV 本体在分页缓冲区。部分块索引与 copy-on-write 属于特定分支，本例不展开。',
+                'New blocks are allocated for the unmatched tail; the block table only updates metadata mapping logical positions to physical block IDs, while KV lives in paged buffers. Partial-block indexing and copy-on-write are conditional branches and are not shown here.',
               ],
               diff: [
                 'UnifiedRadixCache 的共享单位是页对齐的路径片段；vLLM 的共享单位是完整 block/hash 单位。',
@@ -391,8 +414,8 @@ const chapterFromHash = () => {
                 'The request holds node locks along the path. Decoded tokens extend it, and later requests can fork from the same path.',
               ],
               vl: [
-                'block table 保存逻辑位置到物理块的映射；后续请求复用同一批块时只改映射，追加再分配。',
-                'The block table maps logical positions to physical blocks. Later requests reuse blocks by changing that mapping and allocate only when they append.',
+                'block table 保存逻辑位置到物理块编号的映射元数据；后续请求复用同一批块时只改映射，追加再分配。',
+                'The block table stores metadata mapping logical positions to physical block IDs. Later requests reuse blocks by changing that mapping and allocate only when they append.',
               ],
               diff: [
                 '前者像按页对齐的可变长前缀树，后者像带引用计数的分页表。',
@@ -474,61 +497,61 @@ const chapterFromHash = () => {
             {
               title: ['选择实例', 'Choose an instance'],
               sg: [
-                'Rust sgl-router 可按前缀命中做 cache-aware 路由；PD / EPD 把 prefill、decode、encode 分到不同实例池。',
-                'The Rust sgl-router can route with cache awareness. PD/EPD place prefill, decode, and encode in separate instance pools.',
+                'sgl-router 负责跨实例选点，可参考前缀/缓存信号与负载；但 Router 的前缀索引不是 Worker 内的 RadixCache。Prefill / Decode / Encode 池是部署角色；选中实例不等于取得其 KV 锁，也不等于完成恢复。',
+                'sgl-router selects across instances using prefix/cache signals and load, but the router’s prefix index is not a worker’s RadixCache. Prefill, decode, and encode pools are deployment roles; selecting an instance neither acquires its KV lock nor completes restoration.',
               ],
               vl: [
-                '前端负责选实例；P/D 分离通过 KVConnectorV1 把 prefill 实例与 decode 实例连起来。DP coordinator 只做 DP 负载统计与 wave 协调，不是通用 P/D router。',
-                'The frontend picks an instance. P/D separation connects prefill and decode instances through KVConnectorV1. The DP coordinator coordinates DP load and waves; it is not a general P/D router.',
+                '前端或代理负责跨实例选点；P/D 分离的 KV 交接由 KVConnectorV1 在调度侧与 worker 侧完成。DP coordinator 只协调 DP 负载与 wave，不是通用 P/D router。',
+                'A frontend or proxy selects across instances; KVConnectorV1 handles P/D KV handoff on the scheduler and worker sides. The DP coordinator only coordinates DP load and waves; it is not a general P/D router.',
               ],
               diff: [
-                'SGLang 更常把「前缀命中」写进路由判断；vLLM 把分离做成 connector 扩展点。',
-                'SGLang more often folds prefix hits into routing; vLLM exposes separation as a connector extension point.',
+                '两边都能看到选点与 KV 交接两类职责，只是命名与装配不同。不要把 SGLang 的 router 与 vLLM 的 connector 当成同一层的互斥能力。',
+                'Both expose selection and KV-handoff responsibilities; names and wiring differ. Do not treat SGLang’s router and vLLM’s connector as mutually exclusive capabilities on the same layer.',
               ],
             },
             {
               title: ['搬运 KV', 'Move the KV'],
               sg: [
-                'Mooncake / NIXL / Mori 等后端搬运 KV；两侧 scheduler 维护角色、握手与释放节奏。',
-                'Backends such as Mooncake, NIXL, and Mori move KV. Schedulers on both sides maintain roles, handshakes, and release timing.',
+                'KV 传输由 Mooncake / NIXL / Mori 等后端执行；两侧 scheduler 维护角色、握手与释放。选点、传输执行和实例内准入仍是三个判断。',
+                'KV transfer is executed by backends such as Mooncake, NIXL, and Mori; schedulers on both sides maintain roles, handshakes, and release. Selection, transfer execution, and in-instance admission remain three separate decisions.',
               ],
               vl: [
-                'Scheduler 在 SchedulerOutput 里带上 connector metadata；worker 侧把远端 KV 加载到本地物理 KV 缓存，block table 只保存映射。',
-                'The scheduler attaches connector metadata to SchedulerOutput; workers load remote KV into local physical KV buffers, with the block table holding only the mapping.',
+                'Scheduler 在 SchedulerOutput 里带上 connector metadata；worker 侧把远端 KV 加载到本地分页缓冲，block table 只保存逻辑块到物理块编号的映射元数据。Connector 是交接接口，不负责选择实例。',
+                'The scheduler attaches connector metadata to SchedulerOutput; workers load remote KV into local paged buffers, while the block table stores only metadata mapping logical blocks to physical block IDs. The connector is a handoff interface, not an instance selector.',
               ],
               diff: [
-                '数据一样是 KV，边界不同：SGLang 侧重路由器与 PD 角色，vLLM 侧重 connector 生命周期。',
-                'The data is the same KV; the boundary differs. SGLang emphasizes router and PD roles, vLLM emphasizes connector lifecycles.',
+                '数据一样是 KV，但“选点、KV 交接、实例内准入”是三组职责，不是一个固定串行顺序：可能先做资源/块预分配与准入再传输，也可能按消费点就绪推进；具体顺序由 connector 与调度路径决定。',
+                'The payload is still KV, but selection, KV handoff, and in-instance admission are three responsibility groups, not one fixed serial order: a path may reserve/admit resources before transfer, or advance as consumer-side data becomes ready; the connector and scheduling path decide the order.',
               ],
             },
             {
               title: ['缓存继续下沉', 'Sink the cache'],
               sg: [
-                'HiCache 把前缀缓存从 GPU 扩到 CPU / 文件级 L3；MLA + DCP 也可保留前缀。',
-                'HiCache extends prefix caching from GPU memory to CPU and file-level L3. MLA with DCP can keep prefixes too.',
+                'HiCache 把前缀缓存从 GPU 扩到 CPU / 文件级 L3，改变可复用副本的位置；它不会把 Router 索引变成 Worker 缓存树。',
+                'HiCache extends prefix caching from GPU memory to CPU and file-level L3, changing where reusable copies live; it does not merge the router index with the worker cache tree.',
               ],
               vl: [
-                'KVConnector 与 offload 路径把块搬到 CPU 或远端；前缀缓存仍以块为协议单位。',
-                'KVConnector and offload paths move blocks to CPU memory or remote tiers. Prefix caching still uses blocks as its protocol unit.',
+                'KVConnector 与 offload 路径把块搬到 CPU 或远端；前缀缓存仍以块为协议单位。副本所在层与实例选点不是同一件事。',
+                'KVConnector and offload paths move blocks to CPU memory or remote tiers, while prefix caching still uses blocks as its protocol unit. Copy location and instance selection are different concerns.',
               ],
               diff: [
-                '一个从 radix 路径向外分层，一个从 block 所有权向外扩展。',
-                'One tiers outward from radix paths; the other extends outward from block ownership.',
+                '缓存分层与 KV 交接解决不同问题：一个改变副本所在层，一个负责把状态交给另一个实例。',
+                'Cache tiering and KV handoff solve different problems: one changes where a copy lives; the other transfers state to another instance.',
               ],
             },
             {
               title: ['放大整个集群', 'Scale the cluster'],
               sg: [
-                'DP attention、EP / EPLB 与 PD 比例是不同机制/部署选项，不是可任意组合的支持矩阵；路由与缓存命中强耦合。',
-                'DP attention, EP/EPLB, and the PD ratio are distinct mechanisms/deployment options, not an arbitrary support matrix. Routing and cache hits stay tightly coupled.',
+                'DP attention、EP / EPLB 与 PD 比例是不同机制/部署选项，不是可任意组合的支持矩阵；规模变大后，选点信号、实例内准入与缓存分层要分别核对。',
+                'DP attention, EP/EPLB, and the PD ratio are distinct mechanisms/deployment options, not an arbitrary support matrix. At scale, selection signals, in-instance admission, and cache tiering must be checked separately.',
               ],
               vl: [
                 'TP / PP / DP / EP 与弹性 EP 是不同组合选项；EngineCore 边界让前端与执行资源解耦，但不代表任意组合都被支持。',
                 'TP/PP/DP/EP and elastic EP are distinct options; the EngineCore boundary decouples frontends from execution resources, but not every combination is supported.',
               ],
               diff: [
-                '都在往更大集群扩展，但控制面落点不同。',
-                'Both scale out, but their control planes land in different places.',
+                '都在扩展集群；共同点是选点、准入和 KV 交接各有独立控制点，不能用一个“缓存命中”概括全部。',
+                'Both scale out; selection, admission, and KV handoff each have their own control point, and no single “cache hit” summarizes them all.',
               ],
             },
           ],
@@ -805,8 +828,8 @@ const chapterFromHash = () => {
             'Chained hashes are computed block by block. Full blocks can be reused, and entries point to physical block ids. Partial-block indexing is conditional and not a rule for every backend.',
           ],
           vl_pool: [
-            'BlockPool 管理物理 KV block 的空闲、引用与回收；block table 只是逻辑位置到物理块的映射，不是 KV 本体。',
-            'BlockPool manages free, referenced, and reclaimable physical KV blocks. A block table only maps logical positions to blocks; it is not the KV payload.',
+            'BlockPool 管理物理 KV block 的空闲、引用与回收；block table 保存逻辑位置到物理块编号的映射元数据，不是 KV 本体，也不是物理地址本身。',
+            'BlockPool manages free, referenced, and reclaimable physical KV blocks. A block table stores metadata mapping logical positions to physical block IDs; it is neither the KV payload nor a physical address.',
           ],
           vl_table: [
             '请求的 block table 指向命中与新分配的物理块；引用计数归零后块才回到池子。',
@@ -866,32 +889,32 @@ const chapterFromHash = () => {
           vl_decode: ["Decode pool 使用接收的 KV 继续生成。KVConnectorV1 的 Worker 侧负责加载；KV 就绪后，该请求才能按调度要求继续计算。", "The decode pool continues generation using received KV. The Worker side of KVConnectorV1 loads it; the request can continue its scheduled computation once the KV is ready."],
           vl_meta: ["调度侧生成 connector metadata，随 SchedulerOutput 交给执行侧；Worker 根据这些信息执行 KV 的加载与保存。元数据描述要做的事，不是 KV 张量本身。", "The scheduler creates connector metadata and includes it in SchedulerOutput. Workers use it to load and save KV. The metadata describes the work, rather than containing the KV tensors themselves."],
           sg_router: [
-            'sgl-router 是 Rust 路由器，可按前缀命中与负载选择实例。PD 路由是它区别于普通负载均衡器的关键。',
-            'sgl-router is the Rust router. It can choose instances using prefix hits and load, and PD routing is what distinguishes it from a generic balancer.',
+            'sgl-router 生成跨 Worker 候选并做选点，可参考前缀/缓存信号与负载；Router 侧索引是独立视图，不是 Worker 内的 RadixCache。选中实例不等于取得 KV 锁或完成恢复。',
+            'sgl-router generates cross-worker candidates and selects among them using prefix/cache signals and load; its index is a separate view, not a worker’s RadixCache. Selecting an instance neither acquires its KV lock nor completes restoration.',
           ],
           sg_kv: [
-            'PD/EPD 之间的 KV 传输由 Mooncake、NIXL、Mori 等后端完成；调度器负责角色与生命周期。',
-            'KV transfer between PD/EPD roles is carried by backends such as Mooncake, NIXL, and Mori; schedulers own roles and lifecycle.',
+            'PD/EPD 之间的 KV 传输由 Mooncake、NIXL、Mori 等后端执行；两侧调度器负责角色、握手与释放。传输执行不是 Router 选点。',
+            'KV transfer between PD/EPD roles is executed by backends such as Mooncake, NIXL, and Mori; schedulers on both sides own roles, handshakes, and release. Transfer execution is not router selection.',
           ],
           sg_hicache: [
-            'HiCache 将前缀缓存分层到 CPU 和存储；GPU 仍持有活跃 KV。',
-            'HiCache tiers prefix caches into CPU memory and storage; GPUs still hold active KV.',
+            'HiCache 将前缀缓存分层到 CPU 和存储；GPU 仍持有活跃 KV。它改变副本位置，不把 Router 索引与 Worker 缓存树合并。',
+            'HiCache tiers prefix caches into CPU memory and storage while GPUs still hold active KV. It changes copy location; it does not merge the router index with the worker cache tree.',
           ],
           sg_scale: [
             'DP attention、EP/EPLB 与 PD 比例是独立旋钮；大规模下路由与缓存策略要一起调。',
             'DP attention, EP/EPLB, and the PD ratio are independent controls. At scale, routing and cache policy must be tuned together.',
           ],
           vl_router: [
-            'Python/Rust 前端或 DP coordinator 负责 DP；P/D 使用 KVConnectorV1 连接实例。',
-            'A Python/Rust frontend or DP coordinator assigns requests; P/D uses KVConnectorV1 to connect instances.',
+            '前端或代理生成跨实例候选并做选点；DP coordinator 只协调 DP 负载与 wave，不是通用 P/D router。P/D 的 KV 交接另由 KVConnectorV1 负责。',
+            'A frontend or proxy generates cross-instance candidates and selects among them; the DP coordinator only coordinates DP load and waves, not general P/D routing. KVConnectorV1 handles P/D KV handoff separately.',
           ],
           vl_connector: [
-            'KVConnectorV1 由 Scheduler 和 Worker 两侧共同实现：调度侧生成 metadata，worker 侧执行加载与保存。',
-            'KVConnectorV1 is implemented on both Scheduler and Worker sides: the scheduler emits metadata, workers perform loads and saves.',
+            'KVConnectorV1 是 vLLM 的 KV 交接扩展点：调度侧生成 metadata，worker 侧加载/保存。它不负责选择实例，也不是 Router 的前缀索引。',
+            'KVConnectorV1 is vLLM’s KV-handoff extension point: the scheduler emits metadata and workers load/save. It neither selects instances nor serves as the router’s prefix index.',
           ],
           vl_offload: [
-            'connector 与 offload 以 block 为所有权单位迁移 KV；本地 block table 是解码侧的最终地址。',
-            'Connectors and offload paths move KV with block ownership; the local block table is the final address on the decode side.',
+            'connector 与 offload 以 block 为单位迁移 KV；本地 block table 保存逻辑块到物理块编号的映射元数据，KV 字节在分页缓冲里。块迁移不等于 Router 的命中估计。',
+            'Connectors and offload paths move KV in blocks; the local block table stores metadata mapping logical blocks to physical block IDs, while KV bytes live in paged buffers. Block movement is not the router’s hit estimate.',
           ],
           vl_scale: [
             'TP/PP/DP/EP、弹性 EP 与 KV connector 可以独立组合；EngineCore 是执行资源的控制面。',
@@ -924,8 +947,8 @@ const chapterFromHash = () => {
             'When a request finishes, the Scheduler enters its finish/free path and releases the block references held by the request.',
           ],
           vl_table: [
-            '请求的 block table 指向物理块。引用计数归零的块会被归还，而不是立刻丢掉整张表。',
-            'The request block table points at physical blocks. Blocks whose reference count reaches zero are returned; the table is not immediately discarded.',
+            '请求的 block table 把逻辑块映射到物理块编号，引用计数归零的块会被归还；这张表是映射元数据，不是 KV 本体或物理地址本身。',
+            'The request block table maps logical blocks to physical block IDs; blocks whose reference count reaches zero are returned. The table is mapping metadata, not the KV payload or a physical address.',
           ],
           vl_pool: [
             'BlockPool 把 ref_cnt 为 0 的块放回 free queue；如果块仍有完整 hash，它仍可被前缀命中。',
@@ -1088,8 +1111,8 @@ const chapterFromHash = () => {
               'A radix tree over token paths with splittable nodes and longest-prefix matching.',
             ],
             vl: [
-              '固定大小 block 的 chain hash / block table；完整块可共享，block table 只记录逻辑块到物理块的映射。',
-              'Chained hashes and a block table over fixed-size blocks; full blocks can be shared, and the block table only maps logical blocks to physical blocks.',
+              '固定大小 block 的 chain hash / block table；完整块可共享，block table 保存逻辑块到物理块编号的映射元数据。',
+              'Chained hashes and a block table over fixed-size blocks; full blocks can be shared, and the block table stores metadata mapping logical blocks to physical block IDs.',
             ],
             impact: [
               '复用粒度取决于 page、block 与 hash 配置；索引形状本身不能判定哪一方命中更细。',
@@ -1142,24 +1165,24 @@ const chapterFromHash = () => {
             ],
           },
           {
-            q: ['如何跨实例扩展？', 'How does it scale across instances?'],
+            q: ['跨实例时，哪一层负责什么？', 'Across instances, which layer does what?'],
             sg: [
-              'cache-aware Rust router、PD/EPD、HiCache、DP attention / EP。',
-              'Cache-aware Rust router, PD/EPD, HiCache, and DP attention / EP.',
+              'sgl-router（跨 Worker 选点）· PD/EPD 角色 · HiCache（缓存分层）· DP attention / EP。',
+              'sgl-router (cross-worker selection) · PD/EPD roles · HiCache (cache tiering) · DP attention / EP.',
             ],
             vl: [
-              'KVConnectorV1、DP coordinator、TP/PP/EP、弹性 EP。',
-              'KVConnectorV1, a DP coordinator, TP/PP/EP, and elastic EP.',
+              '前端/代理（跨实例选点）· KVConnectorV1（KV 交接）· DP coordinator（DP 协调）· TP/PP/EP。',
+              'Frontend/proxy (cross-instance selection) · KVConnectorV1 (KV handoff) · DP coordinator (DP coordination) · TP/PP/EP.',
             ],
             impact: [
-              'SGLang 把前缀命中写进路由；vLLM 把分离做成可插拔 connector。',
-              'SGLang writes prefix hits into routing; vLLM turns separation into a pluggable connector.',
+              'Router/前端决定“送到哪”，Connector/传输后端决定“KV 怎样交”，实例 Scheduler 决定“本实例是否准入”。两边都有这些层，不能按引擎各归一条。',
+              'The router/frontend decides where to send; the connector or transfer backend decides how KV is handed off; the in-instance scheduler decides admission. Both engines have these layers; they are not one path per engine.',
             ],
           },
         ],
         note: [
-          '前缀密集、角色分离明显的负载，需要重点核对 SGLang 的缓存与路由路径。\n前端和连接器需要替换时，需要重点核对 vLLM V1 的接口边界与后端条件。\n这些是源码阅读与实验方向，不构成性能排名；实际取舍需要相同条件的测量。',
-          'For prefix-heavy workloads with distinct roles, inspect SGLang’s cache and routing paths.\nFor replaceable frontends and connectors, inspect vLLM V1 interfaces and backend conditions.\nThese are source-reading and experiment directions, not a performance ranking; tradeoffs require comparable measurements.',
+          '无论哪边，都先按同一组层核对：跨 Worker 选点、实例内准入与排序、KV 交接与缓存分层。\n前缀密集的负载要同时看 Router 索引与 Worker 缓存树；替换前端看选点接口，替换传输看 connector/传输后端。\n这些是源码阅读与实验方向，不构成性能排名；实际取舍需要相同条件的测量。',
+          'For either engine, check the same layers: cross-worker selection, in-instance admission/ordering, and KV handoff/cache tiering.\nFor prefix-heavy workloads, inspect both the router index and the worker cache tree; for a replaceable frontend, inspect the selection interface; for replaceable transfer, inspect the connector or backend.\nThese are source-reading and experiment directions, not a performance ranking; tradeoffs require comparable measurements.',
         ],
       },
       wireTable: {
@@ -1578,6 +1601,33 @@ const chapterFromHash = () => {
         vlBlockPool: ['vLLM BlockPool 源码', 'vLLM BlockPool source'],
         vlSched: ['vLLM Scheduler / preemption 源码', 'vLLM Scheduler / preemption source'],
         checked: ['最后核对 2026-11-05', 'Last checked 2026-11-05'],
+        deepDive: ['独立快照：跨实例路由与保留边界', 'Separate snapshots: cross-instance routing and retention boundaries'],
+        snapshotBody: [
+          '以下结论来自与本页主图不同的固定快照（2026-11-16 读取）：SGLang 074aeaf67499d06cc61300971fae90bcf4297670、vLLM 13329cca5ca75daa9cbb83446e695cdd97cae427、Dynamo 76c1889aeb078219eb4fbd2b0c0fc21df75d8d0b。它们只补足 Router、Connector 与保留边界，不替换本页 v0.5.23 / v0.33.0 的图表与 8/12 算例。',
+          'The following comes from fixed snapshots separate from this page’s main diagrams (read 2026-11-16): SGLang 074aeaf67499d06cc61300971fae90bcf4297670, vLLM 13329cca5ca75daa9cbb83446e695cdd97cae427, and Dynamo 76c1889aeb078219eb4fbd2b0c0fc21df75d8d0b. They only supplement router, connector, and retention boundaries; they do not replace this page’s v0.5.23 / v0.33.0 diagrams or the 8/12 example.',
+        ],
+        snapshotPoints: [
+          [
+            'SGLang 074aeaf：sgl-router 的 cache-aware 路径可用 KV 事件、pending 前缀与可选外部索引生成候选；Router 侧索引是独立视图，不等同 Worker 缓存树，也不证明目标实例已驻留 KV。',
+            'SGLang 074aeaf: the sgl-router cache-aware path can use KV events, pending prefixes, and an optional external index to generate candidates; the router-side index is a separate view, neither the worker cache tree nor proof that the target instance holds the KV.',
+          ],
+          [
+            'vLLM 13329cc 与 SGLang 074aeaf 都已有版本化 KV Hint 协议和请求字段；这证明协议与请求承载存在，不能证明 Pin/Share/Prefetch 等每个动作都有执行器、完成反馈和资源退役。',
+            'vLLM 13329cc and SGLang 074aeaf both carry a versioned KV hint protocol and request fields; that proves protocol and request plumbing exist, not that every action such as Pin/Share/Prefetch has an executor, completion feedback, and resource retirement.',
+          ],
+          [
+            'Dynamo 76c1889 的 KV router 同时提供事件驱动与路由决策预测两种索引/选点路径；索引 TTL 管理预测索引的过期，不是引擎 KV 保留 TTL。',
+            'Dynamo 76c1889’s KV router provides both event-driven and routing-decision prediction paths for indexing/selection; the index TTL expires a prediction index, not engine KV retention.',
+          ],
+          [
+            'SGLang 的 session reference 是软保留；RFC 中的 Pin 是有界保护，不等于永久 HBM 常驻。路由估计命中、session 引用或 Hint 字段都不等于取得资源锁或完成恢复；设计语义与动作实现要分别核对。',
+            'SGLang’s session reference is soft retention; the RFC’s Pin is bounded protection, not permanent HBM residency. An estimated routing hit, a session reference, or a hint field neither acquires a resource lock nor completes restoration; design semantics and action implementation must be checked separately.',
+          ],
+        ],
+        snapshotBoundary: [
+          '三个快照各自成立，不是共同部署、跨版本兼容或性能排名依据；RFC 的设计意图与固定快照中的动作实现也要分开核对。',
+          'The three snapshots stand alone; they are not a jointly validated deployment, a cross-version compatibility claim, or a performance ranking. RFC design intent and action implementation in a fixed snapshot must also be checked separately.',
+        ],
       },
       footer: {
         note: [
@@ -1687,12 +1737,12 @@ const chapterFromHash = () => {
         disagg: {
           note: {
             sg: [
-              'router 与 PD/EPD 角色决定 KV 从哪来；HiCache 再把前缀缓存分层。',
-              'Router and PD/EPD roles determine where KV comes from; HiCache tiers prefix storage further.',
+              'router 生成跨 Worker 候选；PD/EPD 角色与 KV 后端决定 KV 从哪来，HiCache 再把前缀缓存分层。',
+              'The router generates cross-worker candidates; PD/EPD roles and the KV backend determine where KV comes from, and HiCache tiers prefix storage further.',
             ],
             vl: [
-              'connector metadata 随 SchedulerOutput 下发；远端 KV 写入本地 KV 缓冲；block table 只保存地址映射。',
-              'Connector metadata rides with SchedulerOutput; remote KV is written into local KV buffers; block tables hold address mappings.',
+              'connector metadata 随 SchedulerOutput 下发；远端 KV 写入本地分页缓冲，block table 记录逻辑块到物理块编号的映射。',
+              'Connector metadata rides with SchedulerOutput; remote KV is written into local paged buffers, and the block table maps logical blocks to physical block IDs.',
             ],
           },
           foot: {
@@ -3672,7 +3722,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         : h('p', { className: 'ia-sectionNote' }, text);
     }
 
-    function ComparisonTable({ t, rows, title, lede }) {
+    function ComparisonTable({ t, rows, title, lede, note }) {
       return h(
         'section',
         { className: 'ia-section', 'aria-labelledby': rows ? 'ia-topic-compare-title' : 'ia-compare-title' },
@@ -3741,7 +3791,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             ),
           ),
         ),
-        rows ? null : h(SectionNote, { text: t('compare.note') }),
+        note ? h(SectionNote, { text: note }) : rows ? null : h(SectionNote, { text: t('compare.note') }),
       );
     }
 
@@ -3937,6 +3987,38 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             ),
             h('p', { className: 'ia-sourceBody' }, t('sources.body')),
             h('p', { className: 'ia-sourceChecked' }, t('sources.checked')),
+            chapter.deepDives
+              ? h(
+                  'div',
+                  { className: 'ia-deepDive' },
+                  h('h3', { className: 'ia-deepDiveTitle' }, t('sources.deepDive')),
+                  h('p', { className: 'ia-deepDiveBody' }, t('sources.snapshotBody')),
+                  h(
+                    'ul',
+                    { className: 'ia-deepDiveList' },
+                    COPY.sources.snapshotPoints.map((_, index) =>
+                      h('li', { key: `snapshot-${index}` }, t(`sources.snapshotPoints.${index}`)),
+                    ),
+                  ),
+                  h('p', { className: 'ia-deepDiveBody' }, t('sources.snapshotBoundary')),
+                  h(
+                    'ul',
+                    { className: 'ia-deepDiveLinks' },
+                    chapter.deepDives.map((link) =>
+                      h(
+                        'li',
+                        { key: link.href },
+                        h(
+                          'a',
+                          { href: link.href, target: '_blank', rel: 'noreferrer' },
+                          atlasLocale.lang === 'en' ? link.label[1] : link.label[0],
+                          ' ↗',
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : null,
           ),
           h(
             'div',
@@ -4035,6 +4117,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         h(ComparisonTable, {
           t, rows: { process: [0], batch: [3, 4], disagg: [5] }[topic],
           title: t(`reading.${topic}.title`), lede: t(`reading.${topic}.lede`),
+          note: topic === 'disagg' ? t('reading.disagg.note') : null,
         });
       return h('section', { className: 'ia-topicReading', 'data-topic': topic, 'data-reading': facet },
         h('p', { className: 'ia-readingEyebrow' }, t('reading.optional')),

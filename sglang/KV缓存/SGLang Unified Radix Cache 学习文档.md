@@ -226,6 +226,8 @@ Component 决定“能不能复用”，HiCache 决定“数据在哪”。paylo
 
 **图意解读：** 上半部堆叠 device/host hit，下半部比较 TTFT。实验同时从普通 HiRadixCache/LRU 切到 Unified Radix Cache/session-aware eviction，因此不是只改变 eviction policy 的独立 ablation。原文报告不同模型/批量点 TTFT 下降 2.9%～16.6%，只能在图中给定条件下理解。
 
+**后续源码对照：** [Agent 暂停与恢复时的 KV 保留与状态所有权](<../../大模型推理/KV缓存/Agent 暂停与恢复时的 KV 保留与状态所有权学习文档.md>)以 2026-11-16 的独立固定快照核对引用登记、关闭与 Hint 协议。它补充接口及成熟度边界，不把本篇官方文章的实验结果改称新快照的实测。
+
 ## 9. Rust Tree Core：让状态机可替换，不移动 pool 所有权
 
 随着 prefix 变长，tree traversal、lock bookkeeping、LRU update 和 eviction scan 会进入 scheduler critical path。Unified Radix Cache 先把 tree state machine 与 pool orchestration 分开，才有条件替换 Tree Core 实现。
