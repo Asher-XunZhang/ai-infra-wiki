@@ -70,45 +70,60 @@
     context.textContent = routePager.dataset.routeTitle + ' · ' + routePager.dataset.routePosition;
     document.querySelector('.lesson-header').prepend(context);
   }
-  const saveGroups=[];
-  document.querySelectorAll('.topic-group,.module-nav,.chapter-nav').forEach(group=>{
-    const key=group.classList.contains('chapter-nav')?'ai-infra-chapter-'+group.dataset.chapter:group.classList.contains('module-nav')?'ai-infra-module-'+group.dataset.module:'ai-infra-topic-'+group.dataset.topic;
-    const current=Boolean(group.querySelector('[aria-current="page"]'));
-    if(current)group.open=true;
-    else {
-      try {const stored=sessionStorage.getItem(key);if(stored!==null)group.open=stored==='open';} catch {}
-    }
-    const saveGroup=()=>{
-      try {sessionStorage.setItem(key,group.open?'open':'closed');} catch {}
-    };
-    // Also remember the current lesson's initially open ancestors.
-    saveGroup();
-    saveGroups.push(saveGroup);
-    group.addEventListener('toggle',saveGroup);
-  });
   const small=matchMedia('(max-width:900px)'),menu=document.querySelector('.sidebar-menu');
   const sidebar=document.querySelector('.site-sidebar');
-  const sitePath=new URL(document.querySelector('.site-brand')?.href||'./',location.href).pathname;
-  const scrollKey='ai-infra-sidebar-scroll:'+sitePath;
-  function restoreSidebar(){
-    if(!sidebar||small.matches)return;
-    try {
-      const saved=sessionStorage.getItem(scrollKey),top=Number(saved);
-      if(saved!==null&&Number.isFinite(top)&&top>=0)sidebar.scrollTop=top;
-    } catch {}
-  }
-  function saveSidebar(){
-    // On mobile the menu is part of the document, not a scrollable sidebar.
-    if(!sidebar||small.matches)return;
-    try {sessionStorage.setItem(scrollKey,String(sidebar.scrollTop));} catch {}
-  }
-  function adaptMenu(){if(menu)menu.open=!small.matches;restoreSidebar();}
+  const groups=sidebar?.querySelectorAll('.topic-group,.module-nav,.chapter-nav') ?? [];
+  const home=Boolean(sidebar?.querySelector('.overview-link[aria-current="page"]'));
+  function adaptMenu(){if(menu)menu.open=!small.matches;}
   small.addEventListener('change',adaptMenu);adaptMenu();
-  sidebar?.addEventListener('scroll',saveSidebar,{passive:true});
-  function saveNavigation(){saveGroups.forEach(save=>save());saveSidebar();}
-  // Capture state before navigation, even before queued scroll/toggle events.
-  sidebar?.addEventListener('click',saveNavigation,{capture:true});
-  window.addEventListener('pagehide',saveNavigation);
+  if(home){
+    // The homepage starts with its collapsed HTML navigation on every visit.
+    window.addEventListener('pageshow',event=>{
+      if(event.persisted){
+        groups.forEach(group=>{group.open=false;});
+        adaptMenu();
+        sidebar.scrollTop=0;
+      }
+      if(!location.hash)requestAnimationFrame(()=>window.scrollTo({top:0,behavior:'instant'}));
+    });
+  } else {
+    const saveGroups=[];
+    groups.forEach(group=>{
+      const key=group.classList.contains('chapter-nav')?'ai-infra-chapter-'+group.dataset.chapter:group.classList.contains('module-nav')?'ai-infra-module-'+group.dataset.module:'ai-infra-topic-'+group.dataset.topic;
+      const current=Boolean(group.querySelector('[aria-current="page"]'));
+      if(current)group.open=true;
+      else {
+        try {const stored=sessionStorage.getItem(key);if(stored!==null)group.open=stored==='open';} catch {}
+      }
+      const saveGroup=()=>{
+        try {sessionStorage.setItem(key,group.open?'open':'closed');} catch {}
+      };
+      // Also remember the current lesson's initially open ancestors.
+      saveGroup();
+      saveGroups.push(saveGroup);
+      group.addEventListener('toggle',saveGroup);
+    });
+    const sitePath=new URL(document.querySelector('.site-brand')?.href||'./',location.href).pathname;
+    const scrollKey='ai-infra-sidebar-scroll:'+sitePath;
+    function restoreSidebar(){
+      if(!sidebar||small.matches)return;
+      try {
+        const saved=sessionStorage.getItem(scrollKey),top=Number(saved);
+        if(saved!==null&&Number.isFinite(top)&&top>=0)sidebar.scrollTop=top;
+      } catch {}
+    }
+    function saveSidebar(){
+      // On mobile the menu is part of the document, not a scrollable sidebar.
+      if(!sidebar||small.matches)return;
+      try {sessionStorage.setItem(scrollKey,String(sidebar.scrollTop));} catch {}
+    }
+    small.addEventListener('change',restoreSidebar);restoreSidebar();
+    sidebar?.addEventListener('scroll',saveSidebar,{passive:true});
+    function saveNavigation(){saveGroups.forEach(save=>save());saveSidebar();}
+    // Capture state before navigation, even before queued scroll/toggle events.
+    sidebar?.addEventListener('click',saveNavigation,{capture:true});
+    window.addEventListener('pagehide',saveNavigation);
+  }
   const toc=document.querySelector('.article-toc details'),compact=matchMedia('(max-width:1220px)');
   function adaptToc(){if(toc)toc.open=!compact.matches;}
   compact.addEventListener('change',adaptToc);adaptToc();

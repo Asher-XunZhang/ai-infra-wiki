@@ -194,13 +194,13 @@ def sidebar(page, active):
              '<div class="sidebar-content">',
              f'<a class="overview-link" href="{href(page)}"' + (' aria-current="page"' if home else '') + '>学习首页 <span aria-hidden="true">↗</span></a>']
     in_foundations = page.parent == PAGES / 'foundations'
-    lines.append('<details class="chapter-nav" data-chapter="foundations"' + (' open' if in_foundations or home else '') + '><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">')
+    lines.append('<details class="chapter-nav" data-chapter="foundations"' + (' open' if in_foundations else '') + '><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">')
     for i, c in enumerate(FOUNDATIONS, 1):
         target = 'foundations/' + c['slug'] + '.html'
         selected = page == PAGES / target
         lines.append(f'<a href="{href(page, target)}"' + (' aria-current="page"' if selected else '') + f'>{i:02} {escape(c["title"])}</a>')
     lines.append('</nav></details>')
-    lines.append('<details class="chapter-nav" data-chapter="engine-comparison"' + (' open' if engine or home else '') + '><summary>第二章 · SGLang 与 vLLM 架构对照</summary><div class="module-lessons-nav engine-topic-nav">')
+    lines.append('<details class="chapter-nav" data-chapter="engine-comparison"' + (' open' if engine else '') + '><summary>第二章 · SGLang 与 vLLM 架构对照</summary><div class="module-lessons-nav engine-topic-nav">')
     for key, label, english in ENGINE_TOPICS:
         lines.append(f'<a class="lesson-link" href="{href(page, ENGINE_COMPARISON, key)}"><span>{escape(label)}</span><small>{escape(english)}</small></a>')
     lines.append('</div></details>')
