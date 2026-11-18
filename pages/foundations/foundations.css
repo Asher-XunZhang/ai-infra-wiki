@@ -37,6 +37,10 @@
 #understand,#lesson-animation,#lesson-glossary,#lesson-examples{scroll-margin-top:88px}#lesson-glossary>h2,#lesson-examples>h2{font-size:22px;margin:32px 0 14px}
 @media(max-width:600px){.concept-nav{grid-template-columns:1fr}.concept-problem{padding:16px}.concept-guide>h2{font-size:21px}.concept-heading{gap:10px}.concept-heading h3{font-size:19px}.concept-topic p{font-size:15px;line-height:1.9}.concept-example{padding:15px 14px}.concept-example li{font-size:14px}.concept-table{font-size:13px}.concept-table th:first-child{width:25%}.concept-topic{padding:24px 0}}
 .concept-check{padding:22px;margin-top:28px;background:var(--soft);border:1px solid var(--border);border-radius:8px}.concept-check h3{font-size:16px;margin:0 0 8px}.concept-check p{font-size:15px;line-height:1.85;margin:10px 0}.concept-check summary{cursor:pointer;color:var(--accent);font-size:14px;padding:8px 0}
+.foundation-reading{max-width:100%;margin:24px 0}.foundation-reading .foundation-copy{margin:18px 0 8px}
+.foundation-reading [id]{scroll-margin-top:88px}
+.foundation-math{display:flex;align-items:center;flex-wrap:wrap;gap:10px 22px;overflow-x:auto;max-width:100%;min-width:0;margin:12px 0;padding:10px 12px;border-inline-start:2px solid var(--accent);background:var(--soft);font-size:16px}
+.foundation-math math{flex:none;margin:2px 0}
 
 /* Implementation lessons: need → mechanism → tradeoff, with scoped evidence. */
 .implementation-design{max-width:880px;margin:30px 0 42px;overflow-wrap:anywhere}

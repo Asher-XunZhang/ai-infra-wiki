@@ -221,13 +221,11 @@
   <details class="mh-math">
    <summary>完整矩阵与逐项数值（展开核对，不代替上面的过程）</summary>
    <div class="mh-math-body">
-    <p class="mh-mono">x=${fmt(data.x)}　K=[[1,0],[0,1]]　V=[[2,0],[0,2]]</p>
-    <p class="mh-mono">Wq0=[[1,0],[0,0]]　Wq1=[[0,0],[0,1]]</p>
-    <p class="mh-mono">Wo=[[.5,0],[0,.5],[.5,0],[0,.5]]</p>
+    ${matrixReadout(data)}
     <div class="mh-math-scroll"><table class="mh-math-table"><thead><tr><th>头</th><th>q</th><th>s</th><th>e^s</th><th>w</th><th>h</th></tr></thead><tbody>
      ${data.heads.map(head => `<tr><th>h${head.index}</th><td>${fmt(head.q)}</td><td>${fmt(head.scores)}</td><td>${fmt(head.exps, 3)}</td><td>[${head.weights.map(w => w.toFixed(8)).join(', ')}]</td><td>[${fmt4(head.result)}]</td></tr>`).join('')}
     </tbody></table></div>
-    <p class="mh-mono">concat=[${fmt4(data.concat)}]　y=[${fmt4(data.output)}]</p>
+    <p>投影前有四个拼接坐标，输出有两个分量。分步数值可在上方展开核对。</p>
     <p class="mh-note">这是独立教学数值；没有运行模型服务、GPU 或性能实验。</p>
    </div>
   </details>
@@ -235,47 +233,49 @@
  </div>`;
  }
 
+ function matrixReadout(data) {
+  const {variable,op,vector,matrix,display,sub} = window.FoundationMath;
+  const value = (symbol,entries) => symbol+op('=')+matrix(entries);
+  return display(variable('x')+op('=')+vector(data.x),
+   value(variable('K'),K),value(variable('V'),V),
+   ...WQ.map((weights,i)=>value(sub('W','q'+i),weights)),
+   value(sub('W','o'),WO));
+ }
+
  function renderDetail(step, state, data) {
-  const h0 = data.heads[0], h1 = data.heads[1];
-  const pending = '…';
+  const {num,op,variable,text,join,vector,display,sub,frac,sqrt} = window.FoundationMath;
+  const dataVector = (visible, values, digits=4) =>
+   visible ? vector(values, v => v.toFixed(digits)) : text('待计算');
+  const heads = data.heads;
   switch (step) {
    case 0:
-    return `<p>先固定投影前输入：</p><div class="mh-eq"><code>x = [1, 1]</code></div><p class="mh-note">x 不是 Query。它同时进入两个头，下一步才分别乘 Wq0、Wq1；K/V 也还没有参与。</p>`;
+    return '<p>固定两个头共用的输入。</p>' + display(variable('x')+op('=')+vector(data.x));
    case 1:
-    return `<p>同一个 x，两个不同的投影：</p>
-     <div class="mh-eq"><code>q0 = x·Wq0 = ${state.qArrived[0] ? fmt(h0.q) : pending}</code></div>
-     <div class="mh-eq"><code>q1 = x·Wq1 = ${state.qArrived[1] ? fmt(h1.q) : pending}</code></div>
-     <p class="mh-note">q0、q1 才是各头的 Query；x 是它们共同的投影前输入。两个副本依次飞出只为便于观察，不表示头 0 是头 1 的前置条件；两头投影彼此独立，可以并行计算，这里不讨论性能收益。</p>`;
+    return '<p>两个头各自投影同一个输入，彼此可以并行。</p>' + display(...heads.map((h,i) =>
+     sub('q',i)+op('=')+variable('x')+op('·')+sub('W','q'+i)+op('=')+dataVector(state.qArrived[i],h.q,0)));
    case 2:
-    return `<p>两头各自与同一组 K 比较，除以 √2：</p>
-     <div class="mh-eq"><code>头 0：s = q0·K/√2 = ${state.scoreReady[0].every(Boolean) ? fmt(h0.scores) : pending}</code></div>
-     <div class="mh-eq"><code>头 1：s = q1·K/√2 = ${state.scoreReady[1].every(Boolean) ? fmt(h1.scores) : pending}</code></div>
-     <p class="mh-note">s 还是分数，不是权重。下一段才做 e^s 与归一化。</p>`;
+    return '<p>每个头用自己的 Query 与同一组 Key 打分。</p>' + display(...heads.map((h,i) =>
+     sub('s',i)+op('=')+frac(sub('q',i)+op('·')+variable('Kᵀ'),sqrt(num(2)))
+     +op('≈')+dataVector(state.scoreReady[i].every(Boolean),h.scores)));
    case 3:
-    const w0 = state.weightReady[0].every(Boolean) ? `[${h0.weights.map(w => pct(w)).join(', ')}]` : pending;
-    const w1 = state.weightReady[1].every(Boolean) ? `[${h1.weights.map(w => pct(w)).join(', ')}]` : pending;
-    return `<p>每个头独立 softmax：</p>
-     <div class="mh-eq"><code>头 0：e^s=${fmt(h0.exps, 3)}，Σ=${h0.denominator.toFixed(3)}<br>w = ${w0}</code></div>
-     <div class="mh-eq"><code>头 1：e^s=${fmt(h1.exps, 3)}，Σ=${h1.denominator.toFixed(3)}<br>w = ${w1}</code></div>
-     <p class="mh-note">${state.weightReady[0].every(Boolean) && state.weightReady[1].every(Boolean) ? '两套权重都已形成，它们分别属于各自的头。' : '归一化进行中；权重未完成前不显示为最终结果。'}</p>`;
+    return '<p>每个头用自己这一行的分母归一化。</p>' + display(...heads.map((h,i) =>
+     sub('w',i)+op('≈')+frac(vector(h.exps,v=>v.toFixed(4)),num(h.denominator.toFixed(4)))
+     +op('≈')+dataVector(state.weightReady[i].every(Boolean),h.weights)));
    case 4:
-    return `<p>每个头逐位置乘 V，再逐维相加：</p>
-     <div class="mh-eq"><code>头 0：${state.contribReady[0][0] ? `${h0.weights[0].toFixed(4)}×${fmt(h0.v[0])} = ${fmt(h0.contributions[0], 4)}` : pending}<br>${state.contribReady[0][1] ? `${h0.weights[1].toFixed(4)}×${fmt(h0.v[1])} = ${fmt(h0.contributions[1], 4)}` : pending}<br>h0 = ${state.resultReady[0] ? `[${fmt4(h0.result)}]` : pending}</code></div>
-     <div class="mh-eq"><code>头 1：${state.contribReady[1][0] ? `${h1.weights[0].toFixed(4)}×${fmt(h1.v[0])} = ${fmt(h1.contributions[0], 4)}` : pending}<br>${state.contribReady[1][1] ? `${h1.weights[1].toFixed(4)}×${fmt(h1.v[1])} = ${fmt(h1.contributions[1], 4)}` : pending}<br>h1 = ${state.resultReady[1] ? `[${fmt4(h1.result)}]` : pending}</code></div>
-     <p class="mh-note">两个头各自形成结果；这里还没有 concat，也没有 Wo。</p>`;
+    return '<p>每个头把两个位置的加权贡献逐维相加。</p>' + display(...heads.map((h,i) => {
+     const terms=h.contributions.map((v,j)=>dataVector(state.contribReady[i][j],v));
+     return sub('h',i)+op('≈')+join(terms,'+')+op('≈')+dataVector(state.resultReady[i],h.result);
+    }));
    case 5:
-    const slotStatus = i => state.slotArrived[i] ? '已放入' : state.concat[i].local > 0 ? '放入中' : '待放入';
-    return `<p>四个坐标按头序进入四个槽：</p>
+    return `<p>四个坐标按头序放入槽位，数值保持不变。</p>
      <ol class="mh-slot-list">
-      ${data.concat.map((value, i) => `<li data-head="${i < 2 ? 0 : 1}"><span>槽 ${i + 1}</span><code>h${i < 2 ? 0 : 1}_${i % 2} = ${value.toFixed(4)}</code><b>${slotStatus(i)}</b></li>`).join('')}
-     </ol>
-     <p class="mh-note">只改变位置，不改写数值，也不做加法。当前 ${state.slotCount}/4 个槽已放入；未放入的槽会区分“待放入”和“放入中”。</p>`;
+      ${data.concat.map((value,i)=>`<li data-head="${i < 2 ? 0 : 1}"><span>槽 ${i+1}</span><code>h${i < 2 ? 0 : 1}_${i%2} = ${value.toFixed(4)}</code><b>${state.slotArrived[i]?'已放入':state.concat[i].local>0?'放入中':'待放入'}</b></li>`).join('')}
+     </ol>`;
    case 6:
-    return `<p>Wo 只读取指定坐标并组合成两个输出：</p>
-     <div class="mh-eq"><code>y0 = .5·h0_0 + 0·h0_1 + .5·h1_0 + 0·h1_1 = ${state.outReady[0] ? data.output[0].toFixed(2) : pending}</code></div>
-     <div class="mh-eq"><code>y1 = 0·h0_0 + .5·h0_1 + 0·h1_0 + .5·h1_1 = ${state.outReady[1] ? data.output[1].toFixed(2) : pending}</code></div>
-     <p class="mh-wo-paths">${[0, 1, 2, 3].map(i => `<span data-head="${i < 2 ? 0 : 1}" data-arrived="${state.woArrived[i]}">${i < 2 ? 'h0' : 'h1'}_${i % 2} × .5 → y${i % 2}</span>`).join('')}</p>
-     <p class="mh-note">这组 Wo 是特选：恰好等于两头同坐标平均。一般 output projection 是学出来的 4×2 矩阵，可混合全部 4 个坐标，不能说成固定平均。</p>`;
+    return '<p>四个坐标乘输出投影，得到两个输出分量。</p>' + display(...data.output.map((value,i) => {
+     const terms=WO.map((weights,j)=>num(weights[i])+op('·')+sub('h',`${Math.floor(j/2)},${j%2}`));
+     return sub('y',i)+op('=')+join(terms,'+')+op('≈')+(state.outReady[i]?num(value.toFixed(2)):text('待计算'));
+    })) + `<p class="mh-wo-paths">${[0,1,2,3].map(i=>`<span data-head="${i < 2 ? 0 : 1}" data-arrived="${state.woArrived[i]}">h${i<2?0:1}_${i%2} × 0.5 → y${i%2}</span>`).join('')}</p>`;
    default: return '';
   }
  }

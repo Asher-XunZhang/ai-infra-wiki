@@ -116,4 +116,15 @@ for(const lab of document.querySelectorAll('[data-foundation-lab]')){
  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});window.addEventListener('pagehide',stop);lab.closest('details')?.addEventListener('toggle',e=>{if(!e.target.open)stop();});render();
 }
 for(const quiz of document.querySelectorAll('.fd-quiz')){quiz.hidden=false;quiz.addEventListener('submit',e=>{e.preventDefault();const selected=quiz.querySelector('input:checked'),out=quiz.querySelector('.fd-feedback');if(!selected){out.textContent='先选一个判断，再对照演示。';return;}out.textContent=(selected.value===quiz.dataset.answer?'判断正确。':'再看一下图中的变化。')+quiz.dataset.feedback;});}
+
+function revealReadingSection(){
+ let target;
+ try{target=document.getElementById(decodeURIComponent(location.hash.slice(1)));}catch{return;}
+ const section=target?.closest('details.foundation-reading');
+ if(!section)return;
+ section.open=true;
+ requestAnimationFrame(()=>target.scrollIntoView({block:'start'}));
+}
+revealReadingSection();
+window.addEventListener('hashchange',revealReadingSection);
 })();

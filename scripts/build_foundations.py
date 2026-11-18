@@ -6,6 +6,7 @@ from html import escape
 from pathlib import Path
 from urllib.parse import quote
 from build_learning_navigation import ROOT, PAGES, FOUNDATIONS, FOUNDATION_BY_SLUG, sidebar
+from foundation_equations import foundation_math
 from transformer_equations import math_html, playback_templates, render_equations
 
 EXTENSIONS = json.loads((PAGES / 'foundations/extensions.json').read_text(encoding='utf-8'))
@@ -57,15 +58,17 @@ def concept_guide(c):
         f'<a href="#why-{t["id"]}">{escape(t["title"])}</a>' for t in topics) + '</nav>'
     body = []
     for n, t in enumerate(topics, 1):
-        content = paragraphs(t['paragraphs'])
+        content = paragraphs(t['paragraphs']) + foundation_math(t.get('equations', ()))
         if table := t.get('table'):
             content += concept_table(table)
         if ex := t.get('example'):
             steps = ''.join(f'<li>{escape(s)}</li>' for s in ex['steps'])
             example_table = concept_table(ex['table']) if ex.get('table') else ''
-            content += f'<aside class="concept-example" aria-labelledby="example-{t["id"]}"><h4 id="example-{t["id"]}">{escape(ex["title"])}</h4>{example_table}<ol>{steps}</ol><p class="concept-note">{escape(ex["note"])}</p></aside>'
+            formulas = foundation_math(ex.get('equations', ()))
+            content += f'<aside class="concept-example" aria-labelledby="example-{t["id"]}"><h4 id="example-{t["id"]}">{escape(ex["title"])}</h4>{example_table}<ol>{steps}</ol>{formulas}<p class="concept-note">{escape(ex["note"])}</p></aside>'
         if detail := t.get('detail'):
-            content += f'<details class="concept-background"><summary>{escape(detail["title"])}</summary>{paragraphs(detail["paragraphs"])}</details>'
+            formulas = foundation_math(detail.get('equations', ()))
+            content += f'<details class="concept-background"><summary>{escape(detail["title"])}</summary>{paragraphs(detail["paragraphs"])}{formulas}</details>'
         if t.get('links'):
             content += '<ul class="concept-links">' + ''.join(f'<li><a href="{escape(url, quote=True)}">{escape(label)} →</a></li>' for label, url in t['links']) + '</ul>'
         if t.get('refs'):
@@ -73,7 +76,7 @@ def concept_guide(c):
         body.append(f'<section id="why-{t["id"]}" class="concept-topic"><div class="concept-heading"><span aria-hidden="true">{n:02}</span><h3>{escape(t["title"])}</h3></div>{content}<a class="concept-back" href="#understand">回到问题导航 ↑</a></section>')
     check = CONCEPTS[c['slug']]['check']
     challenge = f'<aside class="concept-check"><h3>试着解释</h3><p>{escape(check["question"])}</p><details><summary>展开解释</summary><p>{escape(check["answer"])}</p></details></aside>'
-    return '<section id="understand" class="concept-guide"><h2>理解设计：为什么需要这些机制？</h2>' + nav + ''.join(body) + challenge + '</section>'
+    return '<section id="understand" class="concept-guide"><h2>为什么这样做？</h2>' + nav + ''.join(body) + challenge + '</section>'
 
 
 
@@ -446,7 +449,7 @@ def attention_variants_static():
 <tr><th scope="row">FlashAttention / PagedAttention</th><td>计算与搬运 / KV 的物理存储。</td><td>前者分块计算并在线归一化；后者通过块表读取非连续的 KV 块。</td><td>这是工程实现维度，不等于改变模型读取哪些逻辑位置。</td></tr>
 </tbody></table></div>
 <p class="av-static-note"><strong>边界：</strong>本模块只画对象与访问关系，不比较速度、显存或模型质量；图中不展开 softmax 表、矩阵数值或误差向量。详细推导、版本差异与源码边界见本页末尾 <a href="#deep-reading">仓内深入阅读</a>。</p>
-<p class="av-static-links"><a href="#attention-variants">回到交互图</a><a href="components.html#layer-atlas">第 04 课 Transformer 架构图</a><a href="hardware.html#concept-3">第 07 课 FlashAttention</a></p>
+<p class="av-static-links"><a href="#attention-variants">回到交互图</a><a href="components.html#layer-atlas">第 02 课 Transformer 前向总览</a><a href="hardware.html#concept-3">第 07 课 FlashAttention</a></p>
 </details>"""
 
 def mechanism_atlas(slug):
@@ -493,40 +496,38 @@ def render(c, i):
     page = PAGES / 'foundations' / (c['slug'] + '.html')
     title = escape(c['title'])
     is_components = c['slug'] == 'components'
-    intro = MECHANISMS.get(c['slug'], {}).get('intro', c['intro'])
-    intro_html = '' if is_components else f'<p class="foundation-intro">{escape(intro)}</p>'
+    if is_components:
+        intro_html = ''
+    else:
+        intro_html = f'<p class="foundation-intro">{escape(CONCEPTS[c["slug"]]["problem"])}</p>'
     prerequisites = '从这一课开始，不要求推理知识。' if not c['prerequisites'] else '先看：' + ' · '.join(f'<a href="{slug}.html">{escape(FOUNDATION_BY_SLUG[slug]["title"])}</a>' for slug in c['prerequisites'])
     terms = ''.join(f'<div><dt>{escape(a)}</dt><dd>{escape(b)}</dd></div>' for a, b in c['terms'])
     sections = ''.join(f'<section id="concept-{n}"><h2>{escape(a)}</h2><p>{escape(b)}</p></section>' for n, (a, b) in enumerate(c['sections']))
     terms_html = f'<dl class="foundation-terms" aria-label="这课用到的词">{terms}</dl>'
-    if c['slug'] == 'communication':
-        terms_html = f'<details class="parallel-glossary"><summary>展开：Rank、Root、Count、RMA 与 Stream</summary>{terms_html}</details>'
     reading_entry = ''
     if len(c['sections']) >= 4 and not c.get('reading_groups'):
         reading_entry = '<nav class="parallel-reading-nav" aria-label="本课阅读入口">' + ''.join(f'<a href="#concept-{n}">{escape(a.split("：")[0])}</a>' for n, (a, b) in enumerate(c['sections'])) + '</nav>'
     if c.get('reading_groups'):
         sections = reading_guide(c)
-        terms_html = f'<details id="parallel-glossary" class="parallel-glossary"><summary>术语速查 · 英文全称与含义</summary>{terms_html}</details>'
+        terms_html = f'<div id="parallel-glossary">{terms_html}</div>'
         reading_entry = '<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#parallel-animation">操作动画</a><a href="#parallel-overview">机制速览</a><a href="#parallel-glossary">术语速查</a><a href="#evidence">来源与边界</a></nav><div id="parallel-animation"></div>'
     # Keep existing per-mechanism navigation beside its original content.
     reading_entry = reading_entry.replace('aria-label="本课阅读入口"', 'aria-label="算例与机制入口"')
     reading_entry = reading_entry.replace('<div id="parallel-animation"></div>', '')
     animation_anchor = '<div id="parallel-animation"></div>' if c.get('reading_groups') else ''
-    learning_entry = '<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#understand">理解设计</a><a href="#lesson-animation">观察过程</a><a href="#lesson-glossary">术语速查</a><a href="#lesson-examples">算例与取舍</a><a href="#evidence">来源</a></nav>'
+    learning_entry = '<nav class="parallel-reading-nav" aria-label="本课阅读入口"><a href="#lesson-animation">操作演示</a><a href="#understand">为什么这样做</a><a href="#lesson-examples">选读与取舍</a><a href="#lesson-glossary">术语速查</a><a href="#evidence">来源</a></nav>'
     if c['slug'] == 'parallel':
-        learning_entry = learning_entry.replace('<a href="#understand">理解设计</a>', '<a href="#parallel-goals">先问哪里不够</a><a href="#understand">理解设计</a>')
-        learning_entry = learning_entry.replace('<a href="#lesson-animation">观察过程</a>', '<a href="#parallel-space-time">两轴对照</a><a href="#lesson-animation">观察过程</a>')
+        learning_entry = learning_entry.replace('<a href="#lesson-animation">操作演示</a>', '<a href="#parallel-goals">从目标选策略</a><a href="#lesson-animation">操作演示</a>')
     if c['slug'] == 'deployment':
-        learning_entry = learning_entry.replace('<a href="#lesson-animation">观察过程</a>', '<a href="#deployment-contrast">部署对照</a><a href="#lesson-animation">观察过程</a>')
+        learning_entry = learning_entry.replace('<a href="#lesson-animation">操作演示</a>', '<a href="#deployment-contrast">部署对照</a><a href="#lesson-animation">操作演示</a>')
     if c['slug'] == 'serving':
-        learning_entry = learning_entry.replace('<a href="#lesson-animation">观察过程</a>', '<a href="#serving-adoption">服务对照</a><a href="#lesson-animation">观察过程</a>')
+        learning_entry = learning_entry.replace('<a href="#lesson-animation">操作演示</a>', '<a href="#serving-adoption">服务对照</a><a href="#lesson-animation">操作演示</a>')
     if c['slug'] == 'speculation':
-        learning_entry = learning_entry.replace('<a href="#lesson-animation">观察过程</a>', '<a href="#speculation-adoption">调用对照</a><a href="#lesson-animation">观察过程</a>')
+        learning_entry = learning_entry.replace('<a href="#lesson-animation">操作演示</a>', '<a href="#speculation-adoption">调用对照</a><a href="#lesson-animation">操作演示</a>')
     if c['slug'] == 'cache':
-        learning_entry = learning_entry.replace('<a href="#lesson-animation">观察过程</a>', '<a href="#cache-static">核心摘要</a><a href="#lesson-animation">观察过程</a>')
+        learning_entry = learning_entry.replace('<a href="#lesson-animation">操作演示</a>', '<a href="#cache-static">历史如何保存</a><a href="#lesson-animation">操作演示</a>')
     if c['slug'] == 'attention':
-        learning_entry = learning_entry.replace('<a href="#lesson-animation">观察过程</a>', '<a href="#attention-motive">先看动机</a><a href="#lesson-animation">观察过程</a><a href="#multihead">多头算例</a>')
-        learning_entry = learning_entry.replace('<a href="#multihead">多头算例</a>', '<a href="#multihead">多头算例</a><a href="#attention-variants">变体定位</a>')
+        learning_entry = learning_entry.replace('<a href="#lesson-examples">选读与取舍</a>', '<a href="#multihead">多头算例</a><a href="#lesson-examples">选读与取舍</a>')
     sources = ''.join(f'<li><a href="{escape(url, quote=True)}">{escape(name)}</a></li>' for name, url in c['sources'])
     visual_refs = ''
     if c.get('visual_references'):
@@ -552,7 +553,7 @@ def render(c, i):
     if c['slug'] in {'tokens', 'generation', 'attention', 'cache', 'deployment'}:
         mechanism_assets += '<link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-scenes.js" defer></script><script src="../motion/teaching-visuals.js" defer></script>'
         if c['slug'] == 'attention':
-            mechanism_assets += '<script src="../motion/attention-visual.js" defer></script><link rel="stylesheet" href="../motion/components.css"><script src="components-model.js" defer></script><script src="../motion/attention-motive.js" defer></script><link rel="stylesheet" href="../motion/attention-layer.css"><script src="../motion/attention-layer.js" defer></script><link rel="stylesheet" href="../motion/attention-multihead.css"><script src="../motion/attention-multihead.js" defer></script><link rel="stylesheet" href="../motion/attention-variants.css"><script src="../motion/attention-variants.js" defer></script>'
+            mechanism_assets += '<script src="math.js" defer></script><script src="../motion/attention-visual.js" defer></script><link rel="stylesheet" href="../motion/components.css"><script src="components-model.js" defer></script><script src="../motion/attention-motive.js" defer></script><link rel="stylesheet" href="../motion/attention-multihead.css"><script src="../motion/attention-multihead.js" defer></script><link rel="stylesheet" href="../motion/attention-variants.css"><script src="../motion/attention-variants.js" defer></script>'
         elif c['slug'] != 'deployment':
             mechanism_assets += '<script src="../motion/basics-visuals.js" defer></script>'
         if c['slug'] == 'generation':
@@ -577,12 +578,14 @@ def render(c, i):
     if c['slug'] == 'parallel':
         mechanism_assets += '<link rel="stylesheet" href="../motion/parallel-adoption.css"><link rel="stylesheet" href="../motion/parallel-pcp.css"><link rel="stylesheet" href="../motion/parallel-dcp.css"><script src="parallel-model.js" defer></script><script src="../motion/parallel-scenes.js" defer></script><script src="../motion/parallel-tensor.js" defer></script><script src="../motion/parallel-routing.js" defer></script><script src="../motion/parallel-dp.js" defer></script><script src="../motion/parallel-adoption.js" defer></script><script src="../motion/parallel-pcp.js" defer></script><script src="../motion/parallel-visuals.js" defer></script><link rel="stylesheet" href="../motion/parallel-goals.css"><script src="../motion/parallel-goals.js" defer></script><link rel="stylesheet" href="../motion/parallel-space-time.css"><script src="../motion/parallel-space-time.js" defer></script>'
     if extension:
-        extension_assets = '<link rel="stylesheet" href="../sglang/inference-overview/overview.css"><link rel="stylesheet" href="../diagrams.css"><script src="../sglang/inference-overview/model.js" defer></script><script src="../diagrams.js" defer></script><script src="../sglang/inference-overview/overview.js" defer></script>'
+        extension_lead = ''
         if c['slug'] == 'generation':
-            extension_assets += '<link rel="stylesheet" href="../motion/journey-layer.css"><script src="../motion/journey-layer.js" defer></script>'
+            extension_assets = '<link rel="stylesheet" href="../motion/journey-layer.css"><script src="../motion/journey-layer.js" defer></script>'
+        else:
+            extension_assets = '<link rel="stylesheet" href="../sglang/inference-overview/overview.css"><link rel="stylesheet" href="../diagrams.css"><script src="../sglang/inference-overview/model.js" defer></script><script src="../diagrams.js" defer></script><script src="../sglang/inference-overview/overview.js" defer></script>'
+            extension_lead = '<p>主线之外的完整机制对照图。沿用原课程的教学假设；不代表 SGLang 的运行轨迹。</p>'
         extension_html = (f'<details class="foundation-extension" id="mechanism-extension"><summary>选读 · {escape(extension["title"])}</summary>'
-            '<p>主线之外的完整机制对照图。沿用原课程的教学假设；不代表 SGLang 的运行轨迹。</p>'
-            + extension['html'] + f'<p><a href="../sglang/inference-overview/{extension["source_lesson"]}">转到 SGLang：核对实现接口与固定源码 →</a></p></details>')
+            + extension_lead + extension['html'] + f'<p><a href="../sglang/inference-overview/{extension["source_lesson"]}">转到 SGLang：核对实现接口与固定源码 →</a></p></details>')
     motive_html = ''
     if c['slug'] == 'attention':
         motive_html = '''<section id="attention-motive" class="attention-motive" aria-labelledby="attention-motive-title">
@@ -622,11 +625,10 @@ def render(c, i):
         lab_html += '<p class="foundation-prereqs">FlashAttention 的 tiling 与 online softmax 只重排精确 Attention 的读写顺序；六组 Attention 机制与各自缓存/候选差异见 <a href="attention.html#attention-variants">第 03 课变体主入口</a>。</p>'
     goal_selector = parallel_goal_selector() if c['slug'] == 'parallel' else ''
     space_time_entry = parallel_space_time_entry() if c['slug'] == 'parallel' else ''
-    output_chain_bridge = ''
-    if c['slug'] == 'generation':
-        output_chain_bridge = '\n<p class="foundation-prereqs">想看候选分数怎样从前面的计算得到，可以到第 04 课<a href="components.html#layer-atlas">播放完整前向</a>，或<a href="components.html#output-chain">对照移除一个位置后的候选分数</a>。</p>'
-    elif c['slug'] == 'attention':
-        output_chain_bridge = '\n<p class="foundation-prereqs">想跟踪 Attention 的输出怎样进入残差、FFN 和输出头，可以到第 04 课<a href="components.html#layer-atlas">播放完整前向</a>，或<a href="components.html#output-chain">对照移除一个 K/V 位置后的结果</a>。</p>'
+    if c['slug'] == 'attention':
+        extension_html = ('<aside class="foundation-prereqs" id="mechanism-extension">'
+            '<p>看完 Attention 的汇聚结果，可以回到<a href="components.html#layer-atlas">第 02 课的完整前向</a>沿着残差和 FFN 往下走。'
+            '要比较少读一个位置会发生什么，可以在同一课做<a href="components.html#output-chain">屏蔽「法国」的实验</a>。</p></aside>')
     mechanism_block = f'{learning_entry}{goal_selector}{space_time_entry}{static_summary}\n<div id="lesson-animation"></div>\n{animation_anchor}\n{lab_html}'
     if c['slug'] in MECHANISMS:
         mechanism_assets += '<link rel="stylesheet" href="../motion/foundation-atlas.css"><script src="../motion/foundation-atlas.js" defer></script>'
@@ -643,16 +645,20 @@ def render(c, i):
     else:
         shared_motion_assets = '<script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script>'
         mechanism_assets += '<script src="../motion/camera.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script>'
+        examples = f'{reading_entry}<div class="foundation-copy">{sections}</div>'
+        if c.get('reading_groups'):
+            examples = f'<section id="lesson-examples"><h2>按问题查阅取舍</h2>{examples}</section>'
+        else:
+            examples = f'<details class="concept-background foundation-reading" id="lesson-examples"><summary>选读与取舍</summary>{examples}</details>'
         lesson_body = f'''
-<section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>{escape(CONCEPTS[c['slug']]['problem'])}</p></section>
-{motive_html}
 {mechanism_block}
-{multihead_html}{attention_variants_html}{output_chain_bridge}
 {concept_guide(c)}
-<section id="lesson-glossary"><h2>术语速查</h2>{terms_html}</section>
-<section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2>{reading_entry}<div class="foundation-copy">{sections}</div></section>
 <form class="fd-quiz" data-answer="{c['answer']}" data-feedback="{escape(c['feedback'], quote=True)}" hidden><fieldset><legend>{escape(c['question'])}</legend>{choices}</fieldset><button type="submit">检查判断</button><p class="fd-feedback" aria-live="polite"></p></form>
-<details class="foundation-fallback"><summary>自测与解释：{escape(c['question'])}</summary><p>{escape(c['feedback'])}</p></details>'''
+<noscript><details class="foundation-fallback"><summary>{escape(c['question'])}</summary><p>{escape(c['feedback'])}</p></details></noscript>
+{multihead_html}
+{examples}
+{motive_html}{attention_variants_html}
+<details class="concept-background foundation-reading" id="lesson-glossary"><summary>术语速查</summary>{terms_html}</details>'''
     return f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title} · 推理基础</title><meta name="description" content="{escape(c['lead'], quote=True)}"><link rel="icon" href="data:,"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script>{shared_motion_assets}{mechanism_assets}{extension_assets}</head>
 <body data-page="foundations" data-lesson="{c['slug']}"><a class="skip-link" href="#main-content">跳到正文</a>

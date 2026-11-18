@@ -241,7 +241,12 @@ function attentionDeepDive(d){
   pause();tl?.kill();visual?.destroy();visual=null;scenario=choices[index];clock={p:0};lastPhase=-1;title.textContent=scenario.title;intro.textContent=scenario.intro;boundary.textContent=scenario.boundary;range.max=scenario.frames.length-1;
   continuation.replaceChildren();continuation.hidden=true;
   if(key==='f-tokens'){const ids=scenario.data?.ids;continuation.hidden=false;continuation.append(node('h3','','Detokenization：同一串 ID 也能还原文字'),node('p','',ids?`本例把 [${ids.join(', ')}] 交给同一个 tokenizer 解码，会还原为“${scenario.data.text}”。这里还原的是输入；生成新回答还需要下一课的模型计算与输出选择。`:'同一 tokenizer 的词表也能把 ID 还原为文字。本课先看输入侧；聊天模板与模型计算属于另外的步骤。'));}
-  if(key==='f-attention'){const d=scenario.data;continuation.hidden=false;continuation.append(attentionDeepDive(d));continuation.append(node('p','motion-attention-data-note','Attention 的输出 m 还不是整层结果：完整层里先做 x₁ = x + Attention(Norm(x))，再对 x₁ 归一化并送入 MLP，最后 y = x₁ + MLP(Norm(x₁))。上方的“进入完整层”会带着同一个 Query 与暂停位置走一遍来源 → 操作 → 结果，回来时仍停在这一帧。'));}
+  if(key==='f-attention'){
+   continuation.hidden=false;
+   const link=node('a','','在第 02 课追踪汇聚结果进入残差与 FFN →');
+   link.href='components.html#layer-atlas';
+   continuation.append(attentionDeepDive(scenario.data),link);
+  }
   if(key==='f-parallel'&&scenario.kind==='parallel-tp'){continuation.hidden=false;const nav=node('nav','concept-links');nav.setAttribute('aria-label','单独查看通信操作');for(const [label,index]of [['Broadcast：复制输入',29],['Scatter：分发输入列',30],['AllGather：收齐输出列',31],['AllReduce：贡献求和',32]]){const a=node('a','',label+' ↗');a.href='communication.html?mv='+index+'#mechanism-process';nav.append(a);}continuation.append(nav,node('p','','图中的输入复制与切分说明数据布局；实际 TP 输入可能已在各 rank，或沿用前一层的分片，无需每层都重新广播、分发。'));}
   viewport.querySelector('.motion-handoff')?.remove();motionHandoffHost?.replaceChildren();svg.dataset.placement='same-host';
   handoff=window.HandoffBoundaries?.mount(handoffHost,scenario.boundaryKey||key,placement=>{svg.dataset.placement=placement;paint();});

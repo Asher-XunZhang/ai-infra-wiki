@@ -23,9 +23,9 @@
 <a class="overview-link" href="./" aria-current="page">学习首页 <span aria-hidden="true">↗</span></a>
 <details class="chapter-nav" data-chapter="foundations"><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
 <a href="foundations/tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
-<a href="foundations/generation.html">02 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="foundations/components.html">02 Transformer 前向总览：从输入向量到下一 token</a>
 <a href="foundations/attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
-<a href="foundations/components.html">04 Transformer 基础部件：一层内部怎样计算？</a>
+<a href="foundations/generation.html">04 自回归生成：Prefill 与 Decode 怎样接续？</a>
 <a href="foundations/cache.html">05 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
 <a href="foundations/batching.html">06 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
 <a href="foundations/hardware.html">07 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
@@ -157,11 +157,11 @@
 <a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 并排查看两套引擎的进程、通信、缓存、调度、分离扩展与延迟口径。</p><span>七个主题 · 保留各自版本边界</span></a>
 <a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十三模块 · 二十一节实现课程</span></a></div></section>
 <section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>
-<p>第一章从文字、生成、Attention 与基础部件，走向缓存、调度、硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">
+<p>先把文字变成向量，再沿一次 Transformer 前向追到下一 token。接着拆开 Attention，看看生成怎样一轮轮接续，最后理解历史状态为什么值得缓存。</p><ol class="foundation-lessons">
 <li><a href="foundations/tokens.html"><span class="lesson-no">01</span><span><strong>Tokenization 与 Embedding：文字怎样变成模型输入？</strong><small>能把一句话的文字片段、词表编号和输入向量对应起来。</small></span></a></li>
-<li><a href="foundations/generation.html"><span class="lesson-no">02</span><span><strong>自回归生成：Prefill 与 Decode 怎样接续？</strong><small>能区分输入处理、候选打分、选择、可见文字和停止。</small></span></a></li>
+<li><a href="foundations/components.html"><span class="lesson-no">02</span><span><strong>Transformer 前向总览：从输入向量到下一 token</strong><small>能沿架构图从输入向量追到候选分数，理解 Attention、归一化、残差和 FFN 分别改变什么。</small></span></a></li>
 <li><a href="foundations/attention.html"><span class="lesson-no">03</span><span><strong>Attention 与 Q/K/V：模型怎样参考上下文？</strong><small>能说明 Q、K、V 各自参与哪一步、未来位置为什么被挡住，以及同一个 Query 在两个头中怎样得到不同结果并合并。</small></span></a></li>
-<li><a href="foundations/components.html"><span class="lesson-no">04</span><span><strong>Transformer 基础部件：一层内部怎样计算？</strong><small>能说出 Attention、归一化、残差和 FFN 如何接成一层，并沿架构图追踪表示到下一 token。</small></span></a></li>
+<li><a href="foundations/generation.html"><span class="lesson-no">04</span><span><strong>自回归生成：Prefill 与 Decode 怎样接续？</strong><small>能追踪同一个 token 从被选出、送回模型到写入各层 K/V，并说明 Prefill 与 Decode 的区别。</small></span></a></li>
 <li><a href="foundations/cache.html"><span class="lesson-no">05</span><span><strong>KV Cache 与前缀复用：为什么保存历史 K/V？</strong><small>能区分模型权重、历史 K/V、请求映射和可复用前缀。</small></span></a></li>
 <li><a href="foundations/batching.html"><span class="lesson-no">06</span><span><strong>Batch 调度：动态组批、连续批处理与 Chunked Prefill</strong><small>能区分等候组批与轮次间补位，并解释等待上限、整批结束和空位各自控制什么。</small></span></a></li>
 <li><a href="foundations/hardware.html"><span class="lesson-no">07</span><span><strong>GPU 计算与访存：算力、带宽和 CUDA Graph</strong><small>能说明算力、带宽与执行提交分别影响哪一段。</small></span></a></li>

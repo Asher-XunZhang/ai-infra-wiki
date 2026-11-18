@@ -125,7 +125,7 @@ def learning_start(page):
         '<a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 并排查看两套引擎的进程、通信、缓存、调度、分离扩展与延迟口径。</p><span>七个主题 · 保留各自版本边界</span></a>',
         '<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十三模块 · 二十一节实现课程</span></a></div></section>',
         '<section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>',
-        '<p>第一章从文字、生成、Attention 与基础部件，走向缓存、调度、硬件、多卡、服务和性能。每课先看具体例子，再连接相应的 SGLang 实现。</p><ol class="foundation-lessons">']
+        '<p>先把文字变成向量，再沿一次 Transformer 前向追到下一 token。接着拆开 Attention，看看生成怎样一轮轮接续，最后理解历史状态为什么值得缓存。</p><ol class="foundation-lessons">']
     for i, c in enumerate(FOUNDATIONS, 1):
         parts.append(f'<li><a href="{href(page, "foundations/"+c["slug"]+".html")}"><span class="lesson-no">{i:02}</span><span><strong>{escape(c["title"])}</strong><small>{escape(c["goal"])}</small></span></a></li>')
     parts.append('</ol></section><!-- learning-start:end -->')

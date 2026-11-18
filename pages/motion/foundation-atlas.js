@@ -42,7 +42,18 @@ function admission(s,w,p){const batches=p.wait===0?['A → t0','B → t2','C →
 function graph(s,w,p){text(s,8,26,'CPU 提交',DIM,'start');if(p.mode==='eager')chips(s,['提交 A','提交 B','提交 C'],8,45,w-16,50);else box(s,8,45,w-16,50,'一次图重放提交',C[3]);text(s,w/2,280,'GPU 执行的算子仍然保留',DIM);chips(s,['算子 A','算子 B','算子 C'],8,200,w-16,50);for(let i=0;i<3;i++){const x=8+(w-16)*(i+.5)/3;arrow(s,[[p.mode==='eager'?x:w/2,100],[x,194]],p.mode==='eager'?C[i]:C[3]);}label(s,w/2,326,'A → B → C 的依赖保持',w-20,C[3]);}
 function bottleneck(s,w,p){const memory=p.mode==='bandwidth';rect(s,10,26,w-20,90,'#102e3e',memory?C[2]:'#315160');text(s,w/2,52,'HBM · 权重 / KV',memory?C[2]:DIM);for(let i=0;i<6;i++)rect(s,20+i*(w-40)/6,72,(w-40)/6-5,23,memory?C[2]:'#315160','none',3);for(let i=0;i<3;i++)arrow(s,[[w*(.25+i*.25),121],[w*(.25+i*.25),194]],memory?C[2]:DIM);rect(s,10,201,w-20,90,'#102e3e',memory?'#315160':C[0]);text(s,w/2,229,'GPU · 计算单元',memory?DIM:C[0]);for(let i=0;i<4;i++){box(s,20+i*(w-40)/4,247,(w-40)/4-5,29,'×+',memory?'#315160':C[0]);}label(s,w/2,330,memory?'重点看：数据搬运能否跟上':'重点看：计算单元能否处理完',w-20,memory?C[2]:C[0]);}
 
-function matmul(s,w){text(s,w/2,24,'同一个输入向量 x',DIM);chips(s,['x₀','x₁','x₂'],w*.25,43,w*.5,37);const bw=w*.4;for(let i=0;i<2;i++){const y=135+i*115;box(s,10,y,bw,65,'权重第 '+i+' 行',C[i],'各项与 x 配对');arrow(s,[[bw+15,y+32],[w*.65-5,y+32]],C[i]);box(s,w*.65,y,w*.35-10,65,'求和 → y'+i,C[i]);}label(s,w/2,339,'行内：对应项相乘，再相加',w-20,C[3]);}
+function matmul(s,w){
+ text(s,w/2,24,'同一个输入列向量',DIM);
+ chips(s,['2','3'],w*.25,43,w*.5,37);
+ const left=w*.40;
+ for(const [i,weights] of ['[1, 2]','[3, 4]'].entries()){
+  const y=135+i*115;
+  box(s,10,y,left,65,'权重第 '+(i+1)+' 行',C[i],weights);
+  arrow(s,[[left+15,y+32],[w*.65-5,y+32]],C[i]);
+  box(s,w*.65,y,w*.35-10,65,'第 '+(i+1)+' 项',C[i],String(i?18:8));
+ }
+ label(s,w/2,339,'每行分别与输入配对，乘积再相加',w-20,C[3]);
+}
 function parallel(s,w,p){const bw=(w-30)/2,xs=[8,22+bw];if(['tp','dp','pp'].includes(p.mode)){text(s,w/2,22,p.mode==='dp'?'两个请求':'同一条请求',DIM);xs.forEach((x,i)=>{rect(s,x,71,bw,168,'#0b2432',C[i]);text(s,x+bw/2,96,'GPU '+i,C[i]);if(p.mode==='tp'){box(s,x+8,120,bw-16,80,'W 分片 '+i,C[i]);}else{for(let j=0;j<(p.mode==='pp'?2:4);j++)rect(s,x+8,112+j*25,bw-16,18,C[(p.mode==='pp'?i*2+j:j)%4],'none',3);}});if(p.mode==='pp'){arrow(s,[[xs[0]+bw,160],[xs[1]-3,160]],C[2]);label(s,w/2,283,'层段 0 → 激活 → 层段 1',w-16,C[3]);}else if(p.mode==='tp'){arrow(s,[[xs[0]+bw/2,245],[xs[0]+bw/2,265],[w/2-10,288]],C[0]);arrow(s,[[xs[1]+bw/2,245],[xs[1]+bw/2,265],[w/2+10,288]],C[1]);label(s,w/2,316,'合并局部结果：求和或拼接',w-16,C[3]);}else{for(let i=0;i<2;i++){arrow(s,[[xs[i]+bw/2,45],[xs[i]+bw/2,66]],C[i]);text(s,xs[i]+bw/2,42,'请求 '+['A','B'][i],C[i]);}label(s,w/2,286,'每卡一份完整模型',w-16,C[3]);}}
  else if(p.mode==='sp'){text(s,w/2,25,'逐 token 区的激活',DIM);chips(s,['p0','p1','p2','p3'],10,45,w-20,36);for(let i=0;i<2;i++){box(s,xs[i],167,bw,100,'GPU '+i,C[i],i?'p2 / p3':'p0 / p1');arrow(s,[[w*(i?.75:.25),87],[xs[i]+bw/2,160]],C[i]);}label(s,w/2,320,'配合 TP 的布局通信',w-16,C[3]);}
  else if(p.mode==='pcp'){text(s,w/2,22,'Query 位置分给两张卡',DIM);for(let i=0;i<4;i++){text(s,14,73+i*43,'Q'+i,C[i<2?0:1],'start');for(let j=0;j<4;j++)rect(s,48+j*(w-58)/4,52+i*43,(w-64)/4-4,29,j<=i?C[i<2?0:1]:'#142734','#315160',3);}label(s,w/2,270,'每个 Q 仍需可见历史的 K/V',w-16,C[3]);label(s,w/2,323,'跨卡交换 K/V 或局部结果',w-16);}

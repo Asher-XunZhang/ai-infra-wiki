@@ -6,8 +6,8 @@ const M=root.FoundationModel;if(!M)return;
 const explanations=[
  ['从发出请求开始计时','首个 token 到达，TTFT 区间结束','第二个 token 到达，出现第一个后续间隔','第三个 token 到达；后续两个间隔均为 40 ms','TPOT = (180 − 100) / (3 − 1) = 40 ms'],
  ['从发出请求开始计时','首包带来 token 1','第二包同时带来 token 2、3','只能观测包间隔，不能恢复包内生成时刻','分包方式会影响可观测的间隔；没有凭空增加生成时间'],
- ['先看同一组 20 个样本','延迟从小到大排列，每格是一条请求','所有 20 条请求均成功，全部纳入分布','nearest-rank：ceil(0.95 × 20) = 19','第 19 项为 190 ms；同时保留成功率 100%'],
- ['先看原来的 20 个请求','保留成功与失败的记录','最后两项失败，成功延迟分布剩下 18 项','nearest-rank：ceil(0.95 × 18) = 18','P95 为 180 ms，但成功率只有 90%'],
+ ['先看同一组 20 个样本','延迟从小到大排列，每格是一条请求','所有 20 条请求均成功，全部纳入分布','20 项的 95% 是 19，取第 19 项','第 19 项为 190 ms；同时保留成功率 100%'],
+ ['先看原来的 20 个请求','保留成功与失败的记录','最后两项失败，成功延迟分布剩下 18 项','18 项的 95% 是 17.1，向上取第 18 项','P95 为 180 ms，但成功率只有 90%'],
  ['固定 0–10 秒统计窗口','2 秒时 R1 完成，贡献 2 个输出 token','4 秒时 R2 完成，再贡献 3 个输出 token','7 秒时 R3 完成，再贡献 1 个输出 token','R4 在 9 秒完成；10 秒关窗，按同一窗口计算吞吐']
 ];
 const def=M.definitions.metrics;
@@ -76,7 +76,7 @@ root.MechanismVisuals['f-metrics']=(svg,viewport,s)=>board(svg,viewport,'metrics
    show(percentileMark,v>=2&&v<4&&p>2?1:0);
    text(verdict,18,m?486:390,p<3?'先定样本，再找 95% 的位置':`P95：第 ${idx+1} 项 = ${d.p95} ms`);
    text(detail,18,m?522:432,`成功 ${n} / 20 · 成功率 ${n*5}%`);
-   text(detail2,18,m?556:470,p>=3?`nearest-rank：ceil(0.95 × ${n}) = ${idx+1}`:'× 表示失败，仍保留记录。');
+   text(detail2,18,m?556:470,p>=3?`${n} 项取 95% 后向上取整：第 ${idx+1} 项`:'× 表示失败，仍保留记录。');
    svg.dataset.sortedCount=String(samples.filter(a=>p>=.02+(a.i/20)*.8+.03).length);
    svg.dataset.p95=String(d.p95);
   }else{

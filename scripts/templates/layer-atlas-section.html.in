@@ -2,7 +2,7 @@
   <header class="la-head">
     <p class="la-kicker">职责与数据流</p>
     <h2 id="layer-atlas-title">Transformer：各模块怎样协作？</h2>
-    <p class="la-lead">点选模块可查看内部计算。点击「完整播放」，从 Embedding 跟踪末位「？」的表示，看每个模块怎样处理并传递数据，直到生成「巴黎」。</p>
+    <p class="la-lead">第 01 课把 token ID 查成初始向量。这张图接着追踪末位「？」的向量。先沿箭头看每个模块交出什么，再点选模块细看，或点击「完整播放」跟到「巴黎」被选出。</p>
     <p class="la-lead">整段输入的各位置都参与计算。图里选「？」作为观察点，因为它是已输入的最后一个位置，它的最终向量用来预测紧接着出现的 token。</p>
   </header>
   <div id="mechanism-atlas"><span id="lesson-animation"></span></div>
@@ -99,11 +99,10 @@
       <details class="la-step-detail" id="la-mechanism-detail" data-la-detail><summary>文字与公式：<span data-la-detail-title>Embedding 怎样得到初始向量？</span></summary>
         <div class="la-mechanism" data-la-explainer="0" data-la-detail-heading="Embedding 怎样得到初始向量？">
           <h4>编号决定取哪一行，权重决定这一行是什么</h4>
-          <p>token ID 只是编号。比如第 17 行和第 18 行相邻，不能从这个编号差判断两个 token 的含义。Embedding 表 E 为每个词表条目保存一行训练得到的数值。输入有多少个位置，就查出多少行表示。</p>
+          <p>Embedding 为每个输入位置按 ID 取一行向量。查表的含义见<a href="tokens.html#why-embedding">第 01 课的 Embedding 算例</a>。下面用这行向量作为前向的起点。</p>
           <div class="la-mechanism-formula lesson-formulas">{{math:embedding}}{{math:embedding_shape}}</div>
           <p>t 是序列里的位置，id<sub>t</sub> 是该位置的 token 编号。E 有 N<sub>vocab</sub> 行，每行 d 个数。按位置依次取出 T 行组成输入矩阵 X。教学词表中「？」的编号是 17，取出的两个数一起成为该位置的初始表示。</p>
           <div class="la-mechanism-formula lesson-formulas">{{math:embedding_demo}}</div>
-          <p>整数 ID 只负责索引。后面的投影才能用向量的不同分量做加权组合。若同一个 token 出现两次，两处查表结果相同，但所在位置、可见前文与后续的注意力权重都可能不同。</p>
           <p><strong>读图时分清两个轴。</strong>这个例子有 3 个输入位置，每个位置 2 个分量。Attention 在位置之间汇聚信息，FFN 则改变单个位置内部的分量。后面出现的 2 → 3 → 2 指特征宽度，整个序列仍有 3 个位置。</p>
           <p class="la-mechanism-source"><a href="https://arxiv.org/html/1706.03762v7#S3.SS4">Transformer 原论文 §3.4 · 词嵌入与输出</a></p>
         </div>
@@ -246,11 +245,7 @@
           <p>两个候选的分数差取决于当前向量在<strong>两列权重之差</strong>这个方向上的投影。前面各层改变表示后，这个差距也可能随之改变。</p>
           <div class="la-mechanism-formula lesson-formulas">{{math:logit_margin}}</div>
           <p>这里用稳定写法，m 是最大分数，分母的 b 遍历候选。每个分数减 m 后，指数的共同倍率会在分子和分母中抵消，概率保持一致。最大分数移到 0 后，它的指数为 1，其余指数都不大于 1，减少了溢出的风险。</p>
-          <details class="la-detail-topic"><summary>同一组概率，为什么采样能选到另一个 token？</summary>
-            <p>按候选表顺序累加概率，相当于把 0 到 1 划成几段。每个候选分到的区间长度等于它的概率。抽一个均匀随机数 u，选累计概率首次达到它的候选。图里的「巴黎」概率约为 62.5%，累加「里昂」后约为 76.3%，再累加「北京」约为 83.0%。固定抽到 0.8，就落入「北京」的区间。</p>
-            <div class="la-mechanism-formula lesson-formulas">{{math:greedy}}{{math:sampling}}</div>
-          </details>
-          <p>图中的贪心选择得到「巴黎」，再将它加入上下文供下一轮使用。这里按一个 token 示意「巴黎」，真实分词器可能拆成多个 token。候选概率表达的是模型在当前输入下的预测倾向，事实校验需要另外的依据。</p>
+          <p>图中的贪心选择得到「巴黎」。这里把「巴黎」当作一个教学 token，实际分词结果由词表决定。<a href="generation.html#why-selection">第 04 课</a>接着讲怎样按概率选择，以及选出的 ID 何时进入下一轮。</p>
           <p class="la-mechanism-source"><a href="https://arxiv.org/html/1706.03762v7#S3.SS4">Transformer 原论文 §3.4 · 输出映射与 softmax</a></p>
         </div>
         <div class="la-detail-handoff"><p data-la-handoff-next>x 进入第 ℓ 层；同一层对各位置使用同一套参数。</p><code data-la-load>token id → x</code><a href="#layer-atlas">返回架构总览 ↑</a></div>

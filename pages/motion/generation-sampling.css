@@ -1,4 +1,4 @@
-/* Generation lesson 02: one independent logits -> softmax -> choice board.
+/* Generation lesson: one independent logits -> softmax -> choice board.
  * The shared teaching styles provide panels, rows and value bars; these rules
  * only cover the in-board condition controls and the probability axis. */
 .gs-word{fill:#163c48;font-size:15px;font-weight:700}

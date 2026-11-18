@@ -1,4 +1,4 @@
-/* Chapter 1, lesson 02. The default entry is the full autoregressive chain
+/* Autoregressive generation lesson. The default entry is the full chain
  * (mv0, greedy). Sampling is one independent concept inside that chain:
  * logits z -> e^z -> denominator -> probabilities p -> choice.
  * Fixed sampling stays at mv1; the sampling board is concept=sampling (mv2).
