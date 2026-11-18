@@ -15,6 +15,8 @@
 
 `courses.json` 是课程正文、先修关系、自测和来源的编辑入口；`build_foundations.py` 生成十三个 HTML。`extensions.json` 保存从旧概览课归并而来的六幅选读机制图及原说明；第三章只保留对应实现导读，不再嵌入基础播放器。选读区按需初始化，收起时停止播放。`model.js` 提供独立教学状态，`player.js` 按机制绘制不同图形。数字与边界写在各课，不能把教学轮次、资源下界或手工分数当成 GPU 观测。
 
+第 04 课以 [Transformer 架构图](components.html#layer-atlas) 为主线，支持完整播放、模块内展开和查阅公式，维护入口为 `scripts/templates/layer-atlas-section.html.in` 及 `layer-atlas*.js`。同页的 [单位置对照实验](components.html#output-chain) 由 `scripts/templates/output-chain-section.html.in` 及 `output-chain*.js` 维护，使用独立的二维单层模型。默认收起，深链会自动展开。头共享的比较见第 03 课的 [Attention 变体](attention.html#attention-variants)。
+
 token 样例来自 Qwen/Qwen2.5-0.5B-Instruct 的 `7ae557604adf67be50417f59c2c2f167def9a775` 版本，使用 `tokenizers 0.23.3` 对原始文本执行 encode（不添加特殊 token）与 decode 核对。两组句子不应用聊天模板，也不运行模型。`tokenizer.json` SHA-256 为 `c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539`。固定文件的公开来源列在第一课。
 
 ## 维护与验证

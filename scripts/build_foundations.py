@@ -6,10 +6,13 @@ from html import escape
 from pathlib import Path
 from urllib.parse import quote
 from build_learning_navigation import ROOT, PAGES, FOUNDATIONS, FOUNDATION_BY_SLUG, sidebar
+from transformer_equations import math_html, playback_templates, render_equations
 
 EXTENSIONS = json.loads((PAGES / 'foundations/extensions.json').read_text(encoding='utf-8'))
 CONCEPTS = json.loads((PAGES / 'foundations/concepts.json').read_text(encoding='utf-8'))
 MECHANISMS = json.loads((PAGES / 'foundations/mechanisms.json').read_text(encoding='utf-8'))
+OUTPUT_CHAIN_SECTION = render_equations((ROOT / 'scripts/templates/output-chain-section.html.in').read_text(encoding='utf-8'))
+LAYER_ATLAS_SECTION = render_equations((ROOT / 'scripts/templates/layer-atlas-section.html.in').read_text(encoding='utf-8'))
 
 
 def repo_doc_url(path, fragment=''):
@@ -443,7 +446,7 @@ def attention_variants_static():
 <tr><th scope="row">FlashAttention / PagedAttention</th><td>计算与搬运 / KV 的物理存储。</td><td>前者分块计算并在线归一化；后者通过块表读取非连续的 KV 块。</td><td>这是工程实现维度，不等于改变模型读取哪些逻辑位置。</td></tr>
 </tbody></table></div>
 <p class="av-static-note"><strong>边界：</strong>本模块只画对象与访问关系，不比较速度、显存或模型质量；图中不展开 softmax 表、矩阵数值或误差向量。详细推导、版本差异与源码边界见本页末尾 <a href="#deep-reading">仓内深入阅读</a>。</p>
-<p class="av-static-links"><a href="#attention-variants">回到交互图</a><a href="components.html#why-heads">第04课头共享图</a><a href="hardware.html#concept-3">第 07 课 FlashAttention</a></p>
+<p class="av-static-links"><a href="#attention-variants">回到交互图</a><a href="components.html#layer-atlas">第 04 课 Transformer 架构图</a><a href="hardware.html#concept-3">第 07 课 FlashAttention</a></p>
 </details>"""
 
 def mechanism_atlas(slug):
@@ -461,10 +464,37 @@ def mechanism_atlas(slug):
             + fallback + '</div></section>')
 
 
+def components_followup(c, terms_html):
+    question, feedback = escape(c['question']), escape(c['feedback'])
+    return f"""<section id="understand" class="concept-guide">
+<h2>看完之后，试着解释</h2>
+<details class="foundation-fallback"><summary>{question}</summary><p>{feedback}</p></details>
+<details class="foundation-fallback"><summary>一个权重大的位置，会让输出的每一维都变大吗？</summary>
+<p>同一个权重乘到 V 的各维上。若某一维原本为负，增大这个位置的权重会让这一维的贡献更负。总结果还要把其他位置的贡献加上。看 Attention 动画里「首都」的 V，两个分量对输出的贡献方向正好不同。</p></details>
+<details class="foundation-fallback"><summary>如果某个 FFN 通道的门控响应接近零，输出还会有变化吗？</summary>
+<p>保持上投影值和下投影权重固定时，门控响应越接近零，这条通道给各输出维的贡献就越接近零。其余通道仍按各自的响应贡献，残差还会加上原有的 x₁。可以在 FFN 的「下投影组合」一步检查这些量。</p></details>
+</section>
+<section id="lesson-examples" class="concept-guide">
+<h2>选读与对照</h2>
+{OUTPUT_CHAIN_SECTION}
+<details id="mechanism-detail" class="concept-background">
+<summary id="why-position-norm">RoPE 对照：Q 和 K 一起移动，点积会变吗？</summary>
+<p>固定两者旋转前的向量为 [1, 0]，每前进一位旋转 45°。先让两者相距一位，若一起后移三位，相对夹角仍为 45°。若只让它们的距离从一位增加到两位，夹角变为 90°。两条向量的长度始终为 1，点积就是夹角的余弦。</p>
+<div class="lesson-formulas">{math_html('rope_compare')}</div>
+<p>这组数只检验固定内容时的位置效果。主图切换观察「法国」和「首都」时，原始 K 也跟着更换，因此不能把两次分数的差全部归因于位置。</p>
+<p><a href="#layer-atlas">回到架构图，点选 Attention 后查看 RoPE</a>。<a href="https://arxiv.org/abs/2104.09864">RoFormer 论文</a></p>
+</details>
+<details id="lesson-glossary" class="concept-background"><summary>术语速查</summary>{terms_html}</details>
+<p id="why-heads" class="foundation-prereqs">想看 4 个 Q 头怎样共用 4、2 或 1 组 K/V，可以回到<a href="attention.html#attention-variants">第 03 课的头共享对照</a>。</p>
+</section>"""
+
+
 def render(c, i):
     page = PAGES / 'foundations' / (c['slug'] + '.html')
     title = escape(c['title'])
+    is_components = c['slug'] == 'components'
     intro = MECHANISMS.get(c['slug'], {}).get('intro', c['intro'])
+    intro_html = '' if is_components else f'<p class="foundation-intro">{escape(intro)}</p>'
     prerequisites = '从这一课开始，不要求推理知识。' if not c['prerequisites'] else '先看：' + ' · '.join(f'<a href="{slug}.html">{escape(FOUNDATION_BY_SLUG[slug]["title"])}</a>' for slug in c['prerequisites'])
     terms = ''.join(f'<div><dt>{escape(a)}</dt><dd>{escape(b)}</dd></div>' for a, b in c['terms'])
     sections = ''.join(f'<section id="concept-{n}"><h2>{escape(a)}</h2><p>{escape(b)}</p></section>' for n, (a, b) in enumerate(c['sections']))
@@ -533,8 +563,8 @@ def render(c, i):
             mechanism_assets += '<link rel="stylesheet" href="../motion/deployment-adoption.css"><script src="../motion/deployment-adoption.js" defer></script>'
     if c['slug'] == 'tokens':
         mechanism_assets += '<link rel="stylesheet" href="../motion/tokens.css"><script src="../motion/tokens.js" defer></script>'
-    if c['slug'] == 'components':
-        mechanism_assets += '<link rel="stylesheet" href="../motion/teaching.css"><link rel="stylesheet" href="../motion/components.css"><script src="../motion/teaching-visuals.js" defer></script><script src="components-model.js" defer></script><script src="../motion/components.js" defer></script>'
+    if is_components:
+        mechanism_assets += '<link rel="stylesheet" href="output-chain.css"><script src="output-chain-model.js" defer></script><script src="output-chain.js" defer></script><link rel="stylesheet" href="layer-atlas.css"><link rel="stylesheet" href="layer-atlas-focus.css"><script src="layer-atlas-focus-model.js" defer></script><script src="layer-atlas-focus.js" defer></script><script src="layer-atlas.js" defer></script>'
     if c['slug'] in {'hardware', 'parallel', 'communication', 'speculation', 'serving'}:
         mechanism_assets += '<link rel="stylesheet" href="../motion/teaching.css"><script src="../motion/teaching-visuals.js" defer></script><script src="../motion/detail-scenes.js" defer></script>'
         if c['slug'] == 'serving':
@@ -587,13 +617,16 @@ def render(c, i):
             '<p class="av-lead">看连线怎样共享、哪些历史被读取、记忆怎样保存。每组只比较一个问题，点选上方分类切换。</p></div>'
             '<div data-attention-variants data-public-root="../../"><noscript><p style="padding:14px 16px;margin:0">交互图需要 JavaScript；下方“文字速查”与页末深入阅读仍可使用。</p></noscript></div>'
             + attention_variants_static() + '</section>')
-    lab_html = '<div data-foundation-lab="components" hidden></div>' if c['slug'] == 'components' else f'<section class="foundation-lab" data-foundation-lab="{c["slug"]}" data-full="true" data-title="{title}"><h2>走一遍具体过程</h2><p>{escape(c["goal"])}</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>'
-    if c['slug'] == 'components':
-        lab_html += '<p class="foundation-prereqs">本课保留原有头共享动画：4 个 Q 头分别映射到 4 / 2 / 1 组 K/V，看 block 内哪些计算共享。六组变体的缓存表示、窗口、稀疏选择与递推状态对照，统一从 <a href="attention.html#attention-variants">第 03 课 Attention 变体主入口</a> 进入。</p>'
-    elif c['slug'] == 'hardware':
+    lab_html = f'<section class="foundation-lab" data-foundation-lab="{c["slug"]}" data-full="true" data-title="{title}"><h2>走一遍具体过程</h2><p>{escape(c["goal"])}</p><p>交互需要 JavaScript；下面保留完整解释和自测答案。</p></section>'
+    if c['slug'] == 'hardware':
         lab_html += '<p class="foundation-prereqs">FlashAttention 的 tiling 与 online softmax 只重排精确 Attention 的读写顺序；六组 Attention 机制与各自缓存/候选差异见 <a href="attention.html#attention-variants">第 03 课变体主入口</a>。</p>'
     goal_selector = parallel_goal_selector() if c['slug'] == 'parallel' else ''
     space_time_entry = parallel_space_time_entry() if c['slug'] == 'parallel' else ''
+    output_chain_bridge = ''
+    if c['slug'] == 'generation':
+        output_chain_bridge = '\n<p class="foundation-prereqs">想看候选分数怎样从前面的计算得到，可以到第 04 课<a href="components.html#layer-atlas">播放完整前向</a>，或<a href="components.html#output-chain">对照移除一个位置后的候选分数</a>。</p>'
+    elif c['slug'] == 'attention':
+        output_chain_bridge = '\n<p class="foundation-prereqs">想跟踪 Attention 的输出怎样进入残差、FFN 和输出头，可以到第 04 课<a href="components.html#layer-atlas">播放完整前向</a>，或<a href="components.html#output-chain">对照移除一个 K/V 位置后的结果</a>。</p>'
     mechanism_block = f'{learning_entry}{goal_selector}{space_time_entry}{static_summary}\n<div id="lesson-animation"></div>\n{animation_anchor}\n{lab_html}'
     if c['slug'] in MECHANISMS:
         mechanism_assets += '<link rel="stylesheet" href="../motion/foundation-atlas.css"><script src="../motion/foundation-atlas.js" defer></script>'
@@ -604,24 +637,31 @@ def render(c, i):
             + '<p>下方保留逐步播放、条件切换和数值核对，可在过程中暂停、回看。</p>'
             + goal_selector + space_time_entry + static_summary
             + '<div id="lesson-animation"></div>' + animation_anchor + lab_html + '</details>')
+    if is_components:
+        lesson_body = playback_templates() + LAYER_ATLAS_SECTION + components_followup(c, terms_html)
+        shared_motion_assets = '<script src="../motion/integration.js" defer></script>'
+    else:
+        shared_motion_assets = '<script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script>'
+        mechanism_assets += '<script src="../motion/camera.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script>'
+        lesson_body = f'''
+<section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>{escape(CONCEPTS[c['slug']]['problem'])}</p></section>
+{motive_html}
+{mechanism_block}
+{multihead_html}{attention_variants_html}{output_chain_bridge}
+{concept_guide(c)}
+<section id="lesson-glossary"><h2>术语速查</h2>{terms_html}</section>
+<section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2>{reading_entry}<div class="foundation-copy">{sections}</div></section>
+<form class="fd-quiz" data-answer="{c['answer']}" data-feedback="{escape(c['feedback'], quote=True)}" hidden><fieldset><legend>{escape(c['question'])}</legend>{choices}</fieldset><button type="submit">检查判断</button><p class="fd-feedback" aria-live="polite"></p></form>
+<details class="foundation-fallback"><summary>自测与解释：{escape(c['question'])}</summary><p>{escape(c['feedback'])}</p></details>'''
     return f'''<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title} · 推理基础</title><meta name="description" content="{escape(c['lead'], quote=True)}"><link rel="icon" href="data:,"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script><script src="../motion/integration.js" defer></script><script src="model.js" defer></script><script src="player.js" defer></script><link rel="stylesheet" href="../motion/motion.css"><script src="../vendor/gsap/gsap.min.js" defer></script><script src="../motion/scenes.js" defer></script>{mechanism_assets}<script src="../motion/camera.js" defer></script><script src="../motion/boundaries.js" defer></script><script src="../motion/player.js" defer></script>{extension_assets}</head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title} · 推理基础</title><meta name="description" content="{escape(c['lead'], quote=True)}"><link rel="icon" href="data:,"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script>{shared_motion_assets}{mechanism_assets}{extension_assets}</head>
 <body data-page="foundations" data-lesson="{c['slug']}"><a class="skip-link" href="#main-content">跳到正文</a>
 <header class="site-header"><a class="site-brand" href="../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub ↗</a><button class="theme-toggle" type="button" aria-label="切换配色">配色：系统</button></div></header>
 <div class="site-layout">{sidebar(page, None)}<div class="site-content"><main id="main-content">
 <nav class="learning-breadcrumb" aria-label="当前位置"><a href="../">学习首页</a><span aria-hidden="true">/</span><a href="../#chapter-foundations">第一章 · 推理基础</a><span aria-hidden="true">/</span><span aria-current="page">{title}</span></nav>
 <header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../#chapter-foundations">推理基础 · {i+1:02} / {len(FOUNDATIONS):02}</a><span class="lesson-count">通用原理</span></div><h1>{title}</h1><p>{escape(c['lead'])}</p><div class="meta-tags"><span>可单步操作</span><span>原理与实现分开</span><a href="#evidence">来源与教学边界</a></div></header>
 <p class="foundation-prereqs">{prerequisites}</p>
-<p class="foundation-intro">{escape(intro)}</p>
-<section class="concept-problem" aria-labelledby="concept-problem-title"><h2 id="concept-problem-title">先想清楚：这一课解决什么问题？</h2><p>{escape(CONCEPTS[c['slug']]['problem'])}</p></section>
-{motive_html}
-{mechanism_block}
-{multihead_html}{attention_variants_html}
-{concept_guide(c)}
-<section id="lesson-glossary"><h2>术语速查</h2>{terms_html}</section>
-<section id="lesson-examples"><h2>对照算例，回看机制与取舍</h2>{reading_entry}<div class="foundation-copy">{sections}</div></section>
-<form class="fd-quiz" data-answer="{c['answer']}" data-feedback="{escape(c['feedback'], quote=True)}" hidden><fieldset><legend>{escape(c['question'])}</legend>{choices}</fieldset><button type="submit">检查判断</button><p class="fd-feedback" aria-live="polite"></p></form>
-<details class="foundation-fallback"><summary>自测与解释：{escape(c['question'])}</summary><p>{escape(c['feedback'])}</p></details>
+{intro_html}{lesson_body}
 {extension_html}
 <a class="foundation-to-engine" href="../{c['implementation']}"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
 <section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：{escape(c.get("reviewed", "2026-10-15"))}。{escape(c['scope'])}</p><p>概念动机、取舍与背景整理：{escape(c.get("reviewed", "2026-10-16"))}。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources">{sources}</ul>{visual_refs}{deep_reading_html(c)}<p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>

@@ -1,0 +1,79 @@
+<details class="oc-deep-read" id="output-chain" data-oc-deep-read>
+<summary class="oc-deep-read-summary">
+<strong class="oc-deep-title">少读「法国」所在的位置，答案会怎样变？</strong>
+<span class="oc-deep-note">切换是否让 Attention 读取「法国」，逐步比较注意力权重、中间向量和候选分数。</span>
+</summary>
+<section class="output-chain" data-output-chain aria-labelledby="output-chain-title">
+  <header class="oc-head">
+    <h3 id="output-chain-title">只改变一个可读位置</h3>
+    <p class="oc-lead">保留 p6 的 Q 和其余位置的 K/V，只移除 p1「法国」的 K/V。先猜哪个量最早变化，再比较两个条件下的结果。</p>
+    <p class="oc-boundary">这里使用独立的二维单层算例和四个候选，Q/K/V 与权重由教学设定。算例直接给出 Q/K/V，省略输出头之前的 Final Norm。上方三层架构图使用另一组输入和权重。</p>
+  </header>
+
+  <div class="oc-app">
+    <div class="oc-toolbar">
+      <div class="oc-controls">
+        <div class="oc-condition" role="group" aria-label="上下文条件">
+          <span class="oc-control-label">条件</span>
+          <button type="button" data-oc-mode="with-france" aria-pressed="true">保留「法国」</button>
+          <button type="button" data-oc-mode="without-france" aria-pressed="false">屏蔽「法国」的 K/V</button>
+        </div>
+        <div class="oc-playback" role="group" aria-label="播放控制">
+          <button type="button" data-oc-prev>上一步</button>
+          <button type="button" data-oc-toggle aria-pressed="false">播放</button>
+          <button type="button" data-oc-next>下一步</button>
+          <button type="button" data-oc-reset>回到起点</button>
+          <span class="oc-step-label" data-oc-step-label>步骤 1 / 5 · 问题与位置</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="oc-mode-note" data-oc-mode-copy><strong>当前条件：<span data-oc-condition-text>保留「法国」</span>。</strong> 这里固定 p6 的 Q 和其他位置的 K/V，只切换 p1 的 K/V 是否参与汇聚。位置编号保留，先看这个局部变化怎样传到下游。</p>
+
+    <ol class="oc-steps" aria-label="计算步骤">
+      <li><button type="button" class="oc-step" data-oc-step="0" aria-current="step"><b>01</b><span>问题与位置</span></button></li>
+      <li><button type="button" class="oc-step" data-oc-step="1"><b>02</b><span>Attention 汇合</span></button></li>
+      <li><button type="button" class="oc-step" data-oc-step="2"><b>03</b><span>残差与 Norm</span></button></li>
+      <li><button type="button" class="oc-step" data-oc-step="3"><b>04</b><span>SwiGLU 加工</span></button></li>
+      <li><button type="button" class="oc-step" data-oc-step="4"><b>05</b><span>输出头打分</span></button></li>
+    </ol>
+
+    <div class="oc-pipeline" data-oc-pipeline aria-label="当前数据链">
+      <div class="oc-pipe-node is-done" data-oc-pipe-node="0"><span>输入片段</span><b data-oc-pipe-main>—</b><small data-oc-pipe-sub>待计算</small></div>
+      <span class="oc-pipe-link" aria-hidden="true">→</span>
+      <div class="oc-pipe-node" data-oc-pipe-node="1"><span>Attention</span><b data-oc-pipe-main>—</b><small data-oc-pipe-sub>待计算</small></div>
+      <span class="oc-pipe-link" aria-hidden="true">→</span>
+      <div class="oc-pipe-node" data-oc-pipe-node="2"><span>残差 / Norm</span><b data-oc-pipe-main>—</b><small data-oc-pipe-sub>待计算</small></div>
+      <span class="oc-pipe-link" aria-hidden="true">→</span>
+      <div class="oc-pipe-node" data-oc-pipe-node="3"><span>SwiGLU</span><b data-oc-pipe-main>—</b><small data-oc-pipe-sub>待计算</small></div>
+      <span class="oc-pipe-link" aria-hidden="true">→</span>
+      <div class="oc-pipe-node" data-oc-pipe-node="4"><span>输出头</span><b data-oc-pipe-main>—</b><small data-oc-pipe-sub>待计算</small></div>
+    </div>
+
+    <div class="oc-stage" data-oc-stage role="group" aria-label="交互式计算舞台">
+      <noscript><p class="oc-noscript">启用 JavaScript 后可切换条件并查看逐项数值。下方的权重解释和结果对照可直接阅读。</p></noscript>
+    </div>
+
+    <div class="oc-handoff">
+      <div><span class="oc-handoff-label">这一步在做什么</span><p data-oc-purpose>确定预测位置 p6，并看清它被允许读取哪些片段。</p></div>
+      <div><span class="oc-handoff-label">交给下一步</span><p data-oc-handoff>p6 的 Q 与各位置 K 比较，得到权重；加权 V 将进入下一步。</p></div>
+    </div>
+    <p class="oc-sr-status" role="status" aria-live="polite" data-oc-status></p>
+  </div>
+
+  <details class="oc-math">
+    <summary>展开公式、完整矩阵与逐项数值</summary>
+    <div class="oc-math-body" data-oc-math><p>展开后显示当前条件对应的同一组模型值。</p></div>
+  </details>
+
+  <div class="oc-explainer">
+    <h3>怎样读这个对照？</h3>
+    <p>屏蔽 p1 后，「首都」的分数仍为 1。其余位置的分数也照旧，但归一化的总权重里去掉了 p1 原来的份额。若 w₁ 是 p1 原来的权重，剩余位置的旧权重之和是 1 − w₁。各自除以这个总和，就是重新归一化后的权重。</p>
+    <div class="lesson-formulas">{{math:ablation_renormalize}}</div>
+    <p>对照第 2 步，「首都」的权重从约 17.2% 升至 32.2%。汇聚向量的第一维从约 1.159 降至 0.422，第二维从约 0.428 升至 0.627。这个变化经残差和 FFN 传到输出头，让最高分从「巴黎」变成「里昂」。两次计算的学习参数相同，变化的是参与汇聚的位置和随之算出的激活。</p>
+    <p>Geva 等把 ReLU FFN 的中间通道解释为对输入模式的响应及对应的输出贡献。本课的 SwiGLU 也可沿同样两个问题去看：当前输入激活了哪些通道，它们各自给表示加了什么？通道贡献还会与其他通道和残差信号一起送向输出头。<a href="https://aclanthology.org/2021.emnlp-main.446/">Geva 等 · ReLU FFN 的研究</a></p>
+  </div>
+
+  <p class="oc-footnote">显示值保留三位小数（百分比保留一位）。箭头和条形按当前模型值缩放；动画中的中间长度只表示展开进度。所有显示数值都由页面脚本从同一份教学模型状态读取，条件切换只更换模型输入。</p>
+</section>
+</details>

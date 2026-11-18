@@ -1,0 +1,263 @@
+<section id="layer-atlas" class="layer-atlas" data-layer-atlas aria-labelledby="layer-atlas-title">
+  <header class="la-head">
+    <p class="la-kicker">职责与数据流</p>
+    <h2 id="layer-atlas-title">Transformer：各模块怎样协作？</h2>
+    <p class="la-lead">点选模块可查看内部计算。点击「完整播放」，从 Embedding 跟踪末位「？」的表示，看每个模块怎样处理并传递数据，直到生成「巴黎」。</p>
+    <p class="la-lead">整段输入的各位置都参与计算。图里选「？」作为观察点，因为它是已输入的最后一个位置，它的最终向量用来预测紧接着出现的 token。</p>
+  </header>
+  <div id="mechanism-atlas"><span id="lesson-animation"></span></div>
+  <div class="la-board" data-la-board data-la-step="0" data-la-state="idle" data-la-playing="false">
+    <div class="la-toolbar">
+      <div class="la-controls" data-la-controls hidden>
+        <button type="button" class="la-full" data-la-full aria-pressed="false">完整播放</button>
+        <button type="button" data-la-prev aria-label="上一步">← 上一步</button>
+        <button type="button" class="la-play" data-la-toggle aria-pressed="false">播放</button>
+        <button type="button" data-la-next aria-label="下一步">下一步 →</button>
+        <button type="button" data-la-reset>回到起点</button>
+      </div>
+      <p class="la-now"><span class="la-mono" data-la-step-count>01 / 09</span><strong data-la-step-title>输入与嵌入</strong></p>
+    </div>
+    <div class="la-progress" data-la-controls hidden>
+      <label for="la-range">回看</label>
+      <input id="la-range" type="range" min="0" max="8" step="1" value="0" data-la-range aria-label="回看：选择演示步骤">
+      <span class="la-mono" data-la-range-readout>第 1 步</span>
+    </div>
+    <p class="la-run-handoff" data-la-run-handoff hidden><strong data-la-run-route></strong><span data-la-run-value></span><span data-la-run-branch></span></p>
+    <div class="la-viewport" data-la-viewport>
+    <div class="la-canvas" data-la-canvas>
+      <svg class="la-wires" data-la-wires aria-hidden="true" focusable="false"></svg>
+      <div class="la-input-row">
+        <article class="la-node la-node--input" data-la-node="tokens" data-la-tone="input">
+          <span class="la-node-tag">token 序列</span><h3>法国的首都是哪里？</h3>
+          <p class="la-node-note">示意分词，跟踪末位「？」</p>
+        </article>
+        <article class="la-node la-node--embed" data-la-node="embed" data-la-tone="embed">
+          <span class="la-node-tag">Embedding</span><h3>将 token ID 转成初始向量</h3>
+        </article>
+      </div>
+      <section class="la-layer" aria-label="展开的第 ℓ 层 Pre-Norm Decoder Layer">
+        <header class="la-layer-head"><h3>一个 Decoder Layer</h3><span>Pre-Norm · 展开第 ℓ 层</span></header>
+        <div class="la-lane la-lane--a">
+          <div class="la-node la-node--junction" data-la-node="x" data-la-tone="data" aria-label="进层表示 x"><h3>x</h3></div>
+          <article class="la-node la-node--norm" data-la-node="norm1" data-la-tone="norm">
+            <span class="la-node-tag">RMSNorm</span><h3>子层计算前调整尺度</h3>
+          </article>
+          <article class="la-node la-node--attn" data-la-node="attn" data-la-tone="attn">
+            <span class="la-node-tag">Attention</span><h3>从可见 token 汇聚相关信息</h3>
+            <p class="la-node-note">RoPE：加入位置关系<br>多头：分别计算联系，再合并</p>
+          </article>
+          <article class="la-node la-node--add" data-la-node="add1" data-la-tone="add" aria-label="残差相加：x 加上 Attention 更新">
+            <span class="la-plus" aria-hidden="true">+</span><h3>加回 x</h3>
+          </article>
+          <div class="la-node la-node--junction" data-la-node="x1" data-la-tone="data" aria-label="Attention 更新后的表示 x1"><h3>x₁</h3></div>
+        </div>
+        <div class="la-lane la-lane--b">
+          <article class="la-node la-node--norm" data-la-node="norm2" data-la-tone="norm">
+            <span class="la-node-tag">RMSNorm</span><h3>子层计算前调整尺度</h3>
+          </article>
+          <article class="la-node la-node--ffn" data-la-node="ffn" data-la-tone="ffn">
+            <span class="la-node-tag">FFN / MLP</span><h3>在单个位置内提取、组合特征</h3>
+            <p class="la-node-note">上投影升维 → 门控调节 → 下投影降维</p>
+          </article>
+          <article class="la-node la-node--add" data-la-node="add2" data-la-tone="add" aria-label="残差相加：x1 加上 FFN 更新">
+            <span class="la-plus" aria-hidden="true">+</span><h3>加回 x₁</h3>
+          </article>
+          <div class="la-node la-node--junction" data-la-node="y" data-la-tone="data" aria-label="当前层输出表示 y"><h3>y</h3></div>
+        </div>
+      </section>
+      <div class="la-output-row">
+        <article class="la-node la-node--repeat" data-la-node="repeat" data-la-tone="repeat">
+          <span class="la-node-tag">其余模型层</span><h3>多层接续更新表示</h3><p class="la-node-note">全模型共 N 层</p>
+        </article>
+        <article class="la-node la-node--final" data-la-node="finalnorm" data-la-tone="norm">
+          <span class="la-node-tag">Final Norm</span><h3>输出打分前调整尺度</h3>
+        </article>
+        <article class="la-node la-node--head" data-la-node="head" data-la-tone="head">
+          <span class="la-node-tag">LM Head</span><h3>为词表中的 token 打分</h3>
+        </article>
+        <article class="la-node la-node--next" data-la-node="next" data-la-tone="out">
+          <span class="la-node-tag">生成选择</span><h3>按策略选择下一个 token</h3><p class="la-node-note">Softmax：将分数转成概率</p>
+        </article>
+      </div>
+    </div>
+    <section class="la-focus" id="la-inline-focus" data-la-focus hidden aria-label="选中模块的内部计算">
+      <header class="laf-header"><div><p class="laf-kicker">主架构中的当前模块 · 内部展开</p><h3 data-laf-title></h3></div><button type="button" data-laf-close>收回主架构 ↗</button></header>
+      <div class="laf-options" data-laf-options></div>
+      <div class="laf-context" data-laf-context hidden>
+        <span data-laf-context-item="q"></span><span data-laf-context-item="heads"></span>
+      </div>
+      <p class="laf-scroll-hint">窄屏可左右滚动计算图，文字保持原有大小。</p>
+      <div class="laf-stage" data-laf-stage tabindex="0" aria-label="模块内部计算图，可在窄屏横向滚动"></div>
+      <div class="laf-formula lesson-formulas" data-laf-formula></div>
+      <div class="laf-footer"><label>演示速度 <input type="range" min="0.5" max="2" step="0.25" value="1" data-laf-speed aria-label="内部计算演示速度"><output data-laf-speed-label>1×</output></label><span data-laf-position></span></div>
+      <p class="laf-boundary">架构图共用一个 3 层教学模型，跟踪「法国 · 首都 · ？」中末位的表示。×10、切换查看哪个 K 和采样都是局部操作。脉冲展示数据去向。过渡帧中的条形和数值用于说明变化，计算结果保留两位小数。</p>
+    </section>
+    </div>
+    <div class="la-handoff">
+      <p data-la-do>按 token ID 查询 Embedding 表，跟踪末位「？」的初始向量。</p>
+      <p data-la-trace class="la-trace" hidden></p>
+      <details class="la-step-detail" id="la-mechanism-detail" data-la-detail><summary>文字与公式：<span data-la-detail-title>Embedding 怎样得到初始向量？</span></summary>
+        <div class="la-mechanism" data-la-explainer="0" data-la-detail-heading="Embedding 怎样得到初始向量？">
+          <h4>编号决定取哪一行，权重决定这一行是什么</h4>
+          <p>token ID 只是编号。比如第 17 行和第 18 行相邻，不能从这个编号差判断两个 token 的含义。Embedding 表 E 为每个词表条目保存一行训练得到的数值。输入有多少个位置，就查出多少行表示。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:embedding}}{{math:embedding_shape}}</div>
+          <p>t 是序列里的位置，id<sub>t</sub> 是该位置的 token 编号。E 有 N<sub>vocab</sub> 行，每行 d 个数。按位置依次取出 T 行组成输入矩阵 X。教学词表中「？」的编号是 17，取出的两个数一起成为该位置的初始表示。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:embedding_demo}}</div>
+          <p>整数 ID 只负责索引。后面的投影才能用向量的不同分量做加权组合。若同一个 token 出现两次，两处查表结果相同，但所在位置、可见前文与后续的注意力权重都可能不同。</p>
+          <p><strong>读图时分清两个轴。</strong>这个例子有 3 个输入位置，每个位置 2 个分量。Attention 在位置之间汇聚信息，FFN 则改变单个位置内部的分量。后面出现的 2 → 3 → 2 指特征宽度，整个序列仍有 3 个位置。</p>
+          <p class="la-mechanism-source"><a href="https://arxiv.org/html/1706.03762v7#S3.SS4">Transformer 原论文 §3.4 · 词嵌入与输出</a></p>
+        </div>
+        <div class="la-mechanism" data-la-explainer="1" data-la-detail-heading="RMSNorm 为什么先调整尺度？">
+          <h4>用整个向量的幅度作参照</h4>
+          <p>两条方向相同的向量 [3, 4] 和 [30, 40] 送入同一个线性投影，后一条的结果整体是前者的 10 倍（忽略偏置）。在 Attention 之前先做归一化，可以减少这种由输入整体大小带来的差异。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:rms}}</div>
+          <ol>
+            <li><strong>先测幅度。</strong>把各分量平方，取平均，再开根号。平方让正负值都对幅度有贡献，平均让参照考虑分量数，开根号把单位恢复到与输入一致。ε 是很小的正数，防止分母接近零。</li>
+            <li><strong>再除以共同尺度。</strong>忽略 ε 时，[3, 4] 的均方根约为 3.536，[30, 40] 约为 35.355。各自除以自己的均方根，两者都得到约 [0.849, 1.131]。这一步没有减去均值，而且使用同一个正数缩放各分量，保留向量方向。</li>
+            <li><strong>最后逐维调节。</strong>γ 是训练学到的权重，推理时对不同输入复用。例如 γ 为 [1, 2] 时，第二维再乘 2，结果变成约 [0.849, 2.263]。除以均方根后，各维共用尺度。再乘不同的 γ 后，模型可以让某一维对后续投影有更大的影响，输出的方向和均方根也可能改变。</li>
+          </ol>
+          <p>图中的「输入整体 ×10」省略了 ε，专门展示整体放大会怎样被共同的分母抵消。末位输入为 [0.2, 0.3]，可以跟着图核对它的分母。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:rms_example}}</div>
+          <p>除完后两维约为 0.784 和 1.177，再乘增益得到约 [0.941, 0.941]。采用 Pre-Norm 时，这个 h 供 Attention 使用，旁路上的 x 仍按原样送到残差加法。</p>
+          <p>带 ε 的写法在全零输入时也有正的分母，输出仍为零。两组同方向的输入只有在 ε 可忽略时才近似得到相同的归一化结果。这里的参照来自同一个位置的 d 个分量，每个位置单独计算。</p>
+          <p class="la-mechanism-source"><a href="https://arxiv.org/html/1910.07467v1#S4">RMSNorm 原论文 §4 · 分母与逐维增益</a></p>
+        </div>
+        <div class="la-mechanism" data-la-explainer="2" data-la-detail-heading="Q/K/V、多头与输出投影各做什么？">
+          <h4>先算该关注谁，再决定从那里取多少内容</h4>
+          <p>在这个问题里，末位「？」是我们跟踪的当前位置。它用自己的 Query（Q）与可见位置的 Key（K）比较，再按得到的权重读取各位置的 Value（V）。这让匹配使用的特征与最终传递的内容可以由不同的权重学习。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:qkv}}</div>
+          <p>H 是各位置归一化后排成的矩阵。以下先看一个头。每个位置用相同的三组投影参数生成自己的 q、k、v。Q 和 K 需要同宽才能做点积，V 的宽度决定每个位置能提供多少内容分量。撇号标记 RoPE 旋转后的 Q′、K′，打分使用这两组向量。</p>
+          <details class="la-detail-topic"><summary>为什么要用三套投影？</summary>
+            <p>当前位置要寻找的特征、之前的位置用来参与匹配的特征，以及匹配后传过去的内容，承担不同的计算任务。给它们各一套权重，可以独立调整。例如「首都」所在位置的 K 可以使它更容易与问题相关的 Query 匹配，V 则可以同时传递多个特征。交换两个位置的查询与被查询角色，也会换用不同的投影，匹配分数因此可以不同。</p>
+          </details>
+          <div class="la-mechanism-formula lesson-formulas">{{math:score}}{{math:score_cell}}</div>
+          <p>S 的第 i 行第 j 列表示位置 i 读取位置 j 的分数。K 上的转置把每个位置的 Key 变成一列，因此一行 Query 可以和所有 Key 逐个求点积。</p>
+          <dl class="la-mechanism-roles">
+            <dt>逐位置打分</dt><dd>固定一行 Q，逐一与各位置的 K 做点积，也就是对应分量相乘再求和。固定长度时，方向越对齐，点积越大。向量长度也会影响点积，因此模型还需要控制这一组分数的尺度。公式中的 d<sub>k</sub> 是<strong>一个头</strong>的 Q/K 向量维度。</dd>
+            <dt>挡住未来位置</dt><dd>矩阵 M 是因果掩码。允许读取的位置加 0，未来位置加负无穷。取指数后，未来位置的贡献为 0。若只把未来位置的分数置 0，指数反而是 1，仍会分到权重。例如在教学序列中，「首都」能读「法国」和自身，末位「？」能读三个位置。训练时已有完整序列，因此这个限制也用来阻止当前位置提前看到后面的答案。</dd>
+            <dt>形成加权结果</dt><dd>softmax 固定 Query 位置 i，在该行沿 Key 位置 j 归一化。算出的同一个权重乘到对应 V 的每个分量上，再逐分量相加。若两个位置的 V 恰好相同，两者之间怎么分配权重都不会改变这一对的合计贡献，合计多少由它们的权重之和决定。</dd>
+          </dl>
+          <div class="la-mechanism-formula lesson-formulas">{{math:mask}}{{math:weights}}</div>
+          <p>跟着图中的头 1 看，「首都」的权重约为 25.2%，其 V 的第一维约为 −0.393。代入加权和的该项，一个位置虽分到正权重，对输出第一维却有负贡献。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:attention_contribution}}</div>
+          <details id="attention-scaling" class="la-detail-topic">
+            <summary>为什么除以 √dₖ？softmax 过分集中会怎样？</summary>
+            <h5>分数的差距决定权重相差多少</h5>
+            <p>softmax 先对每个分数取指数，再除以指数之和。当两个位置的分数相差 1，前者的权重约是后者的 2.72 倍。相差 8 时，倍率变成约 2,981。两种情况下排第一的是同一个位置，但其余位置参与汇聚的程度差很多。</p>
+            <div class="la-mechanism-formula lesson-formulas">{{math:softmax_ratio}}</div>
+            <div class="lesson-math-table"><table class="fd-table"><caption>两个可见位置的教学对照</caption><thead><tr><th scope="col">输入分数</th><th scope="col">归一化权重</th><th scope="col">对汇聚的影响</th></tr></thead><tbody>
+              <tr><th scope="row">[1, 0]</th><td>73.11%、26.89%</td><td>第二个位置仍贡献约四分之一。</td></tr>
+              <tr><th scope="row">[8, 0]</th><td>99.97%、0.03%</td><td>输出几乎只剩第一个位置的 V。</td></tr>
+            </tbody></table></div>
+            <p>这就是「集中」在前向中的影响。比如「法国」和「首都」各提供一部分线索，若仅因打分的整体尺度偏大而过早压低第二个位置，它的内容就很少进入结果。输入确实需要集中关注一个位置时，集中的权重也可以是合理结果。</p>
+            <p><strong>训练时还会影响梯度。</strong>梯度反映调整分数时权重会改变多少。这里固定其余分数，一个位置的权重对自身分数的导数如下。用上表的最高权重计算，分数差 1 时约为 0.197，分数差 8 时只剩约 0.000335。接近 0 或 1 的权重对小幅调整不敏感，这条通往打分的学习信号会变弱。</p>
+            <div class="la-mechanism-formula lesson-formulas">{{math:softmax_gradient}}</div>
+            <h5>要抵消的是波动幅度，它按平方根增长</h5>
+            <p>原论文用一个简化假设解释尺度的选择。假定 Q 与 K 的各分量相互独立，平均值为 0、方差为 1。每一对分量相乘，乘积仍然平均为 0，方差为 1。把 d<sub>k</sub> 个独立乘积相加时，正负项可以抵消，平均值仍为 0，但方差会相加。</p>
+            <div class="la-mechanism-formula lesson-formulas">{{math:dot_spread}}</div>
+            <p>方差衡量的是平方后的波动，开根号才得到与分数同单位的<strong>标准差</strong>。因此，维度翻 4 倍时，典型波动只翻 2 倍。除以 √d<sub>k</sub>，标准差约回到 1。若除以 d<sub>k</sub>，标准差就继续缩小，有限数量的位置分数变得太接近，softmax 权重也会趋于平均。</p>
+            <div class="la-mechanism-formula lesson-formulas">{{math:scale_compare}}</div>
+            <p>取 d<sub>k</sub> = 64。在上述假设下，不缩放、除以 √64、除以 64，标准差分别是 8、1、0.125。正数缩放不改变分数排名，改变的是差距及随后分配的权重。训练后的 Q/K 不一定满足这些独立性假设，因此这是设计动机，并非对每一行实际分数的保证。</p>
+            <p><strong>与减去最大值分开理解。</strong>除以 √d<sub>k</sub> 改变分数差，能改变权重集中程度。减去最大值是给所有分数减去同一个数，差距和权重都保留，目的是避免直接取指数时溢出。</p>
+            <p class="la-mechanism-source"><a href="https://arxiv.org/html/1706.03762v7#S3.SS2.SSS1">Transformer 原论文 §3.2.1 与脚注 1</a></p>
+          </details>
+          <h4>RoPE 让匹配能感知相对位置</h4>
+          <p>先把 Q/K 各取一对分量当作平面向量，再按所在位置旋转。不同位置产生不同转角，旋转保留各向量的长度。Q 与 K 都向同一方向额外转相同的角度时，它们的相对夹角保持不变，点积也保持不变。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:rope}}{{math:rope_relative}}</div>
+          <p>p、r 是两个位置，R 是按位置确定的旋转。公式中的 r−p 说明位置以相对差进入比较，实际分数还取决于原始 q、k。RoPE 不负责禁止读取未来，因果掩码仍在打分后单独生效。这张图只旋转 Q 与 K，V 仍用于传递内容。</p>
+          <p>图中的「？」在位置 2，这一对分量转 1.2 弧度。「法国」在位置 0，K 的向量不转。切到「首都」时，K 在位置 1，转 0.6 弧度，同时换成了「首都」自己的 K。若要单独看位置改了什么，可以用<a href="components.html#why-position-norm">下方固定原向量的 RoPE 对照</a>。实际 RoPE 通常会按成对分量使用不同的旋转频率，图里只演示一对。</p>
+          <h4>多头各自汇聚，输出投影再混合</h4>
+          <p>每个头用自己的投影得到一组匹配结果和权重。一个头的权重覆盖的是它看到的位置，多个头各自归一化。图中两个头分别输出 2 维，按头顺序拼成 4 维，再乘 W<sub>O</sub> 得到能与残差相加的 2 维更新 ΔA。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:attention_projection}}{{math:attention_shape}}</div>
+          <p>n 是头数，d<sub>v</sub> 是每个头的输出宽度。把两个头的结果拼接只是按顺序排在一起。乘 W<sub>O</sub> 才会跨头混合。图中输出第一维使用的四个系数是 1、0、0.3、0.1，因此两个头都有分量参与计算。若只把两头逐维平均，就会固定同维等权相加。学习到的 W<sub>O</sub> 则可以为每个输出分量选择不同组合。</p>
+          <p class="la-mechanism-source"><a href="https://arxiv.org/html/1706.03762v7#S3.SS2">Transformer 原论文 §3.2 · 注意力与多头</a> · <a href="https://arxiv.org/abs/2104.09864">RoFormer 原论文</a></p>
+        </div>
+        <div class="la-mechanism" data-la-explainer="3" data-la-detail-heading="Attention 更新为什么要加回输入？">
+          <h4>已有表示走旁路，子层学习如何更新它</h4>
+          <p>子层在归一化后的输入上算出 ΔA，旁路送来归一化之前的 x。两条向量同宽，所以可以逐元素相加。图中的第一个分量把 0.20 加上约 0.74，得到约 0.94。若子层给出零更新，模块便可原样传下既有表示。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:residual_a}}{{math:residual_component}}</div>
+          <p>逐维相加保留了同一宽度，也让子层可以学习较小的增量。负的更新可以抵消输入的一部分，因此「保留」指原向量有一条直接进入加法的路径。</p>
+          <details class="la-detail-topic"><summary>旁路为什么也影响训练？</summary>
+            <p>把输入的第 i 维稍微调大时，加法左边直接把这个变化传到输出，右边的更新也可能随之改变。导数里对应两条路径。第一项的 1 来自旁路，在子层的局部导数很小时仍有直接贡献。总导数还取决于第二项，两项也可能抵消。</p>
+            <div class="la-mechanism-formula lesson-formulas">{{math:residual_slope}}</div>
+          </details>
+          <p class="la-mechanism-source"><a href="https://arxiv.org/pdf/1512.03385">残差学习原论文 §3 · 恒等旁路</a></p>
+        </div>
+        <div class="la-mechanism" data-la-explainer="4" data-la-detail-heading="第二次 Norm 与第一次有什么区别？">
+          <h4>Attention 已经改了表示，FFN 需要它自己的归一化输入</h4>
+          <p>第一次 RMSNorm 看到的是 x，第二次看到的是残差相加得到的 x₁。相加可能改动方向和整体幅度，先前对 x 的缩放不能代替对 x₁ 的测量。第二次重新计算均方根。两处 γ 在真实模型里一般分别学习，教学图给它们相同的数值，便于观察分母怎样改变。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:norm_2}}</div>
+          <p>第一次归一化的均方根约为 0.255。Attention 的更新加到 x 后，新向量约为 [0.944, 0.950]，均方根约为 0.947。若继续除以前一个尺度，两个分量就会都接近 3.7。第二次用当前的均方根重新缩放，再乘增益，得到送给 FFN 的约 [1.196, 0.803]。</p>
+          <p>归一化后的 h₂ 进入 FFN。第二条旁路从归一化前的 x₁ 分出，直接到后面的加法节点。两条线的起点相同，中间经历的计算不同。</p>
+        </div>
+        <div class="la-mechanism" data-la-explainer="5" data-la-detail-heading="FFN 为什么先升维，再降维？">
+          <h4>在同一个位置内展开、调节，再组合</h4>
+          <p>d 是层间表示的宽度，m 是 FFN 中间宽度。图里 d 是 2，m 是 3。Attention 可以让「？」读到「法国」和「首都」这样的其他位置，FFN 则只读取当前表示中已有的分量。同一层的 FFN 参数由各位置共享，输入不同就能产生不同结果。</p>
+          <ol class="la-ffn-stages">
+            <li><strong>两路投影各得到 m 个分量。</strong>上投影和门控投影各用一组 d × m 的权重。矩阵每一列规定怎样加权组合输入分量，产生一个中间分量。更宽的空间可以容纳更多组合，代价是参数和计算量增加。</li>
+            <li><strong>对门控分支做非线性处理，再逐元素相乘。</strong>SiLU 把门控分量 g 变成 a，a 的第 j 项再乘 u 的第 j 项。图中第 1 通道的 a 约为 1.498，放大了 u。第 2 通道的 a 约为 −0.248，把正的 u 变成约 −0.079 的 z。门控系数由当前输入算出，因此换一个上下文，同一通道的响应就可能改变。</li>
+            <li><strong>用下投影回到 d 维。</strong>下投影矩阵有 m 行、d 列。每个输出分量都能从全部中间通道取不同的加权组合。结果是新的 ΔM，宽度与旁路的 x₁ 相同，所以后面可以直接相加。</li>
+          </ol>
+          <div class="la-mechanism-formula lesson-formulas">{{math:ffn_project}}{{math:silu}}{{math:gate}}{{math:ffn_down}}</div>
+          <details class="la-detail-topic">
+            <summary>SiLU 的系数从哪来？为什么要加非线性？</summary>
+            <p>σ 是 sigmoid。给它一个标量 t，它就给出 0 和 1 之间的数。SiLU 把这个系数乘回 g 本身，最终的 a 可以为负，g 较大时也可以超过 1。逐元素相乘用的是 a，图中的通道因此可能保留负响应、减弱或放大。</p>
+            <div class="la-mechanism-formula lesson-formulas">{{math:sigmoid}}</div>
+            <p>普通 FFN 若只连续乘两个线性矩阵，可以先把矩阵相乘，升维和降维合起来仍是一次线性变换。SwiGLU 的逐元素乘积本身就把两路输入特征结合起来，SiLU 则让负、近零和正的门控响应有不同的变化幅度。</p>
+          </details>
+          <details class="la-detail-topic"><summary>一个中间通道怎样影响两个输出分量？</summary>
+            <p>先看上投影矩阵的第 j 列。h₂ 的每一维乘以这一列对应的权重，求和得到 u 的第 j 项。门控得到 z 后，换成按下投影的第 j 行来读。同一个 z 的第 j 项为每个输出分量提供一份贡献。</p>
+            <div class="la-mechanism-formula lesson-formulas">{{math:ffn_units}}{{math:ffn_down_sum}}</div>
+            <p>图中第 2 通道的下投影权重是 [0.1, −0.5]。它的 z 是负数，所以这一个通道把第一维往下拉，把第二维往上推。再把三个通道的贡献相加，得到 ΔM。</p>
+            <div class="la-mechanism-formula lesson-formulas">{{math:ffn_down_example}}</div>
+            <p>降维把 m 个中间通道的贡献合成 d 个新的分量。若某个通道的 z 接近 0，它这次的贡献也小。不同通道还能在某一输出维上相互抵消。哪些特征被增强或减弱，由当前激活和下投影权重共同决定。</p>
+          </details>
+          <p class="la-mechanism-source"><a href="https://arxiv.org/html/1706.03762v7#S3.SS3">Transformer 原论文 §3.3 · FFN</a> · <a href="https://arxiv.org/html/2002.05202v1#S2">GLU 变体论文 §2 · SwiGLU</a></p>
+        </div>
+        <div class="la-mechanism" data-la-explainer="6" data-la-detail-heading="FFN 降维后的更新交给谁？">
+          <h4>把逐位置的更新加进已经带上下文的表示</h4>
+          <p>加法的左边是第一次残差的结果 x₁，右边是 FFN 新算出的同宽更新 ΔM。直接加回最初的 x，会改变第一次 Attention 更新通往层输出的路径。图中要沿第二条旁路追到它真正的起点 x₁。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:residual_f}}</div>
+          <p>图中 ΔM 的第一维约为 1.276，第二维约为 −0.194。加回后，x₁ 的两维从约 [0.944, 0.950] 变为 [2.219, 0.756]。这个例子可以直接看出，一个子层在同一位置既能增强某个分量，也能压低另一个。下一层会在各位置的新向量上重新计算 Q/K/V，因此 FFN 在单个位置做的更新也可能影响后续的跨位置汇聚。</p>
+          <details class="la-detail-topic"><summary>把整层的两条更新路径合起来看</summary>
+            <p>这里用大写 X、X₁ 和 Y 表示把所有位置的向量按行排起来。每个 RMSNorm 都逐行计算，分别向 Attention 和 FFN 提供输入。两次相加各自保留对应子层的输入，所以第二条旁路从 X₁ 分出。</p>
+            <div class="la-mechanism-formula lesson-formulas">{{math:pre_norm_layer}}</div>
+            <p class="la-mechanism-source"><a href="https://proceedings.mlr.press/v119/xiong20b.html">Xiong 等 · 归一化的位置与 Pre-LN 结构</a></p>
+          </details>
+        </div>
+        <div class="la-mechanism" data-la-explainer="7" data-la-detail-heading="多层堆叠与 Final Norm 分别负责什么？">
+          <h4>层层更新表示，最终把尺度交给输出头</h4>
+          <p>第 2 层拿到的是第 1 层已经更新过的各位置表示。即使 token ID 没变，本轮各层的 Q、K 和 V 也会从各自的输入生成。后续层可以把前一层形成的特征用到新的匹配和变换，层间仍传递相同宽度的表示。教学模型在不同层复用部分权重，同时改变部分投影的系数，因而能看到表示继续变化。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:layer_flow}}</div>
+          <p>括号中的上标是层编号，x<sup>(0)</sup> 表示送进第 1 层之前的状态，x<sup>(N)</sup> 是第 N 层输出。一次生成新 token 的前向会走过这些层，层编号与生成轮次是两个不同的计数。</p>
+          <p>Pre-Norm 子层把计算得到的更新加回旁路，因此最后一次加法后的幅度并未归一化。图中最后一层的第一维约为 7.223，最后一次 RMSNorm 把它调到约 1.681。它仍是 2 维表示。在线性输出头前，若只把整个向量成倍放大，所有分数差也会被成倍放大，概率会更偏向高分候选。最终归一化可以减弱前面累积的整体幅度对打分尺度的影响。</p>
+          <p>生成下一轮时，已有位置的 K/V 可以从缓存读取。当前新增位置的表示仍需经过各层，逐层生成当前自己的 Q/K/V。想看这个区别怎样影响推理，可以接着读<a href="cache.html">KV Cache</a>。</p>
+        </div>
+        <div class="la-mechanism" data-la-explainer="8" data-la-detail-heading="从最终向量到下一 token 还差哪几步？">
+          <h4>把特征变成候选分数，再按策略选 token</h4>
+          <dl class="la-mechanism-roles">
+            <dt>LM Head</dt><dd>把层末表示与每个候选对应的输出权重做点积。每个候选得到一个 logit，也就是归一化之前的分数。图中把 2 维的表示映射到 4 个分数，是因为教学词表只有 4 个候选。</dd>
+            <dt>Softmax</dt><dd>在词表候选之间分配总和为 1 的概率。Attention 那一次是在同一个 Query 的可见位置之间分配权重，两次的运算形式相同，分配的对象不同。</dd>
+            <dt>生成选择</dt><dd>贪心每轮挑最高分。因为 softmax 保留分数排名，直接比较 logits 也能得到同一个选择。采样则按概率抽取，分数低于第一名的候选也有机会被选中。</dd>
+          </dl>
+          <div class="la-mechanism-formula lesson-formulas">{{math:lm_head}}{{math:logit}}{{math:softmax_vocab}}</div>
+          <p>对候选 c，取 W<sub>vocab</sub> 的第 c 列 w<sub>c</sub> 来打分。图中用最终向量和「巴黎」对应的两个权重做点积。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:logit_example}}</div>
+          <p>两个候选的分数差取决于当前向量在<strong>两列权重之差</strong>这个方向上的投影。前面各层改变表示后，这个差距也可能随之改变。</p>
+          <div class="la-mechanism-formula lesson-formulas">{{math:logit_margin}}</div>
+          <p>这里用稳定写法，m 是最大分数，分母的 b 遍历候选。每个分数减 m 后，指数的共同倍率会在分子和分母中抵消，概率保持一致。最大分数移到 0 后，它的指数为 1，其余指数都不大于 1，减少了溢出的风险。</p>
+          <details class="la-detail-topic"><summary>同一组概率，为什么采样能选到另一个 token？</summary>
+            <p>按候选表顺序累加概率，相当于把 0 到 1 划成几段。每个候选分到的区间长度等于它的概率。抽一个均匀随机数 u，选累计概率首次达到它的候选。图里的「巴黎」概率约为 62.5%，累加「里昂」后约为 76.3%，再累加「北京」约为 83.0%。固定抽到 0.8，就落入「北京」的区间。</p>
+            <div class="la-mechanism-formula lesson-formulas">{{math:greedy}}{{math:sampling}}</div>
+          </details>
+          <p>图中的贪心选择得到「巴黎」，再将它加入上下文供下一轮使用。这里按一个 token 示意「巴黎」，真实分词器可能拆成多个 token。候选概率表达的是模型在当前输入下的预测倾向，事实校验需要另外的依据。</p>
+          <p class="la-mechanism-source"><a href="https://arxiv.org/html/1706.03762v7#S3.SS4">Transformer 原论文 §3.4 · 输出映射与 softmax</a></p>
+        </div>
+        <div class="la-detail-handoff"><p data-la-handoff-next>x 进入第 ℓ 层；同一层对各位置使用同一套参数。</p><code data-la-load>token id → x</code><a href="#layer-atlas">返回架构总览 ↑</a></div>
+      </details>
+      <p class="la-sr-status" role="status" aria-live="polite" data-la-status>步骤 1 / 9：输入与嵌入。</p>
+    </div>
+  </div>
+  <p class="la-caption"><span class="la-legend-flow">青色脉冲</span>表示向量或更新沿箭头传递。<span class="la-legend-residual">琥珀旁路</span>将已有表示直接送到加法节点。图示为简化的 Decoder-only / Pre-Norm 结构，演示速度用于看清计算顺序。</p>
+  <noscript><p class="la-caption">路径：Embedding → RMSNorm → Attention → 残差相加 → RMSNorm → FFN → 残差相加 → 其余模型层 → Final Norm → 输出头。两条残差分别保留 x 与 x₁。</p></noscript>
+</section>

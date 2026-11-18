@@ -1,0 +1,101 @@
+.la-viewport{position:relative;isolation:isolate;overflow-anchor:none;background:var(--la-canvas)}
+.la-board{scroll-margin-top:94px}
+.la-focus[hidden]{display:none}
+.la-focus{position:relative;z-index:3;min-width:0;padding:22px;background:var(--la-canvas);border-left:1px solid var(--la-border);transform-origin:0 0}
+.laf-header{display:flex;align-items:start;justify-content:space-between;gap:18px}
+.laf-kicker{margin:0 0 7px;font-size:11px;color:var(--la-muted)}
+.laf-header h3{margin:0;font-size:19px;line-height:1.6;font-weight:600}
+.laf-header button,.laf-options button{font:inherit;font-size:12px;color:var(--la-text);background:var(--la-node);border:1px solid var(--la-border);border-radius:6px;padding:8px 10px;cursor:pointer}
+.laf-header button{flex-shrink:0}
+.laf-options{display:flex;gap:8px;flex-wrap:wrap;min-height:34px;margin:14px 0 2px}
+.laf-options:empty{display:none}
+.laf-options [aria-pressed=true]{border-color:var(--la-signal);background:var(--la-signal-soft);color:var(--la-signal)}
+.laf-stage{position:relative;width:100%;min-width:0;margin:10px 0 0}
+.laf-stage .laf-outgoing{position:absolute;top:0;left:0;pointer-events:none}
+.laf-context[hidden]{display:none}
+.laf-context{display:flex;gap:8px 16px;flex-wrap:wrap;font-size:12px;line-height:1.65;color:var(--la-muted);margin:7px 0}
+.laf-context span{border-left:2px solid var(--la-border);padding:4px 8px}
+.laf-context [data-current=true]{border-color:var(--la-signal);color:var(--la-text)}
+.la-zoom-label{position:absolute;z-index:6;pointer-events:none;white-space:nowrap;padding:6px 10px;border:1px solid var(--la-signal);border-radius:6px;background:var(--la-node);color:var(--la-text);font-size:13px;font-weight:600}
+.la-trace{color:var(--la-muted);font-size:12px;margin:8px 0}
+.la-handoff>.la-trace:not([hidden]){margin:8px 0 0}
+.la-controls .la-full{border-color:var(--la-signal);background:var(--la-node);color:var(--la-signal)}
+.la-controls .la-full[aria-pressed=true]{background:var(--la-signal-soft)}
+.la-run-handoff{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 14px;padding:10px 20px;min-height:41px;margin:0;background:var(--la-signal-soft);font-size:12px;line-height:1.6}
+.la-run-handoff[hidden]{display:none}
+.la-run-handoff [data-la-run-value]{font-variant-numeric:tabular-nums}
+.la-run-handoff [data-la-run-branch]{color:var(--la-residual)}
+.la-run-pulse{pointer-events:none}
+.la-run-pulse circle{fill:var(--la-node);stroke:var(--la-signal);stroke-width:2.5px}
+.la-run-pulse rect{fill:var(--la-signal)}
+.la-run-pulse--residual circle{stroke:var(--la-residual)}
+.la-run-pulse--residual rect{fill:var(--la-residual)}
+.la-board[data-la-run] .la-edge.is-active{animation:none;stroke-dasharray:none}
+.la-board[data-la-run] .la-edge.is-active[data-la-kind=residual]{stroke-dasharray:4 6}
+.la-board[data-la-run] .laf-options{display:none}
+.la-board[data-la-run] .laf-stage>svg{opacity:calc(.55 + .45 * var(--laf-enter,1));transform:translateY(calc(6px * (1 - var(--laf-enter,1))))}
+@media(prefers-reduced-motion:reduce){
+ .la-board[data-la-run] .laf-stage>svg{opacity:1;transform:none}
+}
+.laf-stage svg{display:block;width:100%;height:auto;overflow:visible}
+.laf-scroll-hint{display:none;font-size:12px;color:var(--la-muted);margin:12px 0 0}
+.laf-stage text{font-family:system-ui,-apple-system,"PingFang SC",sans-serif;fill:var(--la-text)}
+.laf-stage .laf-number{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.laf-stage .laf-muted{fill:var(--la-muted)}
+.laf-box{fill:var(--la-node);stroke:var(--la-border);stroke-width:1.5}
+.laf-wire{fill:none;stroke:var(--la-line);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#laf-arrow)}
+.laf-packet{pointer-events:none}
+.laf-packet circle{fill:var(--la-signal);opacity:.16}
+.laf-formula{min-height:68px;margin:10px 0;padding:11px 14px;color:var(--la-text);background:var(--la-signal-soft);border-left:3px solid var(--la-signal)}
+.laf-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;color:var(--la-muted);font-size:11px}
+.laf-footer label{display:flex;align-items:center;gap:9px}
+.laf-footer input{width:90px;accent-color:var(--la-signal)}
+.laf-boundary{font-size:11px;line-height:1.8;margin:12px 0 0;color:var(--la-muted)}
+.la-board[data-la-view=focus] .la-viewport{display:grid;grid-template-columns:340px minmax(0,1fr)}
+.la-board[data-la-view=focus] [data-la-canvas]{padding:22px 14px;min-width:0;align-self:start}
+.la-board[data-la-view=focus] [data-la-canvas] .la-node{padding:9px 5px;gap:0;min-height:34px;border-radius:6px}
+.la-board[data-la-view=focus] [data-la-canvas] .la-node-tag{font-size:12px;line-height:1.5}
+.la-board[data-la-view=focus] [data-la-canvas] .la-node h3,.la-board[data-la-view=focus] [data-la-canvas] .la-node-note{display:none}
+.la-board[data-la-view=focus] [data-la-canvas] .la-node--junction{width:14px;height:14px;min-height:14px;padding:0}
+.la-board[data-la-view=focus] [data-la-canvas] .la-node--junction h3{display:block;font-size:10px}
+.la-board[data-la-view=focus] [data-la-canvas] .la-node--add{width:24px;height:24px;min-height:24px;padding:0}
+.la-board[data-la-view=focus] [data-la-canvas] .la-plus{font-size:20px}
+.la-board[data-la-view=focus] [data-la-canvas] .la-input-row{grid-template-columns:1fr 1fr;gap:24px;align-items:center}
+.la-board[data-la-view=focus] [data-la-canvas] .la-input-row .la-node{width:auto;max-width:none}
+.la-board[data-la-view=focus] [data-la-canvas] .la-layer{margin:55px 0 58px;padding:12px 9px 38px}
+.la-board[data-la-view=focus] [data-la-canvas] .la-layer-head{display:block;text-align:left}
+.la-board[data-la-view=focus] [data-la-canvas] .la-layer-head h3{display:block;font-size:12px}
+.la-board[data-la-view=focus] [data-la-canvas] .la-layer-head>span{display:none}
+.la-board[data-la-view=focus] [data-la-canvas] .la-lane{column-gap:15px;row-gap:0;justify-items:stretch}
+.la-board[data-la-view=focus] [data-la-canvas] .la-lane--a{grid-template-columns:14px minmax(58px,.8fr) minmax(76px,1.2fr) 24px 14px;margin-top:38px}
+.la-board[data-la-view=focus] [data-la-canvas] .la-lane--b{grid-template-columns:14px 24px minmax(76px,1.2fr) minmax(58px,.8fr) 14px;margin-top:65px}
+.la-board[data-la-view=focus] [data-la-canvas] .la-lane>.la-node:not(.la-node--junction):not(.la-node--add){width:auto;max-width:none}
+.la-board[data-la-view=focus] [data-la-canvas] .la-lane--b [data-la-node=norm2]{grid-column:4;grid-row:1}
+.la-board[data-la-view=focus] [data-la-canvas] .la-lane--b [data-la-node=ffn]{grid-column:3;grid-row:1}
+.la-board[data-la-view=focus] [data-la-canvas] .la-lane--b [data-la-node=add2]{grid-column:2;grid-row:1}
+.la-board[data-la-view=focus] [data-la-canvas] .la-lane--b [data-la-node=y]{grid-column:1;grid-row:1}
+.la-board[data-la-view=focus] [data-la-canvas] .la-output-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:center}
+.la-board[data-la-view=focus] [data-la-canvas] .la-output-row .la-node{width:auto;max-width:none}
+.la-board[data-la-view=focus] [data-la-canvas] .la-output-row .la-node-tag{font-size:12px}
+.la-board[data-la-view=focus] [data-la-canvas] .la-edge-label{display:none!important}
+.la-board[data-la-view=focus] [data-la-canvas] .la-node[data-la-state=active]{box-shadow:0 0 0 2px var(--la-signal)}
+.la-zoom-ghost{position:absolute;z-index:5;pointer-events:none;transform-origin:0 0}
+.la-viewport[data-la-morphing=true]{overflow:hidden}
+@container layeratlas (max-width:1000px){
+ .la-board[data-la-view=focus] .la-viewport{grid-template-columns:minmax(0,1fr)}
+ .la-board[data-la-view=focus] [data-la-canvas]{width:340px;max-width:100%;justify-self:center}
+ .la-focus{border-left:0;border-top:1px solid var(--la-border);padding:18px}
+}
+@container layeratlas (max-width:400px){
+ .la-focus{padding:14px 10px}
+ .laf-header{gap:10px;flex-wrap:wrap}
+ .laf-header h3{font-size:17px}
+ .la-board[data-la-view=focus] [data-la-canvas]{padding-left:10px;padding-right:10px}
+ .la-board[data-la-view=focus] [data-la-canvas] .la-lane{column-gap:11px}
+ .laf-options button{font-size:12px}
+}
+@container layeratlas (max-width:340px){
+ .laf-stage{overflow-x:auto}
+ .laf-stage svg{min-width:360px}
+ .laf-scroll-hint{display:block}
+}
