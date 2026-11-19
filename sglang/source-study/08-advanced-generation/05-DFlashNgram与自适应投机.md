@@ -27,6 +27,8 @@
 
 第一方背景：[DFlash: Block Diffusion for Flash Speculative Decoding](https://arxiv.org/abs/2602.06036v2)，Jian Chen、Yesheng Liang、Zhijian Liu，arXiv v2，2026-05-28，本次读取 2026-09-10。本文仅采用“利用目标上下文特征、单次 forward 并行产生草稿块”的算法背景；未复现论文训练和性能，也不把论文实现等同于当前 SGLang 的全部分支。
 
+机制入门可先读 [DFlash 与 DSpark 并行投机解码](<../../../大模型推理/高级生成/DFlash 与 DSpark 并行投机解码学习文档.md>)，区分并行骨干、轻量串行头和验证前缀选择。该篇是独立的文章与论文整理，不改变本课固定源码的预测位置、采样分支和组合条件。
+
 ## 1. 候选来源与预算策略是两条轴
 
 ### 1.1 先认识四种方案

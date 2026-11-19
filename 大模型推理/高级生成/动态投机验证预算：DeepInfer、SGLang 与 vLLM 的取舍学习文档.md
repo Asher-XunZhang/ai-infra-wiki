@@ -171,6 +171,8 @@ E[接受的 draft 数，验证到 l] ≈ Σ(j=1..l) s(i,j)
 
 ## 6. 概率估计器本身也有输入与反馈边界
 
+**论文补充（2026-11-19）：** [DSpark v1 §3.2.1](https://arxiv.org/html/2607.05147v1#S3.SS2.SSS1) 将 confidence 定义为前缀已通过时的条件接受率估计，以分布间总变差构造软标签，并用 Sequential Temperature Scaling 校准前缀概率；它不是已抽中 token 自身的 softmax 概率。并行骨干与 Markov 头的入门解释见 [DFlash 与 DSpark](<DFlash 与 DSpark 并行投机解码学习文档.md>)。这是算法背景补充，不证明下文各引擎、checkpoint 都采用了同样的训练与校准过程。
+
 DeepInfer 和本篇 SGLang DSpark 路径读取模型 confidence head。SGLang 非 static 模式若缺少该 head，会在 [初始化][s-init] 拒绝；这不是声称所有 SGLang 自适应投机都依赖这一套机制。
 
 vLLM 则提供另一条路径：[DSpark speculator][v-dspark] 有 head 时使用它；通用 [speculator][v-speculator] 可建立 `OnlineAcceptanceEstimator`，从 draft logits 提取特征，并用目标验证结果周期更新。预测只是估算工具，最终接受仍交给验证/采样。
