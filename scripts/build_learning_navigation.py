@@ -57,16 +57,16 @@ MODULES = [
     ('request-runtime', '请求生命周期与运行时架构', 'foundations', False, [
         ('sglang/request-runtime/index.html', '请求生命周期：Req、TokenizerManager 与 Scheduler', 'SGLang · 入门')]),
     ('loop-journey', '调度循环与批次执行旅程', 'instance', False, [
-        ('sglang/loop-journey/index.html', '调度循环：Normal、Overlap 与 PP 的完整旅程', 'SGLang · 时间与依赖'),
-        ('sglang/request-state/index.html', 'Req 状态与队列流转：请求为什么还没继续？', 'SGLang · 状态与引用'),
         ('sglang/inference-overview/journey.html', 'ScheduleBatch：Extend 与 Decode 怎样准备输入？', 'SGLang · 源码导读'),
+        ('sglang/request-state/index.html', 'Req 状态与队列流转：请求为什么还没继续？', 'SGLang · 状态与引用'),
+        ('sglang/loop-journey/index.html', '调度循环：Normal、Overlap 与 PP 的完整旅程', 'SGLang · 时间与依赖'),
         ('sglang/inference-overview/scheduling.html', 'Scheduler：选批、Chunked Prefill 与 Decode 更新', 'SGLang · 源码导读')]),
     ('model-execution', '模型执行与设备协作', 'instance', False, [
-        ('sglang/inference-overview/transformer.html', 'DeepSeek-V3：Embedding、Decoder Layer 与输出头', 'SGLang · 源码导读'),
-        ('sglang/model-execution/index.html', 'ModelRunner 与 CUDA Graph：输入怎样交给 GPU？', 'SGLang · 执行机制')]),
+        ('sglang/model-execution/index.html', 'ModelRunner 与 CUDA Graph：输入怎样交给 GPU？', 'SGLang · 执行机制'),
+        ('sglang/inference-overview/transformer.html', 'DeepSeek-V3：Embedding、Decoder Layer 与输出头', 'SGLang · 源码导读')]),
     ('kv-memory', 'KV Cache 与资源生命周期', 'instance', False, [
-        ('sglang/inference-overview/kv-cache.html', 'RadixCache 与 Attention：前缀索引怎样连接 KV？', 'SGLang · 源码导读'),
-        ('sglang/kv-memory/index.html', 'KV Memory Pool：地址映射、分页与缓存回收', 'SGLang · 缓存机制')]),
+        ('sglang/kv-memory/index.html', 'KV Memory Pool：地址映射、分页与缓存回收', 'SGLang · 缓存机制'),
+        ('sglang/inference-overview/kv-cache.html', 'RadixCache 与 Attention：前缀索引怎样连接 KV？', 'SGLang · 源码导读')]),
     ('scheduling', '调度策略、批处理与资源约束', 'instance', False, [
         ('sglang/scheduling/index.html', 'Batch 调度：准入预算、Chunked Prefill 与 Retract', 'SGLang · 调度机制')]),
     ('parallelism', '并行与执行拓扑', 'distributed', False, [
@@ -89,20 +89,19 @@ MODULES = [
 # Reading order is independent of the stable module taxonomy. Links are rendered
 # into HTML so the Pages build can version them and no-JS readers can use them.
 READING_ROUTES = [
-    ('first', '从基础走向源码', '在已有原理之上，定位各机制的实现入口。', [
-        ('sglang/system-overview/index.html', '先建立代码框架', '从完整架构找到各模块及其协作。'),
-        ('sglang/loop-journey/index.html', '一轮计算如何完整闭合？', '先理解普通循环、Overlap 与 PP 的 CPU/GPU 依赖。'),
-        ('sglang/inference-overview/journey.html', 'SGLang 怎样准备两种生成批次？', '对应固定版本的实现入口。'),
-        ('sglang/inference-overview/transformer.html', 'SGLang 怎样调用 DeepSeek-V3 模型层？', '对应固定版本的实现入口。'),
-        ('sglang/inference-overview/kv-cache.html', 'SGLang 如何连接前缀索引与 KV 计算？', '对应固定版本的实现入口。'),
-        ('sglang/inference-overview/scheduling.html', 'SGLang 怎样选出并更新下一批？', '对应固定版本的实现入口。')]),
-    ('implementation', '已有基础，追踪实现', '从请求流转追到资源、调度和设备执行；固定源码基线，各课说明具体配置。', [
-        ('sglang/request-runtime/index.html', '请求经过哪些对象？', '追踪接入、执行、返回与释放。'),
-        ('sglang/loop-journey/index.html', 'CPU 与 GPU 怎样接续？', '对照三种循环的完整执行旅程。'),
-        ('sglang/request-state/index.html', '请求现在由谁持有？', '区分状态、队列、batch 引用与资源归属。'),
-        ('sglang/kv-memory/index.html', 'KV 放哪，何时回收？', '区分地址映射、共享保护与物理空间。'),
-        ('sglang/scheduling/index.html', '谁能进入下一批？', '把候选顺序与准入条件分开。'),
-        ('sglang/model-execution/index.html', '工作怎样交给设备？', '连接调度、执行封装与设备计算。')]),
+    ('first', '从请求走到一轮计算', '先认识对象和本轮输入，再读执行与资源约束。', [
+        ('sglang/system-overview/index.html', '系统与进程地图', '先沿单实例的请求和返回闭环认模块。'),
+        ('sglang/request-runtime/index.html', '同一请求的不同对象', '从前端状态追到调度请求。'),
+        ('sglang/inference-overview/journey.html', '本轮输入怎样组成', '分清完整历史、本轮位置和写入地址。'),
+        ('sglang/request-state/index.html', '请求由谁继续持有', '区分字段、batch 引用与资源。'),
+        ('sglang/loop-journey/index.html', '本轮与后续轮次怎样接续', '再看 Normal、Overlap 与 PP 的依赖。'),
+        ('sglang/model-execution/index.html', '选好的工作怎样交给设备', '进入 Worker、Runner 和 Graph 资格。')]),
+    ('implementation', '沿资源与调度深入', '在单实例主线上核对内存、索引、准入和具体模型。', [
+        ('sglang/kv-memory/index.html', '先读 KV 地址与分配', '逻辑位置映射到物理位置。'),
+        ('sglang/inference-overview/kv-cache.html', '再读前缀树索引', '解释匹配、保护与逐叶驱逐。'),
+        ('sglang/inference-overview/scheduling.html', '定位每轮选批入口', '在循环中找到续算与成员更新。'),
+        ('sglang/scheduling/index.html', '改变预算观察准入', '区分候选顺序、额度与回撤。'),
+        ('sglang/inference-overview/transformer.html', '跟进具体模型调用', '用 DeepSeek-V3 核对 PP 层段和输出责任。')]),
     ('questions', '带着现象找原因', '选择与你当前现象有关的一课，按需回补先修知识。', [
         ('sglang/performance-engineering/index.html', '首字为什么慢？', '先确定计时边界和等待发生在哪。'),
         ('sglang/kv-memory/index.html', '显存为什么不够？', '检查空间占用与仍被引用的状态。'),
@@ -123,7 +122,7 @@ def learning_start(page):
     parts = ['<!-- learning-start:start -->', '<section id="reading-routes" aria-label="三章学习入口">',
         '<div class="chapter-choice"><a href="#chapter-foundations"><span>第一章</span><strong>推理基础</strong><p>从一句话怎样变成数字开始，逐步认识生成、缓存、调度与多卡协作。</p><span>先建立直觉，再进入实现</span></a>',
         '<a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 对照两套引擎的单实例请求路径、P/D 交接和延迟口径。</p><span>七个主题 · 保留各自版本边界</span></a>',
-        '<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十三模块 · 二十一节实现课程</span></a></div></section>',
+        '<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十三模块 · 二十三节实现课程</span></a></div></section>',
         '<section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>',
         '<p>先把文字变成向量，再沿一次 Transformer 前向追到下一 token。接着拆开 Attention，看看生成怎样一轮轮接续，最后理解历史状态为什么值得缓存。</p><ol class="foundation-lessons">']
     for i, c in enumerate(FOUNDATIONS, 1):
@@ -228,7 +227,7 @@ def sidebar(page, active):
                 lines.append(f'<div class="module-lessons-nav"><a class="module-overview-link" href="{href(page, anchor=mid)}">模块目标与学习路线 ↗</a>')
                 for path, lesson_title, kind in lessons:
                     selected = PAGES / path == page
-                    lines.append(f'<a class="lesson-link" href="{href(page, path)}"' + (' aria-current="page"' if selected else '') + f'>{escape(lesson_title)}</a>')
+                    lines.append(f'<a class="lesson-link" href="{href(page, path)}"' + (' aria-current="page"' if selected else '') + f'>{escape(lesson_title)}' + (f'<small class="lesson-kind">{escape(kind.replace("SGLang · ", ""))}</small>' if len(lessons) > 1 else '') + '</a>')
                 lines.append('</div></details>')
             else:
                 lines.append(f'<a class="course-link" data-module="{mid}" href="{href(page, anchor=mid)}">{heading}</a>')
@@ -286,11 +285,12 @@ def implementation_design(page):
         file = file if file.startswith(('python/', 'sgl-model-gateway/')) else 'python/sglang/srt/' + file
         source_url = f'https://github.com/sgl-project/sglang/blob/{revision}/{file}#L{line}'
         example = f'<div class="design-example"><strong>用一个例子理解</strong><p>{escape(t["example"])}</p></div>' if t.get('example') else ''
+        formula = t.get('formula', '')
         links = ''.join(f'<li><a href="{href(page, target)}">{escape(title)} →</a></li>' for title, target in t.get('links', []))
-        body.append(f'<section class="design-question" id="design-{t["id"]}"><h3>{escape(t["title"])}</h3><p>{escape(t["why"])}</p><details><summary>展开机制与具体例子</summary><p>{escape(t["mechanism"])}</p>{example}</details><p class="design-tradeoff"><strong>取舍与条件：</strong>{escape(t["tradeoff"])}</p><p class="design-source"><a href="{source_url}">{escape(label)} · 本课实现核对 ↗</a></p>' + (f'<ul class="design-links">{links}</ul>' if links else '') + '</section>')
+        body.append(f'<section class="design-question" id="design-{t["id"]}"><h3>{escape(t["title"])}</h3><p>{escape(t["why"])}</p><details><summary>展开机制与具体例子</summary><p>{escape(t["mechanism"])}</p>{example}{formula}</details><p class="design-tradeoff"><strong>取舍与条件：</strong>{escape(t["tradeoff"])}</p><p class="design-source"><a href="{source_url}">{escape(label)} · 本课实现核对 ↗</a></p>' + (f'<ul class="design-links">{links}</ul>' if links else '') + '</section>')
     return ('<!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2>'
         f'<p class="design-problem">{escape(entry["problem"])}</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a>'
-        + context + navigation + ''.join(body) + f'<p class="design-baseline">本课实现核对：SGLang 固定提交 {revision[:10]}，{entry.get("reviewed", "2026-10-16")}。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end -->')
+        + '<details class="design-reading"><summary>展开机制、算例与取舍</summary>' + context + navigation + ''.join(body) + f'<p class="design-baseline">本课实现核对：SGLang 固定提交 {revision[:10]}，{entry.get("reviewed", "2026-10-16")}。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></details></section><div id="implementation-process"></div><!-- implementation-design:end -->')
 
 
 def lesson_reading_nav(source):
@@ -299,6 +299,7 @@ def lesson_reading_nav(source):
     if 'class="life-nav"' in source or 'class="article-toc"' in source:
         return source
     links = []
+    seen = set()
     def heading(match):
         attrs, body = match.groups()
         title = re.sub(r'<[^>]+>', '', body).strip()
@@ -306,6 +307,14 @@ def lesson_reading_nav(source):
             return match[0]
         existing = re.search(r'\bid="([^"]+)"', attrs)
         anchor = existing[1] if existing else 'reading-topic-' + str(len(links)+1)
+        if anchor in seen:
+            base = anchor
+            suffix = 2
+            while anchor in seen:
+                anchor = f'{base}-{suffix}'
+                suffix += 1
+            attrs = re.sub(r'\bid="[^"]+"', f'id="{anchor}"', attrs)
+        seen.add(anchor)
         links.append((anchor, title))
         return f'<h2{attrs if existing else attrs + chr(32) + "id=" + chr(34) + anchor + chr(34)}>{body}</h2>'
     updated = re.sub(r'<h2([^>]*)>(.*?)</h2>', heading, source, flags=re.S)

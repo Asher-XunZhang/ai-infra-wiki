@@ -4,6 +4,29 @@ const $=r=>root.querySelector(`[data-role="${r}"]`),esc=v=>String(v??'').replace
 const text=(x,y,v,c='',anchor='start')=>`<text x="${x}" y="${y}" class="${c}" text-anchor="${anchor}">${esc(v)}</text>`,rect=(x,y,w,h,c='',attrs='')=>`<rect x="${x}" y="${y}" width="${Math.max(0,w)}" height="${h}" rx="5" class="${c}" ${attrs}/>`;
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');let tl,time=0,playing=false,last=0,raf,selected,inspected='',view='overview';
 const fmt=n=>Number(n.toFixed(1)).toString();
+const liveFmt=n=>n.toFixed(1);
+// Keep live text nodes mounted; unchanged formulas and explanations need no DOM work.
+function setText(role,value){const el=$(role),next=String(value);if(el.textContent===next)return;if(el.childNodes.length===1&&el.firstChild.nodeType===Node.TEXT_NODE)el.firstChild.data=next;else el.textContent=next;}
+const markup=new WeakMap();
+function setMarkup(role,value){const el=$(role);if(markup.get(el)===value)return;el.innerHTML=value;markup.set(el,value);}
+function metricFormula(m) {
+ const F=window.FoundationMath;
+ if(m.absent)return esc(m.formula);
+ const {num,op,sub,row,frac,display,text}=F;
+ if(m.id==='p95')return display(row(sub('P','95'),op('='),num(tl.facts.result.p95),text(' ms')));
+ if(m.id==='throughput')return display(row(sub('R','output'),op('='),frac(row(num(tl.facts.result.outputTokens),text(' token')),row(num(tl.facts.wall/1000),text(' s')))));
+ const interval=row(sub('t','end'),op('−'),sub('t','start'));
+ if(m.id.endsWith('itl')) {
+  const outputs=m.id==='d-itl'?tl.facts.tmOutputs:tl.facts.clientOutputs;
+  const n=outputs.at(-1).n-outputs.at(-2).n;
+  return display(row(sub('s','ITL'),op('='),frac(interval,sub('Δn','token')),op('='),frac(num(m.end-m.start),num(n)),text(' ms')));
+ }
+ if(m.id==='client-tpot') {
+  const n=tl.facts.clientOutputs.at(-1).n;
+  return display(row(text('TPOT'),op('='),frac(row(text('latency'),op('−'),text('TTFT')),row(num(n),op('−'),num(1)))));
+ }
+ return display(row(sub('Δt',m.id),op('='),interval,op('='),num(m.end-m.start),text(' ms')));
+}
 const compact={permit:'并发许可', 'client-send':'HTTP',dispatch:'派发','p-input':'登记','d-input':'登记','p-prepare':'入队','p-bootstrap':'等 D 地址','d-prepare':'入队','d-bootstrap':'分配 / 通知','p-queue':'排队','p-submit':'提交','p-gpu1':'块 1','p-gpu2':'块 2','p-chunk1-result':'结果','kv1':'块 1 KV','p-result':'首 token','p-send':'send','kv-last':'KV + 结果','p-poll':'退役','p-observe':'采集','p-out':'完成','p-gate':'P 结果','d-receive':'等 KV / 轮询提交','d-wait':'排队','d-prebuilt':'首 token','d-gpu2':'t2','d-gpu3':'t3','d-gpu4':'t4',tail:'DONE'};
 function brief(e,w){const label=compact[e.id]||(/^(tm|client)-/.test(e.id)?e.payload.match(/n=(\d+)/)?.[1]:e.label)||e.label;return /^\d+$/.test(label)?label:w<24?'':short(label,w);}
 
@@ -40,7 +63,7 @@ function controls(){
 function setView(value,remember=true){view=['overview','modules','source'].includes(value)?value:'overview';inspected='';$('options').open=view!=='overview';controls();render();if(remember)save();}
 function chart(s){
  const sample=tl.mode==='sample',projection=plot(),keys=Object.keys(projection.lanes),names=projection.lanes,spacing=view==='overview'?44:36;
- const x=t=>196+t/tl.duration*878,ys=Object.fromEntries(keys.map((k,i)=>[k,38+i*spacing])),bottom=keys.length*spacing+62,h=bottom+92;
+ const x=t=>196+t/tl.duration*878,ys=Object.fromEntries(keys.map((k,i)=>[k,38+i*spacing])),bottom=keys.length*spacing+62,h=bottom+(view==='source'?126:92);
  $('diagram').setAttribute('viewBox',`0 0 1100 ${h}`);$('diagram').dataset.clock=time.toFixed(2);
  let svg='<title>P/D 模块的活动与采样区间共用教学时钟</title><defs><marker id="pm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="context-stroke"/></marker></defs>';
  for(let t=0;t<=tl.duration;t+=100)svg+=text(x(t),18,t,'tick','middle')+`<path d="M${x(t)} 26V${bottom-10}" class="grid"/>`;
@@ -58,15 +81,26 @@ function chart(s){
  if(!m.absent&&started)svg+=rect(x(m.start),y,x(painted)-x(m.start),25,'measure-fill');
  svg+=m.end>m.start?text(x(m.start),y+44,String(m.start),'tick')+text(x(m.end),y+44,String(m.end),'tick','end'):text(x(m.start),y+44,'无后续区间','tick','middle');
  svg+=`<path d="M${x(time)} 25V${y+30}" class="cursor"/>`;
- svg+=text(196,y+70,m.absent?'本条件没有这项样本；缺失不是零耗时。':`${metricLabel(m)}：${m.status==='已采集'?fmt(m.value)+' '+(m.unit||'ms'):tl.mode==='sample'?'等待汇总':'区间 '+fmt(m.elapsed)+' ms · '+m.status}${view==='source'&&m.observe!==m.end?'（采集点 '+m.observe+'）':''}`,'tick');
+ svg+=text(196,y+70,m.absent?'本条件没有这项样本；缺失不是零耗时。':`${metricLabel(m)}：${m.status==='已采集'?fmt(m.value)+' '+(m.unit||'ms'):tl.mode==='sample'?'等待汇总':'区间 '+liveFmt(m.elapsed)+' ms · '+m.status}${view==='source'&&m.observe!==m.end?'（采集点 '+m.observe+'）':''}`,'tick');
+ if(view==='source'&&!m.absent&&m.observe!==null) {
+  const obs=x(m.observe),labelX=Math.max(220,Math.min(1060,obs));
+  svg+=`<path d="M${obs} 26V${y+34}" class="source-observe-line"/><circle cx="${obs}" cy="${y+30}" r="4" class="stamp" data-source-observe="${m.id}"/>`;
+  svg+=text(labelX,y+102,'observe · '+m.observe+' ms','source-observe-label',labelX>850?'end':'start');
+ }
  $('diagram').innerHTML=svg;
  const active=projection.events.filter(e=>e.start<=time&&time<e.end),guide=active.find(e=>e.lane==='kv')||active.find(e=>e.id==='o-p-work')||active.find(e=>e.id==='o-d-work')||active.find(e=>e.lane!=='client')||active[0];
  let e=projection.events.find(e=>e.id===inspected)||(view==='overview'?(guide||projection.events.filter(e=>e.end<=time).at(-1)||projection.events[0]):s.focus);if(view==='overview'&&sample&&time>=600)e={...tl.events.find(e=>e.id==='aggregate'),label:time>=640?'统计完成':'汇总成功请求',detail:'原始记录都保留；只有成功请求进入本次延迟和输出统计。'};$('event-title').textContent=e.label;$('detail').textContent=e.detail;$('event-source').href=M.url(e.source);$('event-source').textContent=M.sources[e.source][0].split('/').at(-1)+':'+M.sources[e.source][1]+' ↗';$('events').value=e.id;
  $('dependency').textContent=e.label+' · 开始前提：'+((e.depends||[]).map(id=>tl.events.find(e=>e.id===id).label).join('；')||'本例给定条件 / 所在执行主体的独立推进')+(e.payload?'；载荷：'+e.payload:'');
 }
 function readings(s){
- const m=s.observations.find(m=>m.id===selected),done=m.status==='已采集';$('measure-name').textContent=metricLabel(m);$('measure-owner').textContent=m.owner;$('measure-value').textContent=m.absent?'无本次样本':done?`${fmt(m.value)} ${m.unit||'ms'}`:m.value!==undefined?(tl.mode==='sample'?'待汇总':`区间 ${fmt(m.elapsed)} ms · ${m.status}`):`${fmt(m.elapsed)} ms · ${m.status}`;
- $('formula').textContent=m.formula;$('measure-detail').textContent=view==='source'?m.detail:m.absent?'本条件没有这项统计样本。展开源码细节可查看跳过条件。':metricHelp[m.id]||m.detail;$('measure-wire').textContent=m.wire||'客户端报告字段';$('measure-source').href=M.url(m.source);$('measure-source').textContent=M.sources[m.source][0].split('/').at(-1)+':'+M.sources[m.source][1]+' ↗';
+ const m=s.observations.find(m=>m.id===selected),done=m.status==='已采集',timing=!m.absent&&!done&&tl.mode!=='sample';
+ setText('measure-name',metricLabel(m));setText('measure-owner',m.owner);
+ setText('measure-prefix',m.absent?'无本次样本':timing?'区间 ':done?'':'待汇总');
+ setText('measure-number',timing?liveFmt(m.elapsed):done?fmt(m.value):'');
+ setText('measure-unit',timing?' ms':done?` ${m.unit||'ms'}`:'');
+ setText('measure-suffix',timing?` · ${m.status}`:'');
+ $('measure-quantity').hidden=!(timing||done);
+ setMarkup('formula',metricFormula(m));$('formula').title=m.formula;setText('measure-detail',view==='source'?m.detail:m.absent?'本条件没有这项统计样本。展开源码细节可查看跳过条件。':metricHelp[m.id]||m.detail);setText('measure-wire',m.wire||'客户端报告字段');$('measure-source').href=M.url(m.source);setText('measure-source',M.sources[m.source][0].split('/').at(-1)+':'+M.sources[m.source][1]+' ↗');
  let cards='';const card=(title,body)=>`<div><strong>${esc(title)}</strong><p>${esc(body)}</p></div>`;
  if(tl.mode==='sample'){
   const result=tl.facts.result,records=tl.facts.rows.filter(r=>time>=r.end+16),finished=time>=640;
@@ -87,9 +121,9 @@ function readings(s){
    cards+=card('秒表边界',`许可等待 ${f.st}ms 在客户端 st 前。D TTFT ${time>=f.dFirst?fmt(f.dFirst-f.dBorn)+'ms':'待采样'}；客户端 TTFT ${time>=f.first?fmt(f.first-f.st)+'ms':'待采样'}。差值不只代表网络。`);
   }
  }
- $('readings').innerHTML=cards;$('accessible').textContent=JSON.stringify({time,observations:s.observations.map(m=>({id:m.id,status:m.status,value:m.status==='已采集'?m.value:null})),tmOut:s.tmOut,clientOut:s.clientOut,tmItl:s.tmItl,clientItl:s.clientItl,tpot:s.tpot});
+ setMarkup('readings',cards);setText('accessible',JSON.stringify({time,observations:s.observations.map(m=>({id:m.id,status:m.status,value:m.status==='已采集'?m.value:null})),tmOut:s.tmOut,clientOut:s.clientOut,tmItl:s.tmItl,clientItl:s.clientItl,tpot:s.tpot}));
 }
-function render(){const s=M.snapshot(tl,time);root.dataset.mode=tl.mode;root.dataset.view=view;root.dataset.condition=tl.condition;root.dataset.time=time.toFixed(2);root.dataset.playing=String(playing);$('title').textContent=view==='overview'?simpleTitles[tl.mode]:tl.question;$('depth-hint').textContent=view==='overview'?'关键阶段与一个指标':view==='modules'?'展开模块，查看谁在处理、谁在等待':'查看打点、公式与固定源码';$('options-summary').textContent=tl.cases[tl.condition]+' · '+metricLabel(tl.metrics.find(m=>m.id===selected))+' · 更换';$('legend').textContent=view==='overview'?'横向看先后，纵向看并行；金色量尺是指标区间。阶段条含内部处理与等待，时间为教学示例。':'蓝色：GPU 活动；紫色：数据交接；虚框：等待。金色量尺连接采集端点，时间为教学示例。';root.querySelectorAll('button[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));$('scope').textContent=tl.scope;$('clock').max=tl.duration;$('clock').value=time;$('time').textContent=`${fmt(time)} / ${tl.duration} ms（示例）`;$('play').textContent=playing?'暂停':time>=tl.duration?'重播':'播放';$('prev').disabled=time<=0;$('next').disabled=time>=tl.duration;root.querySelectorAll('button[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===tl.mode)));chart(s);readings(s);}
+function render(){const s=M.snapshot(tl,time);root.dataset.mode=tl.mode;root.dataset.view=view;root.dataset.condition=tl.condition;root.dataset.time=time.toFixed(2);root.dataset.playing=String(playing);$('title').textContent=view==='overview'?simpleTitles[tl.mode]:tl.question;$('depth-hint').textContent=view==='overview'?'关键阶段与一个指标':view==='modules'?'展开模块，查看谁在处理、谁在等待':'查看打点、公式与固定源码';$('options-summary').textContent=tl.cases[tl.condition]+' · '+metricLabel(tl.metrics.find(m=>m.id===selected))+' · 更换';$('legend').textContent=view==='overview'?'横向看先后，纵向看并行；金色量尺是指标区间。阶段条含内部处理与等待，时间为教学示例。':'蓝色：GPU 活动；紫色：数据交接；虚框：等待。金色量尺连接采集端点，时间为教学示例。';root.querySelectorAll('button[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));$('scope').textContent=tl.scope;$('clock').max=tl.duration;$('clock').value=time;setText('time',`${liveFmt(time)} / ${tl.duration} ms（示例）`);$('play').textContent=playing?'暂停':time>=tl.duration?'重播':'播放';$('prev').disabled=time<=0;$('next').disabled=time>=tl.duration;root.querySelectorAll('button[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===tl.mode)));chart(s);readings(s);}
 function stop(){playing=false;cancelAnimationFrame(raf);last=0;}
 function save(push=false){const u=new URL(location.href);for(const [k,v]of Object.entries({view,mode:tl.mode,condition:tl.condition,metric:selected,t:time.toFixed(2)}))u.searchParams.set(k,v);history[push?'pushState':'replaceState']({},'',u);}
 function seek(t){stop();time=Math.max(0,Math.min(tl.duration,Number(t)||0));inspected='';render();save();}

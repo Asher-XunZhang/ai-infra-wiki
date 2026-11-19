@@ -4,7 +4,7 @@
 .ld-controls button[aria-pressed=true]{background:var(--accent,#216a51);color:light-dark(#fff,#12281d);border-color:var(--accent,#216a51)}
 .ld-controls button:focus-visible,.ld-viewport:focus-visible{outline:2px solid var(--accent,#216a51);outline-offset:3px}
 [data-learning-depth][data-depth=overview] .ld-module-region{display:none!important}
-[data-learning-depth]:not([data-depth=source]) .ld-source-region:not(details){display:none!important}
+[data-learning-depth][data-source-open=false] .ld-source-region:not(details){display:none!important}
 .ld-source-panel{margin:1rem 0;padding:1rem;border:1px solid var(--border,#d4dfd7);border-left:3px solid var(--accent,#216a51);border-radius:5px;overflow-wrap:anywhere}
 .ld-source-panel h3{margin:0 0 .6rem}.ld-source-panel p{max-width:85ch}
 .ld-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;margin:.8rem 0}.ld-facts div{padding:.55rem .7rem;background:var(--soft,#f1f5f1);border-radius:5px}.ld-facts dt{font-size:.82rem;color:var(--muted,#557064)}.ld-facts dd{margin:.2rem 0 0;font-family:ui-monospace,monospace;overflow-wrap:anywhere}
@@ -16,9 +16,23 @@
 .ld-overview:empty,.ld-source-panel:empty{display:none}.ld-controls [hidden],.ld-overview[hidden],.ld-source-panel[hidden]{display:none!important}
 @media(max-width:600px){.ld-facts{grid-template-columns:1fr}.ld-controls>small{flex-basis:100%;margin-left:0}.ld-controls button{padding:.4rem .5rem}}
 
-[data-radix-lab][data-depth=modules] .radix-index-value{visibility:hidden}
+[data-radix-lab][data-source-open=false] .radix-index-value{visibility:hidden}
 .ld-state-note{font-size:.82rem;color:var(--muted,#557064)}
 
 #sglang-opening .ld-viewport,#sglang-opening .ld-source-panel{--surface:#0b1e17;--fg:#e4eee7;--muted:#a6bcb1;--border:#345247;--soft:#13281f;--accent-soft:#153629;--accent:#69e0c2}
 
-[data-compact-overview=true][data-depth=modules] .ld-module-region{display:none!important}
+
+
+.ld-mode-controls{display:flex;flex-wrap:wrap;gap:.5rem}
+.ld-mode-controls[hidden],.ld-source-panel[hidden]{display:none!important}
+.ld-source-panel{border-left-width:3px;margin:.5rem 0 1rem}
+.ld-source-heading{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.4rem 1rem}
+.ld-source-heading h3{font-size:1rem;margin:0}
+.ld-source-heading a{font:12px/1.6 ui-monospace,monospace;overflow-wrap:anywhere}
+.ld-extra-fields summary{cursor:pointer;font-size:13px}
+.ld-source-panel .ld-state-note{font-size:12px;margin-bottom:0}
+.ld-controls [data-source-toggle][aria-expanded=true]{border-color:var(--accent);background:var(--accent-soft)}
+.ld-source-panel .ld-facts{display:block;margin:10px 0}
+.ld-source-panel .ld-facts>div{display:grid;grid-template-columns:minmax(90px,.8fr) minmax(0,1.2fr);gap:8px;margin:3px 0;padding:5px 8px;align-items:baseline}
+.ld-source-panel .ld-facts dd{margin:0;font-size:13px}
+.ld-source-panel .foundation-math{max-width:100%;overflow-x:auto;margin:10px 0;font-size:16px}

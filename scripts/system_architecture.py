@@ -14,14 +14,12 @@ def render_architecture():
         file, line, symbol = s
         return f'<a href="{base}blob/{rev}/{file}#L{line}"><code>{escape(file)}</code> · L{line}</a>'
     opening = (ROOT / 'scripts/templates/sglang_pd_opening.html').read_text(encoding='utf-8').strip()
-    parts = ['<!-- system-architecture:start -->', opening,
-        '<p class="pd-opening-scope">开篇示例：Prefill 为 PP4 × CP4 × Attention-TP4，Decode 为逻辑接收与执行端；冷缓存、普通成功路径，展示两轮 Decode。动画时间用于讲解，不代表实测时延。<a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">开篇源码 279339f113</a>（复核于 2026-11-09）；与本章单实例、PD 与通信实现课程使用同一固定基线。</p>',
-        '<noscript><p>启用 JavaScript 可播放开篇。请求主线：HTTP / TokenizerManager → D 预分配 → P 调度与 PP 计算 → KV / metadata 交接 → D 解码 → DetokenizerManager / HTTP 返回。下方单实例图与模块源码索引可直接阅读。</p></noscript>',
+    parts = ['<!-- system-architecture:start -->',
         '<section class="architecture" id="architecture" aria-labelledby="architecture-title">',
         '<h2 id="architecture-title">单实例模块职责与源码索引</h2>',
         '<p>入口管理请求，Scheduler 组织本轮工作，执行层调用模型；KV 管理为两者提供可复用的历史和写入位置，反分词将输出送回入口。</p>',
         '<p class="arch-scope"><strong>图的范围</strong> 普通 Python 文本生成 · 单 tokenizer · 单卡合并部署 · 同一主机。用无 overlap（计算与调度重叠）的路径说明调用关系。</p>',
-        '<details class="arch-reference-map"><summary>查看单实例进程与调用关系图</summary>',
+        '<details class="arch-reference-map" open><summary>查看单实例进程与调用关系图</summary>',
         '<div class="arch-views" role="group" aria-label="架构阅读视角" hidden><button type="button" data-arch-view="all" aria-pressed="true">完整架构</button><button type="button" data-arch-view="input" aria-pressed="false">请求进入</button><button type="button" data-arch-view="compute" aria-pressed="false">一轮计算</button><button type="button" data-arch-view="output" aria-pressed="false">结果返回</button></div>',
         '<p class="arch-hint">点选模块查看职责、固定源码与课程。窄屏可横向查看全图，或使用图下的模块索引。</p>',
         '<div class="arch-scroll" tabindex="0" role="region" aria-label="SGLang 代码架构图，可横向滚动"><svg class="arch-map" viewBox="0 0 1200 800" role="group" aria-labelledby="arch-svg-title arch-svg-desc">',
@@ -57,5 +55,8 @@ def render_architecture():
     parts += ['</dl></details><details class="arch-provenance"><summary>源码基线与架构图参考</summary>',
         f'<p>本图的模块、目录和连接已逐项核对 <a href="{base}tree/{rev}">SGLang {rev[:10]}</a>，读取于 {data["reviewed"]}。普通进程装配见 {source_link(data["startup"])}。读取的是固定 Git 对象，当前检出目录干净；未修改 SGLang 源码，未运行模型、GPU 或网络实验。</p>',
         '<p>本章 Pages 的实现分析统一采用此提交，包括 <a href="../pd-dataflow/">PD 数据流专题</a>。链接到的历史 Markdown 文档仍以各自声明的基线为准。</p>',
-        '<p>表达参考：Ziyi Xu 的 <a href="https://www.lmsys.org/blog/2025-12-17-minisgl/">Mini-SGLang 作者文章（2025-12-17）</a>及其中系统架构图（读取于 2026-10-19）。借鉴请求闭环、调度与缓存相邻的组织方式；这里的组件与边界重新按完整 SGLang 固定源码绘制。</p></details></section><!-- system-architecture:end -->']
+        '<p>表达参考：Ziyi Xu 的 <a href="https://www.lmsys.org/blog/2025-12-17-minisgl/">Mini-SGLang 作者文章（2025-12-17）</a>及其中系统架构图（读取于 2026-10-19）。借鉴请求闭环、调度与缓存相邻的组织方式；这里的组件与边界重新按完整 SGLang 固定源码绘制。</p></details></section>',
+        '<details class="pd-opening-extension"><summary>深入对照：同一请求怎样跨 P/D 与多卡执行</summary>', opening,
+        '<p class="pd-opening-scope">此例 Prefill 为 PP4 × CP4 × Attention-TP4，Decode 为逻辑接收与执行端。冷缓存、普通成功路径，展示两轮 Decode。先沿上方单实例图认识接入、调度和结果回程，再在此观察角色分离后的交接；九个阶段使用讲解时间。固定源码 279339f113，原示例复核于 2026-11-09。</p>',
+        '<noscript><p>此例请求依次经过 D 预分配、P 调度与 PP 计算、KV 与 metadata 交接、D 解码及响应回程。</p></noscript></details><!-- system-architecture:end -->']
     return '\n'.join(parts)

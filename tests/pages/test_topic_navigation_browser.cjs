@@ -153,13 +153,13 @@ async function checkHome(page,label){
   assert.deepEqual(await signature(),expectedModules,'entering a lesson retains the entire framework');
   await page.locator('[data-module=kv-memory] > summary').click();
   await page.locator('[data-module=kv-memory] .lesson-link').first().click();await page.waitForLoadState('load');
-  assert.match(page.url(),/kv-cache.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 KV Cache/);
+  assert.match(page.url(),/kv-memory\/index.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 KV Cache/);
   await page.locator('[data-topic=framework-practice]>summary').click();
   const wasOpen=await page.locator('[data-topic=framework-practice]').evaluate(e=>e.open);
   await page.reload();assert.equal(await page.locator('[data-topic=framework-practice]').evaluate(e=>e.open),wasOpen);
   // The framework pager follows the module sequence, not the old five-page topic order.
   await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
-  assert.match(page.url(),/kv-memory\/index.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 KV Cache/);
+  assert.match(page.url(),/kv-cache.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 KV Cache/);
   await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
   assert.match(page.url(),/scheduling\/index.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/06 调度/);
   for(const [route,module,stage] of courses){
@@ -205,7 +205,7 @@ async function checkHome(page,label){
   assert.equal(await page.locator('.topic-group').count(),5,'legacy URL also enters the new shell');
   // Bookmarked routes retain their existing lesson sequence, with the new loop primer inserted before it.
   await page.goto(base+'sglang/inference-overview/journey.html?learn=first&v=legacy-review');
-  const firstRoute=['journey.html','transformer.html','kv-cache.html','scheduling.html'];
+  const firstRoute=['journey.html','request-state/index.html','loop-journey/index.html','model-execution/index.html'];
   for(let i=0;i<firstRoute.length;i++){
    assert.equal(new URL(page.url()).pathname.endsWith(firstRoute[i]),true);
    assert.equal(new URL(page.url()).searchParams.get('learn'),'first');

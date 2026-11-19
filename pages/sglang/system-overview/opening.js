@@ -40,7 +40,7 @@
   }
   const timeAt=p=>mapTime(p,0),progressAt=t=>mapTime(t,1);
   const formatTime=t=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');
-  const snapshotKey=(p,r)=>String(Math.round(p*1000)/1000)+'|'+r;
+  const snapshotKey=(p,r)=>String(Math.round(p*1000000)/1000000)+'|'+r;
   const text=(id,value)=>{const e=root.querySelector('#'+id);if(e&&e.textContent!==value)e.textContent=value;};
   const add=(parent,tag,attrs={},value)=>{const e=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);if(value!==undefined)e.textContent=value;parent.appendChild(e);return e;};
   function label(parent,x,y,value,cls='flow-label',anchor='start'){return add(parent,'text',{x,y,class:cls,'text-anchor':anchor},value);}
@@ -299,7 +299,7 @@
     depth.update({time:elapsed,body:DepthProjections.system(progress,elapsed,flows,scene.stages.map(q=>q.state.textContent)),event:pCalls[pi],explanation:payloads[pi],rows:[['活动模块',active.join(' / ')],...flows.map(e=>[e.edge,e.payload])],href:'https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd'});
     root.dataset.time=elapsed.toFixed(4);root.dataset.progress=progress.toFixed(4);root.dataset.elapsed=elapsed.toFixed(4);root.dataset.duration=duration.toFixed(4);root.dataset.rate=String(rate);root.dataset.playing=String(playing);root.dataset.phase=['request','reserve','prepare','prefill','handoff','commit','decode1','decode2','output'][pi];root.dataset.activeModules=active.join(',');root.dataset.stage=stage>=0?'PP'+stage:'';root.dataset.ready='true';
   }
-  function save(){const p=Math.round(progress*1000)/1000,key=snapshotKey(p,rate);if(saved===key)return;saved=key;try{localStorage.setItem('ai-infra:sglang-pd-opening:v1',JSON.stringify({modelContent:{schema,progress:p,speed:rate}}));}catch(e){}}
+  function save(){const p=Math.round(progress*1000000)/1000000,u=new URL(location.href);u.searchParams.set('p',String(p));history.replaceState(null,'',u);const key=snapshotKey(p,rate);if(saved===key)return;saved=key;try{localStorage.setItem('ai-infra:sglang-pd-opening:v1',JSON.stringify({modelContent:{schema,progress:p,speed:rate}}));}catch(e){}}
   function pause(persist=true){playing=false;cancelAnimationFrame(raf);last=0;render();if(persist)save();}
   function tick(t){if(!playing)return;if(!last)last=t;progress=progressAt(timeAt(progress)+Math.max(0,(t-last)/1000)*rate);last=t;render();if(progress>=1){pause();return;}raf=requestAnimationFrame(tick);}
   function play(fromStart=false){cancelAnimationFrame(raf);if(fromStart||progress>=1)progress=0;playing=true;last=0;render();raf=requestAnimationFrame(tick);}
@@ -309,10 +309,10 @@
   speedControl.addEventListener('change',()=>{const next=Number(speedControl.value);if(!rates.includes(next))return;rate=next;last=0;render();save();});
   function restore(state){const s=state?.modelContent;if(s?.schema!==schema||typeof s.progress!=='number'||!Number.isFinite(s.progress))return;playing=false;cancelAnimationFrame(raf);last=0;progress=clamp(s.progress);rate=rates.includes(s.speed)?s.speed:1;saved=snapshotKey(progress,rate);render();}
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing)pause();});
-  const depth=LearningDepth.mount({host:root,before:svg,module:[svg],onChange:()=>render(),persist:()=>{save();const u=new URL(location.href);u.searchParams.set('p',progress.toFixed(4));history.replaceState(null,'',u);}});
+  const depth=LearningDepth.mount({host:root,before:svg,module:[svg],onChange:()=>render(),persist:()=>{save();const u=new URL(location.href);u.searchParams.set('p',progress.toFixed(6));history.replaceState(null,'',u);}});
   const ro=new ResizeObserver(()=>build());ro.observe(svg);build();try{restore(JSON.parse(localStorage.getItem('ai-infra:sglang-pd-opening:v1')||'null'));}catch(e){}
 
-  const savedP=new URL(location.href).searchParams.get('p');if(savedP!==null){progress=clamp(Number(savedP)||0);render();}
+  const savedP=new URL(location.href).searchParams.get('p');if(savedP!==null){const extension=root.closest('.pd-opening-extension');if(extension)extension.open=true;progress=clamp(Number(savedP)||0);render();}
   const updateResume=window.SiteUpdate?.take('system-opening');if(updateResume)restore(updateResume);
   window.SiteUpdate?.register('system-opening',()=>{pause();return {modelContent:{schema,progress,speed:rate}};});
 })();

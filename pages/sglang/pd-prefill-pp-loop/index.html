@@ -61,22 +61,22 @@
 <details class="module-nav" data-module="loop-journey">
 <summary class="module-heading"><span class="course-number">03</span><span><strong>调度循环与批次执行旅程</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#loop-journey">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../loop-journey/index.html">调度循环：Normal、Overlap 与 PP 的完整旅程</a>
-<a class="lesson-link" href="../request-state/index.html">Req 状态与队列流转：请求为什么还没继续？</a>
-<a class="lesson-link" href="../inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
-<a class="lesson-link" href="../inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../request-state/index.html">Req 状态与队列流转：请求为什么还没继续？<small class="lesson-kind">状态与引用</small></a>
+<a class="lesson-link" href="../loop-journey/index.html">调度循环：Normal、Overlap 与 PP 的完整旅程<small class="lesson-kind">时间与依赖</small></a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新<small class="lesson-kind">源码导读</small></a>
 </div></details>
 <details class="module-nav" data-module="model-execution">
 <summary class="module-heading"><span class="course-number">04</span><span><strong>模型执行与设备协作</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
-<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
+<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？<small class="lesson-kind">执行机制</small></a>
+<a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头<small class="lesson-kind">源码导读</small></a>
 </div></details>
 <details class="module-nav" data-module="kv-memory">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>KV Cache 与资源生命周期</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
-<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
+<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收<small class="lesson-kind">缓存机制</small></a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？<small class="lesson-kind">源码导读</small></a>
 </div></details>
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">06</span><span><strong>调度策略、批处理与资源约束</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -100,10 +100,10 @@
 <details class="module-nav" data-module="disaggregation">
 <summary class="module-heading"><span class="course-number">09</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
-<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
-<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
-<a class="lesson-link" href="../pp-consensus/index.html">PP 共识：Bootstrap、Release 与 HiCache ACK</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pp-consensus/index.html">PP 共识：Bootstrap、Release 与 HiCache ACK<small class="lesson-kind">状态协调</small></a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-serving">
@@ -131,9 +131,9 @@
 <details class="module-nav" data-module="case-studies" open>
 <summary class="module-heading" aria-current="location"><span class="course-number">13</span><span><strong>PD＋PP 综合实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾</a>
-<a class="lesson-link" href="index.html" aria-current="page">Prefill 流水线的等待与依赖：空档从哪里来</a>
-<a class="lesson-link" href="notes.html">Prefill PP 主循环源码：槽位复用与异步收尾</a>
+<a class="lesson-link" href="quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾<small class="lesson-kind">综合实践</small></a>
+<a class="lesson-link" href="index.html" aria-current="page">Prefill 流水线的等待与依赖：空档从哪里来<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="notes.html">Prefill PP 主循环源码：槽位复用与异步收尾<small class="lesson-kind">PD＋PP 案例</small></a>
 </div></details>
 </nav></details>
 </details>
@@ -2155,7 +2155,7 @@ html,body{background:var(--background)!important;color:var(--foreground);font-fa
 &lt;script&gt;window.addEventListener(&#x27;message&#x27;,function(event){if(event.source!==parent||event.data?.type!==&#x27;learning-theme&#x27;)return;const theme=event.data.theme;if([&#x27;light&#x27;,&#x27;dark&#x27;,&#x27;system&#x27;].includes(theme))document.documentElement.dataset.theme=theme;});parent.postMessage({type:&#x27;learning-theme-ready&#x27;},&#x27;*&#x27;);&lt;/script&gt;&lt;/body&gt;
 &lt;/html&gt;
 "></iframe>
-</section></details><details class="pp-context"><summary>对象、交接边界与先修知识</summary><!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>在 PD 分离下串联 Prefill 调度、跨级计算与异步收尾；核对 Batch、槽位、事件与本地放行条件。</p><a href="../../foundations/parallel.html">需要回顾原理：TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">总耗时不只来自计算量，还来自何时能获得输入和完成前置工作。时间轴把 CPU、GPU 与通信放到依赖关系中，用来解释为什么缩短某个操作未必缩短整个请求。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-background"><summary>重叠执行需要看依赖，不只看时长</summary><p>官方 PP 文档将 GPU forward、CPU 结果处理与异步通信交错组织；NCCL 文档又区分提交和设备完成。阅读时间轴时，应找每个动作最早可以开始的条件，再判断哪些区间能够重叠。</p><p class="design-source">概念与设计说明：<a href="https://docs.sglang.io/docs/advanced_features/pipeline_parallelism">SGLang 官方：Pipeline Parallelism for Long Context ↗</a> · <a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/streams.html">NVIDIA：CUDA Stream Semantics ↗</a></p><p class="design-source">这里用于解释依赖图的价值；图中时长是假设，未复现官方性能结果。 资料读取：2026-10-16。</p></details><section class="design-question" id="design-dependencies"><h3>为什么需要依赖时间轴，而不是把每一步耗时相加？</h3><p>不同工作可能重叠；同一工作又可能被上游激活、通信完成或状态共识阻塞。只加总各项时长，会把并行部分重复计算，也看不出等待原因。</p><details><summary>展开机制与具体例子</summary><p>本页沿同一源码顺序使用假设时间安排就绪事件。CPU 提交和 GPU 执行分轨表示，跨级箭头说明哪一步完成后另一操作才能推进。</p><div class="design-example"><strong>用一个例子理解</strong><p>把不在当前关键依赖链上的一次提交缩短，最终完成时刻可能不变；还需要观察后续是否仍在等待更慢的输入。</p></div></details><p class="design-tradeoff"><strong>取舍与条件：</strong>这种图适合做因果对照，不是硬件预测器。改变教学时长只能说明依赖会如何传播；真实重叠、带宽和设备调度需要 Trace 验证。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L705">_pp_commit_comm_work · 本课实现核对 ↗</a></p><ul class="design-links"><li><a href="notes.html">逐项查看源码与模型边界 →</a></li></ul></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-10-16。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end --><aside class="overview-section" aria-label="交接边界"><p><strong>交接图例：</strong>PP stage 之间传递激活张量，跨越执行进程与 GPU；控制名单与共识消息在 rank 之间交换；各级 sender 向 Decode 传输本级 KV。这三类交接分别有自己的载荷和完成条件。同机或跨机由部署决定。<a href="../communication/index.html">查看通信与传输机制 →</a></p></aside></details>
+</section></details><details class="pp-context"><summary>对象、交接边界与先修知识</summary><!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>在 PD 分离下串联 Prefill 调度、跨级计算与异步收尾；核对 Batch、槽位、事件与本地放行条件。</p><a href="../../foundations/parallel.html">需要回顾原理：TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">总耗时不只来自计算量，还来自何时能获得输入和完成前置工作。时间轴把 CPU、GPU 与通信放到依赖关系中，用来解释为什么缩短某个操作未必缩短整个请求。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-reading"><summary>展开机制、算例与取舍</summary><details class="design-background"><summary>重叠执行需要看依赖，不只看时长</summary><p>官方 PP 文档将 GPU forward、CPU 结果处理与异步通信交错组织；NCCL 文档又区分提交和设备完成。阅读时间轴时，应找每个动作最早可以开始的条件，再判断哪些区间能够重叠。</p><p class="design-source">概念与设计说明：<a href="https://docs.sglang.io/docs/advanced_features/pipeline_parallelism">SGLang 官方：Pipeline Parallelism for Long Context ↗</a> · <a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/streams.html">NVIDIA：CUDA Stream Semantics ↗</a></p><p class="design-source">这里用于解释依赖图的价值；图中时长是假设，未复现官方性能结果。 资料读取：2026-10-16。</p></details><section class="design-question" id="design-dependencies"><h3>为什么需要依赖时间轴，而不是把每一步耗时相加？</h3><p>不同工作可能重叠；同一工作又可能被上游激活、通信完成或状态共识阻塞。只加总各项时长，会把并行部分重复计算，也看不出等待原因。</p><details><summary>展开机制与具体例子</summary><p>本页沿同一源码顺序使用假设时间安排就绪事件。CPU 提交和 GPU 执行分轨表示，跨级箭头说明哪一步完成后另一操作才能推进。</p><div class="design-example"><strong>用一个例子理解</strong><p>某活动只有在所有前驱完成且本执行主体可用后才能开始。两个前驱分别在 8 u 和 11 u 完成，它最早只能在 11 u 开始。若把前者缩短到 6 u，而后者不变，开始时刻仍为 11 u。</p></div><div class="implementation-math"><math display="block"><mrow><msub><mi>t</mi><mtext>start</mtext></msub><mo>=</mo><mi>max</mi><mo>(</mo><mn>8</mn><mo>,</mo><mn>11</mn><mo>)</mo><mo>=</mo><mn>11</mn><mtext> u</mtext></mrow></math></div></details><p class="design-tradeoff"><strong>取舍与条件：</strong>这种图适合做因果对照，不是硬件预测器。改变教学时长只能说明依赖会如何传播；真实重叠、带宽和设备调度需要 Trace 验证。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L705">_pp_commit_comm_work · 本课实现核对 ↗</a></p><ul class="design-links"><li><a href="notes.html">逐项查看源码与模型边界 →</a></li></ul></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-11-19。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></details></section><div id="implementation-process"></div><!-- implementation-design:end --><aside class="overview-section" aria-label="交接边界"><p><strong>交接图例：</strong>PP stage 之间传递激活张量，跨越执行进程与 GPU；控制名单与共识消息在 rank 之间交换；各级 sender 向 Decode 传输本级 KV。这三类交接分别有自己的载荷和完成条件。同机或跨机由部署决定。<a href="../communication/index.html">查看通信与传输机制 →</a></p></aside></details>
 
 <article id="reading-guide" class="prose detail-guide" aria-labelledby="guide-title">
   <div class="section-heading"><div><p class="eyebrow">读图指南</p><h2 id="guide-title">先分清对象，再看时序</h2></div></div><nav class="guide-nav" aria-label="读图指南章节"><a href="#objects">图中对象</a><a href="#loop-order">执行顺序</a><a href="#consensus">共识与传输</a><a href="#walkthrough">走读 L6</a><a href="#controls">操作方法</a><a href="#scope">适用边界</a></nav>

@@ -43,7 +43,7 @@
       out+=text(296,222,reached&&lookup?`第 ℓ 层：Kℓ[${lookup.slot}] / Vℓ[${lookup.slot}]`:'沿蓝色地址线定位，随后读取橙色 K/V','memory-small');
       out+=text(296,244,'这里只放大一个读取位置；完整 Attention 会访问所需的历史 KV。','memory-tiny');
     }else if(mode==='reuse') {
-      out+=text(296,167,'RadixCache 已返回 prefix_indices（搜索过程见上一节）','memory-heading');
+      out+=text(296,167,'RadixCache 已返回 prefix_indices（搜索过程见前缀索引专题）','memory-heading');
       out+=text(296,196,'['+[8,9,10,11,20,21,22,23].slice(0,state.hit).join(', ')+']','memory-number');
       out+=text(296,222,`已有 ${state.hit} 个位置可复用 · 其余 ${9-state.hit} 个位置需新地址`,'memory-small');
       out+=text(296,242,'移动的是索引；现有 K/V 不复制到请求行。','memory-small');
@@ -114,8 +114,8 @@
     $('#memory-source').href=`https://github.com/sgl-project/sglang/blob/${M.revision}/${source[0]}#L${source[1]}`;
     $('#memory-source').textContent=`${source[0].split('/').pop()}:${source[1]} · ${source[2]} ↗`;
     $('#memory-why').textContent=mode==='extend'
-      ?`本例是同一请求已有 6 个 KV 位置的续写。新增整页数 = ceil(${s.target}/4) − ceil(6/4) = ${s.target>8?1:0}。alloc_extend 返回 out_cache_loc，write_cache_indices 再写请求映射；set_kv_buffer 写入本层 K/V。尾页和新页的写入属于同一批散写，不表示两次顺序 kernel。`
-      :mode==='reuse'?'匹配结果来自上一节的 RadixCache；这里仅放大请求映射的前缀区段。普通路径的 write_cache_indices 在同一次分配中写入前缀及其余新地址，后者在本图省略。索引可复制，已有 K/V 不因此复制。'
+      ?`本例是同一请求已有 6 个 KV 位置的续写。先用原尾页空位，再从分配器取 ${s.target>8?1:0} 个新页。alloc_extend 返回 out_cache_loc，write_cache_indices 再写请求映射；set_kv_buffer 写入本层 K/V。尾页和新页的写入属于同一批散写，不表示两次顺序 kernel。`
+      :mode==='reuse'?'本图使用 RadixCache 返回的匹配结果；树内搜索在本模块的前缀索引课展开。这里仅放大请求映射的前缀区段。普通路径的 write_cache_indices 在同一次分配中写入前缀及其余新地址，后者在本图省略。索引可复制，已有 K/V 不因此复制。'
       :'本例每条请求已计算 6 个位置，其中 4 个为缓存前缀、2 个为私有尾部。cache_finished_req 处理尾部并解除保护，release_kv_cache 随后归还请求行。缓存何时允许驱逐由缓存层决定。图示分配器采用直接回收页号的路径；归还后旧字节可保留，但不能继续作为请求的有效 KV。';
   }
   function route(from,to) {
@@ -157,7 +157,12 @@
     const key=[mode,timeline.target,timeline.hit,frame.phase.index,frame.event.at].join('/');
     if(force||key!==lastScene){lastScene=key;drawScene();}
     drawFlows();
-    depth.update({time,event:frame.event.label,explanation:$('#memory-why').textContent,rows:[['page_size',4],['目标长度',timeline.target],['命中位置',timeline.hit],['free_pages',frame.state.freePages.join(', ')],['持有页内空位',frame.state.heldEmpty]],href:$('#memory-source').href});
+    const F=window.FoundationMath;
+    const pageFormula=mode==='extend'?F.display(F.row(
+      F.sub('P','new'),F.op('='),F.op('⌈'),F.frac(F.num(timeline.target),F.num(4)),F.op('⌉'),F.op('−'),
+      F.op('⌈'),F.frac(F.num(6),F.num(4)),F.op('⌉'),F.op('='),F.num(M.extend(timeline.target,4).newPages)
+    )):'';
+    depth.update({math:pageFormula,time,event:frame.event.label,explanation:$('#memory-why').textContent,rows:[['page_size',4],['目标长度',timeline.target],['命中位置',timeline.hit],['free_pages',frame.state.freePages.join(', ')],['持有页内空位',frame.state.heldEmpty]],href:$('#memory-source').href});
     seek.max=timeline.duration;seek.value=time;seek.setAttribute('aria-valuetext',`${time.toFixed(1)} 秒，${frame.event.label}`);
     $('#memory-time').textContent=`${time.toFixed(1)} / ${timeline.duration.toFixed(1)} s`;
     const status=`${frame.phase.index+1} / ${timeline.phases.length}`;

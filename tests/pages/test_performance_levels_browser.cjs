@@ -15,6 +15,22 @@ const base=process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/',shots=process
   const state=()=>page.locator('[data-role=accessible]').textContent();
   const shot=async name=>{if(!shots)return;await page.locator('#perf-title').evaluate(e=>{document.activeElement?.blur();window.scrollTo({top:scrollY+e.getBoundingClientRect().top-document.querySelector('.site-header').getBoundingClientRect().bottom-16,behavior:'instant'});});await page.waitForTimeout(100);await page.screenshot({path:path.join(shots,name+'-viewport.png')});await root.screenshot({path:path.join(shots,name+'-panel.png')});};
   await go();assert.equal(await root.getAttribute('data-view'),'overview');assert.equal(await page.locator('[data-role=diagram] .lane-name').count(),5);assert.equal(await page.locator('[data-role=options]').getAttribute('open'),null);assert.equal(await page.locator('[data-role=formula]').isVisible(),false);assert.equal(await page.locator('[data-role=event-source]').isVisible(),false);assert(await page.locator('[data-role=diagram]').isVisible());await shot('default');
+  // Live readouts must keep their geometry and DOM across integer/decimal ticks.
+  for(const width of [1440,768,390,320])for(const view of ['overview','modules','source']){
+   await page.setViewportSize({width,height:1080});await go('view='+view+'&t=250');
+   const boxes=[];
+   for(const t of [89.9,90,90.1,179.9,180,180.1,250,250.1,251]){
+    await seek(t);const number=page.locator('[data-role=measure-number]');assert.match(await number.textContent(),/^\d+\.\d$/);
+    boxes.push(await number.evaluate(e=>{const r=e.getBoundingClientRect();return [r.x,r.width]}));
+   }
+   for(const box of boxes)assert.deepEqual(box,boxes[0],width+'/'+view+' stable numeric slot');
+   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),width+'/'+view+' no outer overflow');
+  }
+  await page.setViewportSize({width:1440,height:1080});await go('view=source&t=250');
+  await page.evaluate(()=>{const value=document.querySelector('[data-role=measure-value]'),formula=document.querySelector('[data-role=formula]');window.pmReadoutProbe={number:document.querySelector('[data-role=measure-number]').firstChild,math:formula.querySelector('math'),replacements:0};window.pmReadoutObserver=new MutationObserver(records=>window.pmReadoutProbe.replacements+=records.filter(r=>r.type==='childList').length);for(const node of [value,formula])window.pmReadoutObserver.observe(node,{childList:true,subtree:true});});
+  await page.locator('[data-role=play]').click();await page.waitForFunction(()=>+document.querySelector('[data-performance-pd]').dataset.time>275);await page.locator('[data-role=play]').click();
+  assert.deepEqual(await page.evaluate(()=>{const p=window.pmReadoutProbe;window.pmReadoutObserver.disconnect();return [p.number===document.querySelector('[data-role=measure-number]').firstChild,p.math===document.querySelector('[data-role=formula] math'),p.replacements];}),[true,true,0],'live text and MathML stay mounted');
+  console.log('PASS stable live readout: decimal/digit boundaries, 4 widths × 3 views, no text/MathML replacement during playback.');
   for(const query of ['mode=clock&condition=gate','mode=kv&condition=chunked','mode=stream&condition=bundle','mode=sample&condition=failure']){
    await go(query+'&t=310');const before=await state(),metric=await page.locator('[data-role=metric]').inputValue();
    for(const view of ['modules','source','overview']){

@@ -100,7 +100,7 @@ function stop(){playing=false;cancelAnimationFrame(raf);last=0;}
 function frame(stamp){if(!playing)return;if(last)time+=Math.min(.1,(stamp-last)/1000)*rate;last=stamp;if(time>=tl.duration){time=tl.duration;stop();}render();if(playing)raf=requestAnimationFrame(frame);}
 function seek(t){stop();time=t;render();}
 function select(option,updateURL=true){stop();tl=M.build(option);time=0;phaseKey='';$('pd-handoff-case').value=tl.option;$('pd-handoff-case-note').textContent=M.cases[tl.option][1];if(updateURL){const u=new URL(location.href);u.searchParams.set('pdcase',tl.option);history.replaceState(null,'',u);}render();}
-const depth=LearningDepth.mount({host,before:$('pd-handoff-scene').parentElement,compact:true,compactOverview:true,module:[$('pd-handoff-scene').parentElement],onChange:()=>render(),persist:()=>{const u=new URL(location.href);u.searchParams.set('pdcase',tl.option);u.searchParams.set('t',time.toFixed(3));history.replaceState(null,'',u);}});
+const depth=LearningDepth.mount({host,before:$('pd-handoff-scene').parentElement,module:[$('pd-handoff-scene').parentElement],onChange:()=>render(),persist:()=>{const u=new URL(location.href);u.searchParams.set('pdcase',tl.option);u.searchParams.set('t',time.toFixed(3));history.replaceState(null,'',u);}});
 host.hidden=false;
 select(new URL(location.href).searchParams.get('pdcase')||'normal',false);
 const savedTime=new URL(location.href).searchParams.get('t');if(savedTime!==null)seek(Math.max(0,Math.min(tl.duration,Number(savedTime)||0)));

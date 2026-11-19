@@ -13,7 +13,8 @@
           2678,
           "prepare_for_extend"
         ],
-        "example": "R1 有 4 个待算位置，R2 只剩 2 个：本轮共组织 6 个位置，同时保留它们各自的长度和地址。这个教学例里的 6 是输入位置数，不是 6 条请求。"
+        "example": "R1 完整输入有 6 个位置，已复用 2 个，本轮算余下 4 个；R2 有 5 个位置，复用 3 个，本轮算 2 个。展平后的 input_ids 有 6 项，同时保留 extend_lens=[4,2] 才知道每段属于谁。",
+        "formula": "<div class=\"implementation-math\"><math display=\"block\"><mrow><msub><mi>N</mi><mtext>input</mtext></msub><mo>=</mo><mo>(</mo><mn>6</mn><mo>−</mo><mn>2</mn><mo>)</mo><mo>+</mo><mo>(</mo><mn>5</mn><mo>−</mo><mn>3</mn><mo>)</mo><mo>=</mo><mn>6</mn></mrow></math></div>"
       },
       {
         "id": "extend-mode",
@@ -31,7 +32,8 @@
             "先回顾 Prefill / Decode 的依赖",
             "foundations/generation.html#why-phases"
           ]
-        ]
+        ],
+        "example": "假设首轮为 R1 采样出 a。下一次普通 Decode 用 a 作为一个新输入位置，写出它的 KV，再预测 b。b 此刻是输出，只有进入后续 forward 才产生自身的 KV。"
       }
     ],
     "background": {
@@ -45,7 +47,8 @@
       ],
       "scope": "Mini-SGLang 用于理解职责；本课对象与字段以完整 SGLang 的固定源码为准。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/system-overview/index.html": {
     "problem": "在线推理同时需要接入请求、组织计算和返回文字。这些职责推进速度不同；一张进程图的价值，是让读者知道每份状态由谁维护、等待发生在哪个边界。",
@@ -66,7 +69,8 @@
             "继续追踪同一 rid 的对象",
             "sglang/request-runtime/index.html"
           ]
-        ]
+        ],
+        "example": "同一条 R1 先由前端建立等待状态，Scheduler 决定它何时入批，GPU 才写出本轮 KV。GPU 完成后还要回到结果处理和反分词。模块索引可分别定位这些交接，点选图中模块即可回查对应源码。"
       }
     ],
     "background": {
@@ -80,7 +84,8 @@
       ],
       "scope": "高层结构参考作者讲解，具体启动装配由本课源码核对；两个项目的类与进程组织不混用。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/request-runtime/index.html": {
     "problem": "请求既要让前端找到等待回答的连接，也要让后端知道算到了哪里。同一个请求标识串起这些状态，但不会让不同进程共享同一个 Python 对象。",
@@ -89,14 +94,14 @@
         "id": "identity",
         "title": "为什么要同时保留 ReqState、Req 和本轮 batch？",
         "why": "它们回答的问题和存活时间不同：前端等回包，Scheduler 管进度与资源，batch 组织本轮计算。若只看本轮 batch，就无法判断前端是否仍在等待、资源是否已安全归还。",
-        "mechanism": "TokenizerManager 按 rid 关联前端状态；Scheduler 创建并更新 Req。Req 是调度侧请求对象，rid 是关联标识。原文“同一个 R1，为什么需要不同对象？”保留完整对照，取消与正常结束的分支继续在原图中观察。",
+        "mechanism": "TokenizerManager 按 rid 关联前端 ReqState，Scheduler 用同一 rid 创建自己的 Req。它们通过消息关联。一次 ScheduleBatch 只描述当前一起执行的工作，执行结束后请求还可以进入新批次；下方对象表逐一对照这三种存活范围。",
         "tradeoff": "多个状态要保持关联与一致性；“后端完成”“前端收到结果”“客户端看到结束”仍要分别确认。请求越过一个边界，不代表整个生命周期结束。",
         "source": [
           "managers/tokenizer_manager.py",
           797,
           "generate_request"
         ],
-        "example": "R1 已采样最后一个 token，但文字还在返回途中：后端的计算可以完成，前端的等待状态仍有用途。",
+        "example": "R1 产生最后一个输出后，Scheduler 可以开始资源收尾；前端的 ReqState 还要等同 rid 的返回消息。若此时连接已经断开，还需沿取消或结束路径检查其持有者，不能只看某一个对象是否消失。",
         "links": [
           [
             "查看对象职责对照",
@@ -116,7 +121,8 @@
       ],
       "scope": "对象职责来自本课固定源码；官方文档提供观察方法，不是这些类的设计声明。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/inference-overview/transformer.html": {
     "problem": "基础章已经解释向量与 Attention。本课要进一步回答：SGLang 如何把同一模型放到不同 PP 阶段执行，又怎样让下一阶段继续处理正确的中间结果？",
@@ -137,7 +143,8 @@
             "基础章：层划分与激活依赖",
             "foundations/parallel.html#read-pp"
           ]
-        ]
+        ],
+        "example": "首级收到 p0…p3，产生 4 行 hidden_states；中间级收到这 4 行及 residual，继续本级层。最后一级得到 4 行结果后，输出处理按前向模式选择需要打分的位置。前一层的历史 KV 留在所属级。"
       },
       {
         "id": "model-contract",
@@ -155,7 +162,8 @@
             "从模型接口追到执行后端",
             "sglang/model-execution/index.html"
           ]
-        ]
+        ],
+        "example": "同名 mlp 字段在不同层可以实例化 dense MLP 或 MoE。读到这个调用时，先查构造分支，再看专家选择、派发和合并。MLA 缓存表示则要沿所选 Attention backend 核对。"
       }
     ],
     "background": {
@@ -173,7 +181,8 @@
       ],
       "scope": "报告用于模型结构；PPProxyTensors 等具体接口以本课固定提交为准。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/model-execution/index.html": {
     "problem": "调度器选好了请求，还不能把请求对象直接当成 GPU 输入。执行层需要把本轮 token、位置、历史地址和模型实现接起来，并判断能否使用已经准备好的执行图。",
@@ -188,7 +197,8 @@
           "model_executor/forward_batch_info.py",
           835,
           "ForwardBatch.init_new"
-        ]
+        ],
+        "example": "同样的 input_ids 若配错 out_cache_loc，可能把 R1 的新 KV 写到别处。Worker 通过 ForwardBatch.init_new 整理位置、长度和缓存地址，Attention backend 才能把查询与正确历史连接起来。"
       },
       {
         "id": "graph-buckets",
@@ -201,7 +211,7 @@
           632,
           "can_run_graph"
         ],
-        "example": "本页 3 条普通 Decode 请求放入容量 4 的教学图桶，第四行是 PAD，不是第四条用户请求。",
+        "example": "批次有 3 条真实 Decode 行、选中容量 4 的图桶时，1 行是补齐。输入拷进图的固定缓冲区，重放后按真实行数取回结果；补齐行不增加用户请求数。",
         "links": [
           [
             "先看 CUDA Graph 解决的提交开销",
@@ -225,7 +235,8 @@
       ],
       "scope": "文章说明优化目标；ForwardBatch 的字段和图重放资格按下方源码核对。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/inference-overview/kv-cache.html": {
     "problem": "引擎需要按 token 前缀找到已有 KV 的位置索引，并保护仍在使用的路径。Radix Tree 的搜索、分裂、插入与驱逐围绕这组索引展开。",
@@ -241,7 +252,7 @@
           397,
           "match_prefix"
         ],
-        "example": "R2 只共享前 4 个 token 时，搜索会在 N1 中间分裂出 N2（ABCD）与 N1（EFGH）。变化的是索引节点和 value 切片，K/V 数值没有移动。",
+        "example": "查询 ABCDXY，page_size=4 时先只比较完整的 ABCD。若原节点是 ABCDEFGH，就把索引拆为前缀 ABCD 和后缀 EFGH；两段 value 仍指向原来的物理位置，拆树没有复制 K/V。",
         "links": [
           [
             "进一步区分请求映射和物理存储",
@@ -260,10 +271,10 @@
           561,
           "cache_unfinished_req"
         ],
-        "example": "R1 结束后，N3 先成为未锁叶。删除 N3 后，N1 才成为新的候选；R2 仍在使用的 N2（ABCD）一直受保护。",
+        "example": "R1、R2 共用 ABCD 时，公共路径受两者保护。R1 结束后仍需保留 R2 的保护。只有无锁叶可被选中驱逐，删除一个叶后，它的父节点才可能变成新的候选。",
         "links": [
           [
-            "下一节：分页续写与共享回收",
+            "回看：分页续写与共享回收",
             "sglang/kv-memory/index.html"
           ],
           [
@@ -284,7 +295,8 @@
       ],
       "scope": "这是 2024 年 RadixAttention 的设计背景；本页的 page_size、命名空间、锁与驱逐条件以固定提交 279339f113 的普通 RadixCache 路径为准，不覆盖 MLA、HiCache 或混合状态。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/kv-memory/index.html": {
     "problem": "请求长度不断增长，共享前缀又可能同时被多条请求读取。如果把“请求的第几个位置”直接等同于连续显存，就很难表达非连续分配和共享。",
@@ -300,7 +312,8 @@
           259,
           "ReqToTokenPool"
         ],
-        "example": "R1 的逻辑 p8 可以映射到槽 12；第 ℓ 层读取 K[12] / V[12]。换一层仍用槽 12，但取的是那一层的数值。"
+        "example": "页大小为 4，R1 已占用 6 个位置，即持有两页。扩到 8 个位置时用满原尾页；扩到 11 个位置时还需新取一页。新增 5 个位置只需要一页新的分配，因为原尾页本来就有 2 个空位。",
+        "formula": "<div class=\"implementation-math\"><math display=\"block\"><mrow><msub><mi>P</mi><mtext>new</mtext></msub><mo>=</mo><mo>⌈</mo><mfrac><mn>11</mn><mn>4</mn></mfrac><mo>⌉</mo><mo>−</mo><mo>⌈</mo><mfrac><mn>6</mn><mn>4</mn></mfrac><mo>⌉</mo><mo>=</mo><mn>3</mn><mo>−</mo><mn>2</mn><mo>=</mo><mn>1</mn></mrow></math></div>"
       },
       {
         "id": "ownership",
@@ -318,7 +331,8 @@
             "基础原理：复用的成立条件",
             "foundations/cache.html#why-invariant"
           ]
-        ]
+        ],
+        "example": "R1、R2 同时引用一页前缀。R1 结束只解除自己的保护，R2 仍需读取它；R2 也结束后可保留作缓存。只有驱逐或直接归还才增加分配器中的空闲页，预分配显存 buffer 仍然存在。"
       }
     ],
     "background": {
@@ -336,7 +350,8 @@
       ],
       "scope": "原论文解释一般问题；ReqToTokenPool 与 lock_ref 的语义由 SGLang 固定源码确认。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/inference-overview/scheduling.html": {
     "problem": "排队顺序只是调度的一部分：每轮还要处理已经运行的请求、已有分块和可用资源。Scheduler 必须持续更新计划，才能把新工作与未完成工作接续起来。",
@@ -351,7 +366,8 @@
           "managers/scheduler.py",
           1907,
           "event_loop_normal"
-        ]
+        ],
+        "example": "本轮执行后，L 仍有待算的 chunk，D 仍在 Decode，S 已结束。下一轮先处理已有续算引用并过滤完成成员，再决定新的计算集合。S 的历史结果卡可以保留在图中，但不会继续占用本轮 token 预算。"
       },
       {
         "id": "continuation",
@@ -369,7 +385,8 @@
             "操作准入、分块与回撤",
             "sglang/scheduling/index.html"
           ]
-        ]
+        ],
+        "example": "在关闭 mixed chunk 的本例中，已有 L 的 chunk 继续组成 Extend 工作；已有 D 留待后续 Decode。切到预算专题再试 mixed 或其他策略前，先核对本图列明的关闭项。"
       }
     ],
     "background": {
@@ -383,7 +400,8 @@
       ],
       "scope": "历史文章解释重叠动机；本课先看普通循环，不把其调用顺序等同于所有模式的时间线。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/scheduling/index.html": {
     "problem": "候选排在前面，不代表系统有足够资源计算它。SGLang 要把“先尝试谁”和“这轮能容纳谁”分开，还要处理请求继续增长造成的容量压力。",
@@ -399,7 +417,7 @@
           1267,
           "_select_prefill_admission"
         ],
-        "example": "两条请求都长 6 个 token，R2 命中 4 个，只需补算 2 个输入；这只能说明本轮输入工作不同，不能忽略其输出预算和资源持有。"
+        "example": "同样长 6 个 token 的两条请求中，R2 命中 4 个，只需补算 2 个输入位置，但输出增长仍会继续占 KV。先按顺序尝试，再检查预算；接纳后的 OTHER 可能表示不能继续追加，要同时核对 can_run_list。"
       },
       {
         "id": "recovery",
@@ -417,7 +435,8 @@
             "已有输出与有效 KV 为什么不同",
             "foundations/generation.html#why-phases"
           ]
-        ]
+        ],
+        "example": "R2 已输出 a 后被回撤，output_ids 仍保留 a。再次准入把原输入与已生成 token 组合成历史，重新匹配缓存，只对缺失部分补算；补算 a 的 KV 不会向客户端再次追加一个 a。"
       },
       {
         "id": "chunk-budget",
@@ -429,7 +448,8 @@
           "managers/scheduler.py",
           3894,
           "adder.add_chunked_req"
-        ]
+        ],
+        "example": "本图 L 共 10 个位置，每轮额度为 4。前两轮优先给 L 各算 4 个，第三轮 L 还需 2 个，才给 S 留出余下 2 个。分块确实增加决策轮次，但固定续算顺序仍决定短请求何时入批。"
       }
     ],
     "background": {
@@ -447,7 +467,8 @@
       ],
       "scope": "这里将两类设计问题联系起来；SGLang 的排序、预算和回撤规则仍以本课版本为准。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/parallelism/index.html": {
     "problem": "并行配置最终要落实为进程组和张量布局。沿各模块的实际输入、局部计算和交接条件，才能判断下一步是否拿到了正确的数据。",
@@ -468,7 +489,8 @@
             "回看各并行策略的完整输入与分工",
             "foundations/parallel.html#parallel-overview"
           ]
-        ]
+        ],
+        "example": "TP=4、Attention DP=2、Attention CP=1 的合法分组例中，每个 Attention 组的 TP 宽度是 2。Attention DP 使用已有 TP world 内的分组，此处仍是 4 个 rank，不能再把 4 与 2 相乘当作 8 张卡。"
       },
       {
         "id": "layer-layout",
@@ -480,7 +502,9 @@
           "runtime_context.py",
           151,
           "Attention 并行宽度派生"
-        ]
+        ],
+        "example": "本图两组的局部 Attention 输出分别送到共享的 MLP TP 计算。DCP 则合并不同 KV 分区对同一查询的贡献：若两份局部输出为 2 和 6，LSE₂ 为 1 和 3，归一化权重是 0.2 与 0.8，最终输出为 5.2。",
+        "formula": "<div class=\"implementation-math\"><math display=\"block\"><mrow><msub><mi>O</mi><mtext>global</mtext></msub><mo>=</mo><mfrac><msup><mn>2</mn><mn>1</mn></msup><mrow><msup><mn>2</mn><mn>1</mn></msup><mo>+</mo><msup><mn>2</mn><mn>3</mn></msup></mrow></mfrac><mo>×</mo><mn>2</mn><mo>+</mo><mfrac><msup><mn>2</mn><mn>3</mn></msup><mrow><msup><mn>2</mn><mn>1</mn></msup><mo>+</mo><msup><mn>2</mn><mn>3</mn></msup></mrow></mfrac><mo>×</mo><mn>6</mn><mo>=</mo><mn>5.2</mn></mrow></math></div>"
       }
     ],
     "background": {
@@ -498,7 +522,8 @@
       ],
       "scope": "当前官方文档的参数命名可能不同；本课保留固定版本配置，不直接套用新版启动参数。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/communication/index.html": {
     "problem": "控制消息让组件知道“做什么”，张量和 KV 才携带实际计算数据。接口、参与者和载荷不同，它们的发送、完成和释放条件也不同。",
@@ -519,7 +544,8 @@
             "先区分通信操作与物理链路",
             "foundations/communication.html#why-topology"
           ]
-        ]
+        ],
+        "example": "PP 传 hidden_states 和 residual 前，发送端先描述 dtype、形状和设备，接收方据此准备匹配的 buffer。isend 已提交时，数据可能仍在流上排队；接收方之后的模型计算还要满足该 stream 的数据依赖。"
       },
       {
         "id": "ready",
@@ -531,7 +557,8 @@
           "disaggregation/decode.py",
           2158,
           "_commit_transfer_to_req"
-        ]
+        ],
+        "example": "本例等待源 rank 0 和 1。rank 0 连续发来两次 Success，去重后仍只有一个参与者完成。即使两个参与者都成功，metadata room 不匹配也不能把当前 KV 交给 R1。"
       }
     ],
     "background": {
@@ -549,7 +576,8 @@
       ],
       "scope": "NCCL 语义只解释对应通道；不能替代 Mooncake、NIXL 或 IPC 的完成约定。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/inference-overview/deployment.html": {
     "problem": "将 P 与 D 分开后，原本在同一服务组内使用的状态变成跨角色交接。除了传出 KV，还需要建立匹配关系、准备目标空间，并分别满足两侧的推进条件。",
@@ -564,7 +592,8 @@
           "disaggregation/decode.py",
           1123,
           "pop_preallocated"
-        ]
+        ],
+        "example": "D 先预留自己的接收位置，再把地址等信息通过 bootstrap 告诉 P。P 的槽号和 D 的槽号可以不同；同一 room 与相应元数据负责把两端配上。"
       },
       {
         "id": "two-gates",
@@ -582,7 +611,8 @@
             "对照两侧门槛",
             "sglang/inference-overview/deployment.html#handoff-boundaries"
           ]
-        ]
+        ],
+        "example": "P 的 sender 结束后可以推进本侧退役。D 若尚未轮询并提交接收结果，仍不能进入后续计算；反过来，D 已开始后续工作时，P 也可能仍在等本侧下一次 poll。"
       }
     ],
     "background": {
@@ -596,7 +626,8 @@
       ],
       "scope": "这里只引用阶段干扰与分离目标；握手、资源预留和就绪条件以本课固定版本为准。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/pd-prefill-lifecycle/index.html": {
     "problem": "在本页 PP=3 的 Prefill 案例中，每级计算并持有自己的层状态。首 token 已经生成后，这些资源可能仍被 KV 传输使用，因此需要继续跟踪请求直到各级完成本侧收尾。",
@@ -617,7 +648,8 @@
             "直接查看传输中的请求",
             "sglang/pd-prefill-lifecycle/index.html#step-transfer"
           ]
-        ]
+        ],
+        "example": "PP0 已完成自己的 KV 发送，PP1 仍在 Transferring。即使首 token 已产生，R0 也不在三级共同终态交集中，源 KV 的持有仍需等后续条件。"
       },
       {
         "id": "consensus",
@@ -635,7 +667,8 @@
             "查看释放前复查",
             "sglang/pd-prefill-lifecycle/index.html#step-release"
           ]
-        ]
+        ],
+        "example": "三级都把 R0 纳入终态候选后，release 名单回到 PP0。它仍会再 poll 本地 sender，随后按 Success 或 Failed 分支处理。Failed 也属于终态，因此入选这份名单不能直接当成业务成功。"
       }
     ],
     "background": {
@@ -649,7 +682,8 @@
       ],
       "scope": "资源持有和各级收尾是结合本课源码的依赖分析，不是官方文档承诺的故障保证。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/pd-dataflow/index.html": {
     "problem": "同一个请求会参与握手、模型前向和 KV 传输，但这三条通路携带的对象不同。先认清它们各自推进什么状态，才能理解请求为何会同时被多个容器引用。",
@@ -670,7 +704,8 @@
             "对照进程、张量与传输接口",
             "sglang/communication/index.html"
           ]
-        ]
+        ],
+        "example": "R0 在三个 PP 级分别有本地 Req。PP0 发给 PP1 的激活让后者继续本级层；后台 sender 直接把 PP0 所属层的 KV 交给 D。把 chunked_req 指向这个 Req 只改变本地引用，不发送请求数据。"
       },
       {
         "id": "chunk-output",
@@ -682,7 +717,8 @@
           "managers/scheduler_pp_mixin.py",
           171,
           "Prefill PP loop 的分块与结果路径"
-        ]
+        ],
+        "example": "12 个输入位置按 4 个一块处理时，前两块可以继续写 KV 并搬运已完成范围。只有最终块触发本例有效首 token 和最终 metadata；跳过纯中间块的 output 通信不等于跳过这些计算。"
       }
     ],
     "background": {
@@ -702,7 +738,7 @@
       "read_date": "2026-10-16"
     },
     "revision": "279339f113b79af84f27fd3ac92d0a13bd3f4cbd",
-    "reviewed": "2026-11-09"
+    "reviewed": "2026-11-19"
   },
   "sglang/advanced-generation/index.html": {
     "problem": "本课追踪 SGLang 中彼此相关却不同步提交的对象：GPU 接受路径、下一轮草稿状态、CPU Req 账本和每请求 matcher。重点是固定实现的模块、数据变化与执行依赖。",
@@ -723,7 +759,8 @@
             "基础章：候选为何能并行验证",
             "foundations/speculation.html#why-known-input"
           ]
-        ]
+        ],
+        "example": "树路径选中 r→a→b 并额外预测 z 时，本轮可交付 a、b、z，目标模型新算出的有效 KV 却对应 r、a、b。z 还没作为目标模型输入，不能凭输出长度给它补一份已算 KV。"
       },
       {
         "id": "grammar",
@@ -736,7 +773,7 @@
           144,
           "copy"
         ],
-        "example": "规则为 yes 或 no：R1 已输出 y，它后面只能沿相应合法路径推进；R2 尚未输出，不能继承 R1 的 matcher 进度。"
+        "example": "规则允许 yes 或 no。R1 已接受 y，matcher 只允许它继续走合法后缀；R2 新建 matcher，仍处于规则起点。共享 ctx 可以复用编译工作，各请求接受进度仍独立。"
       },
       {
         "id": "grammar-tree",
@@ -748,7 +785,8 @@
           "speculative/spec_utils.py",
           649,
           "build_grammar_vocab_mask"
-        ]
+        ],
+        "example": "从同一父节点先试分支 a，再试兄弟 b 时，必须把 matcher 回退到父状态。正式结果回来后再推进一次；若同一结果重复经过处理入口，grammar_advanced 防止再接受一遍。"
       }
     ],
     "background": {
@@ -767,7 +805,7 @@
       "scope": "具体实现与执行轨道以 279339f113 固定 Git 对象为准；官方文档与作者文章只说明背景，不替代版本约束。",
       "read_date": "2026-11-09"
     },
-    "reviewed": "2026-11-09"
+    "reviewed": "2026-11-19"
   },
   "sglang/serving-operations/index.html": {
     "problem": "P/D 服务链要分别证明：两端可被选中、请求正在推进、取消已传到后端、资源可以重用。沿同一教学时钟观察 Gateway、P、D 的独立状态，避免用一个 HTTP 结果代替整条链的完成条件。",
@@ -782,7 +820,8 @@
           "entrypoints/http_server.py",
           664,
           "health_generate"
-        ]
+        ],
+        "example": "探测刚选中的 P1/D1 均返回 200，只能支持这对端点的探测条件。R1 仍可能在 D 的 transfer 队列等待自己的 room 和数据；P2/D2 甚至没有参与这次探测。"
       },
       {
         "id": "paired-dispatch",
@@ -794,7 +833,8 @@
           "sgl-model-gateway/src/routers/http/pd_router.rs",
           652,
           "execute_dual_dispatch_internal"
-        ]
+        ],
+        "example": "D 先返回错误，网关把它存为 decode_early 并继续等 P。P 最终失败时先返回 P 错误；P 成功时再处理 D 结果。两个发送 future 并发，最终结果仍按具名条件处理。"
       },
       {
         "id": "cancel-resources",
@@ -816,7 +856,8 @@
             "请求状态与队列流转",
             "sglang/request-state/index.html"
           ]
-        ]
+        ],
+        "example": "D 在接收中收到取消时，R1 的失败响应可能先返回，KV 接收页仍要留置。只有收到所需源端的 drain ACK 或走到该版本的兜底分支，才推进相应回收。"
       },
       {
         "id": "drain",
@@ -834,7 +875,8 @@
             "取消时对象由谁处理",
             "sglang/request-runtime/index.html#reading-topic-6"
           ]
-        ]
+        ],
+        "example": "只给 P 发 SIGTERM 时，已取得 KV 的 D 可以继续生成。P 停止新投递、等待本地登记排空、发送 ShutdownReq 和进程实际退出是依次需要证据的事件。"
       }
     ],
     "background": {
@@ -849,7 +891,7 @@
       "scope": "健康接口与退出分支以固定源码为准，不从官方工具列表推出特定请求已完成。",
       "read_date": "2026-10-16"
     },
-    "reviewed": "2026-11-10"
+    "reviewed": "2026-11-19"
   },
   "sglang/performance-engineering/index.html": {
     "problem": "P/D 有多个本地计时器与输出回程。把指标的采集模块、起止事件、observe 条件和样本来源对应起来，才能判断变化发生在计算、等待、传输还是统计筛选。",
@@ -870,7 +912,8 @@
             "基础章：延迟指标分别回答什么",
             "foundations/metrics.html#understand"
           ]
-        ]
+        ],
+        "example": "若 P 的最终 HTTP 结果晚 120 ms，D 的首回程可以已经发生，网关仍继续等待 P。客户端 TTFT 增大、D 内部 TTFT 不变，差值还包含网关的结果依赖。"
       },
       {
         "id": "samples",
@@ -882,7 +925,9 @@
           "python/sglang/benchmark/serving.py",
           1096,
           "calculate_metrics"
-        ]
+        ],
+        "example": "成功样本的 TTFT 为 [80,80,80,500] ms 时，线性插值的 P95=437 ms。若最慢的 R4 失败，它退出成功集合，P95 变成 80 ms，同时成功率降为 3/4；这组读数要一起解释。",
+        "formula": "<div class=\"implementation-math\"><math display=\"block\"><mrow><msub><mi>P</mi><mtext>95</mtext></msub><mo>=</mo><mn>80</mn><mo>+</mo><mn>0.85</mn><mo>×</mo><mo>(</mo><mn>500</mn><mo>−</mo><mn>80</mn><mo>)</mo><mo>=</mo><mn>437</mn><mtext> ms</mtext></mrow></math></div>"
       }
     ],
     "background": {
@@ -897,7 +942,7 @@
       "scope": "本课继续回查固定版本的计时点、成功样本筛选和输出字段；教学数字不是实测。",
       "read_date": "2026-11-10"
     },
-    "reviewed": "2026-11-10"
+    "reviewed": "2026-11-19"
   },
   "sglang/pd-prefill-pp-loop/quick.html": {
     "problem": "流水线的一次循环可能同时安排新批次、处理前轮结果和回收更早请求。入门时需要区分“循环轮次”“微批次身份”和“保存状态的槽位”，才不会把不同工作误认为同一条请求。",
@@ -918,7 +963,8 @@
             "需要逐项依赖时进入详细版",
             "sglang/pd-prefill-pp-loop/index.html"
           ]
-        ]
+        ],
+        "example": "本例 PP0 的 L6 在 s2 提交 M3，却处理 s0 的 M1 旧结果。选择 M3 看它跨级经过哪些 loop，选择 L6 看本轮同时涉及哪些批次。五份 M 轮流使用三个 s，编号相等没有特殊含义。"
       }
     ],
     "background": {
@@ -932,7 +978,8 @@
       ],
       "scope": "L、M、s 是本课图例约定；具体 PP/PD 循环与槽位数量遵从该页的固定场景。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/pd-prefill-pp-loop/index.html": {
     "problem": "总耗时不只来自计算量，还来自何时能获得输入和完成前置工作。时间轴把 CPU、GPU 与通信放到依赖关系中，用来解释为什么缩短某个操作未必缩短整个请求。",
@@ -948,13 +995,14 @@
           705,
           "_pp_commit_comm_work"
         ],
-        "example": "把不在当前关键依赖链上的一次提交缩短，最终完成时刻可能不变；还需要观察后续是否仍在等待更慢的输入。",
+        "example": "某活动只有在所有前驱完成且本执行主体可用后才能开始。两个前驱分别在 8 u 和 11 u 完成，它最早只能在 11 u 开始。若把前者缩短到 6 u，而后者不变，开始时刻仍为 11 u。",
         "links": [
           [
             "逐项查看源码与模型边界",
             "sglang/pd-prefill-pp-loop/notes.html"
           ]
-        ]
+        ],
+        "formula": "<div class=\"implementation-math\"><math display=\"block\"><mrow><msub><mi>t</mi><mtext>start</mtext></msub><mo>=</mo><mi>max</mi><mo>(</mo><mn>8</mn><mo>,</mo><mn>11</mn><mo>)</mo><mo>=</mo><mn>11</mn><mtext> u</mtext></mrow></math></div>"
       }
     ],
     "background": {
@@ -972,7 +1020,8 @@
       ],
       "scope": "这里用于解释依赖图的价值；图中时长是假设，未复现官方性能结果。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/pd-prefill-pp-loop/notes.html": {
     "problem": "源码说明已经逐项解释槽位、循环与共识。本页从“某步为何要等待”回查对应条件，保留完整推导；背景是异步工作和分布式观察可能在不同时间完成。",
@@ -993,7 +1042,9 @@
             "先建立整条微批次旅程",
             "sglang/pd-prefill-pp-loop/quick.html"
           ]
-        ]
+        ],
+        "example": "PP=3、async depth=0 时环长为 3。当前 mb_id=2，则 next_mb_id=0；当前 s2 的 M3 和旧 s0 的 M1 分别进入前向与结果处理。metadata 准入、传输退役和缓存 ACK 还各自保留独立状态。",
+        "formula": "<div class=\"implementation-math\"><math display=\"block\"><mrow><mi>j</mi><mo>=</mo><mo>(</mo><mi>i</mi><mo>+</mo><mn>1</mn><mo>)</mo><mo>mod</mo><mi>N</mi><mo>=</mo><mo>(</mo><mn>2</mn><mo>+</mo><mn>1</mn><mo>)</mo><mo>mod</mo><mn>3</mn><mo>=</mo><mn>0</mn></mrow></math></div>"
       }
     ],
     "background": {
@@ -1011,10 +1062,11 @@
       ],
       "scope": "bootstrap、终态与 HiCache ACK 的确切集合和条件只由本课固定源码支持。",
       "read_date": "2026-10-16"
-    }
+    },
+    "reviewed": "2026-11-19"
   },
   "sglang/loop-journey/index.html": {
-    "reviewed": "2026-11-09",
+    "reviewed": "2026-11-19",
     "problem": "CPU 的选批与结果处理、GPU 的计算、PP 的消息往返各有自己的完成条件。先沿一批工作闭环，才能判断哪里能提前做、哪里必须等。",
     "topics": [
       {
@@ -1027,7 +1079,9 @@
           "managers/scheduler_pp_mixin.py",
           63,
           "event_loop_pp"
-        ]
+        ],
+        "example": "PP=2、async depth=0 时，有两个循环槽位。PP0 在槽 1 提交 M2 后，可以接收槽 0 的 M1 旧结果。M1 的完成和槽 0 可复用各有事件，不能用“本轮提交了 M2”推断 M1 已处理。",
+        "formula": "<div class=\"implementation-math\"><math display=\"block\"><mrow><msub><mi>N</mi><mtext>slot</mtext></msub><mo>=</mo><msub><mi>N</mi><mtext>PP</mtext></msub><mo>+</mo><msub><mi>D</mi><mtext>async</mtext></msub><mo>=</mo><mn>2</mn><mo>+</mo><mn>0</mn><mo>=</mo><mn>2</mn></mrow></math></div>"
       }
     ],
     "background": {
@@ -1045,7 +1099,7 @@
   },
   "sglang/pp-consensus/index.html": {
     "revision": "279339f113b79af84f27fd3ac92d0a13bd3f4cbd",
-    "reviewed": "2026-11-09",
+    "reviewed": "2026-11-19",
     "problem": "各级看到的握手、KV 传输和缓存回载进度并不相同。先明确需要一致的是请求名单还是 ACK 消费数量，再核对本地仍需满足的条件。",
     "background": {
       "title": "分离角色之后，还要协调各级状态",
@@ -1076,12 +1130,14 @@
             "先认识 Req 的完整生命周期",
             "sglang/pd-prefill-lifecycle/index.html#walk-title"
           ]
-        ]
+        ],
+        "example": "若 PP0 的 good={R0,R1}、PP1 的 good={R1,R2}、PP2 的 good={R1}，共同 good 只有 R1。release 汇合的集合则由各级 Success 与 Failed 共同组成。两种名单的元素含义不同。",
+        "formula": "<div class=\"implementation-math\"><math display=\"block\"><mrow><mi>G</mi><mo>=</mo><msub><mi>G</mi><mtext>0</mtext></msub><mo>∩</mo><msub><mi>G</mi><mtext>1</mtext></msub><mo>∩</mo><msub><mi>G</mi><mtext>2</mtext></msub><mo>=</mo><mo>{</mo><mtext>R1</mtext><mo>}</mo></mrow></math></div>"
       }
     ]
   },
   "sglang/request-state/index.html": {
-    "reviewed": "2026-11-09",
+    "reviewed": "2026-11-19",
     "problem": "同一个 Req 可以被多个容器引用，GPU 工作与 CPU 输出提交也有不同完成时刻。必须把状态字段、容器成员与资源归属并排观察，才能判断请求正在推进还是在等待。",
     "background": {
       "title": "为什么要分别观察请求与执行批次？",
@@ -1106,7 +1162,8 @@
           "managers/scheduler.py",
           1273,
           "init_running_status"
-        ]
+        ],
+        "example": "Overlap 中 Q0 从 result_queue 弹出后，CPU 消费函数仍可能等 copy_done。这时 Q0 在消费区，Q1 还在队列，R1 可同时被 batch 与结果快照引用。观察“正在消费什么”才能解释队列已经缩短但输出尚未提交。"
       }
     ]
   }

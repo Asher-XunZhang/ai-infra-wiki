@@ -136,7 +136,7 @@
       source: 'deleteLeaf',
       focus: { nodes: ['n3'], pages: [3] },
       evicted: ['n3'],
-      note: '本图只展示树内驱逐；底层存储的释放机制在下一节展开。'
+      note: '本图只展示树内驱逐；底层存储的释放机制可回看本模块的 KV Memory Pool 课程。'
     },
     {
       index: 8,

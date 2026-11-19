@@ -49,22 +49,22 @@
 <details class="module-nav" data-module="loop-journey">
 <summary class="module-heading"><span class="course-number">03</span><span><strong>调度循环与批次执行旅程</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#loop-journey">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../loop-journey/index.html">调度循环：Normal、Overlap 与 PP 的完整旅程</a>
-<a class="lesson-link" href="../request-state/index.html">Req 状态与队列流转：请求为什么还没继续？</a>
-<a class="lesson-link" href="../inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
-<a class="lesson-link" href="../inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../request-state/index.html">Req 状态与队列流转：请求为什么还没继续？<small class="lesson-kind">状态与引用</small></a>
+<a class="lesson-link" href="../loop-journey/index.html">调度循环：Normal、Overlap 与 PP 的完整旅程<small class="lesson-kind">时间与依赖</small></a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新<small class="lesson-kind">源码导读</small></a>
 </div></details>
 <details class="module-nav" data-module="model-execution">
 <summary class="module-heading"><span class="course-number">04</span><span><strong>模型执行与设备协作</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
-<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
+<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？<small class="lesson-kind">执行机制</small></a>
+<a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头<small class="lesson-kind">源码导读</small></a>
 </div></details>
 <details class="module-nav" data-module="kv-memory">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>KV Cache 与资源生命周期</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
-<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
+<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收<small class="lesson-kind">缓存机制</small></a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？<small class="lesson-kind">源码导读</small></a>
 </div></details>
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">06</span><span><strong>调度策略、批处理与资源约束</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -88,10 +88,10 @@
 <details class="module-nav" data-module="disaggregation" open>
 <summary class="module-heading" aria-current="location"><span class="course-number">09</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
-<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
-<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
-<a class="lesson-link" href="index.html" aria-current="page">PP 共识：Bootstrap、Release 与 HiCache ACK</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="index.html" aria-current="page">PP 共识：Bootstrap、Release 与 HiCache ACK<small class="lesson-kind">状态协调</small></a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-serving">
@@ -119,9 +119,9 @@
 <details class="module-nav" data-module="case-studies">
 <summary class="module-heading"><span class="course-number">13</span><span><strong>PD＋PP 综合实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">Prefill 流水线的等待与依赖：空档从哪里来</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">Prefill PP 主循环源码：槽位复用与异步收尾</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾<small class="lesson-kind">综合实践</small></a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">Prefill 流水线的等待与依赖：空档从哪里来<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">Prefill PP 主循环源码：槽位复用与异步收尾<small class="lesson-kind">PD＋PP 案例</small></a>
 </div></details>
 </nav></details>
 </details>
@@ -131,7 +131,7 @@
 <!-- learning-context:start -->
 <nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第三章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-distributed">第三层 · 扩展到多卡多机</a><span aria-hidden="true">/</span><a href="../../#disaggregation">09 分离部署与分布式状态交接</a><span aria-hidden="true">/</span><span aria-current="page">PP 共识：Bootstrap、Release 与 HiCache ACK</span></nav>
 <!-- learning-context:end -->
-<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#disaggregation">模块 09 / 分离部署与分布式状态交接</a><span class="lesson-count">SGLang · 状态协调</span></div><h1>PP 共识：Bootstrap、Release 与 HiCache ACK</h1><p>一份名单决定谁能继续，一份计数决定处理多少 ACK。沿三个 PP 级观察：本地进展怎样变成共同结论，结论回来之后还要检查什么。</p><div class="meta-tags"><span>固定源码 279339f113</span><span>参与者 / 集合 / 消息 / 门槛</span><span>教学时间 · 非性能测量</span></div></header><!-- lesson-reading:start --><nav class="lesson-reading-nav" aria-label="本课阅读入口"><span>按问题阅读</span><a href="#implementation-why-title">从问题理解实现</a><a href="#consensus-title">一个级已握手，为什么请求还不能进入 waiting_queue？</a><a href="#reading-topic-3">谁参与，线上传的是什么？</a><a href="#reading-topic-4">Bootstrap：从本地就绪到实际准入</a><a href="#reading-topic-5">Release：共同终态仍需本地复查</a><a href="#reading-topic-6">HiCache ACK：统一消费数量，本地确认完成</a><a href="#reading-topic-7">固定源码与学习边界</a></nav><!-- lesson-reading:end --><!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>区分 Bootstrap、Release 与 HiCache ACK 的参与者、集合或计数、消息传播和本地放行条件；共用时钟观察依赖与异步活动。</p><a href="../../foundations/deployment.html">需要回顾原理：PD Disaggregation：Prefill 与 Decode 为什么分离？</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">各级看到的握手、KV 传输和缓存回载进度并不相同。先明确需要一致的是请求名单还是 ACK 消费数量，再核对本地仍需满足的条件。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-background"><summary>分离角色之后，还要协调各级状态</summary><p>官方 PD 文档将 Prefill 与 Decode 划为不同服务角色。本文进一步沿固定实现追踪 Prefill 各 PP 级的准入与收尾，并将 HiCache 的缓存进度同步单独对照。</p><p class="design-source">概念与设计说明：<a href="https://docs.sglang.io/docs/advanced_features/pd_disaggregation">SGLang 官方：PD Disaggregation ↗</a></p><p class="design-source">官方文档只用于角色分离的概念背景；三种协调算法、分支和时序以本课固定源码为准。 资料读取：2026-11-09。</p></details><section class="design-question" id="design-consensus-purpose"><h3>为什么共同名单回来，仍不能直接认定本地可继续？</h3><p>名单反映某次采样的共同观察；metadata 容量、本地 sender 状态和 CUDA event 还分别决定此刻能否执行对应操作。</p><details><summary>展开机制与具体例子</summary><p>Bootstrap 用 good 交集与 bad 并集，再执行本地 finalize；release 汇合终态，再本地复查；HiCache 发布计数，再等待每条本地 ACK 的完成事件。</p></details><p class="design-tradeoff"><strong>取舍与条件：</strong>根据固定分支解释不同门槛，不把三种路径合成通用 barrier；轨道时间只是一种合法教学安排。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L305">回流结果的本地处理与保存 · 本课实现核对 ↗</a></p><ul class="design-links"><li><a href="../pd-prefill-lifecycle/index.html#walk-title">先认识 Req 的完整生命周期 →</a></li></ul></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-11-09。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end -->
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#disaggregation">模块 09 / 分离部署与分布式状态交接</a><span class="lesson-count">SGLang · 状态协调</span></div><h1>PP 共识：Bootstrap、Release 与 HiCache ACK</h1><p>一份名单决定谁能继续，一份计数决定处理多少 ACK。沿三个 PP 级观察：本地进展怎样变成共同结论，结论回来之后还要检查什么。</p><div class="meta-tags"><span>固定源码 279339f113</span><span>参与者 / 集合 / 消息 / 门槛</span><span>教学时间 · 非性能测量</span></div></header><!-- lesson-reading:start --><nav class="lesson-reading-nav" aria-label="本课阅读入口"><span>按问题阅读</span><a href="#implementation-why-title">从问题理解实现</a><a href="#consensus-title">一个级已握手，为什么请求还不能进入 waiting_queue？</a><a href="#reading-topic-3">谁参与，线上传的是什么？</a><a href="#reading-topic-4">Bootstrap：从本地就绪到实际准入</a><a href="#reading-topic-5">Release：共同终态仍需本地复查</a><a href="#reading-topic-6">HiCache ACK：统一消费数量，本地确认完成</a><a href="#reading-topic-7">固定源码与学习边界</a></nav><!-- lesson-reading:end --><!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>区分 Bootstrap、Release 与 HiCache ACK 的参与者、集合或计数、消息传播和本地放行条件；共用时钟观察依赖与异步活动。</p><a href="../../foundations/deployment.html">需要回顾原理：PD Disaggregation：Prefill 与 Decode 为什么分离？</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">各级看到的握手、KV 传输和缓存回载进度并不相同。先明确需要一致的是请求名单还是 ACK 消费数量，再核对本地仍需满足的条件。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-reading"><summary>展开机制、算例与取舍</summary><details class="design-background"><summary>分离角色之后，还要协调各级状态</summary><p>官方 PD 文档将 Prefill 与 Decode 划为不同服务角色。本文进一步沿固定实现追踪 Prefill 各 PP 级的准入与收尾，并将 HiCache 的缓存进度同步单独对照。</p><p class="design-source">概念与设计说明：<a href="https://docs.sglang.io/docs/advanced_features/pd_disaggregation">SGLang 官方：PD Disaggregation ↗</a></p><p class="design-source">官方文档只用于角色分离的概念背景；三种协调算法、分支和时序以本课固定源码为准。 资料读取：2026-11-09。</p></details><section class="design-question" id="design-consensus-purpose"><h3>为什么共同名单回来，仍不能直接认定本地可继续？</h3><p>名单反映某次采样的共同观察；metadata 容量、本地 sender 状态和 CUDA event 还分别决定此刻能否执行对应操作。</p><details><summary>展开机制与具体例子</summary><p>Bootstrap 用 good 交集与 bad 并集，再执行本地 finalize；release 汇合终态，再本地复查；HiCache 发布计数，再等待每条本地 ACK 的完成事件。</p><div class="design-example"><strong>用一个例子理解</strong><p>若 PP0 的 good={R0,R1}、PP1 的 good={R1,R2}、PP2 的 good={R1}，共同 good 只有 R1。release 汇合的集合则由各级 Success 与 Failed 共同组成。两种名单的元素含义不同。</p></div><div class="implementation-math"><math display="block"><mrow><mi>G</mi><mo>=</mo><msub><mi>G</mi><mtext>0</mtext></msub><mo>∩</mo><msub><mi>G</mi><mtext>1</mtext></msub><mo>∩</mo><msub><mi>G</mi><mtext>2</mtext></msub><mo>=</mo><mo>{</mo><mtext>R1</mtext><mo>}</mo></mrow></math></div></details><p class="design-tradeoff"><strong>取舍与条件：</strong>根据固定分支解释不同门槛，不把三种路径合成通用 barrier；轨道时间只是一种合法教学安排。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L305">回流结果的本地处理与保存 · 本课实现核对 ↗</a></p><ul class="design-links"><li><a href="../pd-prefill-lifecycle/index.html#walk-title">先认识 Req 的完整生命周期 →</a></li></ul></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-11-19。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></details></section><div id="implementation-process"></div><!-- implementation-design:end -->
 <section class="pc" id="consensus-lab" aria-labelledby="consensus-title">
 <h2 id="consensus-title" data-role="question">一个级已握手，为什么请求还不能进入 waiting_queue？</h2>
 <div class="pc-modes" role="group" aria-label="选择协调机制"><button data-mode="bootstrap" aria-pressed="true">Bootstrap · 请求准入</button><button data-mode="release" aria-pressed="false">Release · 本地收尾</button><button data-mode="hicache" aria-pressed="false">HiCache ACK · 缓存进度</button><div class="pc-settings"><label>观察条件 <select data-role="condition" aria-label="观察条件"></select></label></div></div>

@@ -51,22 +51,22 @@
 <details class="module-nav" data-module="loop-journey" open>
 <summary class="module-heading" aria-current="location"><span class="course-number">03</span><span><strong>调度循环与批次执行旅程</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#loop-journey">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="index.html" aria-current="page">调度循环：Normal、Overlap 与 PP 的完整旅程</a>
-<a class="lesson-link" href="../request-state/index.html">Req 状态与队列流转：请求为什么还没继续？</a>
-<a class="lesson-link" href="../inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？</a>
-<a class="lesson-link" href="../inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新</a>
+<a class="lesson-link" href="../inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../request-state/index.html">Req 状态与队列流转：请求为什么还没继续？<small class="lesson-kind">状态与引用</small></a>
+<a class="lesson-link" href="index.html" aria-current="page">调度循环：Normal、Overlap 与 PP 的完整旅程<small class="lesson-kind">时间与依赖</small></a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新<small class="lesson-kind">源码导读</small></a>
 </div></details>
 <details class="module-nav" data-module="model-execution">
 <summary class="module-heading"><span class="course-number">04</span><span><strong>模型执行与设备协作</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头</a>
-<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？</a>
+<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？<small class="lesson-kind">执行机制</small></a>
+<a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头<small class="lesson-kind">源码导读</small></a>
 </div></details>
 <details class="module-nav" data-module="kv-memory">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>KV Cache 与资源生命周期</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？</a>
-<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收</a>
+<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收<small class="lesson-kind">缓存机制</small></a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？<small class="lesson-kind">源码导读</small></a>
 </div></details>
 <details class="module-nav" data-module="scheduling">
 <summary class="module-heading"><span class="course-number">06</span><span><strong>调度策略、批处理与资源约束</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -90,10 +90,10 @@
 <details class="module-nav" data-module="disaggregation">
 <summary class="module-heading"><span class="course-number">09</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入</a>
-<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放</a>
-<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用</a>
-<a class="lesson-link" href="../pp-consensus/index.html">PP 共识：Bootstrap、Release 与 HiCache ACK</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pp-consensus/index.html">PP 共识：Bootstrap、Release 与 HiCache ACK<small class="lesson-kind">状态协调</small></a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-serving">
@@ -121,9 +121,9 @@
 <details class="module-nav" data-module="case-studies">
 <summary class="module-heading"><span class="course-number">13</span><span><strong>PD＋PP 综合实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">Prefill 流水线的等待与依赖：空档从哪里来</a>
-<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">Prefill PP 主循环源码：槽位复用与异步收尾</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾<small class="lesson-kind">综合实践</small></a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">Prefill 流水线的等待与依赖：空档从哪里来<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">Prefill PP 主循环源码：槽位复用与异步收尾<small class="lesson-kind">PD＋PP 案例</small></a>
 </div></details>
 </nav></details>
 </details>
@@ -172,12 +172,11 @@
 <div class="lj-quiz"><p><strong>预测：</strong>在“看一轮”中选 PP0 · L1，当前计算与结果处理分别属于谁？</p><button data-answer="当前计算 M2（slot 1），处理旧 M1（slot 0）。两类行为在同一 CPU 本地轮次中组织，却不属于同一个 microbatch。">计算 M2，处理 M1</button><button data-answer="请沿高亮单元格分别看 GPU0 与 CPU0：当前槽是 1，next_mb_id 是 0，所以处理旧 M1。">都属于 M2</button><p role="status"></p></div>
 </section>
 <section class="lj-reading" id="objects"><details><summary>对象速查：请求、批次、microbatch、slot 与 loop</summary><ul><li><strong>请求 Req：</strong>用户的一次生成任务，保存输入、已提交输出与完成状态，可跨多个执行批次。</li><li><strong>执行批次 ScheduleBatch：</strong>本轮一起进入执行的请求集合及其元数据；B0、B1 在图中表示不同执行实例。</li><li><strong>PP microbatch：</strong>一份穿过模型各 stage 的执行工作。M1 / M2 是图中的身份，各 stage 分别持有对应的本地对象。</li><li><strong>slot：</strong>PP 环形数组的可复用下标，不是 GPU、模型层或物理 KV 页。同一槽后续可装不同批次。</li><li><strong>loop：</strong>本地调度推进。本课 L 表示一次普通 while 迭代，或 PP 内层 for 的一次槽位迭代；外层 while 还会遍历所有槽。</li><li><strong>stream / event：</strong>设备工作的排队轨道与完成标记。wait_event / wait_stream 建立设备顺序；event.synchronize() 在调用线程等待事件。</li></ul></details></section>
-<!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>沿普通循环、Overlap 与普通 PP 跟踪一批工作的提交、设备依赖、结果消费和循环收尾。</p><a href="../../foundations/batching.html">需要回顾原理：Batch 调度：动态组批、连续批处理与 Chunked Prefill</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">CPU 的选批与结果处理、GPU 的计算、PP 的消息往返各有自己的完成条件。先沿一批工作闭环，才能判断哪里能提前做、哪里必须等。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-background"><summary>设计背景：用 CPU / GPU 泳道理解重叠窗口</summary><p>SGLang 团队的 v0.4 文章把 CPU 调度与 GPU 执行放到同一时间关系中，说明未来 token 与事件同步如何让 CPU 提前准备下一批。本课借鉴其执行实体分行的表达，增加共用教学时钟的执行轨道，保留可回看的事件序列；具体行为重新核对课程固定提交。</p><p class="design-source">概念与设计说明：<a href="https://www.lmsys.org/blog/2024-12-04-sglang-v0-4/">SGLang v0.4 作者说明（2024-12-04） ↗</a></p><p class="design-source">历史作者说明用于解释动机，不引用其性能结果，也不当作本课固定提交的实现证明。 资料读取：2026-11-09。</p></details><section class="design-question" id="design-loop-dependency"><h3>为什么要把本地一轮与一批完整旅程分开看？</h3><p>一轮可以提交当前批、处理旧批；一批又可能穿过多个 stage 和多轮结果回环。只按函数顺序背诵，会把不同批次混为一谈。</p><details><summary>展开机制与具体例子</summary><p>图中固定请求与批次身份，分别追踪输入、设备输出、CPU 已提交状态和可复用槽位。</p></details><p class="design-tradeoff"><strong>取舍与条件：</strong>事件列只表达因果；非 PP 与 PP 的工作量和设备数不同，不用于速度比较。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L63">event_loop_pp · 本课实现核对 ↗</a></p></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-11-09。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></section><div id="implementation-process"></div><!-- implementation-design:end -->
+<!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="本课实现目标"><h2>本课追踪什么实现</h2><p>沿普通循环、Overlap 与普通 PP 跟踪一批工作的提交、设备依赖、结果消费和循环收尾。</p><a href="../../foundations/batching.html">需要回顾原理：Batch 调度：动态组批、连续批处理与 Chunked Prefill</a></section><!-- foundation-bridge:end --><!-- implementation-design:start --><section class="implementation-design" id="implementation-why"><h2 id="implementation-why-title">从问题理解实现</h2><p class="design-problem">CPU 的选批与结果处理、GPU 的计算、PP 的消息往返各有自己的完成条件。先沿一批工作闭环，才能判断哪里能提前做、哪里必须等。</p><a class="design-skip" href="#implementation-process">进入本课图解与源码过程 ↓</a><details class="design-reading"><summary>展开机制、算例与取舍</summary><details class="design-background"><summary>设计背景：用 CPU / GPU 泳道理解重叠窗口</summary><p>SGLang 团队的 v0.4 文章把 CPU 调度与 GPU 执行放到同一时间关系中，说明未来 token 与事件同步如何让 CPU 提前准备下一批。本课借鉴其执行实体分行的表达，增加共用教学时钟的执行轨道，保留可回看的事件序列；具体行为重新核对课程固定提交。</p><p class="design-source">概念与设计说明：<a href="https://www.lmsys.org/blog/2024-12-04-sglang-v0-4/">SGLang v0.4 作者说明（2024-12-04） ↗</a></p><p class="design-source">历史作者说明用于解释动机，不引用其性能结果，也不当作本课固定提交的实现证明。 资料读取：2026-11-09。</p></details><section class="design-question" id="design-loop-dependency"><h3>为什么要把本地一轮与一批完整旅程分开看？</h3><p>一轮可以提交当前批、处理旧批；一批又可能穿过多个 stage 和多轮结果回环。只按函数顺序背诵，会把不同批次混为一谈。</p><details><summary>展开机制与具体例子</summary><p>图中固定请求与批次身份，分别追踪输入、设备输出、CPU 已提交状态和可复用槽位。</p><div class="design-example"><strong>用一个例子理解</strong><p>PP=2、async depth=0 时，有两个循环槽位。PP0 在槽 1 提交 M2 后，可以接收槽 0 的 M1 旧结果。M1 的完成和槽 0 可复用各有事件，不能用“本轮提交了 M2”推断 M1 已处理。</p></div><div class="implementation-math"><math display="block"><mrow><msub><mi>N</mi><mtext>slot</mtext></msub><mo>=</mo><msub><mi>N</mi><mtext>PP</mtext></msub><mo>+</mo><msub><mi>D</mi><mtext>async</mtext></msub><mo>=</mo><mn>2</mn><mo>+</mo><mn>0</mn><mo>=</mo><mn>2</mn></mrow></math></div></details><p class="design-tradeoff"><strong>取舍与条件：</strong>事件列只表达因果；非 PP 与 PP 的工作量和设备数不同，不用于速度比较。</p><p class="design-source"><a href="https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler_pp_mixin.py#L63">event_loop_pp · 本课实现核对 ↗</a></p></section><p class="design-baseline">本课实现核对：SGLang 固定提交 279339f113，2026-11-19。外部资料解释概念背景；对象职责与条件沿固定源码理解。教学算例不代表实测性能。</p></details></section><div id="implementation-process"></div><!-- implementation-design:end -->
 <section id="lesson-evidence" class="lj-reading"><h2 id="reading-topic-5">固定源码与下一步</h2><p>公开上游 <a href="https://github.com/sgl-project/sglang/tree/279339f113b79af84f27fd3ac92d0a13bd3f4cbd">SGLang main 快照 279339f113</a>，复核于 2026-11-09。读取固定 Git 对象，检出目录有 14 个未跟踪项，未纳入本课事实、未被改写。图中的 R/B/M、token 与合法交错是教学设定；未运行引擎、GPU、网络或性能实验。</p><p>三个场景仅展示各自的机制，不比较速度。PP 两条请求与非 PP 单条请求工作量不同；逐事件记录使用事件序号；执行轨道在各自场景内使用一只假设时钟 u。相同横坐标表示相同时刻，时长不代表实测，也不跨机制比较性能。</p><div class="lj-next-reading"><a href="../inference-overview/journey.html">继续：ScheduleBatch 输入准备 →</a><a href="../inference-overview/scheduling.html">继续：选批、分块与 Decode 更新 →</a><a href="../model-execution/index.html">深入：Worker / Runner 与设备执行 →</a></div></section>
 <!-- reading-pagers:start -->
-<nav class="reading-route-pager" data-reading-route="first" data-route-title="从基础走向源码" data-route-position="2 / 6" aria-label="从基础走向源码 · 继续学习" hidden><a href="../system-overview/index.html?learn=first"><small>这条路线 · 上一节</small><strong>← SGLang 代码架构：模块划分与协作全景</strong></a><a class="next" href="../inference-overview/journey.html?learn=first"><small>这条路线 · 下一节</small><strong>ScheduleBatch：Extend 与 Decode 怎样准备输入？ →</strong></a></nav>
-<nav class="reading-route-pager" data-reading-route="implementation" data-route-title="已有基础，追踪实现" data-route-position="2 / 6" aria-label="已有基础，追踪实现 · 继续学习" hidden><a href="../request-runtime/index.html?learn=implementation"><small>这条路线 · 上一节</small><strong>← 请求生命周期：Req、TokenizerManager 与 Scheduler</strong></a><a class="next" href="../request-state/index.html?learn=implementation"><small>这条路线 · 下一节</small><strong>Req 状态与队列流转：请求为什么还没继续？ →</strong></a></nav>
+<nav class="reading-route-pager" data-reading-route="first" data-route-title="从请求走到一轮计算" data-route-position="5 / 6" aria-label="从请求走到一轮计算 · 继续学习" hidden><a href="../request-state/index.html?learn=first"><small>这条路线 · 上一节</small><strong>← Req 状态与队列流转：请求为什么还没继续？</strong></a><a class="next" href="../model-execution/index.html?learn=first"><small>这条路线 · 下一节</small><strong>ModelRunner 与 CUDA Graph：输入怎样交给 GPU？ →</strong></a></nav>
 <!-- reading-pagers:end -->
 <section class="request-state-bridge"><h2>从执行批次回看请求状态</h2><p>本课追踪一批计算；请求专题追踪同一个 Req 在多轮之间的引用、字段与资源变化。 <a href="../request-state/#req-state-title">Req 状态与队列流转 →</a></p></section>
-<nav class="lesson-pager" aria-label="框架内继续学习"><a href="../../#loop-journey"><small>回到所属模块</small><strong>← 03 调度循环与批次执行旅程</strong></a><a class="next" href="../request-state/index.html"><small>本模块 · 下一节</small><strong>Req 状态与队列流转：请求为什么还没继续？ →</strong></a></nav>
+<nav class="lesson-pager" aria-label="框架内继续学习"><a href="../request-state/index.html"><small>本模块 · 上一节</small><strong>← Req 状态与队列流转：请求为什么还没继续？</strong></a><a class="next" href="../inference-overview/scheduling.html"><small>本模块 · 下一节</small><strong>Scheduler：选批、Chunked Prefill 与 Decode 更新 →</strong></a></nav>
 </main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>
