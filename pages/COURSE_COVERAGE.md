@@ -1,12 +1,12 @@
 # Pages 学习课程覆盖与维护
 
-Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实现剖析”三章。第一章用十三课建立通用机制；第二章按固定 release 对照六主题、二十四步，并提供第三章深入入口；第三章保留五层十三模块、二十三节课程与固定的源码依据。本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
+Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实现剖析”三章。第一章用十三课建立通用机制；第二章按固定 release 对照七个主题、二十八步，并提供第三章深入入口；第三章保留五层十三模块、二十三节课程与固定的源码依据。本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
 
 ## 三章之间怎样衔接
 
 第一章的 [十三节基础课](foundations/README.md) 从文字与 token、Transformer 前向总览、Attention、自回归生成和 KV Cache 开始，再进入批处理、GPU、多卡分工、通信、角色分离、候选验证、服务生命周期和性能口径。每课有教学算例、自测和无 JavaScript 阅读路径。先修链接与上一课 / 下一课按学习依赖编排。
 
-第二章的 [架构对照](engine-comparison/index.html) 以 SGLang v0.5.23（commit 297e54f）与 vLLM v0.33.0（tag v0.33.0rc3，commit 4ba787e）为固定基线，按进程、通信、前缀缓存、调度、分离扩展和生命周期六个主题各四步播放；每个主题给出对应的固定 release 源码入口与第三章深入课程。各课基线彼此独立，本页对照不替代各课自己的固定版本。
+第二章的 [架构对照](engine-comparison/index.html) 以 SGLang v0.5.23（commit 297e54f）与 vLLM v0.33.0（tag v0.33.0rc3，commit 4ba787e）为固定基线。01–05 从接收请求读到单实例收尾，06 看 P/D 实例之间怎样交接 KV，07 对齐内部和客户端的观测口径。各主题有四步，源码与第三章入口保留各自基线。
 
 第三章保留旧网址和固定源码依据，课前给出实现目标与第一章的先修链接。五节旧概览课分别指向批次准备、DeepSeek-V3 调用、前缀索引、调度入口和 PD 交接的源码导读。通用机制图在第一章按学习问题归并，完整层计算集中在第 02 课。
 
@@ -25,7 +25,7 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 
 - `node tests/pages/test_foundations.cjs`：真实分词固定样例、因果权重、KV 所属与释放、批次成员守恒、通信与 PP 依赖、统计样本边界。
 - `node tests/pages/test_foundations_browser.cjs`：全部场景与步骤、320 / 390 / 1440 宽度、深浅主题、自测反馈、键盘、播放暂停、减少动态效果、链接恢复与无 JavaScript 正文。
-- `node tests/pages/test_topic_navigation_browser.cjs`：三章目录、第二章六主题入口、二十二节实现课导航、旧路线 URL、跨模块翻页与移动端侧栏。
+- `node tests/pages/test_topic_navigation_browser.cjs`：三章目录、第二章七个主题入口、二十三节实现课导航、旧路线 URL、跨模块翻页与移动端侧栏。
 
 发布状态以对应提交的 Pages 工作流和线上验证为准。浏览器中的教学模型不代表运行过 GPU 推理。
 
@@ -36,9 +36,23 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 - `node tests/pages/test_loop_journey_browser.cjs`：三机制连续播放、暂停、小数时刻拖动、倍速、节点步进、等待与解除、模式和历史、PP 聚焦、同一时钟轨道及依赖点选、键盘、窄屏、主题、无 JS；截图另作人工检查。
 - 旧课程保留独立用途：输入组织、选批入口、设备分层、KV 生命周期、资源预算；不把它们重复堆进完整旅程页。
 
-## 第二章架构对照的验证
+## 第二章架构对照
 
-- `node tests/pages/test_engine_comparison_browser.cjs`：六主题二十四步、节点注释打开与关闭、手动前后步进及首尾边界、停留不自动切换、阶段内连线与节点特效持续运行、hash 直达与刷新历史、中文与英文切换、主题切换、减少动态效果关闭循环特效、1440 / 1280 / 1100 / 1024 / 900 / 768 / 390 / 320 双引擎固定横排、窄屏对照区键盘横向滚动、虚线边界对比度、核心节点角色说明及默认完整图表、主动放大与恢复全图、键盘滚动、中英文 48 个图示状态的文字边界与遮挡、按主题及步骤懒加载的选读区（默认无大表格，展开保留当前阶段，切换收起）、本节来源筛选、有序列表，以及 prefix 双方 8/12 命中。
+| 主题 | 讲解重点与图的用法 |
+| --- | --- |
+| [01 进程与请求路径](engine-comparison/index.html#process) | 请求路径与 TP 归属分别看；用进程边界区分入队、选入本轮、写入 K/V 与回传，展开时核对本步执行入口。 |
+| [02 进程间通信](engine-comparison/index.html#wire) | 总览定位通道，模块图追踪端点与载荷；展开时对照类型帧、rank 同步和 Worker 输出条件。 |
+| [03 前缀缓存](engine-comparison/index.html#prefix) | 总览看命中边界，模块图看共享与寻址；展开时查看完整单位对齐、物理块编号和实际槽位。 |
+| [04 调度与批处理](engine-comparison/index.html#batch) | 总览看本轮成员，模块图沿现有 CPU/GPU 轨道看先后与交叠；展开时核对预算字段和可读取结果的条件。 |
+| [05 生命周期与执行](engine-comparison/index.html#crosscut) | 四个问题各自保留过程图。展开时查看引用释放、回撤、取消和图分派各自的状态变化。 |
+| [06 P/D 分离与扩展](engine-comparison/index.html#disagg) | 复用现有跨实例交接和等待路径，展开时定位接收完成、实例内准入和执行器兼容条件。 |
+| [07 延迟口径](engine-comparison/index.html#metrics) | 过程图定位各自计时点，展开时把时间戳或统计样本贴回各引擎的观测图，ITL 样本与参数同步。 |
+
+通信、前缀缓存、调度和 P/D 继续提供总览与模块过程。七个主题的 28 步均可在两侧图卡内独立展开源码注解。注解的箭头表示字段转换、查找或判定。传递动画沿用原图时钟，现有轨道已能说明先后与等待。公式和选读仍可按需打开。
+
+- `node tests/pages/test_engine_comparison_browser.cjs`：七主题二十八步、中英文与窄屏布局、手动步进、活跃交接、节点注释、源码、选读、放大和横向键盘滚动。
+- `node tests/pages/test_engine_boundaries_browser.cjs`：TP 归属、V2 模块过程、28 步双侧源码注解、展开与收起后的图形和脉冲状态、旧链接、计时边界与 ITL 样本一致性。
+- `node tests/pages/test_topic_navigation_browser.cjs`：首页与侧栏顺序、当前主题、跨主题跳转和返回、第一章到第三章的导航。
 - 第二章基线固定为 SGLang `297e54fd105e974cdf401e5b4d20253a22c16f90` 与 vLLM `4ba787ec9959e566d3b587a796dff07673324da5`；测试只访问本地预览，不下载、不改写上游源码。
 - 页面与共享导航由 `python3 -B scripts/build_pages.py` 构建，生成一致性由同一脚本和 `build_learning_navigation.py --check` 覆盖。
 

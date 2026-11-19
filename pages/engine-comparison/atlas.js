@@ -24,6 +24,16 @@ const chapterFromHash = () => {
 
     const NS = 'inference-atlas';
     const PANEL_ID = 'inference-atlas';
+    const StepSourceContext = React.createContext(null);
+
+    function readReaderView() {
+      const params = new URL(location.href).searchParams;
+      const depth = params.get('depth');
+      return {
+        depth: depth === 'modules' || depth === 'source' ? 'modules' : 'overview',
+        sourceOpen: depth === 'source' || params.get('source') === '1',
+      };
+    }
 
     const RELEASES = {
       sg: {
@@ -95,8 +105,20 @@ const chapterFromHash = () => {
         ],
       },
       {
-        id: 'disagg',
+        id: 'crosscut',
         num: '05',
+        navKey: 'chapters.crosscut.nav',
+        questionKey: 'chapters.crosscut.question',
+        steps: 4,
+        sourceKeys: ['sources.sgKvCommon', 'sources.sgGraph', 'sources.vlCompile'],
+        lessonLinks: [
+          { href: '../sglang/model-execution/index.html', label: ['模型执行', 'Model execution'] },
+          { href: '../sglang/serving-operations/index.html', label: ['服务运维', 'Serving operations'] },
+        ],
+      },
+      {
+        id: 'disagg',
+        num: '06',
         navKey: 'chapters.disagg.nav',
         questionKey: 'chapters.disagg.question',
         steps: 4,
@@ -128,18 +150,6 @@ const chapterFromHash = () => {
           },
         ],
       },
-      {
-        id: 'crosscut',
-        num: '06',
-        navKey: 'chapters.crosscut.nav',
-        questionKey: 'chapters.crosscut.question',
-        steps: 4,
-        sourceKeys: ['sources.sgKvCommon', 'sources.sgGraph', 'sources.vlCompile'],
-        lessonLinks: [
-          { href: '../sglang/model-execution/index.html', label: ['模型执行', 'Model execution'] },
-          { href: '../sglang/serving-operations/index.html', label: ['服务运维', 'Serving operations'] },
-        ],
-      },
     ];
 
     const COPY = {
@@ -155,18 +165,17 @@ const chapterFromHash = () => {
         disagg: {
           title: ['跨实例扩展与 KV 交接边界', 'Cross-instance scaling and KV handoff'],
           lede: ['把跨 Worker 选点、实例内准入/排序与 KV 交接拆到同一组层上比较；Router 索引与 Worker 缓存树不是同一个对象。', 'Compare cross-worker selection, in-instance admission/ordering, and KV handoff at their own layers; the router index and the worker cache tree are different objects.'],
-          note: ['本表仍按本页固定 release 对照。Router/前端生成跨 Worker 候选并做选点，但选点不等于 KV 交接或实例内准入；Connector/传输后端负责 KV 交接。实例内 Scheduler 负责准入与排序（SGLang 的 LPM 是这一侧的调度策略），缓存树/池则按自己的保护和引用策略决定回收，不能用一个“前缀命中”跨层概括。', 'This table still compares this page’s pinned releases. A router/frontend generates cross-worker candidates and selects one, but selection is neither KV handoff nor in-instance admission; a connector or transfer backend handles KV handoff. The in-instance scheduler owns admission and ordering (SGLang’s LPM is a scheduling policy on that side), while the cache tree/pool decides reclamation under its own protection and reference rules. No single “prefix hit” summarizes all of them.'],
         },
         optional: ['选读', 'Further reading'],
         expand: ['展开阅读', 'Read more'],
         collapse: ['收起', 'Collapse'],
         sources: ['本节来源与版本边界', 'Sources and version scope for this topic'],
         titles: {
-          process: ['进程骨架：组件职责与请求边界', 'Process spine: ownership and request boundaries'],
-          wire: ['通信面：通道、载荷与执行边界', 'Communication: channels, payloads, and execution boundaries'],
+          process: ['进程与请求路径：组件职责与执行边界', 'Process spine: ownership and request boundaries'],
+          wire: ['进程间通信：通道、载荷与执行边界', 'Communication: channels, payloads, and execution boundaries'],
           prefix: ['前缀缓存：索引、共享保护与回收', 'Prefix cache: indexing, shared ownership, and reclamation'],
-          batch: ['调度心跳：准入预算与 CPU/GPU 交叠', 'Scheduling: admission budgets and CPU/GPU overlap'],
-          disagg: ['分离扩展：路由、缓存分层与 KV 交接', 'Disaggregation: routing, cache tiers, and KV handoff'],
+          batch: ['调度与批处理：准入预算与 CPU/GPU 交叠', 'Scheduling: admission budgets and CPU/GPU overlap'],
+          disagg: ['P/D 分离：路由、缓存分层与 KV 交接', 'Disaggregation: routing, cache tiers, and KV handoff'],
           finish: ['正常结束：KV 的归属与回收', 'Completion: KV ownership and reclamation'],
           overload: ['内存压力：回撤、抢占与重算', 'Memory pressure: retraction, preemption, and recomputation'],
           abort: ['取消请求：队列移除与资源释放', 'Cancellation: queue removal and resource release'],
@@ -179,10 +188,10 @@ const chapterFromHash = () => {
       header: {
         kicker: ['发布基线 · 2026 年 11 月', 'Release baseline · November 2026'],
         titleA: ['同一条请求，', 'One request,'],
-        titleB: ['两种调度心跳', 'two scheduling heartbeats'],
+        titleB: ['两套推理引擎', 'two inference engines'],
         lede: [
-          '把固定 release 的 SGLang v0.5.23 与 vLLM v0.33.0 拆成分阶段探索的 2D 剖面：请求如何穿过进程，ZMQ / 共享内存 / NCCL / RDMA 怎样接力，KV 如何被寻址，以及它在收尾、压力、取消和图形捕获时走向哪里。',
-          'A step-by-step 2D anatomy of SGLang v0.5.23 and vLLM v0.33.0: how a request crosses process boundaries, how ZMQ, shared memory, NCCL, and RDMA hand off work, how KV is addressed, and where it goes during cleanup, pressure, cancellation, and graph capture.',
+          '对照 SGLang 与 vLLM 中同一条请求的路径。第一次读，先按 01–05 看单实例怎样接收、执行并结束请求，再到 06 看 P/D 之间怎样交接 KV，最后在 07 核对延迟从哪里开始和结束。',
+          'Follow one request through SGLang and vLLM. Topics 01–05 cover a single instance from arrival through cleanup. Topic 06 follows KV across P/D instances, and topic 07 locates the endpoints used to measure latency.',
         ],
         caution: ['机制示意，不是性能排名。', 'A mechanism explainer, not a performance ranking.'],
         releaseLabel: ['固定 release 与 commit', 'Pinned release and commit'],
@@ -190,7 +199,7 @@ const chapterFromHash = () => {
         sourceCta: ['查看 release', 'Open release'],
       },
       control: {
-        chapter: ['章节', 'Chapters'],
+        chapter: ['本章主题', 'Chapter topics'],
         prev: ['上一步', 'Previous step'],
         next: ['下一步', 'Next step'],
         hint: ['点击上一步、下一步或阶段名称切换；图中动态仅示意当前阶段。', 'Use Previous, Next, or a stage name to navigate; motion illustrates the current stage.'],
@@ -227,7 +236,7 @@ const chapterFromHash = () => {
       },
       chapters: {
         process: {
-          nav: ['进程骨架', 'Process spine'],
+          nav: ['进程与请求路径', 'Processes & request path'],
           question: ['请求先越过哪些进程边界？', 'Which process boundaries does a request cross first?'],
           steps: [
             {
@@ -293,7 +302,7 @@ const chapterFromHash = () => {
           ],
         },
         wire: {
-          nav: ['通信面', 'Wire profile'],
+          nav: ['进程间通信', 'Communication'],
           question: ['套接字、序列化和执行面，实际怎样接力？', 'How do sockets, serialization, and the execution plane actually hand off?'],
           steps: [
             {
@@ -425,7 +434,7 @@ const chapterFromHash = () => {
           ],
         },
         batch: {
-          nav: ['调度心跳', 'Scheduling beat'],
+          nav: ['调度与批处理', 'Scheduling & batching'],
           question: ['每一拍的预算，怎样被填满？', 'How is each step’s budget filled?'],
           steps: [
             {
@@ -491,7 +500,7 @@ const chapterFromHash = () => {
           ],
         },
         disagg: {
-          nav: ['分离扩展', 'Disaggregation'],
+          nav: ['P/D 分离与扩展', 'P/D disaggregation'],
           question: ['拆开 prefill 与 decode 后，控制面在哪里？', 'Once prefill and decode split, where is the control plane?'],
           steps: [
             {
@@ -557,7 +566,7 @@ const chapterFromHash = () => {
           ],
         },
         crosscut: {
-          nav: ['生命周期与执行边界', 'Lifecycle & execution boundaries'],
+          nav: ['生命周期与执行', 'Lifecycle & execution'],
           question: ['同一项工程问题，两个引擎怎样走出不同的线？', 'For the same engineering problem, where do the two engines take different lines?'],
           steps: [
             {
@@ -2650,6 +2659,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       const engine = ENGINE[side];
       const release = RELEASES[side];
       const [zoomed, setZoomed] = React.useState(false);
+      const stepSource = React.useContext(StepSourceContext);
       const noteKey = chapter === 'crosscut' ? `scenes.crosscut.note.${step}.${side}` : `scenes.${chapter}.note.${side}`;
       return h(
         'article',
@@ -2678,6 +2688,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             onClick: () => setZoomed(value => !value),
           }, t(zoomed ? 'board.fit' : 'board.zoom')),
         ),
+        stepSource ? h(window.AtlasSourceStep.Annotation, { ...stepSource, side, sources: SOURCE_LINKS }) : null,
         h(
           'div',
           {
@@ -4089,11 +4100,10 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
     // Mount only the requested material. A new topic/step gets a fresh closed
     // disclosure, so an open comparison cannot spill into the next lesson.
-    function ReadingDisclosure({ title, t, children, className, forced = false }) {
+    function ReadingDisclosure({ title, t, children, className }) {
       const [open, setOpen] = React.useState(false);
-      const expanded=forced||open;
       return h('details', {
-        className, open:expanded,
+        className, open,
       },
         h('summary', { onClick: event => {
           event.preventDefault();
@@ -4101,28 +4111,29 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           setOpen(nextOpen);
         } },
           h('span', { className: 'ia-readingLabel' }, title),
-          h('small', { className: 'ia-readingAction' }, t(expanded ? 'reading.collapse' : 'reading.expand')),
+          h('small', { className: 'ia-readingAction' }, t(open ? 'reading.collapse' : 'reading.expand')),
         ),
-        expanded ? children : null,
+        open ? children : null,
       );
     }
 
-    function TopicReading({ chapter, step, t, depth }) {
+    function TopicReading({ chapter, step, t, tokens }) {
       const topic = chapter.id;
       const facet = topic === 'crosscut' ? ['finish', 'overload', 'abort', 'graph'][step] : topic;
-      const table = topic === 'metrics' ? h(window.AtlasBoundaries.MetricReading,{step,en:atlasLocale.lang==='en'}) :
+      const table = topic === 'metrics' ? h(window.AtlasBoundaries.MetricReading,{step,tokens,en:atlasLocale.lang==='en'}) :
         topic === 'wire' ? h(WireTable, { t }) :
         topic === 'prefix' ? h(React.Fragment,null,h(ProfileTable, { id: 'kv', t }),h(window.AtlasBoundaries.MemoryBudget,{en:atlasLocale.lang==='en'})) :
-        topic === 'crosscut' ? h(ProfileTable, { id: ['kv', 'overload', 'abort', 'graph'][step], t }) :
+        topic === 'crosscut' ? (step === 0
+          ? h(window.AtlasLessonNotes.Completion, { en: atlasLocale.lang === 'en' })
+          : h(ProfileTable, { id: facet, t })) :
         h(ComparisonTable, {
           t, rows: { process: [0], batch: [3, 4], disagg: [5] }[topic],
           title: t(`reading.${topic}.title`), lede: t(`reading.${topic}.lede`),
-          note: topic === 'disagg' ? t('reading.disagg.note') : null,
         });
       return h('section', { className: 'ia-topicReading', 'data-topic': topic, 'data-reading': facet },
         h('p', { className: 'ia-readingEyebrow' }, t('reading.optional')),
         h(ReadingDisclosure, {
-          key: `${topic}:${step}`, t, forced:depth==='source', className: 'ia-readingDetails', title: t(`reading.titles.${facet}`),
+          key: `${topic}:${step}`, t, className: 'ia-readingDetails', title: t(`reading.titles.${facet}`),
         }, table, topic==='process'?h(window.AtlasBoundaries.Provenance,{en:atlasLocale.lang==='en'}):null),
       );
     }
@@ -4259,7 +4270,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         const [ownership,setOwnership]=useState(()=>new URL(location.href).searchParams.get('view')==='ownership');
         const [tp,setTp]=useState(()=>new URL(location.href).searchParams.get('tp')==='1'?1:2);
         const [tokens,setTokens]=useState(()=>[1,2,4].includes(Number(new URL(location.href).searchParams.get('tokens')))?Number(new URL(location.href).searchParams.get('tokens')):2);
-        const [depth,setDepth]=useState(()=>new URL(location.href).searchParams.get('depth')||'overview');
+        const [readerView, setReaderView] = useState(readReaderView);
         const [pulsePlaying,setPulsePlaying]=useState(true);
         const pulseClock=React.useRef(Number(new URL(location.href).searchParams.get('pulse'))||0);
         const pageRef=React.useRef(null);
@@ -4290,9 +4301,19 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
         const t = useMemo(() => locale.bind(NS), [locale, localeRevision]);
         const chapter = CHAPTERS[chapterIndex];
-        const fullDepth=['wire','prefix','batch','disagg'].includes(chapter.id);
-        const shownDepth=!fullDepth&&depth==='overview'?'modules':depth;
-        const chooseDepth=next=>{setDepth(next);const u=new URL(location.href);u.searchParams.set('depth',next);u.searchParams.set('step',step);u.searchParams.set('pulse',pulseClock.current.toFixed(3));history.replaceState(null,'',u);};
+        const hasOverview = ['wire','prefix','batch','disagg'].includes(chapter.id);
+        const shownDepth = hasOverview ? readerView.depth : 'modules';
+        const { sourceOpen } = readerView;
+        const updateReaderView = next => {
+          setReaderView(next);
+          const url = new URL(location.href);
+          url.searchParams.set('depth', next.depth);
+          if (next.sourceOpen) url.searchParams.set('source', '1');
+          else url.searchParams.delete('source');
+          url.searchParams.set('step', step);
+          url.searchParams.set('pulse', pulseClock.current.toFixed(3));
+          history.replaceState(null, '', url);
+        };
         const stepCount = chapter.steps;
         const stepTitleKey = `chapters.${chapter.id}.steps.${step}.title`;
         const en=atlasLocale.lang==='en';
@@ -4303,10 +4324,11 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
         useEffect(() => {
           const sync = () => {
+            if (location.hash && !CHAPTERS.some(item => '#' + item.id === location.hash)) return;
             const next = chapterFromHash();
             setChapterIndex(next);
             setStep(Math.max(0,Math.min(3,Number(new URL(location.href).searchParams.get('step'))||0)));
-            setDepth(new URL(location.href).searchParams.get('depth')||'overview');
+            setReaderView(readReaderView());
             setOwnership(new URL(location.href).searchParams.get('view')==='ownership');
             setTp(new URL(location.href).searchParams.get('tp')==='1'?1:2);
             const n=Number(new URL(location.href).searchParams.get('tokens'));setTokens([1,2,4].includes(n)?n:2);
@@ -4320,12 +4342,35 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           };
         }, []);
 
-        const selectChapter = (index) => {
+        const selectChapter = useCallback((index, nextStep = 0) => {
+          if (index === chapterIndex) return;
           setChapterIndex(index);
-          setStep(0);
+          setStep(nextStep);
           setSelected(null);
-          try { const u=new URL(location.href);u.hash=CHAPTERS[index].id;u.searchParams.set('step','0');history.pushState(null, '', u); } catch {}
-        };
+          try { const u=new URL(location.href);u.hash=CHAPTERS[index].id;u.searchParams.set('step',nextStep);history.pushState(null, '', u); } catch {}
+        }, [chapterIndex]);
+
+        useEffect(() => {
+          const sidebar = document.querySelector('.engine-topic-nav');
+          sidebar?.querySelectorAll('[data-engine-topic]').forEach(link => {
+            if (link.dataset.engineTopic === chapter.id) link.setAttribute('aria-current', 'location');
+            else link.removeAttribute('aria-current');
+          });
+          const onTopicLink = event => {
+            if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            const link = event.target.closest('[data-engine-topic]');
+            if (!link) return;
+            const index = CHAPTERS.findIndex(item => item.id === link.dataset.engineTopic);
+            if (index < 0) return;
+            event.preventDefault();
+            selectChapter(index, Number(link.dataset.engineStep) || 0);
+            const tabs = pageRef.current.querySelector('.ia-controls');
+            tabs.scrollIntoView({ block: 'start' });
+            tabs.querySelectorAll('.ia-chapterTab')[index].focus({ preventScroll: true });
+          };
+          document.addEventListener('click', onTopicLink);
+          return () => document.removeEventListener('click', onTopicLink);
+        }, [chapter.id, selectChapter]);
 
         const goToStep = (index) => {
           setStep(Math.max(0, Math.min(index, stepCount - 1)));
@@ -4365,7 +4410,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           h(
             'main',
             {
-              className: 'ia-page', ref:pageRef, 'data-depth':shownDepth, 'data-chapter':chapter.id, 'data-step':step,
+              className: 'ia-page', ref:pageRef, 'data-depth':shownDepth, 'data-source-open':sourceOpen, 'data-chapter':chapter.id, 'data-step':step,
               'data-reduced-motion': reduceMotion ? 'true' : 'false',
             },
             h('div', { className: 'ia-windowSafe', 'aria-hidden': 'true' }),
@@ -4446,8 +4491,18 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             chapter.id==='process'&&ownership?h('p',{className:'ia-controlHint'},label('L1–L5 是职责，不是五个进程。此图限定单机 Python 文本服务、单 API / 单 Detokenizer、PP=DP=1，普通 Full Attention 缓存且无外部后端；vLLM 采用 TP1 uni / TP2 mp，不计 launcher、监控和辅助进程。','L1–L5 are roles, not five processes. Single-node Python text service, one API / one Detokenizer, PP=DP=1, ordinary full-attention cache without an external backend; vLLM uses TP1 uni / TP2 mp. Launcher, monitoring, and helper processes are excluded.')):null,
             chapter.id==='metrics'?h('p',{className:'ia-controlHint'},label('范围：普通 Python 文本流式服务，开启指标；非 PD、无投机/重试/取消、无 stop 字符串，按 EOS 或长度终止。四步是四个观察问题，不是四段串行执行。','Scope: ordinary Python text streaming with metrics; no PD, speculation, retries, cancellation, or stop strings; EOS/length termination. These are four observation questions, not four serial execution phases.')):null,
             chapter.id==='metrics'&&step===3?h('label',{className:'ib-controls'},label('SGLang 每次合并几个 token？（vLLM 保持单 token 核心输出）','SGLang tokens per return? (vLLM keeps single-token core outputs)'),h('select',{'aria-label':label('SGLang 合并 token 数','SGLang tokens per return'),value:tokens,onChange:e=>setTokens(Number(e.target.value))},[1,2,4].map(n=>h('option',{key:n,value:n},n)))):null,
-            h('div',{className:'ld-controls',role:'group','aria-label':'细节程度'},h('span',null,'细节程度'),(fullDepth?['overview','modules','source']:['modules','source']).map(d=>h('button',{key:d,type:'button','data-depth-choice':d,'aria-pressed':shownDepth===d,onClick:()=>chooseDepth(d)},{overview:'总览',modules:fullDepth?'模块过程':'过程',source:'源码细节'}[d])),h('button',{type:'button',onClick:()=>setPulsePlaying(p=>!p),'aria-pressed':pulsePlaying,'data-pulse-toggle':true},pulsePlaying?'暂停脉冲':'播放脉冲')),
-            h('p',{className:'ia-controlHint'},'切换细节保留当前阶段；脉冲表示本阶段活跃交接，不表示真实带宽或阶段耗时。'),
+            h('div', { className: 'ld-controls ia-view-controls' },
+              hasOverview ? h('div', { className: 'ia-mode-controls', role: 'group', 'aria-label': label('过程图视角', 'Process diagram view') },
+                ['overview', 'modules'].map(mode => h('button', {
+                  key: mode, type: 'button', 'data-depth-choice': mode, 'aria-pressed': shownDepth === mode,
+                  onClick: () => updateReaderView({ ...readerView, depth: mode }),
+                }, mode === 'overview' ? label('总览', 'Overview') : label('模块过程', 'Module process')))) : null,
+              h('button', { type: 'button', onClick: () => setPulsePlaying(playing => !playing),
+                'aria-pressed': pulsePlaying, 'data-pulse-toggle': true },
+                pulsePlaying ? label('暂停脉冲', 'Pause pulses') : label('播放脉冲', 'Play pulses'))),
+            h('p', { className: 'ia-controlHint' }, label(
+              '脉冲表示本阶段的活跃交接。线长和传播速度仅用于示意。',
+              'Pulses mark active handoffs in this step. Line length and pulse speed are illustrative.')),
             h(
               'p',
               { className: 'ia-srOnly', 'aria-live': 'polite' },
@@ -4473,6 +4528,11 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                 h(
                   'div',
                   { className: 'ia-stageMeta' },
+                  h('button', {
+                    type: 'button', className: 'ia-source-toggle', 'data-source-toggle': true,
+                    'aria-expanded': sourceOpen, 'aria-controls': sourceOpen ? 'ia-source-sg ia-source-vl' : undefined,
+                    onClick: () => updateReaderView({ ...readerView, sourceOpen: !sourceOpen }),
+                  }, sourceOpen ? label('收起图上源码', 'Hide source annotations') : label('展开图上源码', 'Show source annotations')),
                   h(
                     'span',
                     { className: 'ia-stepCounter' },
@@ -4480,14 +4540,16 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                   ),
                 ),
               ),
+              h(window.AtlasLessonNotes.StepNote, { topic: chapter.id, step, en, depth: shownDepth }),
               h('div', { className: 'ia-comparison' },
                 h('p', { className: 'ia-comparisonHint', id: 'ia-comparison-hint' }, t('board.comparisonScroll')),
                 h('div', {
                   className: 'ia-boardGrid', role: 'region', tabIndex: 0,
                   'aria-label': t('board.comparison'), 'aria-describedby': 'ia-comparison-hint',
-                }, h(shownDepth==='overview'?DepthOverview:Scene, {
-                  chapter: chapter.id, step, t, selected, onSelect: handleSelectNode,ownership,tp,tokens,
-                })),
+                }, h(StepSourceContext.Provider, { value: sourceOpen ? { chapter: chapter.id, step, en, ownership, tp, tokens } : null },
+                  h(shownDepth === 'overview' ? DepthOverview : Scene, {
+                    chapter: chapter.id, step, t, selected, onSelect: handleSelectNode, ownership, tp, tokens,
+                  }))),
               ),
               h(
                 'p',
@@ -4572,10 +4634,9 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                 h('p', null, stepData.diff),
               ),
             ),
-            h(TopicReading, { chapter, step, t, depth:shownDepth }),
-            shownDepth==='source' ? h(window.AtlasV2.Trace,{chapter:chapter.id,step,en}) : null,
+            h(TopicReading, { chapter, step, t, tokens }),
             h(ReadingDisclosure, {
-              key: `sources:${chapter.id}`, t, forced:shownDepth==='source', className: 'ia-referenceDetails', title: t('reading.sources'),
+              key: `sources:${chapter.id}`, t, className: 'ia-referenceDetails', title: t('reading.sources'),
             }, h(SourcesSection, { t, chapter })),
             h(
               'footer',

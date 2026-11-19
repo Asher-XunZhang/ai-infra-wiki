@@ -2,7 +2,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const BASE=(process.env.OVERVIEW_TEST_URL||'http://127.0.0.1:8765/').replace(/\/+$/,'')+'/';
-const CHAPTERS=['process','wire','prefix','batch','disagg','crosscut'];
+const CHAPTERS=['process','wire','prefix','batch','crosscut','disagg','metrics'];
 const alive=pid=>{try{process.kill(pid,0);return true;}catch(e){return e.code!=='ESRCH';}};
 const waitGone=async(pid,ms=3000)=>{const end=Date.now()+ms;while(Date.now()<end){if(!alive(pid))return true;await new Promise(r=>setTimeout(r,60));}return !alive(pid);};
 const stepAt=page=>page.locator('.ia-stepItem').evaluateAll(items=>items.findIndex(i=>i.getAttribute('aria-current')==='step'));
@@ -100,7 +100,7 @@ const diagramGeometry=async(page,label)=>{
   await page.locator('.ia-referenceDetails').last().locator('summary').click();
   assert.doesNotMatch(await page.locator('.ia-footerMeta').innerText(),/Harness/i);
 
-  // Six topics × four steps, including per-topic release source and chapter 3 links.
+  // Seven topics × four steps, including per-topic release source and chapter 3 links.
   for(let chapter=0;chapter<CHAPTERS.length;chapter++){
    const tab=page.locator('.ia-chapterTab').nth(chapter);
    await tab.click();await page.waitForFunction(id=>location.hash==='#'+id,CHAPTERS[chapter]);
@@ -131,9 +131,12 @@ const diagramGeometry=async(page,label)=>{
     assert.equal(await page.locator('.ia-table').count(),0,'unrequested tables must not be mounted');
     assert.equal(await page.locator('.ia-readingDetails[open]').count(),0,'a new step starts with concise reading');
     await page.locator('.ia-readingDetails>summary').click();
-    assert.equal(await page.locator('.ia-topicReading table:visible').count(),1);
-    assert.equal(await page.locator('.ia-table').count(),1,'only this topic comparison may be mounted');
-    if(chapter===5)assert.match(await page.locator('.ia-topicReading h2').innerText(),[/KV/,/过载/,/取消/,/图捕获/][step]);
+    const topic=CHAPTERS[chapter];
+    const table=topic!=='metrics'&&!(topic==='crosscut'&&step===0);
+    assert.equal(await page.locator('.ia-topicReading table:visible').count(),Number(table));
+    assert.equal(await page.locator('.ia-table').count(),Number(table),'only this topic comparison may be mounted');
+    assert.ok(await page.locator('.ia-stepNote').innerText());
+    assert.equal(await page.locator('.engine-topic-nav [aria-current=location]').getAttribute('data-engine-topic'),topic);
     await noOverflow(page,`${CHAPTERS[chapter]} step ${step+1} 1440`);
    }
   }
@@ -150,14 +153,15 @@ const diagramGeometry=async(page,label)=>{
   await page.locator('.ia-readingDetails>summary').click();
   assert.equal(await page.locator('.ia-table').count(),0,'closing must remove the full comparison');
   await page.locator('#lang-toggle').click();
-  for(let topic=0;topic<6;topic++){
+  for(let topic=0;topic<CHAPTERS.length;topic++){
    await page.locator('.ia-chapterTab').nth(topic).click();
    for(let step=0;step<4;step++){
     await page.locator('.ia-stepItem').nth(step).click();
     await diagramGeometry(page,`English ${CHAPTERS[topic]} step ${step+1}`);
     assert.equal(await page.locator('.ia-table').count(),0);
     await page.locator('.ia-readingDetails>summary').click();
-    assert.equal(await page.locator('.ia-topicReading table:visible').count(),1);
+    const table=CHAPTERS[topic]!=='metrics'&&!(CHAPTERS[topic]==='crosscut'&&step===0);
+    assert.equal(await page.locator('.ia-topicReading table:visible').count(),Number(table));
    }
   }
   await page.locator('#lang-toggle').click();
@@ -189,7 +193,7 @@ const diagramGeometry=async(page,label)=>{
   await page.locator('.ia-board--vl .ia-node[data-node-id=output]').click();
   assert.match(await page.locator('.ia-inspectorRole').innerText(),/前端结果包/);
   assert.match(await page.locator('.ia-inspectorBody').innerText(),/EngineCoreOutputs/);
-  await page.locator('.ia-chapterTab').nth(4).click();
+  await page.locator('.ia-chapterTab').nth(CHAPTERS.indexOf('disagg')).click();
   for(const side of ['sg','vl'])for(const [node,role] of [['prefill',/输入计算者/],['decode',/续写执行者/]]){
    await page.locator(`.ia-board--${side} .ia-node[data-node-id=${node}]`).click();
    assert.match(await page.locator('.ia-inspectorRole').innerText(),role);
@@ -233,9 +237,9 @@ const diagramGeometry=async(page,label)=>{
   // Direct hash, history and reload.
   await page.goto(BASE+'engine-comparison/index.html#prefix');await page.waitForLoadState('load');
   assert.match(await activeTab(page).innerText(),/前缀缓存/);
-  await page.locator('.ia-chapterTab').nth(4).click();
+  await page.locator('.ia-chapterTab').nth(CHAPTERS.indexOf('disagg')).click();
   await page.waitForFunction(()=>location.hash==='#disagg');
-  assert.match(await activeTab(page).innerText(),/分离扩展/);
+  assert.match(await activeTab(page).innerText(),/P\/D 分离与扩展/);
   await page.goBack().catch(()=>{});
   await page.waitForFunction(()=>location.hash==='#prefix');
   assert.match(await activeTab(page).innerText(),/前缀缓存/);
@@ -371,6 +375,6 @@ const diagramGeometry=async(page,label)=>{
   }
 
   assert.deepEqual(errors,[]);
-  console.log('PASS: engine comparison six topics / 24 steps, pinned source and chapter 3 links, node notes without freezing effects, manual previous/next and boundary states, idle stage retention and animated edges/nodes, hash/history/reload, zh/EN, light/dark/system, eight widths with fixed horizontal engine pairs, visible dashed boundaries, role-first core descriptions, and complete diagrams, explicit zoom/fit and keyboard scrolling, 48 bilingual geometry states, topic/step-specific reading and ordered notes, prefix 8/12, reduced motion without looping effects.');
+  console.log('PASS: engine comparison seven topics / 28 steps, pinned source and chapter 3 links, node notes without freezing effects, manual previous/next and boundary states, idle stage retention and animated edges/nodes, hash/history/reload, zh/EN, light/dark/system, eight widths with fixed horizontal engine pairs, visible dashed boundaries, role-first core descriptions, and complete diagrams, explicit zoom/fit and keyboard scrolling, 56 bilingual stage layouts, topic/step-specific reading and ordered notes, prefix 8/12, reduced motion without looping effects.');
  }finally{await cleanup();}
 })().catch(e=>{console.error(e);process.exit(1);});

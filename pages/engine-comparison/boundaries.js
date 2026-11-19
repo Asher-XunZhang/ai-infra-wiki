@@ -4,6 +4,7 @@
 window.AtlasBoundaries = (() => {
   const h = React.createElement;
   const choose = (pair, en) => pair[en ? 1 : 0];
+  const { Formula, variable, number, operator, fraction, row } = window.AtlasLessonNotes;
   const SG = 'https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/';
   const VL = 'https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/';
   const sources = [
@@ -139,9 +140,9 @@ window.AtlasBoundaries = (() => {
       h('p',null,sg?tr(['观察者：TokenizerManager','Observer: TokenizerManager']):tr(['观察点：EngineCore 输出时间戳','Observation: EngineCore output timestamps'])),
       h(Path,{label:sg?tr([`stream_interval=${tokens} · 此次新增 ${tokens} 个 token`,`stream_interval=${tokens} · this output adds ${tokens} tokens`]):tr(['普通 Decode · 此次核心输出 1 个 token','Ordinary decode · this core output adds one token']),active:true}),
       h('div',{className:'ib-samples'},m.samples.map((v,i)=>h('div',{key:i},h('b',null,`${v} ms`),h('small',null,tr(['一个观测','One observation']))))),
-      h('dl',{className:'ib-counters'},h('dt',null,'Δ_count'),h('dd',null,m.count),h('dt',null,'Δ_sum'),h('dd',null,'0.2 s')),
+      h('dl',{className:'ib-counters'},h('dt',null,'Δ_count'),h('dd',null,m.count),h('dt',null,'Δ_sum'),h('dd',null,`${m.sum / 1000} s`)),
       h('p',{className:'ib-note'},sg?tr(['示例位于首输出之后且非终态：满足未发送 token 数 ≥ stream_interval 后回传。这是平均分摊，没有测到每个 token 单独的生成时刻。','This is a non-first, non-final output: it is emitted once unsent tokens reach stream_interval. Allocation of the interval does not measure each token’s generation time.']):tr(['此参照路径每个核心输出对应一个新 token。投机等单轮多 token 路径不在本例范围内。','In this reference path, each core output has one new token. Speculative and other multi-token-per-step paths are outside this example.'])),
-      h('p',{className:'ib-note'},tr(['两边的 200 ms 分别取自各自观察层，仅用于解释记账差异，非共同实测。','Each 200 ms comes from its own observation layer. This illustrates accounting, not a shared measurement.'])));
+      h('p',{className:'ib-note'},tr(['两边的 200 ms 分别取自各自观察层，用于演示各自的记账过程。','Each 200 ms comes from its own observation layer. This illustrates accounting, not a shared measurement.'])));
     return h('div',{className:'ib-metricScene','data-endpoint':m.end},
       h('p',{className:'ib-scene-question'},step===2?tr(['首次 queue Histogram 的计时区间','Interval for the initial queue histogram']):tr([step===0?'内部 TTFT 的终点':'内部 E2E 的终点',step===0?'Internal TTFT endpoint':'Internal E2E endpoint'])),
       h('ol',{className:'ib-event-list'},m.nodes.map((pair,i)=>h('li',{key:i,className:(i<=m.end?'is-measured ':'')+(i===m.end?'is-end':''),'data-event':i},
@@ -151,22 +152,47 @@ window.AtlasBoundaries = (() => {
       step!==2?h('div',{className:'ib-overlap'},tr(['可交叠：前端处理已返回的输出时，核心/GPU 可继续后续轮次；终态不再开启该请求的新轮次。内部首输出也不保证已有可见文字。','May overlap: the core/GPU may advance while the frontend handles returned output. A final output starts no new iteration for that request. First internal output need not contain visible text.'])):null);
   }
   const formulas = {
-    sg:[['first_token_time − created_time','tokenizer_manager.py::_get_scheduler_first_token_time','流式取 TM 首输出；非流式且返回的 prefill_finished_time 有效时，可取 Scheduler 时间，否则回退 TM。','Streaming uses TM first output. Non-streaming may use a valid returned prefill_finished_time; otherwise it falls back to TM.'],
-      ['finished_time − created_time','req_time_stats.py::get_e2e_latency','终点是 TM 处理终态，不是 HTTP 完成。created_time 可来自 received_time，不是网络首字节的统一定义。','The endpoint is TM final-output handling, not HTTP completion. created_time may use received_time; it is not a universal first-network-byte timestamp.'],
-      ['forward_entry_time − wait_queue_entry_time','req_time_stats.py::set_forward_entry_time','首次 forward 记录一个 Histogram 样本；queue_duration_s 累加已结算等待段，不能混作同一指标。','First forward records one histogram sample; queue_duration_s accumulates settled waits. They are different metrics.'],
-      ['interval / num_new_tokens × num_new_tokens 次观测','output_streamer.py::accept → tokenizer_manager.py::collect_metrics → metrics_collector.py::observe_inter_token_latency','普通 Decode 也能用 stream_interval 合并回传；首 token 立即发送，终态强制发送。本例取中途的满间隔输出，使用默认 Prometheus collector，跳过 num_new_tokens ≤ 0。','Ordinary decode can batch returns with stream_interval. The first token is immediate and final output is forced. This example uses an intermediate full interval and the default collector; nonpositive token counts are skipped.']],
-    vl:[['iteration_timestamp − arrival_time','stats.py::update_from_output','AsyncLLM 取回输出后建立 IterationStats；统计使用该批时间戳，随后才反分词。','AsyncLLM creates IterationStats on retrieval; statistics use that batch timestamp, before detokenization.'],
-      ['iteration_timestamp − arrival_time','stats.py::update_from_finished_request','匹配同一正常请求时，可用 E − Q − I 看剩余区间；它混合准备、传递与等待，不是纯 IPC 时间。不同分位数不可相减。','For the same normal request, E − Q − I is a residual interval mixing preparation, transfer, and waiting—not pure IPC time. Do not subtract quantiles.'],
-      ['scheduled_ts − queued_ts','stats.py::update_from_events / update_from_finished_request','scheduled_ts 只保留首次；完成时记录。中途抢占等待计入核心 Inference 等区间，不是 GPU kernel 时间。','scheduled_ts preserves the first schedule; recording occurs at completion. Mid-request preemption waits fall inside core inference intervals, not GPU kernel time.'],
-      ['engine_core_timestamp − last_token_ts','gpu/model_runner.py → gpu/sample/sampler.py → Scheduler.update_from_output → IterationStats.update_from_output','支持条件下默认走 ModelRunner V2，普通采样返回单 token；V1 回退的普通采样同样每请求一 token。Scheduler 产出对应 EngineCoreOutput，非首输出追加一个 ITL；前端 SSE 聚合不改变核心时间戳采样单位。','When supported, ModelRunner V2 is the default and ordinary sampling returns one token; the V1 fallback also returns one token per request. Scheduler emits EngineCoreOutput and non-first outputs add one ITL. Frontend SSE batching does not change the core-timestamp observation unit.']],
+    sg:[[['first_token_time','created_time'],'tokenizer_manager.py::_get_scheduler_first_token_time','流式取 TM 首输出；非流式且返回的 prefill_finished_time 有效时，可取 Scheduler 时间，否则回退 TM。','Streaming uses TM first output. Non-streaming may use a valid returned prefill_finished_time; otherwise it falls back to TM.'],
+      [['finished_time','created_time'],'req_time_stats.py::get_e2e_latency','终点是 TM 处理终态，不是 HTTP 完成。created_time 可来自 received_time，不是网络首字节的统一定义。','The endpoint is TM final-output handling, not HTTP completion. created_time may use received_time; it is not a universal first-network-byte timestamp.'],
+      [['forward_entry_time','wait_queue_entry_time'],'req_time_stats.py::set_forward_entry_time','首次 forward 记录一个 Histogram 样本；queue_duration_s 累加已结算等待段，不能混作同一指标。','First forward records one histogram sample; queue_duration_s accumulates settled waits. They are different metrics.'],
+      [['interval','num_new_tokens'],'output_streamer.py::accept → tokenizer_manager.py::collect_metrics → metrics_collector.py::observe_inter_token_latency','普通 Decode 也能用 stream_interval 合并回传；首 token 立即发送，终态强制发送。本例取中途的满间隔输出，使用默认 Prometheus collector，跳过 num_new_tokens ≤ 0。','Ordinary decode can batch returns with stream_interval. The first token is immediate and final output is forced. This example uses an intermediate full interval and the default collector; nonpositive token counts are skipped.']],
+    vl:[[['iteration_timestamp','arrival_time'],'stats.py::update_from_output','AsyncLLM 取回输出后建立 IterationStats；统计使用该批时间戳，随后才反分词。','AsyncLLM creates IterationStats on retrieval; statistics use that batch timestamp, before detokenization.'],
+      [['iteration_timestamp','arrival_time'],'stats.py::update_from_finished_request','同一正常请求的 E2E 扣除首次排队和核心 Inference 后，剩余时间混合了准备、传递和等待。分别聚合后的分位数不能用来算这个单请求差值。','Subtracting initial queue and core inference durations from the same request’s E2E leaves a mix of preparation, transfer, and waiting. Separately aggregated quantiles cannot give this per-request difference.'],
+      [['scheduled_ts','queued_ts'],'stats.py::update_from_events / update_from_finished_request','scheduled_ts 只保留首次；完成时记录。中途抢占等待计入核心 Inference 等区间，不是 GPU kernel 时间。','scheduled_ts preserves the first schedule; recording occurs at completion. Mid-request preemption waits fall inside core inference intervals, not GPU kernel time.'],
+      [['engine_core_timestamp','last_token_ts'],'gpu/model_runner.py → gpu/sample/sampler.py → Scheduler.update_from_output → IterationStats.update_from_output','支持条件下默认走 ModelRunner V2，普通采样返回单 token；V1 回退的普通采样同样每请求一 token。Scheduler 产出对应 EngineCoreOutput，非首输出追加一个 ITL；前端 SSE 聚合不改变核心时间戳采样单位。','When supported, ModelRunner V2 is the default and ordinary sampling returns one token; the V1 fallback also returns one token per request. Scheduler emits EngineCoreOutput and non-first outputs add one ITL. Frontend SSE batching does not change the core-timestamp observation unit.']],
   };
-  function MetricReading({step,en}) {
-    const tr=p=>choose(p,en);
-    return h('div',{className:'ib-reading'},h('div',{className:'ib-reading-pair'},['sg','vl'].map(side=>{
-      const f=formulas[side][step];return h('article',{key:side},h('h3',null,side==='sg'?'SGLang':'vLLM'),h('code',null,f[0]),h('p',null,tr(f.slice(2))),h('small',null,f[1]));})),
-      h('p',null,tr(['比较用户体验时，以同一客户端定义的首内容／完整响应区间为外部口径；内部指标用于解释各自边界，先对齐 stream、结束原因、输出合并与样本 labels。','For user experience, use identical client definitions of first content and complete response. Internal metrics explain their own boundaries; align streaming, finish reason, output batching, and labels.'])),
-      h('p',null,tr(['仅对隔离、无重启且满足记录条件的每请求指标，Δ_count=1 才能将 Δ_sum 归给单请求。ITL 不符合这个单请求计数假设。','Only for isolated per-request metrics with no reset and valid recording conditions can Δ_count=1 attribute Δ_sum to one request. ITL does not follow this request-count rule.'])),
-      h(Provenance,{en}));
+  function MetricReading({step,en,tokens}) {
+    const tr = pair => choose(pair, en);
+    return h('div', { className: 'ib-reading' },
+      h('div', { className: 'ib-reading-pair' }, ['sg', 'vl'].map(side => {
+        const sg = side === 'sg';
+        const [fields, source, zh, english] = formulas[side][step];
+        const share = sg && step === 3;
+        const example = metricModel(side, step, tokens);
+        const milliseconds = value => row(number(value), h('mspace', { width: '0.2em' }), h('mtext', null, 'ms'));
+        return h('article', { key: side },
+          h('h3', null, sg ? 'SGLang' : 'vLLM'),
+          h(Formula, null, share
+            ? row(variable('s', 'ITL'), operator('='), fraction(variable('Δt'), variable('n')),
+              operator('='), fraction(milliseconds(example.sum), number(example.count)),
+              operator('='), milliseconds(example.samples[0]))
+            : row(variable(['TTFT', 'E2E', 'Q', 'ITL'][step]), operator('='),
+              variable('t', 'end'), operator('−'), variable('t', 'start'))),
+          h('dl', { className: 'ib-field-list' },
+            h('dt', null, share ? 'Δt' : tr(['开始', 'Start'])), h('dd', null, h('code', null, fields[share ? 0 : 1])),
+            h('dt', null, share ? 'n' : tr(['结束', 'End'])), h('dd', null, h('code', null, fields[share ? 1 : 0]))),
+          share ? h('p', null, tr(['每个新增 token 写入一个相同的样本，本例共 ', 'Each new token contributes one identical observation. This example adds ']),
+            h('strong', null, example.count), tr([' 个。', '.'])) : null,
+          h('p', null, tr([zh, english])),
+          h('small', null, source));
+      })),
+      step === 3 ? h('p', null, tr([
+        '这次 SGLang 的各样本之和仍等于原来的一段观测间隔。以 4 个样本分摊 200 ms 为例，记账得到 4 个 50 ms，无法从中还原每个 token 实际何时生成。观察 ITL 分布前先对齐采样单位。',
+        'The SGLang samples still sum to the original interval. Dividing a 200 ms interval among four observations yields four values of 50 ms. This is insufficient to recover individual generation times. Align observation units before comparing ITL distributions.',
+      ])) : h('p', null, tr([
+        '核对用户体验时，在同一客户端测首段可见内容或完整响应。只有隔离了同一个标签集合的请求、计数未重置且确实增加了一个样本，才可以把 Histogram 的增量总和归到这一条请求。',
+        'For user-facing latency, measure first visible content or the complete response at the same client. Attribute a histogram sum increment to one request only when its label set is isolated, the counter has not reset, and exactly one observation was added.',
+      ])));
   }
   function Provenance({en}) {
     const tr=p=>choose(p,en);
@@ -176,11 +202,31 @@ window.AtlasBoundaries = (() => {
       h('a',{href:'https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/大模型推理/推理基础/SGLang%20与%20vLLM%20V1%20架构差异源码学习文档.md',target:'_blank',rel:'noreferrer'},tr(['架构差异学习文档（保留独立基线）','architecture study (independent baselines)'])));
   }
   function MemoryBudget({en}) {
-    const tr=p=>choose(p,en);
-    return h('section',{className:'ib-reading'},h('h3',null,tr(['两个 0.9，为什么不代表相同 KV 容量？','Why do two values of 0.9 not mean equal KV capacity?'])),
-      h('div',{className:'ib-reading-pair'},h('article',null,h('h4',null,'SGLang · --mem-fraction-static'),h('p',null,tr(['静态份额用于权重与 KV。普通路径先预留运行时 slack，再从模型加载后的空闲显存中计算 KV 可用空间。','The static fraction covers weights and KV. The ordinary path reserves runtime slack before deriving KV space from post-load free memory.'])),h('code',null,'slack = pre_model_load_memory × (1 − fraction)')),
-        h('article',null,h('h4',null,'vLLM · --gpu-memory-utilization'),h('p',null,tr(['目标 GPU 内存预算扣除 profile 得到的非 KV 占用，再推导 KV 容量；图捕获估算是否扣入由该版本开关决定。','The target GPU budget subtracts profiled non-KV consumption to derive KV capacity. Whether graph estimates are charged depends on the version’s option.'])),h('code',null,'KV budget = requested_memory − non-KV − applied graph estimate'))),
-      h('p',{className:'ib-note'},tr(['这是定容逻辑，不是两条按比例画出的实测显存条。Mamba、多模态、显式 KV 字节与捕获后定容另有分支；比较时核对实际 token/block 容量。','This explains sizing, not measured proportional memory bars. Mamba, multimodal, explicit KV bytes, and post-capture sizing have other branches; compare actual token/block capacities.'])),h(Provenance,{en}));
+    const tr = pair => choose(pair, en);
+    const memory = part => variable('M', part);
+    return h('section', { className: 'ib-reading' },
+      h('h3', null, tr(['两个 0.9，为什么对应的 KV 容量可能不同？', 'Why can two values of 0.9 yield different KV capacities?'])),
+      h('div', { className: 'ib-reading-pair' },
+        h('article', null,
+          h('h4', null, 'SGLang · --mem-fraction-static'),
+          h(Formula, null, row(memory('KV'), operator('='), memory('after'), operator('−'),
+            memory('before'), operator('('), number(1), operator('−'), variable('f'), operator(')'))),
+          h('p', null, tr([
+            'f 是静态比例。before 和 after 分别指模型加载前后测到的空闲显存。以加载前空闲 70 GiB、加载后空闲 40 GiB、f 为 0.9 为例，预留 7 GiB 给动态开销，得到 33 GiB 的 KV 预算。',
+            'The static fraction is f. Before and after refer to free memory measured before and after model loading. With 70 GiB free before loading, 40 GiB after, and f = 0.9, reserving 7 GiB for runtime overhead leaves a 33 GiB KV budget.',
+          ]))),
+        h('article', null,
+          h('h4', null, 'vLLM · --gpu-memory-utilization'),
+          h(Formula, null, row(memory('KV'), operator('='), memory('target'), operator('−'),
+            memory('non-KV'), operator('−'), memory('graph'))),
+          h('p', null, tr([
+            'target 是 GPU 总显存乘以设置的利用率。non-KV 是 profile 得到的权重和其他非 KV 占用，graph 是当前配置实际扣除的额外图占用估算。例如 GPU 总显存 80 GiB、利用率 0.9、非 KV 占用 32 GiB，再扣除 2 GiB 的图占用估算，还剩 38 GiB。',
+            'The target is total GPU memory times the configured utilization. Non-KV includes weights and other profiled usage. Graph is the extra graph-memory estimate applied by the current configuration. For an 80 GiB GPU at 0.9 utilization, subtract 32 GiB of non-KV usage and a 2 GiB graph estimate to leave 38 GiB.',
+          ])))),
+      h('p', { className: 'ib-note' }, tr([
+        '图表只说明普通路径的定容思路。显式设置 KV 字节数、混合缓存或按图捕获重新定容会改变结果。最终能缓存多少 token 取决于模型、KV 精度、并行方式和页／块对齐，可用引擎给出的实际容量复核。',
+        'The formulas describe ordinary sizing. Explicit KV bytes, hybrid caches, and post-capture resizing can change the result. Actual token capacity depends on the model, KV precision, parallel layout, and page/block alignment. Check the capacity reported by each engine.',
+      ])));
   }
   return {extend,sources:sources.map(([id,url])=>({key:'sources.'+id,url})),Ownership,Metrics,MetricReading,MemoryBudget,Provenance,metricModel,ownershipText};
 })();

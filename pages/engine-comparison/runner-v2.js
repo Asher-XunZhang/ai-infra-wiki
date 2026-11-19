@@ -128,7 +128,7 @@
       box(300,57,198,'BlockTables[s]','[17, 18, 31'+(decode?', 32':'')+']','blocks',true);
       arrow('M228 84H300',false,true);note(239,70,'索引','index');
       note(22,143,'旧前缀 B17、B18；新尾部 B31；旧分支 B19 保留','Prefix B17/B18; new tail B31; old branch B19 retained');
-      box(22,174,206,decode?'position = 12':'positions = 8…11',decode?'12 ÷ 4 → block index 3':'8 ÷ 4 → block index 2','addresses',true);
+      box(22,174,206,decode?'position = 12':'positions = 8…11',decode?'12 ÷ 4 → block index 3':'⌊position / 4⌋ → block index 2','addresses',true);
       box(300,174,198,decode?'KV slot = 128':'KV slots = 124…127',decode?'32 × 4 + 0 = 128':'31 × 4 + offsets 0…3','blocks',true);
       arrow('M228 201H300',true,true);note(239,187,'查地址','lookup');
       arrow('M399 110V174',false,true);
@@ -222,16 +222,5 @@
   function supports(chapter,step) {
     return (chapter==='wire'&&step===2)||(chapter==='prefix'&&step>=2)||(chapter==='batch'&&step>=2)||(chapter==='disagg'&&step===1)||chapter==='crosscut';
   }
-  function Trace({chapter,step,en}) {
-    const ids=sourceIds[chapter]||[],row=text[chapter]?.[step];
-    return h('section',{className:'rv-trace','aria-label':'ModelRunner V2 source trace'},
-      h('h3',null,en?'V2 source path at this step':'本步的 V2 源码路径'),
-      row?h('p',null,choose(row,en)):h('p',null,en?'V2 sampling → AsyncOutput event → Scheduler output → AsyncLLM observation. GPU completion and frontend observation stay separate.':'V2 采样 → AsyncOutput 事件 → Scheduler 输出 → AsyncLLM 观测；GPU 完成与前端停表仍是不同事件。'),
-      h('ul',null,ids.map(k=>h('li',{key:k},h('a',{href:BASE+src[k][0],target:'_blank',rel:'noreferrer'},src[k][1]),h('code',null,src[k][0])))),
-      h('details',null,h('summary',null,en?'Runner selection and scope':'Runner 选择与适用边界'),
-        h('p',null,en?'Ordinary autoregressive GPU generation with a supported V2 configuration. Automatic selection can fall back when Triton is unavailable, with external_launcher + PP>1 or unsupported speculation. Explicit environment overrides and forced-V2 features are separate branches.':'选择支持 V2 的普通自回归 GPU 生成路径。自动选择在缺少 Triton、external_launcher + PP>1 或部分不支持的投机配置下可回退；显式环境变量及强制 V2 功能另有分支。'),
-        h('a',{href:BASE+src.choice[0],target:'_blank',rel:'noreferrer'},'VllmConfig.use_v2_model_runner'),
-        h('p',null,en?'Diagram states and block IDs are illustrative. Fixed source reviewed; no GPU/RDMA benchmark performed.':'图中状态和块编号为教学示例。已核对固定源码，未运行 GPU / RDMA 测试。')));
-  }
-  window.AtlasV2={extend,sources,Diagram,supports,Trace};
+  window.AtlasV2={extend,sources,Diagram,supports};
 })();

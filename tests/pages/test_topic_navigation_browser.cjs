@@ -89,15 +89,24 @@ async function checkHome(page,label){
   await engineChapter.locator('summary').click();
   assert.equal(await engineChapter.evaluate(e=>e.open),true);
   const engineLinks=engineChapter.locator('.lesson-link');
-  assert.equal(await engineLinks.count(),7);
+  assert.deepEqual(await engineLinks.evaluateAll(links=>links.map(link=>link.hash)),
+    ['#process','#wire','#prefix','#batch','#crosscut','#disagg','#metrics']);
   assert.equal(await engineLinks.first().getAttribute('href').then(h=>h.endsWith('#process')),true);
   assert.equal(await engineLinks.last().getAttribute('href').then(h=>h.endsWith('#metrics')),true);
   await engineLinks.first().click();await page.waitForURL(url=>url.hash==='#process'&&url.pathname.endsWith('/engine-comparison/index.html'));
-  assert.match(await page.locator('.ia-chapterTab[aria-pressed=true]').innerText(),/进程骨架/);
+  assert.match(await page.locator('.ia-chapterTab[aria-pressed=true]').innerText(),/进程与请求路径/);
   assert.equal(await page.locator('.ia-stepItem').count(),4);
   await page.locator('[data-chapter=engine-comparison] .lesson-link[href$="#crosscut"]').click();
   await page.waitForURL(url=>url.hash==='#crosscut');
   assert.match(await page.locator('.ia-chapterTab[aria-pressed=true]').innerText(),/生命周期/);
+  await page.waitForSelector('.engine-topic-nav [aria-current=location][data-engine-topic=crosscut]');
+  assert.equal(await page.locator('.ia-chapterTab[aria-pressed=true]').evaluate(el=>el===document.activeElement),true);
+  await page.locator('.ia-readingDetails>summary').click();
+  await page.locator('.ia-topicReading a[data-engine-topic=prefix]').click();
+  await page.waitForURL(url=>url.hash==='#prefix'&&url.searchParams.get('step')==='1');
+  assert.equal(await page.locator('.ia-stepItem[aria-current=step]').locator('.ia-stepLabel').innerText(),'查找可复用前缀');
+  await page.goBack();
+  await page.waitForSelector('.engine-topic-nav [aria-current=location][data-engine-topic=crosscut]');
   // Reproduce the reported chapter-1 sidebar problem from every chapter-2 topic.
   for(const width of [1440,1024,390,320]){
    await page.setViewportSize({width,height:1000});

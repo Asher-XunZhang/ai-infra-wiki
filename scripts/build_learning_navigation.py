@@ -17,13 +17,13 @@ from system_architecture import render_architecture
 ENGINE_COMPARISON = 'engine-comparison/index.html'
 ENGINE_PAGE = PAGES / ENGINE_COMPARISON
 ENGINE_TOPICS = [
-    ('process', '01 进程骨架', 'Process spine'),
-    ('wire', '02 通信面', 'Wire profile'),
-    ('prefix', '03 前缀缓存', 'Prefix cache'),
-    ('batch', '04 调度心跳', 'Scheduling beat'),
-    ('disagg', '05 分离扩展', 'Disaggregation'),
-    ('crosscut', '06 生命周期与执行边界', 'Crosscuts'),
-    ('metrics', '07 延迟口径', 'Metric boundaries'),
+    ('process', '进程与请求路径', 'Processes & request path', '从 API 入口追到调度、模型执行与文本回传。'),
+    ('wire', '进程间通信', 'Communication', '沿进程边界辨认通道、载荷和控制消息。'),
+    ('prefix', '前缀缓存', 'Prefix cache', '看相同前缀怎样命中共享 KV 地址，尾部从哪里补算。'),
+    ('batch', '调度与批处理', 'Scheduling & batching', '看一轮给哪些请求分配 token 预算，执行结果何时生效。'),
+    ('crosscut', '生命周期与执行', 'Lifecycle & execution', '看正常结束、内存压力和取消怎样改变资源归属，以及执行怎样选择 CUDA Graph。'),
+    ('disagg', 'P/D 分离与扩展', 'P/D disaggregation', '看实例选择、Prefill → Decode 的 KV 交接和消费条件。'),
+    ('metrics', '延迟口径', 'Metric boundaries', '找到 TTFT、E2E、排队时间和 ITL 的计时点与样本单位。'),
 ]
 
 DESIGN_REVISION = '279339f113b79af84f27fd3ac92d0a13bd3f4cbd'
@@ -122,7 +122,7 @@ def route_href(page, target, route):
 def learning_start(page):
     parts = ['<!-- learning-start:start -->', '<section id="reading-routes" aria-label="三章学习入口">',
         '<div class="chapter-choice"><a href="#chapter-foundations"><span>第一章</span><strong>推理基础</strong><p>从一句话怎样变成数字开始，逐步认识生成、缓存、调度与多卡协作。</p><span>先建立直觉，再进入实现</span></a>',
-        '<a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 并排查看两套引擎的进程、通信、缓存、调度、分离扩展与延迟口径。</p><span>七个主题 · 保留各自版本边界</span></a>',
+        '<a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 对照两套引擎的单实例请求路径、P/D 交接和延迟口径。</p><span>七个主题 · 保留各自版本边界</span></a>',
         '<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十三模块 · 二十一节实现课程</span></a></div></section>',
         '<section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>',
         '<p>先把文字变成向量，再沿一次 Transformer 前向追到下一 token。接着拆开 Attention，看看生成怎样一轮轮接续，最后理解历史状态为什么值得缓存。</p><ol class="foundation-lessons">']
@@ -201,8 +201,11 @@ def sidebar(page, active):
         lines.append(f'<a href="{href(page, target)}"' + (' aria-current="page"' if selected else '') + f'>{i:02} {escape(c["title"])}</a>')
     lines.append('</nav></details>')
     lines.append('<details class="chapter-nav" data-chapter="engine-comparison"' + (' open' if engine else '') + '><summary>第二章 · SGLang 与 vLLM 架构对照</summary><div class="module-lessons-nav engine-topic-nav">')
-    for key, label, english in ENGINE_TOPICS:
-        lines.append(f'<a class="lesson-link" href="{href(page, ENGINE_COMPARISON, key)}"><span>{escape(label)}</span><small>{escape(english)}</small></a>')
+    for number, (key, label, english, _) in enumerate(ENGINE_TOPICS, 1):
+        lines.append(f'<a class="lesson-link" data-engine-topic="{key}" href="{href(page, ENGINE_COMPARISON, key)}">'
+                     f'<span class="engine-topic-number" aria-hidden="true">{number:02}</span>'
+                     f'<span class="engine-topic-zh" lang="zh-CN">{escape(label)}</span>'
+                     f'<span class="engine-topic-en" lang="en">{escape(english)}</span></a>')
     lines.append('</div></details>')
     lines.append('<details class="chapter-nav" data-chapter="sglang"' + (' open' if active else '') + '><summary>第三章 · SGLang 实现剖析</summary>')
     for stage, label, title in STAGES:
@@ -343,6 +346,15 @@ def rendered(page, module=None, lesson=None):
         source = re.sub(r'<!-- learning-pager:start -->.*?<!-- learning-pager:end -->', lambda _: engine_pager(page), source, count=1, flags=re.S)
         return source
     if not module:
+        topics = ['<ol class="foundation-lessons engine-topic-links">']
+        for number, (key, label, _, description) in enumerate(ENGINE_TOPICS, 1):
+            topics.append(f'  <li><a href="engine-comparison/#{key}"><span class="lesson-no">{number:02}</span>'
+                          f'<span><strong>{escape(label)}</strong><small>{escape(description)}</small></span></a></li>')
+        topics.append('</ol>')
+        source, count = re.subn(r'<ol class="foundation-lessons engine-topic-links">.*?</ol>',
+                                lambda _: '\n        '.join(topics), source, count=1, flags=re.S)
+        if count != 1:
+            raise ValueError(f'{page}: missing engine topic list')
         source, count = re.subn(r'<!-- learning-start:start -->.*?<!-- learning-start:end -->', lambda _: learning_start(page), source, count=1, flags=re.S)
         if count != 1:
             raise ValueError(f'{page}: missing learning-start marker')

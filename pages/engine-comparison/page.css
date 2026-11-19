@@ -1,11 +1,5 @@
 /* Chapter 2 lives inside the wiki shell: no separate offline frame. */
 .ec-site-content{padding-top:22px}
-.ec-topic-map{border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:14px 16px;margin:0 0 26px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-.ec-topic-map a{display:block;padding:8px 10px;border-left:2px solid var(--border);color:var(--fg);min-width:0}
-.ec-topic-map a:hover{border-left-color:var(--accent);background:var(--accent-soft);text-decoration:none}
-.ec-topic-map b{display:block;font-size:13px;line-height:1.5}
-.ec-topic-map small{display:block;font-size:10px;color:var(--muted);line-height:1.5;margin-top:2px}
-.ec-topic-map .ec-map-note{grid-column:1/-1;font-size:11px;color:var(--muted);margin:2px 0 0;border:0;padding:2px 0 0}
 .ec-anchors{position:relative}
 .ec-anchors span{position:absolute;top:-92px}
 .ec-lang{font-size:12px;border-radius:20px;padding:6px 13px}
@@ -34,9 +28,9 @@
 .ia-page .ia-section{margin-top:34px}
 .ia-page .ia-profileSection,.ia-page .ia-releaseSection{margin-top:30px}
 .ia-page .ia-footer{padding-top:20px}
-@media(max-width:1100px){.ec-topic-map{grid-template-columns:repeat(3,minmax(0,1fr))}.ia-page .ia-header{grid-template-columns:1fr}}
-@media(max-width:900px){.ia-page .ia-title{font-size:clamp(28px,5vw,38px)}.ec-topic-map{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.ec-site-content{padding:18px 14px 0}.ec-topic-map{grid-template-columns:1fr;padding:10px}.ia-page .ia-title{font-size:28px}.ia-page .ia-stageTitle{font-size:22px}.ia-page .ia-lede{font-size:13px}}
+@media(max-width:1100px){.ia-page .ia-header{grid-template-columns:1fr}}
+@media(max-width:900px){.ia-page .ia-title{font-size:clamp(28px,5vw,38px)}}
+@media(max-width:600px){.ec-site-content{padding:18px 14px 0}.ia-page .ia-title{font-size:28px}.ia-page .ia-stageTitle{font-size:22px}.ia-page .ia-lede{font-size:13px}}
 @media(max-height:820px) and (min-width:1100px){
  .ia-page .ia-title{font-size:clamp(28px,3vw,38px)}
  .ia-page .ia-header{padding-bottom:12px;gap:20px}
@@ -50,10 +44,14 @@
  .ia-page .ia-boardSvgWrap{min-width:420px}
 }
 
-/* Shared-framework sidebar links stay compact while preserving the six anchors. */
-.engine-topic-nav .lesson-link{display:flex;flex-direction:column;gap:1px}
-.engine-topic-nav .lesson-link small{font-size:10px;line-height:1.4;color:var(--muted);font-weight:400}
-.engine-topic-nav .lesson-link:hover small{color:var(--accent)}
+.ia-stepNote{margin:0 0 16px;padding:10px 14px;border-left:2px solid var(--accent);background:var(--accent-soft);line-height:1.75}
+.ia-stepNote p{margin:0}
+.ia-stepNote p+p{margin-top:8px}
+.ia-formula{margin:9px 0;max-width:100%;overflow-x:auto;font-size:16px;color:var(--ia-ink)}
+.ia-formula math{margin-inline:0}
+.ia-stepNote .ia-formula{margin-bottom:0}
+.ib-reading a{color:var(--accent);text-decoration:underline}
+@media(max-width:600px){.ia-stepNote{padding:9px 12px;font-size:13px}.ia-formula{font-size:15px}}
 
 /* Keep both engines on one row. Only the comparison scrolls on narrow screens. */
 .ia-comparison{container:engine-pair / inline-size;min-width:0}
@@ -134,3 +132,57 @@
 
 .ia-inspectorRole{margin:12px 0 0;color:var(--ia-ink);font-size:14px;line-height:1.75;overflow-wrap:anywhere}
 .ia-inspectorRole strong{font-weight:650}
+
+.ia-mode-controls { display:flex; flex-wrap:wrap; gap:8px; }
+.ia-stageMeta .ia-source-toggle {
+  border:1px solid var(--border);
+  border-radius:5px;
+  padding:7px 10px;
+  background:var(--surface);
+  color:var(--accent);
+  font:inherit;
+  font-size:13px;
+  cursor:pointer;
+}
+.ia-stageMeta .ia-source-toggle[aria-expanded=true] {
+  border-color:var(--accent);
+  background:var(--accent-soft);
+}
+.ia-stageMeta .ia-source-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.ia-source-step {
+  padding:12px;
+  border-bottom:1px solid var(--ia-scene-line);
+  border-inline-start:3px solid var(--board-accent);
+  background:var(--ia-scene-2);
+  color:var(--ia-scene-ink);
+  font-size:12px;
+  line-height:1.55;
+  overflow-wrap:anywhere;
+}
+.ia-source-step-head {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  gap:4px 10px;
+  margin-bottom:8px;
+}
+.ia-source-step-head>span { color:var(--ia-scene-muted); }
+.ia-source-step-head a { color:var(--board-accent); font-family:var(--ia-mono); text-decoration:underline; }
+.ia-source-step-flow {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:stretch;
+  gap:8px;
+}
+.ia-source-step-input,.ia-source-step-result {
+  display:flex;
+  align-items:center;
+  min-width:0;
+  padding:6px 8px;
+  border:1px solid var(--ia-scene-line);
+  border-radius:4px;
+  background:var(--ia-scene);
+}
+.ia-source-step-result { border-color:var(--board-accent); }
+.ia-source-step-arrow { align-self:center; color:var(--board-accent); }
+.ia-source-step-change { margin:7px 0 0; color:var(--ia-scene-ink); }

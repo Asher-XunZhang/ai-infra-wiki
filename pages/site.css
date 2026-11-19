@@ -63,6 +63,11 @@ body:has(.site-update-tools) .life-walkthrough.is-interactive .life-nav,body:has
 .module-lessons-nav a:hover,.foundation-nav a:hover{background:var(--soft);text-decoration:none;color:var(--accent)}
 .module-lessons-nav .module-overview-link{font-size:11px;color:var(--accent)}
 .module-lessons-nav [aria-current=page],.foundation-nav [aria-current=page]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.engine-topic-nav .lesson-link{display:flex;gap:8px;align-items:baseline;padding-block:5px}
+.engine-topic-nav .engine-topic-number{color:var(--muted);font-variant-numeric:tabular-nums}
+.engine-topic-nav [aria-current=location]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.engine-topic-en,html[lang=en] .engine-topic-zh{display:none}
+html[lang=en] .engine-topic-en{display:inline}
 .learning-breadcrumb{display:flex;gap:5px 9px;flex-wrap:wrap;align-items:baseline;margin:0 0 24px;font-size:12px;line-height:1.8;color:var(--muted)}
 .learning-breadcrumb a{color:var(--muted)}
 .learning-breadcrumb a:hover{color:var(--accent)}
