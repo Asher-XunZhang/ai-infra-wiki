@@ -21,12 +21,16 @@
 | --- | --- | --- | --- |
 | 1 | [vLLM 从连续批处理到 PagedAttention 的引擎工作流](<vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>) | 起步 | 建立引擎、调度与 PagedAttention 的整体关系；概念示例含不同历史版本。 |
 | 2 | [vLLM Chunked Prefill 与 Block Size](<vLLM Chunked Prefill 与 Block Size 学习文档.md>) | 主线 | 拆清 chunk、block 与每轮预算的联系。 |
+| 选读 | [硬件插件、平台选择与执行适配](<vLLM 硬件插件、平台选择与执行适配学习文档.md>) | 深入：先修引擎工作流与 Worker/Runner | 沿 Platform、Worker、Runner 与 Backend 理解 HCU / NPU 接入，区分平台注册、实际执行与运行时兼容。 |
+| 选读 | [多进程启动中的插件注册与补丁生效顺序](<vLLM 多进程启动中的插件注册与补丁生效顺序学习文档.md>) | 整合深入：先修硬件插件与进程架构 | 追踪前端、EngineCore、Worker 的加载点，区分 fork/spawn、配置绑定和补丁生效；以 HCU 记录的官方集成基线为入口。 |
 
 桥接选读：[SGLang 与 vLLM V1 架构差异](<../../大模型推理/推理基础/SGLang 与 vLLM V1 架构差异源码学习文档.md>)。读完工作流概念篇后，按固定 V1 源码追踪 EngineCore、Executor 和 Worker，并与 SGLang 的进程、序列化及控制协同对照。
 
 ## 自测与下一步
 
 能解释连续批处理如何补入和移出请求，以及计算 chunk 为什么不等于存储 block。
+
+选择硬件适配支线时，还应能区分插件已安装、平台已激活和模型执行正确，并说明 KV 逻辑块与后端物理布局为什么需要分别核对。
 
 按目标继续：
 

@@ -31,6 +31,7 @@
 | 2 | [SGLang 调度器请求生命周期与重叠调度](<SGLang 调度器请求生命周期与重叠调度学习文档.md>) | 主线 | 从普通循环走到 Overlap、FutureMap 和结果处理。 |
 | 3 | [SGLang Chunked Prefill 与调度器显存预算](<SGLang Chunked Prefill 与调度器显存预算学习文档.md>) | 深入 | 理解 chunk 额度与请求、KV、显存预算的共同约束。 |
 | 4 | [SGLang Breakable CUDA Graph 与 Prefill 捕获](<SGLang Breakable CUDA Graph 与 Prefill 捕获学习文档.md>) | 选读：执行 | 掌握执行分层和 CUDA Graph 基础后，再读动态形状与 Prefill 捕获。 |
+| 选读 | [启动、平台选择与插件生效顺序](<SGLang 启动、平台选择与插件生效顺序学习文档.md>) | 深入：先修启动课程与 Worker/Runner | 追踪各进程的插件加载、配置发布、平台初始化与对象替换，区分 SRT 和 Diffusion 的合同；另固定官方源码。 |
 
 ## 完整循环与批次旅程
 

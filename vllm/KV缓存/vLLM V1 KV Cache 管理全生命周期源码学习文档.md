@@ -238,6 +238,8 @@ DeepSeek-V4 等特殊路径还可使用 packed slab：多个 group 的页面在�
 
 分配时先用 `torch.zeros` 创建 int8 raw backing storage，再按 dtype、shape 和 layout 建 view。这样 packed tensor 和 cross-layer tensor 可以共享底层存储，而不必复制。首次分配为零不代表后续复用无需 zeroing：从 free queue 重新取得的页可能还残留旧请求内容。
 
+后端物理契约的实例可读 [硬件插件中的 HCU shape / stride 分析](<../运行时/vLLM 硬件插件、平台选择与执行适配学习文档.md#5-attention-backend-还要对齐-kv-的物理契约>)：同一逻辑 K/V 元素在 NHD 与 HND 下可有不同寻址。该篇使用独立 HCU 提交，不改变本文的分配实现，也不表示跨后端可以直接传输原始 KV 字节。
+
 初始化顺序有一个容易忽略的约束：
 
 ```mermaid
