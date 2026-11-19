@@ -926,8 +926,14 @@
           1096,
           "calculate_metrics"
         ],
-        "example": "成功样本的 TTFT 为 [80,80,80,500] ms 时，线性插值的 P95=437 ms。若最慢的 R4 失败，它退出成功集合，P95 变成 80 ms，同时成功率降为 3/4；这组读数要一起解释。",
-        "formula": "<div class=\"implementation-math\"><math display=\"block\"><mrow><msub><mi>P</mi><mtext>95</mtext></msub><mo>=</mo><mn>80</mn><mo>+</mo><mn>0.85</mn><mo>×</mo><mo>(</mo><mn>500</mn><mo>−</mo><mn>80</mn><mo>)</mo><mo>=</mo><mn>437</mn><mtext> ms</mtext></mrow></math></div>"
+        "example": "成功样本的 TTFT 为 [80,80,80,500] ms 时，线性插值的 P95=437 ms。若最慢的 R4 失败，它退出成功集合，P95 变成 80 ms，同时成功率降为 3/4；这组读数要一起解释。本例沿固定 benchmark 的 NumPy 默认线性插值；第一章的 nearest-rank 是另一种教学口径，对同样四个样本会取 500 ms。",
+        "formula": "<div class=\"implementation-math\"><math display=\"block\"><mrow><msub><mi>P</mi><mtext>95</mtext></msub><mo>=</mo><mn>80</mn><mo>+</mo><mn>0.85</mn><mo>×</mo><mo>(</mo><mn>500</mn><mo>−</mo><mn>80</mn><mo>)</mo><mo>=</mo><mn>437</mn><mtext> ms</mtext></mrow></math></div>",
+        "links": [
+          [
+            "第一章：百分位的样本与方法",
+            "foundations/metrics.html#why-distribution"
+          ]
+        ]
       }
     ],
     "background": {

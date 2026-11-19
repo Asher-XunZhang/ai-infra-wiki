@@ -1255,16 +1255,26 @@
         "title": "为什么平均值会遮住问题？",
         "paragraphs": [
           "先说明样本集合与分位数算法。图用 nearest-rank，把 n 个成功样本排序后向上取整选第 k 项。20 个样本取第 19 项，即 190 ms；若最慢两项变为失败，18 个成功样本会取第 18 项，即 180 ms，同时成功率降到 90%。",
-          "这个下降来自统计人群变化。比较两组配置时，需同时核对成功与失败、输入输出长度和到达负载。其他工具也可能用插值方法算分位数。"
+          "这个下降来自统计人群变化。比较两组配置时，需同时核对成功与失败、输入输出长度和到达负载。第三章的固定 benchmark 用线性插值算 P95，因此相同样本也可能与本课 nearest-rank 的结果不同；先对齐方法，再对齐数字。"
         ],
         "refs": [
           [
             "Google SRE · 延迟分布与服务监测",
             "https://sre.google/sre-book/monitoring-distributed-systems/"
+          ],
+          [
+            "NumPy percentile：默认线性插值与其他方法",
+            "https://numpy.org/doc/stable/reference/generated/numpy.percentile.html"
           ]
         ],
         "equations": [
           "nearest_rank"
+        ],
+        "links": [
+          [
+            "到实现课核对成功样本与线性插值",
+            "../sglang/performance-engineering/index.html#design-samples"
+          ]
         ]
       },
       {

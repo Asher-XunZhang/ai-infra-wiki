@@ -190,8 +190,8 @@ const chapterFromHash = () => {
         titleA: ['同一条请求，', 'One request,'],
         titleB: ['两套推理引擎', 'two inference engines'],
         lede: [
-          '对照 SGLang 与 vLLM 中同一条请求的路径。第一次读，先按 01–05 看单实例怎样接收、执行并结束请求，再到 06 看 P/D 之间怎样交接 KV，最后在 07 核对延迟从哪里开始和结束。',
-          'Follow one request through SGLang and vLLM. Topics 01–05 cover a single instance from arrival through cleanup. Topic 06 follows KV across P/D instances, and topic 07 locates the endpoints used to measure latency.',
+          '对照 SGLang 与 vLLM 中同一条请求的路径：先定位单实例的对象与职责，再按问题查阅通信、缓存、调度和生命周期。P/D 交接与延迟口径可在需要时单独进入。',
+          'Follow one request through SGLang and vLLM. Locate single-instance responsibilities, then explore communication, caching, scheduling, and lifecycle by question. P/D handoff and metric boundaries are separate topics.',
         ],
         caution: ['机制示意，不是性能排名。', 'A mechanism explainer, not a performance ranking.'],
         releaseLabel: ['固定 release 与 commit', 'Pinned release and commit'],
@@ -4138,6 +4138,32 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       );
     }
 
+    const CHAPTER_CONNECTIONS = JSON.parse(document.getElementById('chapter-connections')?.textContent || '{}');
+    function ChapterConnection({ chapter, en }) {
+      const entry = CHAPTER_CONNECTIONS[chapter.id];
+      if (!entry) return null;
+      return h('section', { className: 'chapter-handoff ia-chapter-handoff', 'data-topic-connection': chapter.id },
+        h('strong', null, en ? 'What this topic adds' : '这一节接着看什么'),
+        h('p', null, entry.adds[en ? 1 : 0]),
+        h('nav', { 'aria-label': en ? 'Review prerequisites' : '按需回顾原理' }, entry.foundations.map(item =>
+          h('a', { key: item.href, href: item.href }, (en ? 'Chapter 1: ' : '回看第一章：') + (en ? item.english : item.label)))),
+        chapter.id === 'process' ? h('p', { className: 'handoff-glossary' }, en
+          ? 'A process runs independently; a component names a responsibility and may share a process. A serving instance can span multiple processes and GPUs.'
+          : '进程是独立运行的程序；组件按职责命名，多个组件可以在同一进程中。一个服务实例可以包含多个进程和多张 GPU。') : null);
+    }
+    function TopicPager({ index, en }) {
+      const link = (i, next) => {
+        const item = CHAPTERS[i];
+        if (!item) return h('a', { className: next ? 'next' : '', href: next ? '../sglang/system-overview/index.html' : '../#chapter-foundations' },
+          h('small', null, next ? (en ? 'Chapter 3' : '下一章 · 第三章') : (en ? 'Chapter 1' : '回看第一章')),
+          h('strong', null, next ? (en ? 'Follow the SGLang implementation →' : '进入 SGLang 实现剖析 →') : (en ? '← Review the foundations' : '← 按需回顾推理基础')));
+        return h('a', { className: next ? 'next' : '', href: '?step=0#' + item.id, 'data-engine-topic': item.id },
+          h('small', null, en ? (next ? 'Next topic' : 'Previous topic') : (next ? '下一主题' : '上一主题')),
+          h('strong', null, (next ? '' : '← ') + item.num + ' ' + (en ? CHAPTER_CONNECTIONS[item.id]?.english || item.id : CHAPTER_CONNECTIONS[item.id]?.title || item.id) + (next ? ' →' : '')));
+      };
+      return h('nav', { className: 'ia-topic-pager', 'aria-label': en ? 'Continue between topics' : '主题间继续学习' }, link(index - 1, false), link(index + 1, true));
+    }
+
     function ChapterTabs({ chapterIndex, t, onSelect }) {
       return h(
         'div',
@@ -4301,6 +4327,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
         const t = useMemo(() => locale.bind(NS), [locale, localeRevision]);
         const chapter = CHAPTERS[chapterIndex];
+        useEffect(() => { window.dispatchEvent(new Event('learning:navigation')); }, [chapter.id]);
         const hasOverview = ['wire','prefix','batch','disagg'].includes(chapter.id);
         const shownDepth = hasOverview ? readerView.depth : 'modules';
         const { sourceOpen } = readerView;
@@ -4455,6 +4482,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                 h('p', { className: 'ia-releaseChecked' }, t('header.checked')),
               ),
             ),
+            h(ChapterConnection, { chapter, en }),
             h(
               'nav',
               { className: 'ia-controls', 'aria-label': t('control.chapter') },
@@ -4635,6 +4663,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
               ),
             ),
             h(TopicReading, { chapter, step, t, tokens }),
+            h(TopicPager, { index: chapterIndex, en }),
             h(ReadingDisclosure, {
               key: `sources:${chapter.id}`, t, className: 'ia-referenceDetails', title: t('reading.sources'),
             }, h(SourcesSection, { t, chapter })),

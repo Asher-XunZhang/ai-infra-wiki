@@ -2,6 +2,12 @@
 
 本目录是 Pages 第一章，面向尚未掌握推理术语的读者。以可操作的教学算例建立直觉，不把通用概念归为 SGLang 专属机制。第三章的 SGLang 实现课各自保留固定源码、配置约束与历史基线。
 
+## 三章连读
+
+第一次阅读可从 [首页的 17 步入门路线](../index.html#reading-routes) 开始：先读本章 01–07 与 12，再对照请求路径、前缀缓存和调度，最后进入 SGLang 的六节单实例实现课。带有 `learn=beginner` 的链接使用同一条路线翻页；也可随时退出，按下方完整目录阅读。多卡、P/D、候选验证和性能课程按需要进入，不是走通一轮执行的前提。
+
+[同一问题的三章索引](../index.html#topic-paths) 说明原理、引擎对照和源码分别增加什么。各课算例独立；第二章与第三章各保留自己的源码基线。第一章的 nearest-rank 百分位算例与第三章 benchmark 的线性插值分别标注，不把两个结果当成同一口径。
+
 ## 推荐阅读路线
 
 1. [文字、token 与向量](tokens.html) → [Transformer 前向总览](components.html) → [Attention 小算例](attention.html) → [自回归生成](generation.html) → [KV 与内存](cache.html)。
@@ -13,7 +19,7 @@
 
 ## 内容与来源
 
-`courses.json` 是课程正文、先修关系、自测和来源的编辑入口；`build_foundations.py` 生成十三个 HTML。`extensions.json` 保存从旧概览课归并而来的六幅选读机制图及原说明；第三章只保留对应实现导读，不再嵌入基础播放器。选读区按需初始化，收起时停止播放。`model.js` 提供独立教学状态，`player.js` 按机制绘制不同图形。数字与边界写在各课，不能把教学轮次、资源下界或手工分数当成 GPU 观测。
+三章路线和问题映射维护在 `../learning-paths.json`；共享导航生成器检查基础先修顺序和 13 / 7 / 23 项覆盖。`courses.json` 是课程正文、先修关系、自测和来源的编辑入口；`build_foundations.py` 生成十三个 HTML。`extensions.json` 保存从旧概览课归并而来的六幅选读机制图及原说明；第三章只保留对应实现导读，不再嵌入基础播放器。选读区按需初始化，收起时停止播放。`model.js` 提供独立教学状态，`player.js` 按机制绘制不同图形。数字与边界写在各课，不能把教学轮次、资源下界或手工分数当成 GPU 观测。
 
 第 02 课用 [Transformer 架构图](components.html#layer-atlas) 串起一次前向，维护入口为 `scripts/templates/layer-atlas-section.html.in` 与 `layer-atlas*.js`。同页 [单位置对照实验](components.html#output-chain) 由 `scripts/templates/output-chain-section.html.in` 与 `output-chain*.js` 维护，使用独立的二维单层模型。第 03 课聚焦可见范围、加权汇聚与多头，第 04 课跟踪选出的 token 怎样成为下一轮输入，并可选读各层 K/V 的写入时刻。
 

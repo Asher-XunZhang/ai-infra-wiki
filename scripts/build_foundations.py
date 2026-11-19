@@ -5,7 +5,7 @@ import json
 from html import escape
 from pathlib import Path
 from urllib.parse import quote
-from build_learning_navigation import ROOT, PAGES, FOUNDATIONS, FOUNDATION_BY_SLUG, sidebar
+from build_learning_navigation import ROOT, PAGES, FOUNDATIONS, FOUNDATION_BY_SLUG, sidebar, foundation_connection, reading_pagers
 from foundation_equations import foundation_math
 from transformer_equations import math_html, playback_templates, render_equations
 
@@ -502,7 +502,7 @@ def render(c, i):
         intro_html = f'<p class="foundation-intro">{escape(CONCEPTS[c["slug"]]["problem"])}</p>'
     prerequisites = '从这一课开始，不要求推理知识。' if not c['prerequisites'] else '先看：' + ' · '.join(f'<a href="{slug}.html">{escape(FOUNDATION_BY_SLUG[slug]["title"])}</a>' for slug in c['prerequisites'])
     terms = ''.join(f'<div><dt>{escape(a)}</dt><dd>{escape(b)}</dd></div>' for a, b in c['terms'])
-    sections = ''.join(f'<section id="concept-{n}"><h2>{escape(a)}</h2><p>{escape(b)}</p></section>' for n, (a, b) in enumerate(c['sections']))
+    sections = ''.join(f'<section id="concept-{n}"><h2>{escape(a)}</h2><p>{escape(b)}</p>' + ''.join(f'<p><a href="{escape(url, quote=True)}">{escape(label)} →</a></p>' for label, url in c.get('section_links', {}).get(str(n), [])) + '</section>' for n, (a, b) in enumerate(c['sections']))
     terms_html = f'<dl class="foundation-terms" aria-label="这课用到的词">{terms}</dl>'
     reading_entry = ''
     if len(c['sections']) >= 4 and not c.get('reading_groups'):
@@ -615,7 +615,7 @@ def render(c, i):
     attention_variants_html = ''
     if c['slug'] == 'attention':
         attention_variants_html = ('\n<section id="attention-variants" class="av-section" aria-labelledby="attention-variants-title">'
-            '<div class="av-section-head"><p class="eyebrow">机制对照 · 共享 / 压缩 / 选位 / 状态 / 复用</p>'
+            '<div class="av-section-head"><p class="eyebrow">选读 · 机制对照 · 共享 / 压缩 / 选位 / 状态 / 复用</p>'
             '<h2 id="attention-variants-title">Attention 变体：并排看清机制差异</h2>'
             '<p class="av-lead">看连线怎样共享、哪些历史被读取、记忆怎样保存。每组只比较一个问题，点选上方分类切换。</p></div>'
             '<div data-attention-variants data-public-root="../../"><noscript><p style="padding:14px 16px;margin:0">交互图需要 JavaScript；下方“文字速查”与页末深入阅读仍可使用。</p></noscript></div>'
@@ -669,8 +669,9 @@ def render(c, i):
 <p class="foundation-prereqs">{prerequisites}</p>
 {intro_html}{lesson_body}
 {extension_html}
-<a class="foundation-to-engine" href="../{c['implementation']}"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
+{foundation_connection(page, c)}
 <section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：{escape(c.get("reviewed", "2026-10-15"))}。{escape(c['scope'])}</p><p>概念动机、取舍与背景整理：{escape(c.get("reviewed", "2026-10-16"))}。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources">{sources}</ul>{visual_refs}{deep_reading_html(c)}<p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+{reading_pagers(page)}
 <nav class="lesson-pager" aria-label="推理基础内继续学习">{previous}{following}</nav>
 </main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">三章完整目录</a></footer></div></div></body></html>
 '''

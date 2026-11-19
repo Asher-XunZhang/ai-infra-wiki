@@ -1,0 +1,309 @@
+{
+  "beginner": {
+    "title": "三章入门：从一句话到一轮执行",
+    "intro": "先读 8 节基础、3 个引擎对照主题和 6 节实现课，走通单实例主线。多卡、P/D、候选验证与性能专题按问题再读。",
+    "steps": [
+      {
+        "path": "foundations/tokens.html",
+        "hint": "先分清文字片段、词表编号和向量。"
+      },
+      {
+        "path": "foundations/components.html",
+        "hint": "走通一次前向；各模块的细算按需展开。"
+      },
+      {
+        "path": "foundations/attention.html",
+        "hint": "先看 Q/K/V、因果范围与多头；变体图鉴留作查阅。"
+      },
+      {
+        "path": "foundations/generation.html",
+        "hint": "追踪采样结果怎样成为下一轮输入。"
+      },
+      {
+        "path": "foundations/cache.html",
+        "hint": "解释历史复用、地址分配与共享保护。"
+      },
+      {
+        "path": "foundations/batching.html",
+        "hint": "先比较轮次间补位，再看分块如何改变工作量。"
+      },
+      {
+        "path": "foundations/hardware.html",
+        "hint": "分清 CPU 提交、GPU 执行与数据搬运。"
+      },
+      {
+        "path": "foundations/serving.html",
+        "hint": "把一条生成放回入口、排队与响应回程。"
+      },
+      {
+        "path": "engine-comparison/index.html#process",
+        "hint": "先沿请求路径读四步，TP 职责图可按需展开。"
+      },
+      {
+        "path": "engine-comparison/index.html#prefix",
+        "hint": "比较索引、页／块地址与物理 KV，沿用已学的复用原理。"
+      },
+      {
+        "path": "engine-comparison/index.html#batch",
+        "hint": "比较实际预算与 CPU/GPU 的结果交接。"
+      },
+      {
+        "path": "sglang/system-overview/index.html",
+        "hint": "回到 SGLang 的固定版本；先看单实例图。"
+      },
+      {
+        "path": "sglang/request-runtime/index.html",
+        "hint": "先走普通完成路径，核对前后端对象。"
+      },
+      {
+        "path": "sglang/inference-overview/journey.html",
+        "hint": "把请求转换成一轮 Extend／Decode 的输入与地址。"
+      },
+      {
+        "path": "sglang/request-state/index.html",
+        "hint": "区分同一个 Req 的字段、容器引用与资源。"
+      },
+      {
+        "path": "sglang/loop-journey/index.html",
+        "hint": "先走 Normal 闭环；Overlap 与 PP 可在后续深入。"
+      },
+      {
+        "path": "sglang/model-execution/index.html",
+        "hint": "把本轮输入交到 Worker／Runner，检查执行与图重放资格。"
+      }
+    ]
+  },
+  "topics": [
+    {
+      "id": "model",
+      "title": "模型怎样计算",
+      "foundations": [
+        "components",
+        "attention"
+      ],
+      "comparison": [
+        "process"
+      ],
+      "implementation": [
+        "sglang/model-execution/index.html",
+        "sglang/inference-overview/transformer.html"
+      ],
+      "delta": "第一章讲计算本身；第二章定位执行者；第三章核对 Runner 与具体模型调用。"
+    },
+    {
+      "id": "request",
+      "title": "同一请求怎样走完",
+      "foundations": [
+        "tokens",
+        "generation",
+        "serving"
+      ],
+      "comparison": [
+        "process"
+      ],
+      "implementation": [
+        "sglang/system-overview/index.html",
+        "sglang/request-runtime/index.html",
+        "sglang/request-state/index.html"
+      ],
+      "delta": "从输入与可见输出，接到进程分工，再追对象、引用和完成条件。"
+    },
+    {
+      "id": "cache",
+      "title": "历史怎样复用与回收",
+      "foundations": [
+        "cache"
+      ],
+      "comparison": [
+        "prefix"
+      ],
+      "implementation": [
+        "sglang/kv-memory/index.html",
+        "sglang/inference-overview/kv-cache.html"
+      ],
+      "delta": "复用原理只在第一章展开；后两章分别比较索引／地址组织和固定实现的分配、保护、驱逐。"
+    },
+    {
+      "id": "batch",
+      "title": "每轮谁能计算",
+      "foundations": [
+        "batching",
+        "hardware"
+      ],
+      "comparison": [
+        "batch",
+        "crosscut"
+      ],
+      "implementation": [
+        "sglang/inference-overview/journey.html",
+        "sglang/loop-journey/index.html",
+        "sglang/inference-overview/scheduling.html",
+        "sglang/scheduling/index.html"
+      ],
+      "delta": "先认识轮次与设备依赖，再比较调度分工，最后核对输入准备、预算、结果消费与回撤。"
+    },
+    {
+      "id": "parallel",
+      "title": "多卡怎样分工和交接",
+      "foundations": [
+        "parallel",
+        "communication"
+      ],
+      "comparison": [
+        "wire"
+      ],
+      "implementation": [
+        "sglang/parallelism/index.html",
+        "sglang/communication/index.html"
+      ],
+      "delta": "通用通信的输入输出约定留在第一章；对照章看通道归属，实现章看进程组、接口与就绪条件。"
+    },
+    {
+      "id": "pd",
+      "title": "P/D 与 PP 怎样组合",
+      "foundations": [
+        "deployment",
+        "parallel"
+      ],
+      "comparison": [
+        "disagg"
+      ],
+      "implementation": [
+        "sglang/inference-overview/deployment.html",
+        "sglang/pd-prefill-lifecycle/index.html",
+        "sglang/pd-dataflow/index.html",
+        "sglang/pp-consensus/index.html",
+        "sglang/pd-prefill-pp-loop/quick.html",
+        "sglang/pd-prefill-pp-loop/index.html",
+        "sglang/pd-prefill-pp-loop/notes.html"
+      ],
+      "delta": "先分清角色分离与模型切层，再读 P/D 交接；PP 生命周期、共识与槽位案例留作深入。"
+    },
+    {
+      "id": "generation",
+      "title": "候选怎样验证和提交",
+      "foundations": [
+        "speculation"
+      ],
+      "comparison": [],
+      "implementation": [
+        "sglang/advanced-generation/index.html"
+      ],
+      "delta": "第二章没有独立的候选验证课。学完基础可直接进入第三章的 EAGLE／Grammar，不必绕回引擎对照。"
+    },
+    {
+      "id": "service",
+      "title": "取消后谁来收尾",
+      "foundations": [
+        "serving"
+      ],
+      "comparison": [
+        "crosscut"
+      ],
+      "implementation": [
+        "sglang/serving-operations/index.html"
+      ],
+      "delta": "从用户停止等待，接到引擎资源生命周期，再核对 P/D 网关与后端的取消和排空。"
+    },
+    {
+      "id": "metrics",
+      "title": "性能数字怎样对应过程",
+      "foundations": [
+        "metrics",
+        "deployment"
+      ],
+      "comparison": [
+        "metrics"
+      ],
+      "implementation": [
+        "sglang/performance-engineering/index.html"
+      ],
+      "delta": "先固定通用计时与样本口径，再看非 PD 的两引擎打点，最后读 P/D 多方计时；各课算例独立。"
+    }
+  ],
+  "comparison": {
+    "process": {
+      "foundations": [
+        "generation",
+        "serving"
+      ],
+      "adds": [
+        "把已经学过的生成与回程，放到两套引擎的进程和组件中。初读先沿请求路径走四步，再看职责与 TP 拓扑。",
+        "Place generation and response delivery in each engine’s processes and components. Start with the request path; explore TP ownership afterwards."
+      ]
+    },
+    "wire": {
+      "foundations": [
+        "parallel",
+        "communication"
+      ],
+      "adds": [
+        "把通信语义接到具体端点：谁传请求，谁传张量，谁只传控制消息。这里不重讲各集合操作的数学定义。",
+        "Map communication semantics to endpoints carrying requests, tensors, or control messages. Collective definitions remain in chapter one."
+      ]
+    },
+    "prefix": {
+      "foundations": [
+        "cache"
+      ],
+      "adds": [
+        "沿用前缀复用原理，比较两套索引怎样返回地址，以及页／块粒度如何决定需要补算的尾部。",
+        "Use the prefix-reuse principle to compare index lookups, physical addresses, and page/block alignment."
+      ]
+    },
+    "batch": {
+      "foundations": [
+        "batching",
+        "hardware"
+      ],
+      "adds": [
+        "从“每轮能补位”继续追问：谁决定预算，谁提交 GPU，上一批结果由谁处理。四步分别追踪候选、预算、执行和结果提交。",
+        "Go from changing batch membership to budget ownership, GPU submission, and earlier-result handling. These four steps organize an engine iteration."
+      ]
+    },
+    "crosscut": {
+      "foundations": [
+        "cache",
+        "serving",
+        "hardware"
+      ],
+      "adds": [
+        "把结束、回撤、取消与图重放作为四个独立问题；每步改变的状态不同，可以按当前问题查阅。",
+        "Treat completion, retraction, cancellation, and graph replay as four separate questions with different state changes."
+      ]
+    },
+    "disagg": {
+      "foundations": [
+        "deployment"
+      ],
+      "adds": [
+        "从“要交接 KV”继续看两套引擎怎样选实例、匹配状态并确认可用。缓存分层与扩容是选读分支。",
+        "Continue from KV handoff to instance selection, state matching, and readiness. Cache tiers and scaling are optional branches."
+      ]
+    },
+    "metrics": {
+      "foundations": [
+        "metrics"
+      ],
+      "adds": [
+        "本节限定普通非 PD 服务，比较打点和样本归属。第三章另用 P/D 请求展开多方秒表；两课数值不能直接相减。",
+        "This topic compares instrumentation in ordinary non-PD serving. Chapter three uses a separate P/D example; their numbers cannot be subtracted."
+      ]
+    }
+  },
+  "foundation_topic": {
+    "tokens": "process",
+    "components": "process",
+    "attention": "process",
+    "generation": "process",
+    "cache": "prefix",
+    "batching": "batch",
+    "hardware": "crosscut",
+    "parallel": "wire",
+    "communication": "wire",
+    "deployment": "disagg",
+    "speculation": null,
+    "serving": "crosscut",
+    "metrics": "metrics"
+  }
+}

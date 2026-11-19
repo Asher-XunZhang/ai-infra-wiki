@@ -39,37 +39,45 @@
     if(event.data?.type==='learning-theme-ready'&&[...document.querySelectorAll('iframe')].some(frame=>event.source===frame.contentWindow))sendTheme();
   });
   applyTheme();
-  // Learning routes are an optional reading order; module navigation stays intact.
-  const url = new URL(location.href);
-  const routeChoices = [...document.querySelectorAll('[data-route-choice]')];
-  const routePanels = [...document.querySelectorAll('[data-route-panel]')];
-  function showRoute(id) {
-    const selected = routePanels.find(panel => panel.dataset.routePanel === id) || routePanels[0];
-    if (!selected) return;
-    routePanels.forEach(panel => { panel.hidden = panel !== selected; });
-    routeChoices.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.routeChoice === selected.dataset.routePanel)));
+  // Route links span static lessons and hash-addressed comparison topics.
+  const routePagers = [...document.querySelectorAll('[data-reading-route]')];
+  const canonicalPager = document.querySelector('.lesson-pager');
+  const routeContext = document.createElement('aside');
+  routeContext.className = 'active-reading-route';
+  routeContext.hidden = true;
+  routeContext.setAttribute('aria-label', '当前学习路线');
+  document.querySelector('.learning-breadcrumb')?.after(routeContext);
+  function updateReadingRoute() {
+    const current = new URL(location.href), id = current.searchParams.get('learn');
+    const candidates = routePagers.filter(nav => nav.dataset.readingRoute === id);
+    const engine = document.querySelector('.ia-page');
+    const hash = current.hash.slice(1);
+    const topic = candidates.some(nav => nav.dataset.routeTopic === hash) ? hash : engine?.dataset.chapter || hash || 'process';
+    const active = candidates.find(nav => !nav.dataset.routeTopic || nav.dataset.routeTopic === topic);
+    routePagers.forEach(nav => { nav.hidden = nav !== active; });
+    const topicPager = document.querySelector('.ia-topic-pager');
+    if (canonicalPager) canonicalPager.hidden = Boolean(active || topicPager);
+    if (topicPager) topicPager.hidden = Boolean(active);
+    routeContext.replaceChildren();
+    routeContext.hidden = !candidates.length;
+    if (!candidates.length) return;
+    const info = active || candidates[0];
+    const title = document.createElement('strong');
+    title.textContent = info.dataset.routeTitle + (active ? ' · ' + info.dataset.routePosition : ' · 当前主题为选读');
+    const hint = document.createElement('p');
+    hint.textContent = active ? info.dataset.routeHint : '可继续查阅本主题，或回路线目录接着读。';
+    const homeLink = document.createElement('a');homeLink.href = info.dataset.routeHome;homeLink.textContent = '路线目录';
+    const exitLink = document.createElement('a');exitLink.dataset.routeExit='true';current.searchParams.delete('learn');exitLink.href = current;exitLink.textContent = '按章节自由阅读';
+    exitLink.addEventListener('click', event => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();const next = new URL(location.href);next.searchParams.delete('learn');history.replaceState(history.state, '', next);updateReadingRoute();
+    });
+    routeContext.append(title, hint, homeLink);
+    if(active){const nextLink=document.createElement('a');nextLink.href=active.querySelector('.next').href;nextLink.textContent='下一步 →';nextLink.dataset.routeContinue='true';routeContext.append(nextLink);}
+    routeContext.append(exitLink);
   }
-  if (routePanels.length) {
-    document.querySelector('.entry-picker').hidden = false;
-    document.querySelector('.learning-start').classList.add('is-interactive');
-    showRoute(url.searchParams.get('learn'));
-    routeChoices.forEach(button => button.addEventListener('click', () => {
-      showRoute(button.dataset.routeChoice);
-      const next = new URL(location.href);
-      next.searchParams.set('learn', button.dataset.routeChoice);
-      history.replaceState(null, '', next);
-    }));
-    window.addEventListener('popstate', () => showRoute(new URL(location.href).searchParams.get('learn')));
-  }
-  const routePager = [...document.querySelectorAll('[data-reading-route]')].find(nav => nav.dataset.readingRoute === url.searchParams.get('learn'));
-  if (routePager) {
-    routePager.hidden = false;
-    document.querySelector('.lesson-pager').hidden = true;
-    const context = document.createElement('p');
-    context.className = 'active-reading-route';
-    context.textContent = routePager.dataset.routeTitle + ' · ' + routePager.dataset.routePosition;
-    document.querySelector('.lesson-header').prepend(context);
-  }
+  updateReadingRoute();
+  for (const event of ['popstate','hashchange','learning:navigation']) window.addEventListener(event, updateReadingRoute);
   const small=matchMedia('(max-width:900px)'),menu=document.querySelector('.sidebar-menu');
   const sidebar=document.querySelector('.site-sidebar');
   const groups=sidebar?.querySelectorAll('.topic-group,.module-nav,.chapter-nav') ?? [];
@@ -88,12 +96,19 @@
     });
   } else {
     const saveGroups=[];
+    const sitePath=new URL(document.querySelector('.site-brand')?.href||'./',location.href).pathname;
+    const currentChapter=sidebar?.querySelector('.chapter-nav:has([aria-current="page"])') ||
+      (document.querySelector('#atlas-root') ? sidebar?.querySelector('[data-chapter="engine-comparison"]') : null);
+    const chapterId=currentChapter?.dataset.chapter || 'sglang';
+    let crossedChapter=true;
+    try {const key='ai-infra-current-chapter:'+sitePath;crossedChapter=sessionStorage.getItem(key)!==chapterId;sessionStorage.setItem(key,chapterId);} catch {}
     groups.forEach(group=>{
       const key=group.classList.contains('chapter-nav')?'ai-infra-chapter-'+group.dataset.chapter:group.classList.contains('module-nav')?'ai-infra-module-'+group.dataset.module:'ai-infra-topic-'+group.dataset.topic;
-      const current=Boolean(group.querySelector('[aria-current="page"]'));
+      const current=group===currentChapter || Boolean(group.querySelector('[aria-current="page"]'));
       if(current)group.open=true;
       else {
         try {const stored=sessionStorage.getItem(key);if(stored!==null)group.open=stored==='open';} catch {}
+        if(crossedChapter&&group.classList.contains('chapter-nav'))group.open=false;
       }
       const saveGroup=()=>{
         try {sessionStorage.setItem(key,group.open?'open':'closed');} catch {}
@@ -103,8 +118,7 @@
       saveGroups.push(saveGroup);
       group.addEventListener('toggle',saveGroup);
     });
-    const sitePath=new URL(document.querySelector('.site-brand')?.href||'./',location.href).pathname;
-    const scrollKey='ai-infra-sidebar-scroll:'+sitePath;
+    const scrollKey='ai-infra-sidebar-scroll:'+sitePath+':'+chapterId;
     function restoreSidebar(){
       if(!sidebar||small.matches)return;
       try {
@@ -118,6 +132,18 @@
       try {sessionStorage.setItem(scrollKey,String(sidebar.scrollTop));} catch {}
     }
     small.addEventListener('change',restoreSidebar);restoreSidebar();
+    let focusChapter=crossedChapter;
+    function revealCurrentChapter(){
+      if(!focusChapter||!sidebar||small.matches)return;
+      const link=sidebar.querySelector('[aria-current="page"],[aria-current="location"]');
+      if(!link)return;
+      const row=link.getBoundingClientRect(),bounds=sidebar.getBoundingClientRect();
+      if(row.top<bounds.top+16)sidebar.scrollTop+=row.top-bounds.top-16;
+      else if(row.bottom>bounds.bottom-16)sidebar.scrollTop+=row.bottom-bounds.bottom+16;
+      focusChapter=false;
+    }
+    requestAnimationFrame(revealCurrentChapter);
+    window.addEventListener('learning:navigation',revealCurrentChapter);
     sidebar?.addEventListener('scroll',saveSidebar,{passive:true});
     function saveNavigation(){saveGroups.forEach(save=>save());saveSidebar();}
     // Capture state before navigation, even before queued scroll/toggle events.

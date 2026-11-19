@@ -6,6 +6,7 @@
 <details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
 <div class="sidebar-content">
 <a class="overview-link" href="../">学习首页 <span aria-hidden="true">↗</span></a>
+<a class="route-index-link" href="../#reading-routes">推荐路线与跨章索引</a>
 <details class="chapter-nav" data-chapter="foundations" open><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
 <a href="tokens.html" aria-current="page">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
 <a href="components.html">02 Transformer 前向总览：从输入向量到下一 token</a>
@@ -143,7 +144,10 @@
 
 <details class="concept-background foundation-reading" id="lesson-glossary"><summary>术语速查</summary><dl class="foundation-terms" aria-label="这课用到的词"><div><dt>token</dt><dd>分词器采用的一个文本单位。可能是一个词、半个词、多个字，或字节片段。</dd></div><div><dt>词表与 ID</dt><dd>词表给每个单位分配编号；编号是查表用的索引，不是意思大小。</dd></div><div><dt>向量</dt><dd>一组有顺序的数。Embedding 按 token ID 取出一行向量，交给后续模型计算。</dd></div></dl></details>
 
-<a class="foundation-to-engine" href="../sglang/request-runtime/index.html"><small>对应的 SGLang 实现 · 保留独立源码基线</small>带着这一课的问题，进入实现剖析 →</a>
+<aside class="chapter-handoff"><strong>把这个问题接到引擎上</strong><a href="../engine-comparison/index.html#process">第二章：输入 ID 在哪个进程准备？ →</a><a class="foundation-to-engine" href="../sglang/request-runtime/index.html"><small>已有基础可直接查阅 · 独立源码基线</small>请求生命周期：Req、TokenizerManager 与 Scheduler →</a></aside>
 <section id="evidence" class="foundation-scope"><h2>来源与教学边界</h2><p>资料类型：基础原理与教学算例。读取 / 整理日期：2026-10-15。两组中文的切分与 ID 来自 Qwen2.5-0.5B-Instruct 的固定 tokenizer；只做 encode/decode 核验。向量图只表示形状，不是该模型的实际权重。不是所有 tokenizer 都按汉字边界切分。</p><p>概念动机、取舍与背景整理：2026-10-16。原论文、官方说明及相关课程就近列在对应解释下；其中数值小例子为独立教学假设，不替代原动画的分词器版本或源码基线。</p><ul class="foundation-sources"><li><a href="https://huggingface.co/docs/transformers/main/en/tokenizer_summary">Hugging Face · Tokenization algorithms</a></li><li><a href="https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/7ae557604adf67be50417f59c2c2f167def9a775/tokenizer.json">Qwen tokenizer · 固定版本 7ae557604adf</a></li><li><a href="https://docs.pytorch.org/docs/stable/generated/torch.nn.Embedding.html">PyTorch · Embedding</a></li></ul><details class="concept-background"><summary>画法参考与演示范围</summary><ul><li><a href="https://jalammar.github.io/illustrated-gpt2/">The Illustrated GPT-2 · Token Embeddings</a>：参考一词条一行的 Embedding 矩阵图；相同 ID 查同一行，再按输入位置排列。中文切分与 ID 继续使用本课固定 tokenizer。</li></ul><p>本课数值、交互模型与图形独立实现；输入输出和完成条件按上方官方文档复核。参考资料读取：2026-10-19。</p></details><p>图与文字由整理者设计；没有启动模型服务、GPU 或网络性能实验。通用原理不规定任何特定版本 SGLang 的完整执行顺序。</p></section>
+<!-- reading-pagers:start -->
+<nav class="reading-route-pager" data-reading-route="beginner" data-route-topic="" data-route-title="三章入门：从一句话到一轮执行" data-route-hint="先分清文字片段、词表编号和向量。" data-route-position="1 / 17" data-route-home="../#reading-routes" aria-label="三章入门：从一句话到一轮执行 · 继续学习" hidden><a href="../#reading-routes"><small>选择学习起点</small><strong>返回路线</strong></a><a class="next" href="components.html?learn=beginner"><small>这条路线 · 下一节</small><strong>Transformer 前向总览：从输入向量到下一 token →</strong></a></nav>
+<!-- reading-pagers:end -->
 <nav class="lesson-pager" aria-label="推理基础内继续学习"><a href="../#chapter-foundations"><small>第一章目录</small><strong>回到推理基础</strong></a><a class="next" href="components.html"><small>下一课</small><strong>Transformer 前向总览：从输入向量到下一 token</strong></a></nav>
 </main><footer class="site-footer"><span>AI Infra Wiki · 从原理走向实现</span><a href="../">三章完整目录</a></footer></div></div></body></html>
