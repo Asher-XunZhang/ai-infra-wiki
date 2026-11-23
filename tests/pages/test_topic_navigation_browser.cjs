@@ -78,6 +78,11 @@ async function checkHome(page,label){
   assert.equal(await page.locator('.framework-stage').count(),5);
   assert.equal(await page.locator('.module-card').count(),13);
   assert.equal(await page.locator('.module-card[data-coverage=available]').count(),13);
+  assert.equal(await page.locator('section#serving-practice,.practice-lessons').count(),0,'labs belong to chapter modules');
+  for(const [slug,module] of [['memory-budget','kv-memory'],['hicache-loadback','kv-memory'],['deployment-lab','serving-operations'],['benchmark-lab','performance'],['trace-lab','performance']]){
+   assert.equal(await page.locator(`#learning-path #${module} .module-entry > a[href*="sglang/${slug}/"]`).count(),1,slug+' has its canonical module entry');
+  }
+
   assert.equal(await page.locator('a[href="#"],a:not([href]),button[disabled]').count(),0);
   assert.match(await page.locator('#communication').innerText(),/已有课程[\s\S]*开始学习/);
   assert.match(await page.locator('#performance').innerText(),/已有课程[\s\S]*开始学习/);

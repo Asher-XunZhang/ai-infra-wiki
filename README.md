@@ -243,6 +243,6 @@ ai-infra-wiki/
 
 页面与资料维护使用的规则见 [Skills 清单与定制文件](skills/README.md)。
 
-## 从容量到实验验证
+## 第三章的容量与实验课程
 
-[Pages 实验路线](pages/index.html#serving-practice)连接显存账本、HiCache 回载、最小部署、标准压测和 Trace 定位。先修推理、KV、调度和指标基础；按自己的问题选读。课程保留固定源码、教学模型和真实记录各自的证据边界。可在仓库根目录运行 python3 scripts/preview_pages.py 后打开本地预览。
+[第三章 · SGLang 实现剖析](pages/index.html#chapter-sglang)中，显存账本和 HiCache 回载归 KV Cache 模块，最小部署归服务部署模块，标准压测与 Trace 定位归性能分析模块。先修推理、KV、调度和指标基础；按自己的问题选读。课程保留固定源码、教学模型和真实记录各自的证据边界。可在仓库根目录运行 python3 scripts/preview_pages.py 后打开本地预览。

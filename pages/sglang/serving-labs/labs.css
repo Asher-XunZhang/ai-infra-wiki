@@ -1,9 +1,4 @@
 .sl-lesson{font-size:16px}
-.practice-lessons{list-style:none;padding:0;margin:22px 0;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0 30px}
-.practice-lessons li{border-bottom:1px solid var(--border)}
-.practice-lessons a{display:block;padding:17px 0}
-.practice-lessons strong{display:block;font-size:16px;font-weight:600}
-.practice-lessons small{display:block;font-size:14px;color:var(--muted);line-height:1.8;margin-top:5px}
 .sl-lesson .lesson-header{max-width:880px}
 .sl-lesson .article-toc{position:static;display:flex;flex-wrap:wrap;gap:10px 22px;padding:14px 0;margin:12px 0 26px;border-block:1px solid var(--border)}
 .sl-lesson .overview-section{max-width:920px;margin:36px 0}

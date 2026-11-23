@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="home.css">
   <script src="motion/integration.js" defer></script><script src="site.js" defer></script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%23216c51%22%2F%3E%3Ctext%20x%3D%228%22%20y%3D%2224%22%20fill%3D%22white%22%20font-family%3D%22Georgia%2Cserif%22%20font-weight%3D%22bold%22%20font-size%3D%2227%22%3Ea%3C%2Ftext%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="foundations/foundations.css"><link rel="stylesheet" href="sglang/serving-labs/labs.css">
+<link rel="stylesheet" href="foundations/foundations.css">
 </head>
 <body data-page="home">
 <a class="skip-link" href="#main-content">跳到正文</a>
@@ -196,7 +196,7 @@
         <p class="framework-legend"><a class="text-link" href="engine-comparison/">进入第二章完整对照 →</a></p>
       </section>
 
-      <span id="chapter-sglang"></span><section id="learning-path" class="home-section" aria-labelledby="learning-path-title">
+      <span id="chapter-sglang"></span><span id="serving-practice" aria-hidden="true"></span><section id="learning-path" class="home-section" aria-labelledby="learning-path-title">
         <div class="section-heading"><div><p class="eyebrow">五个层次 · 十三个模块</p><h2 id="learning-path-title">第三章 · SGLang 实现剖析</h2></div><a class="text-link" href="#reading-routes">回到三章入口 ↑</a></div>
         <p class="framework-intro">第三章回答“SGLang 由谁执行、改哪些状态、受什么约束”。十三模块保留各课独立的源码基线；需要跨引擎定位时先回到第二章的固定 release 对照。</p>
         <p class="framework-legend">各模块已有学习入口；具体实现、配置与验证边界见对应课程。</p>
@@ -237,7 +237,7 @@
             <article id="kv-memory" class="lesson-card module-card" data-coverage="available">
               <div class="card-top"><span class="card-number">05</span><span class="module-status available">已有课程</span></div>
               <h4>KV Cache 与资源生命周期</h4><p class="module-question">状态怎样分配、复用和回收？</p><p>逻辑 token 与物理页、KV Pool、前缀缓存、分页、引用寿命与分层存储。</p><p class="module-prerequisite">先修：调度循环、模型执行与设备协作</p>
-              <div class="module-entry"><a href="sglang/kv-memory/index.html">开始学习 · KV Memory Pool：地址映射、分页与缓存回收 →</a><a href="sglang/inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？ →</a><p class="module-related">先读物理位置与共享回收，再进入 Radix Tree 的匹配、分裂与锁保护。</p></div>
+              <div class="module-entry"><a href="sglang/kv-memory/index.html">开始学习 · KV Memory Pool：地址映射、分页与缓存回收 →</a><a href="sglang/inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？ →</a><a href="sglang/memory-budget/index.html">推理显存账本：从字节预算到请求容量 →</a><a href="sglang/hicache-loadback/index.html">HiCache 完整回载：从 L3 命中到当前层可读 →</a><p class="module-related">先读物理位置、共享回收与前缀索引，再计算显存容量，追踪 HiCache 的逐层可读与传输收尾。</p></div>
             </article>
             <article id="scheduling" class="lesson-card module-card" data-coverage="available">
               <div class="card-top"><span class="card-number">06</span><span class="module-status available">已有课程</span></div>
@@ -279,7 +279,7 @@
             <article id="serving-operations" class="lesson-card module-card" data-coverage="available">
               <div class="card-top"><span class="card-number">11</span><span class="module-status available">已有课程</span></div>
               <h4>服务部署与运行治理</h4><p class="module-question">推理实例怎样组成可用的服务？</p><p>启动配置、资源规划、路由与负载均衡、背压、扩缩容、健康检查和故障恢复。</p><p class="module-prerequisite">先修：运行时与调度；按部署方式补并行或 P/D</p>
-              <div class="module-entry"><a href="sglang/serving-operations/">开始学习 · 服务治理：Health Check、Timeout 与 Cancellation →</a><p class="module-related">观察启动、探活、路由准入、超时取消和退出收尾。</p></div>
+              <div class="module-entry"><a href="sglang/serving-operations/index.html">开始学习 · 服务治理：Health Check、Timeout 与 Cancellation →</a><a href="sglang/deployment-lab/index.html">最小部署实验：启动、请求与完整结束 →</a><p class="module-related">先分清服务状态与请求完成，再用最小部署实验核对初始化、完整响应和取消收尾。</p></div>
             </article>
           </div>
         </section>
@@ -290,7 +290,7 @@
             <article id="performance" class="lesson-card module-card" data-coverage="available">
               <div class="card-top"><span class="card-number">12</span><span class="module-status available">已有课程</span></div>
               <h4>性能分析与优化方法</h4><p class="module-question">瓶颈在哪里，怎样证明优化有效？</p><p>TTFT / ITL、吞吐与容量、负载和 SLO、benchmark、trace、瓶颈归因与版本回归。</p><p class="module-prerequisite">先修：请求与指标基础；按问题回补机制</p>
-              <div class="module-entry"><a href="sglang/performance-engineering/">开始学习 · TTFT、ITL、TPOT 与 P95：SGLang 性能观测 →</a><p class="module-related">观察请求计时、流式分包、单变量对照与失败样本筛选。</p></div>
+              <div class="module-entry"><a href="sglang/performance-engineering/index.html">开始学习 · TTFT、ITL、TPOT 与 P95：SGLang 性能观测 →</a><a href="sglang/benchmark-lab/index.html">标准压测实验：负载、样本与达标吞吐 →</a><a href="sglang/trace-lab/index.html">Trace 定位实验：从设备活动追到等待原因 →</a><p class="module-related">先统一请求计时与样本口径，再设计标准负载，沿 Trace 事件查找等待与执行证据。</p></div>
             </article>
             <article id="case-studies" class="lesson-card module-card" data-coverage="available">
               <div class="card-top"><span class="card-number">13</span><span class="module-status available">已有课程</span></div>
@@ -303,7 +303,6 @@
 
 
 
-<section id="serving-practice" class="home-section" aria-labelledby="serving-practice-title"><h2 id="serving-practice-title">从容量走到实验验证</h2><p>按目标选读：先列资源账本，再用可复查的请求与 Trace 记录验证机制。</p><ol class="practice-lessons"><li><a href="sglang/memory-budget/index.html?learn=labs"><span><strong>显存账本与容量规划</strong><small>把设备字节、KV 槽位和请求增长分别算清楚。</small></span></a></li><li><a href="sglang/hicache-loadback/index.html?learn=labs"><span><strong>HiCache 完整回载</strong><small>从 L3 查询到当前层可读，再追踪传输保护。</small></span></a></li><li><a href="sglang/deployment-lab/index.html?learn=labs"><span><strong>最小部署与请求证据</strong><small>核对初始化、就绪、完整响应与取消收尾。</small></span></a></li><li><a href="sglang/benchmark-lab/index.html?learn=labs"><span><strong>标准负载与达标吞吐</strong><small>分开到达、并发许可、计时边界和成功样本。</small></span></a></li><li><a href="sglang/trace-lab/index.html?learn=labs"><span><strong>Trace 阅读与定位</strong><small>用官方实测片段练习，再导入自己的记录。</small></span></a></li></ol></section>
       <section class="learning-notes home-boundaries" aria-labelledby="scope-title">
         <div><h2 id="scope-title">用交互建立直觉，用源码核对机制</h2><p>已有交互课程以 SGLang 为主要实现案例。通用模块提供学习位置，具体页面继续保留自己的源码基线和适用范围。</p><p>教学图中的数量与时间用于解释顺序和依赖；Trace 实验课另附明确标注来源的历史实测片段，并支持导入自己的记录。</p></div>
         <aside class="scope-note"><p class="eyebrow">读懂现有案例的边界</p><p>推理全景以普通自回归文本生成和 DeepSeek-V3 风格 Transformer 为例。PD Prefill 旅程、PP loop 与状态机聚焦分离部署中的 Prefill 和 PP，各自保留缓存与调度假设。</p><a href="sglang/pd-prefill-pp-loop/notes.html#section-1">查看 PP 专题源码基线与边界 →</a></aside>

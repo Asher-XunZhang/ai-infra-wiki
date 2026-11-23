@@ -405,6 +405,22 @@ def engine_pager(page):
             '</nav>')
 
 
+def home_module_courses(page, source):
+    # These module cards expose their complete course list from the same catalog
+    # as the sidebar and pagers, so added lessons cannot be orphaned on the home.
+    for module in MODULES:
+        if module[0] not in {'kv-memory', 'serving-operations', 'performance'}:
+            continue
+        links = ''.join(
+            f'<a href="{href(page, lesson[0])}">{"开始学习 · " if i == 0 else ""}{escape(lesson[1])} →</a>'
+            for i, lesson in enumerate(module[4]))
+        pattern = rf'(<article id="{module[0]}"[^>]*>.*?<div class="module-entry">).*?(?=<p class="module-related">)'
+        source, count = re.subn(pattern, lambda match: match[1] + links, source, count=1, flags=re.S)
+        if count != 1:
+            raise ValueError(f'{page}: missing home course entry for {module[0]}')
+    return source
+
+
 def rendered(page, module=None, lesson=None):
     source = page.read_text(encoding='utf-8')
     engine = page == ENGINE_PAGE
@@ -439,6 +455,7 @@ def rendered(page, module=None, lesson=None):
         source, count = re.subn(r'<!-- learning-start:start -->.*?<!-- learning-start:end -->', lambda _: learning_start(page), source, count=1, flags=re.S)
         if count != 1:
             raise ValueError(f'{page}: missing learning-start marker')
+        source = home_module_courses(page, source)
     if module:
         source = re.sub(r'<h1[^>]*>.*?</h1>', lambda _: '<h1>' + escape(lesson[1]) + '</h1>', source, count=1, flags=re.S)
         source = re.sub(r'<title>.*?</title>', lambda _: '<title>' + escape(lesson[1]) + ' · AI Infra Wiki</title>', source, count=1, flags=re.S)
