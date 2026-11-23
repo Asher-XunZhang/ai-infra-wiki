@@ -1,12 +1,16 @@
 # Profiler 与时间线阅读
 
-> **先建立架构心智模型：** [M11 · 网关服务治理与性能诊断全景](<../architecture/11-网关服务治理与性能诊断全景.md>)。先看职责、数据和生命周期，再回到本篇源码细节。
+> 架构导读：[M11 · 网关服务治理与性能诊断全景](<../architecture/11-网关服务治理与性能诊断全景.md>)。
 
 本文是**源码分析型学习资料**，面向已经知道 benchmark 在测什么，想进一步回答“这一段时间里 CPU、GPU 和通信各在做什么”的读者。
 
 Profiler 的作用是提供事件证据。读时间线时，要沿着**请求 → 调度 batch → CPU 提交 → GPU 执行 → 结果可用**建立关系，不能仅按最长的彩色条给瓶颈下结论。
 
 **Pages 配套：** [Trace 阅读与定位](../../../pages/sglang/trace-lab/index.html)，继续固定本文的 `72d5c5bb`；浏览器与协议检查不等于运行过模型或 GPU 实验。
+
+**怎么读：** 先选窗口、启动采集、确认导出，再沿请求与设备事件读时间线；特殊采集模式另查。
+
+主线：[1. 人话版：三块表，三个问题](#1-人话版三块表三个问题) → [2. 从 HTTP 控制请求到 Scheduler](#2-从-http-控制请求到-scheduler) → [3. 默认实现：采集窗口在 batch 前检查](#3-默认实现采集窗口在-batch-前检查) → [5. stop、导出与“文件已存在”的证据层级](#5-stop导出与文件已存在的证据层级) → [7. 给小白的一条时间线阅读顺序](#7-给小白的一条时间线阅读顺序)。
 
 ## 0. 阅读基线与范围
 
@@ -142,6 +146,9 @@ Scheduler.run_batch 先执行 forward_ct += 1，再调用 _profile_batch_predica
 
 普通模式的关键分支如下，省略了前面的 V2 和分阶段路径；方法名中的 predicate 在这里还负责触发状态变化，并非只返回一个布尔值：
 
+<details>
+<summary>查看代码或配置原文</summary>
+
 ```python
 if (
     self.profiler_target_forward_ct
@@ -154,6 +161,8 @@ if (
 ):
     self._start_profile()
 ```
+
+</details>
 
 这段顺序使停止边界落在当前 batch 执行前，也解释了下面为什么需要额外一次检查。[S15]
 
@@ -181,6 +190,9 @@ _init_profile 在 profile_in_progress 时会返回失败；但 _profile 的“�
 因此本篇主线排除并发或重复 start。遇到启动/停止错误要保留管理器日志与各 rank 状态，不把接口设计成无条件重试即可恢复的事务。当前没有进行异常注入，也不修改该实现。
 
 ## 4. 分阶段采集和 V2：要重新核对计数单位
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 4.1 默认分阶段路径
 
@@ -210,6 +222,8 @@ V2 step 把 ForwardMode 转成 prefill/decode 类别，idle 不推进；切换�
 因此从该路径可静态推得连续窗口会包含前三个 batch，不能直接把参数 2 当作恰好两批。阶段提前切换则会提前收尾。这里记录实现边界，不宣称已验证设计意图或给出修复。[S37]
 
 V2 在 _do_start/_do_stop 设置和清除详细标记开关，使用具体 profiler 的 start/stop 导出文件；Torch stop 后也做 cpu_group barrier，但未迁移自动合并。[S38] [S39] [S63]
+
+</details>
 
 ## 5. stop、导出与“文件已存在”的证据层级
 
@@ -348,6 +362,9 @@ flowchart LR
 
 ## 8. CUDA Graph：运行期 replay 与建图期 capture 分开采
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 普通 /start_profile 观测后续服务活动；启动或重新捕获图的工作，另由 DecodeCudaGraphRunner.capture 的 enable_profile_cuda_graph 路径包住。即使都使用 PyTorch Profiler，测量阶段也不同。[S41]
 
 | 组合 | 固定实现的输出方式 | 关键条件 |
@@ -365,7 +382,12 @@ trace 放在 SGLANG_TORCH_PROFILER_DIR 下的 graph_capture_profile；但 _post_
 
 建图中可能包含初始化、warmup、分配和同步，不能拿 capture 的 top kernel 表证明稳定 replay 的吞吐。采集自身也会改变成本，详细 shape/stack 选项需要与无采集基准对照。[PyTorch Profiler 开销说明](https://docs.pytorch.org/docs/2.14/profiler.html)
 
+</details>
+
 ## 9. MEM、CUDA_PROFILER 与多实例采集边界
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 9.1 MEM 保存 allocator 历史，不是通用显存带宽图
 
@@ -389,6 +411,8 @@ async_request_profile 会在调用方创建输出路径，并组装 num_steps/pr
 
 多 rank、多节点或 P/D 分开采集时，保留各进程原始 trace、机器/rank 清单和工作负载身份。没有时钟与协议关联证据，不把图上左右位置解释为跨机器因果顺序。
 
+</details>
+
 ## 10. 一个可执行前先检查的采集方案
 
 本节是**后续隔离实验模板，当前未执行**。它默认已有准备好的单实例文本服务、目标负载和输出目录；这里不安装工具、不启动模型，也不改服务器配置。
@@ -396,6 +420,9 @@ async_request_profile 会在调用方创建输出路径，并组装 num_steps/pr
 先用 [11-01](01-Benchmark设计与指标口径.md) 的相同负载测无采集基准。第一轮可先采 CPU/GPU 的短窗口、明确关闭 stack/shape，随后按定位需要增加详细字段；比较采集前后的耗时变化。
 
 下面 JSON 表示默认 V1 手动窗口：立即开始，结束后需要主动 stop；output_dir 由服务端已配置环境决定。它省去自动步数收尾的不确定性，但仍需检查调用结果与文件。
+
+<details>
+<summary>查看代码或配置原文</summary>
 
 ```json
 {
@@ -407,6 +434,8 @@ async_request_profile 会在调用方创建输出路径，并组装 num_steps/pr
   "merge_profiles": false
 }
 ```
+
+</details>
 
 请求体结构按 ProfileReq 与 TM/管理器路径核对。[S4] [S5] [S13] [S14] 如果环境启用了 V2，这份模板不适用。
 
@@ -447,6 +476,9 @@ async_request_profile 会在调用方创建输出路径，并组装 num_steps/pr
 
 ## 12. 源码入口与测试边界
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 | 要追的问题 | 仓内相对路径 / 符号 |
 | --- | --- |
 | live 工具做了什么 | `python/sglang/profiler.py::run_profile` [S1] |
@@ -470,6 +502,8 @@ one_batch 将选定的 Prefill/Decode 区间直接包在 profiler 中；offline 
 | `test/registered/unit/managers/test_detailed_annotations.py`：Prefill、TARGET_VERIFY、全局开关三个用例 | CPU 镜像的聚合标签与开关行为 [S59] [S60] [S61] | 未证明真实 GPU trace 的展示位置或性能 |
 
 独立教学检查只核对计数账本、聚合量和区间关系，不导入这些测试，也不把它们标为通过。
+
+</details>
 
 ## 13. 练习、验收与下一篇
 

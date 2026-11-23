@@ -9,7 +9,7 @@
 
 本文是第三方资料整理型学习资料，并用本地 SGLang 源码抽查了 Chunked Prefill 的关键调度路径；它不是完整源码审计或容量承诺。
 
-2026-09-09 补充“64K 调到 16K”的显存、PD 吞吐与数值边界，并按官方固定版本修正第 8.1 节的 chunk 共享额度示例。初学者可先读[调度机制总览与学习路线](<SGLang 调度机制总览与学习路线.md>)。
+2026-09-09 补充“64K 调到 16K”的显存、PD 吞吐与数值边界，并按官方固定版本修正第 8.1 节的 chunk 共享额度示例。初学者可先读[调度机制总览与学习路线](<SGLang%20调度循环与批次执行旅程学习文档.md#scheduler-decisions>)。
 
 > 历史基线说明：表中上游链接用于定位开源项目；本文的 `muxi-main` 是历史阅读分支，不表示该分支或提交属于官方 `main`。历史结论需按所列版本核对；当前开源实现请使用固定的官方源码链接。
 
@@ -48,7 +48,7 @@
 | 抽查范围 | `server_args.py`、`scheduler.py`、`schedule_policy.py`、`scheduler_output_processor_mixin.py` |
 | 运行验证 | 未运行服务或 benchmark |
 
-**2026-09-09 补充抽查基线：** 按第四篇明确引用的官方 commit `6e312af8c25ccedd1dcd2583358be038ab4875b0` 读取 `PrefillAdder`、显存配置钩子、PD Prefill 发送和 AITER 特定分支。使用固定版本临时文件，无分支检出，未修改本地 SGLang 仓库。读取目录与完整边界见[总览基线](<SGLang 调度机制总览与学习路线.md>)第 0.3 节。本文未重新核验前三篇的所有 benchmark，不将历史本地分支和本次官方快照混成同一基线。
+**2026-09-09 补充抽查基线：** 按第四篇明确引用的官方 commit `6e312af8c25ccedd1dcd2583358be038ab4875b0` 读取 `PrefillAdder`、显存配置钩子、PD Prefill 发送和 AITER 特定分支。使用固定版本临时文件，无分支检出，未修改本地 SGLang 仓库。读取目录与完整边界见[总览基线](<SGLang%20调度循环与批次执行旅程学习文档.md#scheduler-decisions>)第 0.3 节。本文未重新核验前三篇的所有 benchmark，不将历史本地分支和本次官方快照混成同一基线。
 
 第四篇的四张图均已下载并逐张理解；论文图另核对 Sarathi-Serve v3。原图 URL、出处、SHA256 见[配图记录](../../images/sglang-chunk-size-tradeoffs/SOURCES.md)。
 

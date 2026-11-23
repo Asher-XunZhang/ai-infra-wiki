@@ -7,7 +7,7 @@
 3. **Radix Tree**：跨请求复用前缀的长期索引。
 4. **HiCache**：把可复用 KV 从 GPU L1 扩展到 Host L2 与外部 L3 的分层系统。
 
-本文不重复讲 Radix Tree 的节点分裂算法；相关内容通过链接跳转。
+先沿一次前缀命中看清索引、请求映射和物理数据，再读分配、回收与 HiCache。压缩树怎样分裂，以及为什么匹配到 token 仍不一定能直接执行，集中在下面的命中章节。
 
 本文是第三方资料整理型学习资料，不是目标版本源码审计。
 
@@ -26,15 +26,12 @@
 | 原文二上游 | https://forceinjection.github.io/09_inference_system/kv_cache/02_systems/hicache/hicache_deep_dive.html |
 | 读取时间 | 2026-07-25 |
 | 整理范围 | 物理 KV、请求映射、Radix 索引、引用保护、page、HiCache 读写与控制面 |
-| 不展开内容 | RadixAttention 命中算法细节、具体 L3 后端源码 |
+| 不展开内容 | 具体 L3 后端源码；树匹配以原文概念模型解释，实际页粒度与混合状态另列固定源码对照 |
 | 验证边界 | 基于第三方源码解读整理；参数默认值、后端支持和热插拔约束需在目标版本复核 |
 
 ### 怎么读本文
 
-1. 第 1～3 节先记住“三张表”：长期索引、请求视图、物理数据。
-2. 第 4～6 节走一遍匹配、分配、forward、回收。
-3. 第 7 节再引入 HiCache L1/L2/L3。
-4. 第 8～11 节理解 I/O、布局和工程边界。
+先读三张表和前缀例子：树告诉请求去哪里找，请求映射把逻辑位置连到物理 slot，KV Pool 保存数值。再看共享保护、分配与回收。需要使用 HiCache 时，展开后面的分层 I/O、布局与控制说明；不必在首轮记住全部后端选项。
 
 ### 术语速查
 
@@ -85,6 +82,56 @@ slot 11 -> token B 的 KV
 | Radix Tree | token 段、slot 索引、引用/淘汰元数据 | K/V tensor 本体 |
 | ReqToTokenPool | 活跃请求的一行 slot 映射 | 跨请求长期缓存策略 |
 | KV Pool | K/V tensor | token 内容语义和请求优先级 |
+
+<a id="prefix-match-to-readable-kv"></a>
+## 从公共前缀走到可读数据
+
+一条请求看上去“命中缓存”，至少经过三次判断：计算身份一致，索引找到可复用的位置，所需数据已经能被本次计算读取。前两步成功后，仍可能要分配请求槽位、建立引用或等待回载。
+
+例如旧请求处理过 `[A,B,C,D,E,F,G,H]`，新请求是 `[A,B,C,D,E,F,X,Y]`。二者的公共 token 前缀有 6 个。若采用[普通分页 Radix 的固定示例](<SGLang KV 映射与共享回收学习文档.md#3-整页命中相同-token-还要满足页与身份条件>)，页大小为 4，实际复用长度向下对齐到 4。这个例子来自 `279339f113`，并非下面第三方树模型的统一配置。
+
+| 步骤 | 已经知道什么 | 还需要做什么 |
+| --- | --- | --- |
+| 身份检查 | 前 6 个 token 相同 | 确认模型、权重、输入解释和缓存命名空间等计算条件兼容 |
+| 匹配与对齐 | 本例找到可复用的前 4 个位置 | 建立请求到这些物理位置的映射，并保护仍要使用的数据 |
+| 设备就绪 | 若这些 KV 在 GPU 上且可读，可用于计算 | 若在 Host 或远端，先按对应路径回载并满足完成条件 |
+| 继续前向 | 从合法位置处理剩余后缀 | 为新状态分配空间，完成后再按策略保留前缀 |
+
+若模型还需要递推状态或卷积窗口，单独拥有历史 K/V 也不够；继续读[混合状态恢复](<../../大模型推理/模型架构/KDA Cache 检查点、前缀复用与投机回滚学习文档.md>)。关于页对齐、树匹配和 Host 可读范围的实现，见 [HiCache 前缀命中源码](<HiCache 前缀命中源码学习文档.md>)。
+
+### 压缩树为什么需要分裂
+
+普通 Trie 可以每个节点只存一个 token。压缩 Radix Tree 把没有分叉的一段 token 放进同一个节点，减少节点与指针。若新请求只共享节点的前半段，树需要把公共段和差异后缀分开，后续请求才有明确的分支可走。
+
+```mermaid
+flowchart LR
+    O[旧节点 A B C D E F] --> S[公共段 A B C D]
+    S --> E[旧后缀 E F]
+    S --> N[新后缀 X Y]
+```
+
+图意：这是数据结构的示意。切开节点只建立索引边界，不会生成缺失的 KV，也不能绕过页对齐、状态检查点或回载条件。
+
+![原文中的 RadixAttention 插入、匹配、分裂与淘汰](../../images/prefix-cache-matching/01-sglang-radixattention-steps.jpg)
+
+**图意解读：** 原图依次展示插入共享前缀、在分叉处分裂节点、挂接不同后缀和淘汰旧节点。它解释树如何组织共享关系；没有固定实现版本，不能据此断言任意 SGLang 配置都能复用到任意 token 边界。
+
+### child_key、真实匹配和碰撞要分别确认
+
+《KV Cache 前缀匹配的设计分野》把查找描述为“先用首个 page 的哈希定位 child，再比较真实 token”。这是该文的解释模型，未核对固定源码，不能当作所有 SGLang 版本的键实现。
+
+可保留的阅读方法是：先看字典 key 怎样定位候选，再看匹配函数怎样检查内容，最后看允许在哪个边界分裂。哈希碰撞是否只增加一次无效比较，还取决于候选如何保存、冲突如何处理；仅有“后面还会比较 token”不足以证明完整碰撞处理正确。
+
+| 要核对的点 | 为什么重要 |
+| --- | --- |
+| key 包含什么 | 决定不同计算身份会不会进入同一候选空间 |
+| 怎样比较候选 | 决定如何确认实际公共前缀 |
+| 哪些边界可复用 | 受页大小、状态类型与记录存在性约束 |
+| 谁仍持有引用 | 决定节点和物理位置能否被淘汰或改写 |
+
+### 这一节的来源与版本
+
+新增的压缩树解释承接原文 [《KV Cache 前缀匹配的设计分野》](https://mp.weixin.qq.com/s/GciJebFszheSqU-s3yZPMQ)，作者 Lychee & Ethan，原读取日期 2026-07-17。原稿没有固定 SGLang 提交。页大小为 4 的对照来自仓内 `279339f113` 文档；HiCache 深读固定 `72d5c5bb73`。本次整理只组合解释和核对已有证据，不表示重新运行了引擎或验证了所有版本的匹配算法。
 
 ## 2. KV Pool：物理数据面
 
@@ -186,14 +233,12 @@ flowchart LR
     G --> B
 ```
 
-### 4.3 不重复展开命中算法
+<a id="43-不重复展开命中算法"></a>
+### 4.3 命中后还要确认什么
 
-child key、压缩节点分裂、任意 token 边界匹配已经在：
+压缩树和节点分裂见[前面的前缀例子](#prefix-match-to-readable-kv)。Radix Tree 返回的是可复用位置，而不是 K/V tensor 本体；本次计算还要确认请求映射、引用保护和数据可读条件。允许复用到哪个位置，要按页大小、模型状态与具体实现判断。
 
-- [SGLang RadixAttention 前缀缓存命中定义学习文档](SGLang%20RadixAttention%20%E5%89%8D%E7%BC%80%E7%BC%93%E5%AD%98%E5%91%BD%E4%B8%AD%E5%AE%9A%E4%B9%89%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
-- [SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档](SGLang%20RadixAttention%20%E4%B8%8E%20HiCache%20KV%20Cache%20%E6%8A%80%E6%9C%AF%E4%B8%BB%E7%BA%BF%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
-
-本篇只需要记住：Radix Tree 返回的不是 KV tensor，而是一段可复用 slots。
+需要了解 HiCache、HiSparse 与 ShadowRadix 的关系，再选读[技术演进主线](<SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>)。
 
 ## 5. `lock_ref`：活跃请求为什么不会被驱逐
 
@@ -296,6 +341,9 @@ Page 可能同时影响：
 
 ## 8. HiCache：把物理 KV 扩展成 L1/L2/L3
 
+<details>
+<summary>使用 HiCache 时展开这一部分工程细节</summary>
+
 ![HiCache Scheduler、HiRadixTree、Cache Controller 与三级存储](../../images/sglang-kv-pool-hicache/02-hicache-control-path.jpg)
 
 **图意解读：** Scheduler 和 HiRadixTree 构成控制面：匹配某段前缀在哪一层、决定是否等待。Cache Controller 与 GPU/Host/Storage 执行数据传输。模型 forward 只能直接消费 L1 GPU KV；L2/L3 命中必须先 load back，不能把“远端存在”误当作“GPU ready”。
@@ -327,7 +375,12 @@ Page 可能同时影响：
 - L2/L3 可发现长度；
 - admission 前实际 load 完成长度。
 
+</details>
+
 ## 9. 读取链路：发现不等于可用
+
+<details>
+<summary>使用 HiCache 时展开这一部分工程细节</summary>
 
 ### 9.1 L3 -> L2 -> L1
 
@@ -368,7 +421,12 @@ sequenceDiagram
 
 否则不同 rank 会对 sequence length 和 Attention 范围产生分歧。
 
+</details>
+
 ## 10. 写入链路：何时备份
+
+<details>
+<summary>使用 HiCache 时展开这一部分工程细节</summary>
 
 ### 10.1 三种策略
 
@@ -398,7 +456,12 @@ L3 常以 page token/hash 作为 key：
 
 跨 TP 规模共享还要保证 shard/layout 兼容，不能只因 token 相同就直接复用字节。
 
+</details>
+
 ## 11. Host Layout 与“零拷贝”的边界
+
+<details>
+<summary>使用 HiCache 时展开这一部分工程细节</summary>
 
 ### 11.1 为什么 GPU 布局不一定适合 I/O
 
@@ -423,7 +486,12 @@ L3 常以 page token/hash 作为 key：
 
 布局、I/O backend、page size 和 TP shard 必须一起配置。
 
+</details>
+
 ## 12. 控制面：热插拔为什么要屏障
+
+<details>
+<summary>使用 HiCache 时展开这一部分工程细节</summary>
 
 原文描述 HiCache 可以在运行时 attach/detach L3 backend。安全切换至少要确保：
 
@@ -436,7 +504,12 @@ L3 常以 page token/hash 作为 key：
 
 在目标版本未确认前，不应把热插拔当作无条件零停机能力。
 
+</details>
+
 ## 13. HiCache 与 Mooncake 后端的职责边界
+
+<details>
+<summary>使用 HiCache 时展开这一部分工程细节</summary>
 
 ### 13.1 HiCache
 
@@ -470,6 +543,8 @@ Mooncake 可以是 HiCache 的一个外部存储/传输后端。此时：
 | 副本何时可回收 | pending/ongoing → ACK → 引用解除 → 淘汰 | 同上第 5、7、13 节 |
 
 例如 `host_hit_length=512` 只是匹配时的恢复需求；若设备预算或分配使回载失败，调度器仍须按实际设备索引重新计算剩余输入。Host 和 L3 扩大复用来源，不直接替设备提供 forward 的活跃空间。
+
+</details>
 
 ## 14. 排障地图
 

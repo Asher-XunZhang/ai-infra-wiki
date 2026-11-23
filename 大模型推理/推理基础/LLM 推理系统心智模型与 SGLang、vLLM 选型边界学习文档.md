@@ -189,8 +189,8 @@ vLLM APC 用链式 block hash 组织前缀身份；SGLang RadixAttention 用压�
 
 详细机制分别见：
 
-- [vLLM APC 链式哈希学习文档](../../vllm/KV%E7%BC%93%E5%AD%98/vLLM%20APC%20%E9%93%BE%E5%BC%8F%E5%93%88%E5%B8%8C%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
-- [SGLang RadixAttention 前缀缓存命中定义学习文档](../../sglang/KV%E7%BC%93%E5%AD%98/SGLang%20RadixAttention%20%E5%89%8D%E7%BC%80%E7%BC%93%E5%AD%98%E5%91%BD%E4%B8%AD%E5%AE%9A%E4%B9%89%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
+- [vLLM APC 链式哈希学习文档](../../vllm/KV缓存/vLLM%20V1%20KV%20Cache%20管理全生命周期源码学习文档.md#apc-design-and-tail)
+- [SGLang RadixAttention 前缀缓存命中定义学习文档](../../sglang/KV缓存/SGLang%20KV%20Pool、请求视图与%20HiCache%20工程学习文档.md#prefix-match-to-readable-kv)
 
 ## 4. SGLang 与 vLLM 应该比较哪些维度
 
@@ -222,7 +222,7 @@ vLLM APC 用链式 block hash 组织前缀身份；SGLang RadixAttention 用压�
 
 需要把这些抽象放回真实模块时，继续读 [SGLang 与 vLLM V1 架构差异](<SGLang 与 vLLM V1 架构差异源码学习文档.md>)：固定公开源码，对照进程边界、请求闭环、ZMQ / 序列化 / 共享内存及调度接口。该篇是机制与结构分析，不替代这里要求的目标负载压测。
 
-比较专用核心与通用在线引擎时，继续读 [DeepInfer、vLLM 与 SGLang 的交付范围](<../分布式服务/DeepInfer、vLLM 与 SGLang 的交付范围与机制比较学习文档.md>)：分别核对发布范围、服务宿主和部署组合，不能根据代表性机制推断其他框架缺少相同能力。
+比较专用核心与通用在线引擎时，继续读 [DeepInfer、vLLM 与 SGLang 的交付范围](<../分布式服务/DeepInfer%20专用推理引擎与生产系统边界学习文档.md#delivery-boundary>)：分别核对发布范围、服务宿主和部署组合，不能根据代表性机制推断其他框架缺少相同能力。
 
 ### 4.3 “零开销”应怎样理解
 
@@ -339,7 +339,7 @@ flowchart TD
 | HiCache 四种搬运与资源生命周期 | [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<../../sglang/KV缓存/HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) |
 | HiCache 与 Mooncake 后端的职责边界 | [Mooncake 与 SGLang HiCache 学习文档](../../sglang/KV%E7%BC%93%E5%AD%98/Mooncake%20%E4%B8%8E%20SGLang%20HiCache%20%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) |
 | 多副本和路由怎么选 | [SGLang 数据并行、负载均衡与专家并行边界学习文档](../../sglang/%E5%B9%B6%E8%A1%8C%E6%96%B9%E6%B3%95/SGLang%20%E6%95%B0%E6%8D%AE%E5%B9%B6%E8%A1%8C%E3%80%81%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E4%B8%8E%E4%B8%93%E5%AE%B6%E5%B9%B6%E8%A1%8C%E8%BE%B9%E7%95%8C%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) |
-| 长上下文 kernel 调度 | [PersistentKV 长上下文注意力调度学习文档](../../vllm/%E6%80%A7%E8%83%BD%E5%B7%A5%E7%A8%8B/PersistentKV%20%E9%95%BF%E4%B8%8A%E4%B8%8B%E6%96%87%E6%B3%A8%E6%84%8F%E5%8A%9B%E8%B0%83%E5%BA%A6%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) |
+| 长上下文 kernel 调度 | [PersistentKV 长上下文注意力调度学习文档](../性能工程/PersistentKV%20长上下文注意力调度学习文档.md) |
 
 ### 7.3 源码型资料
 
@@ -359,7 +359,7 @@ flowchart TD
 | 序号 | 原文主题 | 归入文档 |
 | ---: | --- | --- |
 | 1 | SGLang KV Pool、Radix Tree、请求视图 | [SGLang KV Pool、请求视图与 HiCache 工程学习文档](../../sglang/KV%E7%BC%93%E5%AD%98/SGLang%20KV%20Pool%E3%80%81%E8%AF%B7%E6%B1%82%E8%A7%86%E5%9B%BE%E4%B8%8E%20HiCache%20%E5%B7%A5%E7%A8%8B%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) |
-| 2 | PersistentKV 长上下文调度 | [PersistentKV 长上下文注意力调度学习文档](../../vllm/%E6%80%A7%E8%83%BD%E5%B7%A5%E7%A8%8B/PersistentKV%20%E9%95%BF%E4%B8%8A%E4%B8%8B%E6%96%87%E6%B3%A8%E6%84%8F%E5%8A%9B%E8%B0%83%E5%BA%A6%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) |
+| 2 | PersistentKV 长上下文调度 | [PersistentKV 长上下文注意力调度学习文档](../性能工程/PersistentKV%20长上下文注意力调度学习文档.md) |
 | 3 | 连续批处理 | [vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档](../../vllm/%E8%BF%90%E8%A1%8C%E6%97%B6/vLLM%20%E4%BB%8E%E8%BF%9E%E7%BB%AD%E6%89%B9%E5%A4%84%E7%90%86%E5%88%B0%20PagedAttention%20%E7%9A%84%E5%BC%95%E6%93%8E%E5%B7%A5%E4%BD%9C%E6%B5%81%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) |
 | 4 | SGLang Scheduler 代码解析 | [SGLang 调度器请求生命周期与重叠调度学习文档](../../sglang/%E8%BF%90%E8%A1%8C%E6%97%B6/SGLang%20%E8%B0%83%E5%BA%A6%E5%99%A8%E8%AF%B7%E6%B1%82%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E4%B8%8E%E9%87%8D%E5%8F%A0%E8%B0%83%E5%BA%A6%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) |
 | 5 | SGLang Chunked Prefill | [SGLang Chunked Prefill 与调度器显存预算学习文档](../../sglang/%E8%BF%90%E8%A1%8C%E6%97%B6/SGLang%20Chunked%20Prefill%20%E4%B8%8E%E8%B0%83%E5%BA%A6%E5%99%A8%E6%98%BE%E5%AD%98%E9%A2%84%E7%AE%97%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md) |

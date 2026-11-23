@@ -745,7 +745,7 @@ C = Q + I + R_front + R_outer
 | 已有资料 | 本篇补足什么 | 保留的边界 |
 | --- | --- | --- |
 | [心智模型与选型边界](<LLM 推理系统心智模型与 SGLang、vLLM 选型边界学习文档.md>) | 把选型维度落实为进程、对象与通信接口 | 原文的第三方来源与压测方法不改称本篇源码实测 |
-| [三引擎交付范围与机制比较](<../分布式服务/DeepInfer、vLLM 与 SGLang 的交付范围与机制比较学习文档.md>) | 单独深入 SGLang / vLLM 的运行时结构 | 不把 DeepInfer 或其他版本拼进本篇双引擎主图 |
+| [三引擎交付范围与机制比较](<../分布式服务/DeepInfer%20专用推理引擎与生产系统边界学习文档.md#delivery-boundary>) | 单独深入 SGLang / vLLM 的运行时结构 | 不把 DeepInfer 或其他版本拼进本篇双引擎主图 |
 | [SGLang 系统边界](<../../sglang/运行时/SGLang 系统边界与学习地图学习文档.md>)与 [架构课程](<../../sglang/source-study/architecture/README.md>) | 提供与 vLLM 的对应入口 | 原有单卡图、课程与各自固定提交继续独立成立 |
 | [vLLM 引擎工作流](<../../vllm/运行时/vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档.md>) | 补充明确的 V1 进程与执行器视图 | 旧文的 V0 历史示例不自动升级为 V1 行为 |
 | [Chunked Prefill 与共推](<../调度方法/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) | 连接进度预算、batch 模式和执行接口 | 旧 SGLang `muxi-main` 的选批结论不泛化 |

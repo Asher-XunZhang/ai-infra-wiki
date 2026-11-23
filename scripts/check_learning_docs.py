@@ -125,6 +125,29 @@ def main():
         and not p.relative_to(ROOT).parts[0].startswith('.')
     })
     learning = [p for p in docs if p.suffix == '.md' and p.relative_to(ROOT).parts[0] in topics]
+    # A retired article may keep its public Markdown URL as a short migration
+    # entry. Its destination remains subject to normal link/anchor checks; it
+    # must point straight to an active article and contain an actual link.
+    redirects = {}
+    for path in learning:
+        marker = re.search(r'^<!-- article-redirect: (.+?) -->$', docs[path], re.M)
+        if marker:
+            destination = resolve(path, marker[1])
+            if destination is None:
+                failures.append(f'{path.relative_to(ROOT)}: migration target must be local')
+            else:
+                redirects[path] = destination
+    for path, (target, fragment) in redirects.items():
+        if target not in learning or target.name == 'README.md':
+            failures.append(f'{path.relative_to(ROOT)}: migration target must be a learning article')
+        elif target in redirects:
+            failures.append(f'{path.relative_to(ROOT)}: migration chain or cycle')
+        elif fragment and fragment not in ids[target]:
+            failures.append(f'{path.relative_to(ROOT)}: missing migration anchor: {fragment}')
+        if target not in outgoing.get(path, set()):
+            failures.append(f'{path.relative_to(ROOT)}: migration target has no reader link')
+        if len(prose(docs[path]).splitlines()) > 20:
+            failures.append(f'{path.relative_to(ROOT)}: migration entry still contains a long article')
     for topic in topics:
         index = ROOT / topic / 'README.md'
         if index not in outgoing.get(ROOT / 'README.md', set()):
@@ -142,7 +165,7 @@ def main():
         if directory / 'README.md' not in outgoing.get(index, set()):
             failures.append(f'{directory.relative_to(ROOT)}: missing parent navigation entry')
     for path in learning:
-        if path.name == 'README.md':
+        if path.name == 'README.md' or path in redirects:
             continue
         if 'source-study' in path.relative_to(ROOT).parts:
             # Existing ordered course uses one central chapter index.
@@ -158,7 +181,8 @@ def main():
     for failure in failures:
         print(f'ERROR: {failure}', file=sys.stderr)
     print(f'Checked {len(docs)} Markdown/HTML files, {checked} local link occurrences, '
-          f'{len(learning)} learning documents, image placement and navigation coverage; '
+          f'{len(learning)} learning documents ({len(redirects)} migration entries), '
+          f'image placement and navigation coverage; '
           f'{len(failures)} errors.')
     return bool(failures)
 

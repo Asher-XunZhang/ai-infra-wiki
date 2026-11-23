@@ -1,14 +1,19 @@
 # SGLang 调度器请求生命周期与重叠调度学习文档
 
+本篇用于核对较早资料中的对象、选批与 Overlap。第一次学习请先读[调度循环与批次执行旅程](<SGLang 调度循环与批次执行旅程学习文档.md>)；这里继续保留各来源与本篇固定版本的细节。
+
 本文面向第一次读 SGLang Scheduler 的同学，围绕一个问题展开：
 
 > 一个请求从进入 `waiting_queue`，到完成 Prefill、参与 Decode、流式输出并释放资源，中间经历了哪些对象和状态？
 
-本文把三篇 Scheduler 分析合并成一条主线，避免分别复述。它是第三方资料整理型学习资料，2026-09-09 补充官方固定版本的静态抽查；历史文章中的字段和调用形式仍需与目标版本区分。先建立全局地图可读[调度机制总览与学习路线](<SGLang 调度机制总览与学习路线.md>)。
+本文把三篇 Scheduler 分析合并成一条主线，避免分别复述。它是第三方资料整理型学习资料，2026-09-09 补充官方固定版本的静态抽查；历史文章中的字段和调用形式仍需与目标版本区分。先建立全局地图可读[调度机制总览与学习路线](<SGLang%20调度循环与批次执行旅程学习文档.md#scheduler-decisions>)。
 
 先建立时间与依赖模型：[调度循环与批次执行旅程](<SGLang 调度循环与批次执行旅程学习文档.md>)（独立固定提交 279339f113；普通循环、Overlap、普通 PP）。本篇继续保留自己的范围与源码基线。
 
 ## 0. 阅读基线与范围
+
+<details>
+<summary>按需查看历史版本、背景或深入索引</summary>
 
 ### 0.1 来源
 
@@ -27,7 +32,7 @@
 
 第二篇页面标注[知乎原始文章](https://zhuanlan.zhihu.com/p/1992587332189197731)。转载和原文属于一组来源，不能算作两份独立证据。原先引用的《SGLang Overview：设计哲学与关键机制》不再作为本文的技术依据；本次来源筛选和排除理由见总览文档。
 
-**静态抽查基线：** 官方 `sgl-project/sglang` commit `6e312af8c25ccedd1dcd2583358be038ab4875b0`，读取日 2026-09-09。读取固定版文件的临时副本，没有检出分支或修改本地 SGLang 仓库；实际读取目录和工作区边界见[总览基线](<SGLang 调度机制总览与学习路线.md>)第 0.3 节。本文仍保留历史主线伪代码，用来说明行为；具体签名变化见第 12 节。
+**静态抽查基线：** 官方 `sgl-project/sglang` commit `6e312af8c25ccedd1dcd2583358be038ab4875b0`，读取日 2026-09-09。读取固定版文件的临时副本，没有检出分支或修改本地 SGLang 仓库；实际读取目录和工作区边界见[总览基线](<SGLang%20调度循环与批次执行旅程学习文档.md#scheduler-decisions>)第 0.3 节。本文仍保留历史主线伪代码，用来说明行为；具体签名变化见第 12 节。
 
 配图均来自三篇原文，已逐张检查。保留的原图、SHA256 和未采用图像的原因见[配图记录](../../images/sglang-scheduler/SOURCES.md)。没有采用含错误分支或严重文字错误的三张原图。
 
@@ -56,7 +61,12 @@
 | Retract | KV 不够时，把部分 Decode 请求撤回等待队列 |
 | Overlap | GPU 跑当前批时，CPU 准备/收尾其他批 |
 
+</details>
+
 ## 1. 先建立整体地图
+
+<details>
+<summary>按需查看历史版本、背景或深入索引</summary>
 
 ### 1.1 Scheduler 不是一个排序函数
 
@@ -70,7 +80,7 @@ Scheduler 同时负责：
 
 ![SGLang Scheduler 总体工作流](../../images/sglang-scheduler/01-scheduler-overview.png)
 
-**图意解读：** 图把输入处理、等待队列、Prefill/Decode batch、模型执行和输出连在一起。Scheduler 拥有控制权，决定下一轮的请求集合；GPU worker 拥有实际 forward 数据面。图中部分高级分支是概念汇总，不应当用来推断当前源码中每个模块都在同一进程。
+**图意解读：** 图把输入处理、等待队列、Prefill/Decode batch、模型执行和输出连在一起。Scheduler 拥有控制权，决定下一轮的请求集合；worker/runner 发起模型 forward，设备执行实际计算。图中部分高级分支是概念汇总，不应当用来推断当前源码中每个模块都在同一进程。
 
 ### 1.2 从组件看端到端
 
@@ -94,6 +104,8 @@ flowchart TD
 ```
 
 最重要的一点是：**EXTEND 执行完不会在同一行代码里立即变成 DECODE。** 它通常先成为 `last_batch`，下一轮调度开头再经过过滤并入 `running_batch`。
+
+</details>
 
 ## 2. 两组概念必须拆开
 
@@ -550,6 +562,9 @@ flowchart LR
 
 ## 9. Scheduler 与 KV 三种结构的接口
 
+<details>
+<summary>按需查看历史版本、背景或深入索引</summary>
+
 本篇只保留接口关系：
 
 ![前缀索引、请求寻址表和实际 KV 的对应关系](../../images/sglang-scheduler/06-prefix-slot-mapping.jpg)
@@ -574,9 +589,14 @@ flowchart LR
 详细见：
 
 - [SGLang KV Pool、请求视图与 HiCache 工程学习文档](../KV%E7%BC%93%E5%AD%98/SGLang%20KV%20Pool%E3%80%81%E8%AF%B7%E6%B1%82%E8%A7%86%E5%9B%BE%E4%B8%8E%20HiCache%20%E5%B7%A5%E7%A8%8B%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
-- [SGLang RadixAttention 前缀缓存命中定义学习文档](../KV%E7%BC%93%E5%AD%98/SGLang%20RadixAttention%20%E5%89%8D%E7%BC%80%E7%BC%93%E5%AD%98%E5%91%BD%E4%B8%AD%E5%AE%9A%E4%B9%89%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
+- [SGLang RadixAttention 前缀缓存命中定义学习文档](../KV缓存/SGLang%20KV%20Pool、请求视图与%20HiCache%20工程学习文档.md#prefix-match-to-readable-kv)
+
+</details>
 
 ## 10. 特殊能力应放在哪里理解
+
+<details>
+<summary>按需查看历史版本、背景或深入索引</summary>
 
 | 能力 | 对主线的影响 | 建议 |
 | --- | --- | --- |
@@ -610,6 +630,8 @@ flowchart TD
 
 上述专题记录实际源码目录、分支、commit 与只读验证边界，不覆盖本文旧文章未验证的性能结论。
 
+</details>
+
 ## 11. 小白排障地图
 
 | 现象 | 先看状态 | 再看机制 |
@@ -623,6 +645,9 @@ flowchart TD
 | 多 rank 状态不一致 | 请求广播、collective、特殊模式 | 不要假设只有一个 Scheduler 进程 |
 
 ## 12. 源码阅读路线
+
+<details>
+<summary>按需查看历史版本、背景或深入索引</summary>
 
 **固定版与历史文章的差异：** 本次官方 commit 中，`get_next_batch_to_run(running_batch, last_batch)` 返回 `NextBatchPlan`，event loop 从 `plan.running_batch` 和 `plan.batch_to_run` 取值。旧文中直接返回 batch 的伪代码只表达控制流，不是当前可执行 API。请求接收已可在 `scheduler_components/request_receiver.py` 阅读，结果处理在 `scheduler_components/batch_result_processor.py`，不能仅凭旧 mixin 文件名查找失败就判断功能消失。
 
@@ -644,11 +669,16 @@ flowchart TD
 这个变化何时对下一轮可见？
 ```
 
+</details>
+
 ## 13. 一句话总结
 
 SGLang Scheduler 的主线是一个受 KV 预算约束的请求状态机：EXTEND 从等待队列接纳请求，执行后经 `last_batch` 合入 `running_batch`；DECODE 每轮检查空间并推进，资源不足时 retract；Overlap 只改变这些阶段在时间上的交叠，不改变它们的因果关系。
 
 ## 14. 参考与延伸
+
+<details>
+<summary>按需查看历史版本、背景或深入索引</summary>
 
 对照案例：[DeepInfer ZOS 的前后步交接](<../../大模型推理/分布式服务/DeepInfer 专用推理引擎与生产系统边界学习文档.md#3-zos错开结果处理减少设备空等>)，可比较上一轮结果回收、下一轮执行和变长验证元数据的关系；相同的重叠目标不表示两套实现共享对象或同步协议。
 
@@ -659,7 +689,9 @@ SGLang Scheduler 的主线是一个受 KV 预算约束的请求状态机：EXTEN
 - 《从 KV Cache 到 Zero Overhead Scheduling，一文读懂 SGLang 的调度巧思》转载：https://mp.weixin.qq.com/s/-O5W_4CGD0XJMAtHckn3nw
 - 同文原始链接：https://zhuanlan.zhihu.com/p/1992587332189197731?share_code=XlfqtsjMrMgv&utm_psn=2064184295120548792
 - 《SGLang推理优化-调度器核心ScheduleBatch》：https://mp.weixin.qq.com/s/e--Z3OKzilcZuJFoi7Hizg
-- [调度机制总览与学习路线](<SGLang 调度机制总览与学习路线.md>)：来源筛选、官方基线和八条资料去向。
+- [调度机制总览与学习路线](<SGLang%20调度循环与批次执行旅程学习文档.md#scheduler-decisions>)：来源筛选、官方基线和八条资料去向。
 - [固定版 ForwardBatch](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/model_executor/forward_batch_info.py#L748)：区分字段复用与设备拷贝。
 
 本文以第三方资料为主，附有限官方静态抽查；第 8 节的同步与对象生命周期说明不构成 GPU 并发正确性的测试报告。
+
+</details>

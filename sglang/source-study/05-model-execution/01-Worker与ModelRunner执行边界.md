@@ -1,6 +1,6 @@
 # Worker 与 ModelRunner 执行边界
 
-> **先建立架构心智模型：** [M06 · 模型执行与算子分层](<../architecture/06-模型执行与算子分层.md>)。先看职责、数据和生命周期，再回到本篇源码细节。
+> 架构导读：[M06 · 模型执行与算子分层](<../architecture/06-模型执行与算子分层.md>)。
 
 本文是**源码分析型学习资料**。前面已经知道 Scheduler 怎样选出请求、准备长度并分配 KV 槽位；现在继续追问：**这份 batch 怎样变成模型本轮真正读取的输入，谁选择执行路径，返回后谁负责推进下一轮？**
 
@@ -345,7 +345,9 @@ sequenceDiagram
 
 Overlap 的 run_batch 安排 forward stream 与 schedule stream 的依赖，再依条件由 forward/copy stream 复制结果。[S3] `GenerationBatchResult.copy_to_cpu` 按实际返回需求复制 token、选定 logprob、hidden/辅助结果等，在末尾 record copy_done；不是每次都把全词表 logits 完整搬回 CPU。[S36]
 
-CUDA 的 `_async_d2h` 显式分配 pinned 目的 tensor、提交非阻塞 copy，并为源 tensor record_stream，以保护复制期间的源存活。[S37] 结果处理中的 Prefill/Decode 分支在存在 copy_done 时 synchronize，再消费结果。[S38][S39] 普通路径不一定有这个事件，读取 token 的 tolist 等位置仍是分析主机读数边界的入口；没有事件字段不能直接推断读取无等待。
+CUDA 的 `_async_d2h` 先分配用于接收结果的 pinned tensor，再提交非阻塞 copy。它还对源 tensor 调用 record_stream，防止复制期间源数据被提前回收。[S37]
+
+Prefill/Decode 的结果处理分支如果拿到了 copy_done，会先 synchronize，等复制完成后再消费结果。[S38][S39] 普通路径不一定有这个事件，还要查看读取 token 的 tolist 等位置。没有事件字段，也不能据此判断主机读取时无需等待。
 
 Overlap 的 `_forward_isolation` 还会临时替换 sampling_info；投机场景保存/恢复更多 ScheduleBatch 字段，普通场景没有把整份对象深拷贝成独立事务。[S40] 再结合 run_batch 的 keepalive 和复制依赖，才能理解哪些借用字段需要存活。完整的流/事件与下一批共享读取关系见 [03-05](../03-scheduling/05-Overlap中的CPU与GPU依赖.md)。
 

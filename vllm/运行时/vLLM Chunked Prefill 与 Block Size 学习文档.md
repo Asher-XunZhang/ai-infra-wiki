@@ -302,7 +302,7 @@ Chunked Prefill 只需要切 1,800 个未计算 token，而不是重切整个 pr
 != 可复用完整 block 长度
 ```
 
-APC 的链式 hash 细节见 [vLLM APC 链式哈希学习文档](../KV%E7%BC%93%E5%AD%98/vLLM%20APC%20%E9%93%BE%E5%BC%8F%E5%93%88%E5%B8%8C%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)。
+APC 的链式 hash 细节见 [vLLM APC 链式哈希学习文档](../KV缓存/vLLM%20V1%20KV%20Cache%20管理全生命周期源码学习文档.md#apc-design-and-tail)。
 
 ## 8. 调参方法
 

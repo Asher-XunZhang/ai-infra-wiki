@@ -1,10 +1,14 @@
 # Frontend DSL 与 Runtime 的关系
 
-> **先建立架构心智模型：** [M12 · DSL与Diffusion及插件边界](<../architecture/12-DSL与Diffusion及插件边界.md>)。先看职责、数据和生命周期，再回到本篇源码细节。
+> 架构导读：[M12 · DSL与Diffusion及插件边界](<../architecture/12-DSL与Diffusion及插件边界.md>)。
 
 本文是**源码分析型学习资料**，面向已经知道 SGLang 能提供推理服务、但还不清楚 `@sgl.function` 和 `sgl.gen` 在系统哪一层工作的读者。
 
 本篇沿一段“两轮问答”程序走通：**Python 函数 → 表达式 IR → ProgramState / StreamExecutor → RuntimeEndpoint → SRT 的 /generate → 生成结果回到变量和文本**。随后只扩展理解这条主线所需的流式、批量、fork/join、tracing 与错误边界。
+
+**怎么读：** 沿两轮问答追输入文本与变量结果，先看程序何时发送请求，再按需看流式和 fork。
+
+主线：[2. 先看一段完整但未执行的例子](#2-先看一段完整但未执行的例子) → [3. 从 Python 表达式到 IR：现在发生了什么](#3-从-python-表达式到-ir现在发生了什么) → [4. 谁保存哪些状态，谁拥有它们](#4-谁保存哪些状态谁拥有它们) → [5. 两轮问答 walkthrough：完整文本怎样成为两次请求](#5-两轮问答-walkthrough完整文本怎样成为两次请求) → [6. run 返回、变量就绪和队列完成不是一个条件](#6-run-返回变量就绪和队列完成不是一个条件)。
 
 ## 0. 阅读基线与范围
 
@@ -58,6 +62,9 @@
 
 下面示例基于本次读取的调用方式，**只做语法与源码对应检查**。调用 run_example 时传入已准备好的 RuntimeEndpoint；创建 endpoint 和启动服务的过程不混入教学程序。
 
+<details>
+<summary>查看代码或配置原文</summary>
+
 ```python
 import sglang as sgl
 
@@ -86,6 +93,8 @@ def run_example(backend):
         raise error
     return state["answer_1"], state["answer_2"], state.messages()
 ```
+
+</details>
 
 这里未宣称模型一定输出“2”与“二”。后文用 A1/A2 代指**假设已经得到的两个字符串**；它们不是本轮模型结果。
 
@@ -120,9 +129,14 @@ gen 在普通路径返回 SglGen；SglGen 保存名称和采样覆盖值。若 c
 
 因此：
 
+<details>
+<summary>查看代码或配置原文</summary>
+
 ```python
 expr = sgl.gen("answer", max_tokens=16)
 ```
+
+</details>
 
 只是创建表达式对象。真正 backend.generate 出现在 StreamExecutor._execute_gen。[S32]
 
@@ -280,10 +294,15 @@ Python Queue.join 等待已入队任务的 task_done 计数归零，而不是证
 
 如果程序内这样写：
 
+<details>
+<summary>查看代码或配置原文</summary>
+
 ```python
 s += sgl.gen("answer", max_tokens=16)
 answer = s["answer"]  # 等待这一变量，然后 Python 才继续。
 ```
+
+</details>
 
 后面的 Python 分支依赖实际答案，get_var 的等待会把这个依赖落实到客户端线程。[S33] 这不要求服务端理解 Python 的 if/for。
 
@@ -303,6 +322,9 @@ StreamExecutor.end 在 worker 存活时放入 None 哨兵，并调用 backend.en
 若 worker 当前阻塞在 backend 调用中，排到队尾的结束哨兵不能抢占该调用。实际请求超时、断连和服务端取消仍应回到对应网络与请求生命周期分析，不能只靠本地 end 的名字推断。
 
 ## 7. 流式：同一个答案经过两层增量处理
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 7.1 RuntimeEndpoint 从累计 text 中切出增量
 
@@ -352,7 +374,12 @@ text_async_iter(var_name, return_meta_data=True) 可同时返回文本和元信�
 
 HTTP 状态 200 之后，服务端流里仍可能产生 error 对象；当前 RuntimeEndpoint.generate_stream 的正常解析直接索引 data["text"] 和 data["meta_info"]，未在这里专门处理 error-only 对象。[S21] [S23] 因此诊断时要保留原始 SSE 与 worker error，不能只等同于建连失败或正常 [DONE]。本轮没有注入或复现该错误路径。
 
+</details>
+
 ## 8. 批量、fork 与 cache：增加的是哪一层并发或状态
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 8.1 run_batch 是多个程序实例，不是一个固定 GPU batch
 
@@ -430,7 +457,12 @@ extract_prefix_by_tracing 使用 only_trace_prefix，尝试从节点开头提取
 
 **来源与边界：** [Fast and Expressive LLM Inference with RadixAttention and SGLang](https://www.lmsys.org/blog/2024-01-17-sglang/)，Lianmin Zheng、Liangsheng Yin 等 / LMSYS，2024-01-17。图说明前缀复用的应用动机；可见文字重复不保证实际 token、模型状态和缓存命名空间兼容，也不保证仍有可复用 KV。 [来源档案 F06](../../../images/sglang-source-study/SOURCES.md#f06)。
 
+</details>
+
 ## 9. 失败、约束和容易踩错的用法
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 9.1 错误传播分成程序体与 worker 两层
 
@@ -465,7 +497,12 @@ state.error() 表示 worker 的错误槽，并不自动完整收集另一个程�
 
 “API speculative execution”参数在语言层自己的执行分支被读取。本篇不展开其算法，也不由名称推断它与阶段 08 的服务端投机验证/提交是同一个机制。
 
+</details>
+
 ## 10. 怎样用测试验证这篇的理解
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 10.1 已有测试究竟断言了什么
 
@@ -498,6 +535,8 @@ TestBind.setUpClass 会启动 Runtime；不是纯 CPU 语法检查。[S72] 这�
 | 真实释放和取消 | 按服务端请求生命周期检查 | 需要实际请求、设备与日志 |
 
 表内全部**待执行**。没有为了验证文字而导入项目、启动 mock 线程或发起真实生成；本轮只做独立字符串/字典教学账本和 AST 静态核对。
+
+</details>
 
 ## 11. 从现象回到源码
 

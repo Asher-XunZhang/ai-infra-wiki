@@ -2,6 +2,8 @@
 
 本目录只放跨专题使用的全站维护入口。可重复执行的专题回归测试集中在 [tests](../tests/README.md)，测试所依赖的模型、固定基线与生成工具随测试一起维护。
 
+[文章整理与可读性审查](ARTICLE_AUDIT.md)记录全仓清单、整合与删除候选、目录迁移和优先改写位置。记录 2026-11-23 的初审与九组调整实施结果，包括旧址迁移和验证范围。
+
 | 文件 | 复用范围 | 用法 |
 | --- | --- | --- |
 | [check_learning_docs.py](check_learning_docs.py) | 全仓本地链接、锚点、图片目录和学习导航覆盖 | `python3 -B scripts/check_learning_docs.py` |

@@ -1,12 +1,20 @@
 # SGLang PP 共识机制源码学习文档
 
-本文是**源码分析型学习资料**，面向第一次深入 Pipeline Parallel 调度器的读者。主线是：**各 PP stage 如何在请求状态异步变化的情况下，保持请求、microbatch、传输处理和资源生命周期的协调。**
+本文是**源码分析型学习资料**，面向第一次深入 Pipeline Parallel 调度器的读者。同一请求在各 PP stage 有各自的本地状态：本级握手已就绪，别级可能还在等；本级计算结束，也可能还不能释放资源。本文追踪各级交换了什么名单，以及收到名单后还要检查什么。
 
 先给出最重要的结论：SGLang 这里的“共识”是一组具体的调度协调机制。普通 PP 靠输入传播、相同调度逻辑和输出回环对齐；PD+PP 额外用 RID 集合协调队列迁移。不同队列使用不同规则，不能全部概括成“成功取交集、失败取并集”，也不能把收到共识名单等同于所有设备已经完成或所有 stage 已原子提交。
 
-本文另于同日补入官方作者博客与社区讨论：计算原图见第 8.5 节，版本沿革、故障帖和未合并方案见第 15 节。网络补充不改变下列本地源码基线。
+## 首读路线
 
-建议分三遍读：第一遍读第 1～3 节建立概念；第二遍读第 4～8 节跟着一条请求走；第三遍用第 9～13 节检查边界、排障和回到源码。
+| 你要做什么 | 进入章节 |
+| --- | --- |
+| 先看各级为什么不能各自放行 | [1. 为什么 PP 需要共识](#1-为什么-pp-需要共识) |
+| 区分五种队列规则 | [4. 五条队列路径，不是一个集合公式](#4-五条队列路径不是一个集合公式) |
+| 跟随 Prefill 请求 | [6. Prefill 侧：从握手到传输结束](#6-prefill-侧从握手到传输结束) |
+| 按需检查 Decode | [7. Decode 侧：恢复优先、预分配、等待 KV 可用](#7-decode-侧恢复优先预分配等待-kv-可用) |
+| 最后看取消与资源释放 | [10. Abort 与失败：逻辑退场和物理释放分开看](#10-abort-与失败逻辑退场和物理释放分开看) |
+
+源码片段可以按需展开。版本、分支和配置以本篇基线为准；下列路线只调整阅读顺序。
 
 ## 0. 阅读基线与范围
 
@@ -28,7 +36,7 @@
 | 操作边界 | 只读本地固定源码及公开网页/PR，编写 Markdown、保存技术原图并做静态文档检查；未启动 SGLang、运行模型或进行 GPU/网络实验，未向 SGLang 源码仓提交或推送 |
 | 时效边界 | 本次没有刷新远端分支，本文描述该本地开源快照，不声称是 2026-09-14 官方最新实现 |
 
-本文放在 `sglang/`，与 [PD 分离下的 PP 源码学习文档](<PD 分离下的 PP 源码学习文档.md>)、[Pipeline Parallel 模式学习文档](<../并行方法/SGLang Pipeline Parallel 模式学习文档.md>)相邻。前者基于历史 `muxi-main`，后者主要整理第三方文章；本文独立核对开源固定版本，不把三个版本的实现混在一起。现有 [开源源码分阶段学习目录](../source-study/README.md)提供更完整的系统背景。
+本文放在 `sglang/`，与 [PD 分离下的 PP 源码学习文档](<../分离部署/PD%20分离下的%20PP%20源码学习文档.md>)、[Pipeline Parallel 模式学习文档](<SGLang%20Pipeline%20Parallel%20模式学习文档.md>)相邻。前者基于历史 `muxi-main`，后者主要整理第三方文章；本文独立核对开源固定版本，不把三个版本的实现混在一起。现有 [开源源码分阶段学习目录](../source-study/README.md)提供更完整的系统背景。
 
 正文源码路径均相对于 **SGLang 仓库根目录**。文末源码索引提供文件、符号、行号和固定 commit 链接。
 
@@ -519,12 +527,17 @@ P 侧 PP 共识和 D 侧 PP 共识分别在各自的流水线内运行；两边�
 
 `init_pp_loop_state()` 与三个 event loop 使用，[S02]、[S10]、[S12]：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 L = pp_size + pp_async_batch_depth
 mb_id = 当前本地槽位
 next_mb_id = (mb_id + 1) % L
 next_first_rank_mb_id = (mb_id + pp_size) % L
 ```
+
+</details>
 
 | 变量 | 用途 |
 | --- | --- |
@@ -606,6 +619,9 @@ Shangming Cai 的 [Pipeline Parallelism in SGLang: Scaling to Million-Token Cont
 
 ## 9. 通信协议：谁发送、谁广播、靠什么匹配
 
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
+
 ### 9.1 控制面 leader 与 rank 偏移
 
 PP Python 消息由本 stage 的 `attn_tp_rank==0 && attn_cp_rank==0` 发送/接收；接收后调用 `attn_cp_tp_broadcast_pyobj()`，让本 shard 的 TP×CP 参与者看到同一份对象。[S21]
@@ -651,6 +667,8 @@ proxy/output 的 tensor dict 由 `_pp_send_dict_to_next_stage()` 加入 `__msg_t
 | RID 在 terminal 交集 | 各 stage 本轮归约后的 poll 都属于终态 | 全成功、所有 metadata 已校验、所有在途写入已退休 |
 
 **人话版：** 通信送达、GPU 计算完成、业务状态可推进、内存可复用，是四种不同的条件。排障时要问清正在等待或已经拿到的是哪一种。
+
+</details>
 
 ## 10. Abort 与失败：逻辑退场和物理释放分开看
 
@@ -742,14 +760,17 @@ flowchart LR
 
 | 想继续追的问题 | 阅读入口 |
 | --- | --- |
-| 本地命中、Host 命中与 L3 结果怎样变成请求可用前缀 | [HiCache 前缀命中源码学习文档](<../KV缓存/HiCache 前缀命中源码学习文档.md>) 第 4～8 节 |
-| ACK 如何更新 pending、锁和分裂后的节点片段 | [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<../KV缓存/HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) 第 5 节 |
+| 本地命中、Host 命中与 L3 结果怎样变成请求可用前缀 | [HiCache 前缀命中源码学习文档](<../KV缓存/HiCache%20前缀命中源码学习文档.md>) 第 4～8 节 |
+| ACK 如何更新 pending、锁和分裂后的节点片段 | [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<../KV缓存/HiCache%20下%20SGLang%20L1、L2、L3%20与上传回载源码学习文档.md>) 第 5 节 |
 | ready count、completed tokens、timeout 与本地事件怎样协调 | 同上第 11 节 |
 | 取消和 detach 为什么需要先后顺序 | 同上第 13 节 |
 
-**边界提醒：** 前台 ACK 数量传播不能替代本地 event；后台预取完成量也不能替代 admission 的实际回载量。两篇专题均为静态源码分析，未验证 GPU/网络运行行为。原有 [RadixAttention 与 HiCache](<../KV缓存/SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>)仍可作为概念导读。
+**边界提醒：** 前台 ACK 数量传播不能替代本地 event；后台预取完成量也不能替代 admission 的实际回载量。两篇专题均为静态源码分析，未验证 GPU/网络运行行为。原有 [RadixAttention 与 HiCache](<../KV缓存/SGLang%20RadixAttention%20与%20HiCache%20KV%20Cache%20技术主线学习文档.md>)仍可作为概念导读。
 
 ## 12. `rank_consensus_checker`：检测分歧，不代替协议
+
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
 
 ### 12.1 它检查“大家是不是做了同样的事”
 
@@ -772,6 +793,8 @@ Scheduler 初始化时传入 attention CP、attention TP（或 fallback TP）以
 - 启用检测有额外线程、通信和失败退出行为；本文只读源码，没有在服务上开启。
 
 比如 `UnifiedRadixCache` 的 `_can_terminate_prefetch()` 标注 `same_results=True`，作用是确认最终停止决策一致；真正使决策一致的仍是函数内的归约与 PP0 传播逻辑。
+
+</details>
 
 ## 13. 从现象回到源码：排障地图与阅读路线
 
@@ -842,6 +865,9 @@ rid / bootstrap_room / 所在队列 / forward_mode
 
 ## 14. 源码索引、验证记录与延伸
 
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
+
 ### 14.1 固定版本源码锚点
 
 下面链接全部固定到 `72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a`，避免以后打开浮动 `main` 时行号和行为悄悄改变。表中的函数/类及起始行按本地源码核对。
@@ -907,7 +933,14 @@ README 沿用首次整理新增的入口，本次没有再修改；本任务未�
 
 读完后应能用一句完整的话解释这套机制：**SGLang 先在同一 stage 的 TP/CP 内对齐状态，再按队列语义沿 PP 合并 RID，把结果绕回各 stage 按顺序消费；真正运行与释放还要服从本地资源、设备 event 和传输后端的约束。**
 
+</details>
+
 ## 15. 网络文章与社区讨论：实现为何演进、还有哪些边界
+
+本文另于同日补入官方作者博客与社区讨论：计算原图见第 8.5 节，版本沿革、故障帖和未合并方案见第 15 节。网络补充不改变下列本地源码基线。
+
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
 
 ### 15.1 来源地图与阅读方式
 
@@ -1092,3 +1125,5 @@ W12 / [PR #38959](https://github.com/sgl-project/sglang/pull/38959) 创建于 20
 [T05]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/test/registered/cpu/test_rank_consensus_checker.py
 [T06]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/test/registered/unit/disaggregation/test_deferred_decode_kv_release.py
 [T07]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/test/registered/unit/mem_cache/test_hiradix_pp_sync_drain.py
+
+</details>

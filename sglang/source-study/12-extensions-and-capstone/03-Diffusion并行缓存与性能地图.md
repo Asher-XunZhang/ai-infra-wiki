@@ -1,10 +1,14 @@
 # Diffusion 并行缓存与性能地图
 
-> **先建立架构心智模型：** [M12 · DSL与Diffusion及插件边界](<../architecture/12-DSL与Diffusion及插件边界.md>)。先看职责、数据和生命周期，再回到本篇源码细节。
+> 架构导读：[M12 · DSL与Diffusion及插件边界](<../architecture/12-DSL与Diffusion及插件边界.md>)。
 
 本文是**源码分析型学习资料**。沿用上一章的原生 Flux 文生图主线，先把一条请求放到两张卡上，再逐项加入计算缓存、编译、图执行和组件卸载，最后解释如何测量它们。
 
 目标是回答四个问题：**谁划分工作、哪些数据需要通信、复用对象何时失效、日志究竟测到了哪一段。**
+
+**怎么读：** 先确定两张卡如何分工，再选择一种优化比较。计算缓存、编译和卸载分别改变不同对象。
+
+主线：[1. 人话版：先分清四种“少做一点工作”](#1-人话版先分清四种少做一点工作) → [2. 两卡配置：先读解析，再画 rank](#2-两卡配置先读解析再画-rank) → [3. R1 的张量如何在两卡之间移动](#3-r1-的张量如何在两卡之间移动) → [7. 怎样测量，才能知道优化了哪里](#7-怎样测量才能知道优化了哪里)。
 
 ## 0. 阅读基线与范围
 
@@ -217,6 +221,9 @@ Flux forward 先判断 should_shard_text 对应的策略。plan_text_strategy �
 
 ## 4. 计算缓存：复用的不是最后一张图片
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 ### 4.1 先给不同对象分配寿命
 
 | 对象 | 所有者或入口 | 寿命与失效边界 |
@@ -335,7 +342,12 @@ CachableDiT 同时继承 SpectrumMixin 和 TeaCacheMixin，但本篇 FluxTransfo
 
 SamplingParams._validate 明确拒绝 enable_teacache 与 enable_spectrum 同时为真。[S46] 对 Cache-DiT、Spectrum、BCG 的其他叠加，本篇不以“没有在这一处看到报错”认定支持，分别建立基线再检查完整调用链与实验结果。
 
+</details>
+
 ## 5. compile 与 BCG：复用执行方式，仍需正确的数据
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 5.1 编译在哪里接入
 
@@ -394,7 +406,12 @@ replay 先把 live tensor 复制进静态输入，随后 graph.replay，最后 *
 | BCG + Spectrum 或其他动态加速 | 本篇未建立完整组合证明 | 待单独确认，不能任意叠加 |
 | Cache-DiT + 自定义 SCM 跨请求 | 单模型 refresh 参数边界与首次挂载不同 | 需外部版本及运行复核，[S35] [S36] |
 
+</details>
+
 ## 6. 显存优化：谁决定权重什么时候能用
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 6.1 用一次完整请求理解组件驻留
 
@@ -441,6 +458,8 @@ PipelineExecutor 在请求与 stage 上均使用 finally 收尾。[S72] [S73] �
 | 媒体与主机侧 | 输出像素、编码、文件传输及 CPU 权重 | 不能只看某张卡的 allocated 值 |
 
 本表是基于前述调用链的分类建议。峰值必须注明 rank、采样时刻、allocated / reserved / 设备可用量以及是否包含输出处理；不同口径不能混成一个“模型显存”数字。
+
+</details>
 
 ## 7. 怎样测量，才能知道优化了哪里
 
@@ -523,6 +542,9 @@ num_profiled_timesteps 也不能只按名字理解成“文件恰好只含 N 次
 这些是排查假设入口；没有运行记录时，不据此断言某个现象已经由特定原因造成。
 
 ## 9. 测试证据、源码阅读路线与练习
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 9.1 已有测试能证明什么
 
@@ -670,3 +692,5 @@ num_profiled_timesteps 也不能只按名字理解成“文件恰好只含 N 次
 [S85]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/multimodal_gen/test/unit/test_diffusion_bcg_tp_graph_capture.py#L142
 [S86]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/multimodal_gen/test/unit/test_component_residency.py#L53
 [S87]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/multimodal_gen/test/unit/test_component_residency.py#L204
+
+</details>

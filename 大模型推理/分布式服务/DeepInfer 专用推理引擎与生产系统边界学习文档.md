@@ -46,6 +46,49 @@
 
 ## 1. 先看生产系统，再圈出开源引擎
 
+<a id="delivery-boundary"></a>
+### 先确认交付的是什么，再比较机制
+
+比较三个引擎时，先把一个目标说具体：是离线生成结果，提供可持续接收请求的 API，还是把多组设备组织成有缓存、路由和扩缩容的服务？这三层交付需要的组件不同。
+
+| 目标 | 应确认什么 | 本文证据能说明什么 |
+| --- | --- | --- |
+| 执行模型 | 有适配的模型、设备实现和执行入口 | DeepInfer 固定 README 与源码提供执行核心的范围 |
+| 提供 API | 协议转换、真实推理回调、流式输出和取消 | SGLang / vLLM 的服务资料各自说明这些接口，版本需单独核对 |
+| 组织集群 | 实例选点、跨实例缓存、阶段交接、扩缩容和故障处理 | 这些工作还要看外围服务，不能只凭离线生成成功判断 |
+
+DeepInfer 的固定 README 把完整 KV cache system、VE/P/D 分离部署和 P/D 副本负载均衡列为本次发布范围外的集成项。这表示执行核心和完整服务需要继续连接，不表示引擎内部没有 KV、并行或缓存相关接口。[README][readme]
+
+### recipe 的 HTTP 示例怎样理解
+
+`deepseek-recipe@935817c6` 提供协议转换、提示词和输出解析，并有 HTTP 示例；所读 `server-py` 示例使用 mock inference，真实推理与工具执行由调用方接入。先确认 HTTP 宿主调用了哪个真实后端，再检查输出和取消，才能判断服务链是否接通。[recipe][comparison-recipe] [示例][comparison-recipe-server]
+
+```mermaid
+flowchart LR
+    U[客户端] --> H[HTTP 宿主]
+    H --> P[协议转换与输入准备]
+    P --> E[真实推理后端]
+    E --> O[输出解析与流式响应]
+    O --> H
+    C[跨实例缓存和路由] -. 按部署接入 .-> E
+```
+
+图意：recipe 可以承担输入与输出转换；图中的后端、HTTP 宿主和外围状态服务仍有各自接口。这是职责图，不是一份已经部署验证的拓扑。
+
+### 遇到一个功能名，继续问哪件事
+
+| 功能名 | 先分清什么 | 深入入口 |
+| --- | --- | --- |
+| 分页与前缀缓存 | 字节放哪里、如何找到同一计算历史 | [缓存恢复与状态所有权](<../KV缓存/前缀缓存命中后的恢复条件与状态所有权对比学习文档.md>) |
+| Attention DP、MoE EP、EPLB | 分请求、分专家任务、调整专家副本分别由谁决定 | 本文第 5 节 |
+| ZOS / Overlap | 下一步输入、旧结果消费和缓冲复用如何排序 | [依赖与提交对比](<../调度方法/SGLang Overlap 与 DeepInfer ZOS 的依赖和状态提交对比学习文档.md>) |
+| 动态验证 | 候选预算怎样进入实际执行与最终提交 | [动态验证预算](<../高级生成/动态投机验证预算：DeepInfer、SGLang 与 vLLM 的取舍学习文档.md>) |
+| Engram | 地址何时知道、取回的数据怎样参与本层计算 | [条件记忆专题](<../模型架构/Engram 条件记忆与 KV 分层缓存学习文档.md>) |
+
+缓存层级的名字也不能决定共享范围。所读 HiCache 设计中 L1/L2 属于本实例；是否跨实例共享要看 L3 的后端、命名空间和配置。本地文件后端不会因名叫 L3 自动成为共享存储。[HiCache 设计][comparison-sg-hicache]
+
+### 执行核心和外围组件怎样连接
+
 ### 人话版
 
 把引擎理解成“能接到任务、组织多卡计算、产出 token 的工厂”。生产系统还要回答：用户协议如何变成模型输入、请求发去哪一组设备、历史缓存在哪里、P/D 如何交接，以及副本怎样扩缩容。
@@ -190,7 +233,7 @@ sequenceDiagram
 
 DP 像把不同顾客分到不同窗口，EP 像把不同菜品交给专门厨师。即便每个窗口顾客一样多，大家都点同一道菜时，某位厨师仍然最忙。EPLB 给热点专家增加副本并调整放置，针对的是后一种拥堵。
 
-[官方生产说明][qa] 报告 Prefill 使用 EP2–8 / DP2–8，Decode 使用 EP64–128 / DP64–128，当时不启用 TP、CP。与此同时，公开引擎支持 balanced CP。**“框架有能力”和“所报告部署采用该能力”是两件事。**
+[官方生产说明][qa] 报告 Prefill 使用 EP2–8 / DP2–8，Decode 使用 EP64–128 / DP64–128，当时不启用 TP、CP。与此同时，公开引擎支持 balanced CP。**“框架有能力”和“所报告部署采用该能力”是两件事。** 该问答还举出 1P+1D 可部署，以及 64 张 Prefill 卡加 64 张 Decode 卡的高效规模例子；后者不是最低卡数，也不能外推为所有模型的部署要求。
 
 宽 EP 使每个 rank 承担的专家权重工作发生变化，可能降低 Decode 每步专家部分的访存压力，但也要求通信域和专家负载均衡相配合。不能把“EP 越大越快”推广到任意跨机网络、模型和并发。
 
@@ -212,7 +255,7 @@ DFlash 产生候选 token，Confidence Head 估计接受概率，DSpark 根据�
 
 这些是官方给定工作点下的估算，未由本文复现，也不是任何输入上的稳定提升。它们说明应同时记录验证长度、接受长度、设备 step 耗时和并发；只看接受率或少算了多少 token，都不足以推断吞吐。
 
-**关联复核（2026-10-27）：** 置信度与成本共同选择验证预算，不应被描述为 DeepInfer 独占的能力。[vLLM Adaptive Verification](https://docs.vllm.ai/en/latest/features/speculative_decoding/adaptive_verification/) 在线文档和 [SGLang 固定 `DSparkVerifyPlanner`](https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/speculative/dspark_components/dspark_planner.py#L70) 提供其他实现入口；存在相关路径不表示默认配置、模型与组合条件相同。具体复核边界见 [三引擎比较笔记](<DeepInfer、vLLM 与 SGLang 的交付范围与机制比较学习文档.md#5-动态验证不是-deepinfer-独占的能力标签>)，本篇性能口径仍只属于 DeepInfer。
+其他引擎也有动态验证路线。2026-10-27 读取的 [vLLM Adaptive Verification 在线文档][comparison-vl-av] 描述了 confidence head 与在线估计器、按成本选择预算、默认关闭，以及可变设备长度、完整 CUDA Graph 和 LoRA/PP 等组合限制；这些属于当时的文档范围。`72d5c5bb73` 的 [SGLang planner][comparison-sg-planner] 则在所读非 static 路径检查 confidence head。后续[固定源码专项](<../高级生成/动态投机验证预算：DeepInfer、SGLang 与 vLLM 的取舍学习文档.md>)另外固定 vLLM 到 `05a303fd`，继续追预算、布局和提交。这里仅给出各自入口；上面的吞吐估算仍只属于 DeepInfer。
 
 进一步读 [动态验证预算的固定源码对比](<../高级生成/动态投机验证预算：DeepInfer、SGLang 与 vLLM 的取舍学习文档.md>)：本篇同一 DeepInfer 基线的 `MTPVarlen` 还包含运行时 forward/sampler 成本修正，以及用 N−2 轮历史选总预算的逻辑；启动耗时曲线不是唯一输入。专项将这些条件与 SGLang 的成本表、vLLM 的图档位成本分开比较，不改变上述官方估算口径。
 
@@ -278,6 +321,20 @@ flowchart TD
 - **多模态：** 离线模型路径可以包含视觉计算；生产 E/P/D 则把阶段拆成服务。文章讨论的视觉负载均衡属于后者，不等于离线类自带全集群视觉调度。
 
 排障时先定位失败属于输入准备、grammar 编译、采样、模型执行还是服务交接，不把所有错误都归为“模型没算对”。进一步阅读：[高级生成与状态一致性](../高级生成/README.md)、[多模态 Encode 分离与 EPD](<多模态 Encode 分离与 EPD 状态交接学习文档.md>)。
+
+<a id="reconstruction-and-repeatability"></a>
+## 状态重建和输出重复性要分别验证
+
+“找回历史”“两种实现等价”和“同一请求再次运行得到相同输出”比较的对象不同。把它们都写成“无损”或“确定性”，读者就无法判断结论适用于哪一步。
+
+| 要比较的对象 | 固定资料中的条件 | 结论的范围 |
+| --- | --- | --- |
+| SWA 重建 | 生产问答描述有界后缀的近似重建 | 不等于取得原始快照，也不证明完整请求精度等价 |
+| mask 与 compact | 比较两种截断实现 | 不证明截断与完整上下文计算相同 |
+| 固定 seed | 固定相应随机输入 | 不能单独消除 batch、平台与数值路径变化 |
+| DeepInfer batch invariant | README 限定 NVIDIA、`DEEPINFER_BATCH_INVARIANT=1`、关闭 `DEEPINFER_ENABLE_MTP_VARLEN`，并固定 `SamplingParams.seq_seed` | 这些配置条件应一起保留，不能与启用变长验证的另一组吞吐结果拼接 |
+
+本节承接原比较文章的独立解释，依据仍是 `55374155` 的 README 与生产问答；没有运行质量、数值等价或确定性实验。比较实际部署时，要分别保存恢复路径、采样配置和负载条件。
 
 ## 9. 读性能图前，先读坐标、配置和记账方式
 
@@ -350,6 +407,102 @@ flowchart TD
 下一步可对照 [SGLang 请求运行时](../../sglang/运行时/README.md) 与 [vLLM 运行时](../../vllm/运行时/README.md)，比较各自的对象和边界；不同固定版本的实现不能合并成一个引擎的行为说明。
 
 跨资料整合：[缓存恢复条件与状态所有权](<../KV缓存/前缀缓存命中后的恢复条件与状态所有权对比学习文档.md>) 对照分页 KV、KDA 和 SWA；[SGLang Overlap 与 DeepInfer ZOS](<../调度方法/SGLang Overlap 与 DeepInfer ZOS 的依赖和状态提交对比学习文档.md>) 对照设备输入、结果提交和资源存活。两篇均为固定证据范围内的机制分析，不提供跨引擎性能排名。
+
+<a id="comparison-sources-and-figures"></a>
+## 来源附录：三引擎比较文章及原图
+
+AI灰鲸的比较文章已并入本篇，重复的缓存、并行和投机解释通过上面的机制入口继续阅读。下面保留该资料自己的发布时间、核对范围和八张原图；它们不是一组统一版本的性能或兼容性测试。
+
+<details>
+<summary>查看比较文章的来源和独立快照</summary>
+
+### 比较资料的来源、基线与阅读范围
+
+| 项目 | 内容 |
+| --- | --- |
+| 原文标题 | DeepInfer 和 vLLM、SGLang 的对比 |
+| 原文链接 | https://mp.weixin.qq.com/s/t9lemS4pN4UfIBjCFAcj1w |
+| 作者 / 公众号 | AI灰鲸 |
+| 发布时间 | 2026-10-25 08:09:49（Asia/Shanghai，页面时间戳换算） |
+| 读取时间 | 2026-10-27 |
+| 整理范围 | 服务交付、缓存分层、DP/EP、验证预算、SWA 重建及确定性条件 |
+| 不展开 | 全量模型/硬件兼容矩阵、完整生产部署教程、统一性能排名 |
+| 图片 | 全部 8 张技术图表，原样保存；文件及原始地址见 [图源清单](../../images/inference-engine-comparison/SOURCES.md) |
+
+本次复核的证据分开记录：
+
+| 来源 | 版本或读取边界 | 本次核对内容 |
+| --- | --- | --- |
+| [DeepInfer README][comparison-di-readme]、[生产问答][comparison-di-qa] | 官方 `main` 快照 `553741557a57df44a46fb3ab72b6aafeaf945337`；本地检出干净，只读 | 交付范围、配置条件、部署规模、DSpark 估算及近似重放 |
+| [SGLang DSpark planner][comparison-sg-planner] | 官方 `main` 快照 `72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a`；从固定 Git 对象读取，检出目录已有未跟踪资料，未采用也未修改 | `DSparkVerifyPlanner` 确实存在；非 static 模式对 confidence head 的检查。未追完算法和全部执行路径 |
+| [vLLM Adaptive Verification][comparison-vl-av] | 官方 `latest` 文档，读取于 2026-10-27；未固定对应运行时提交 | 接受率估计来源、开关、成本模型与组合限制；不能回填到其他文章的旧 commit |
+| [SGLang HiCache 设计][comparison-sg-hicache] | 官方在线文档，读取于 2026-10-27 | L1/L2 私有范围与 L3 跨实例共享条件 |
+| [deepseek-recipe README][comparison-recipe]、[server-py 示例][comparison-recipe-server] | 官方 `main` 快照 `935817c66f5d6e64838f419692545f06787e485f`；只读取固定远程文档，未运行示例 | 协议库、HTTP 示例与真实模型后端的边界 |
+
+原文信息、官方文档声明和整理者判断在正文分别标注。不同来源不是同一时点的统一版本；尤其不能把在线 `latest` 文档视为本文已经验证的部署组合。
+
+**后续固定源码复核（2026-10-27）：** [动态验证预算专项](<../高级生成/动态投机验证预算：DeepInfer、SGLang 与 vLLM 的取舍学习文档.md>) 已将 vLLM 相关路径固定到 `05a303fdc8681f0dd586a8ac22103f3b4a8bf4ad`，并与上表 SGLang、DeepInfer 基线对照。该专项补充成本、布局与提交证据，不把本篇原先的在线文档概述改称全量源码或部署验证。
+
+运行时结构另见 [SGLang 与 vLLM V1 架构差异](<../推理基础/SGLang 与 vLLM V1 架构差异源码学习文档.md>)：深入双引擎的进程、模块和通信通路。它采用独立固定提交；本篇继续回答三者的交付范围与机制边界。
+
+先修：[推理系统心智模型](<../推理基础/LLM 推理系统心智模型与 SGLang、vLLM 选型边界学习文档.md>)。已经掌握 Prefill/Decode 的读者，可以从第 2 节开始。
+
+| 术语 | 人话解释 | 本文要拆开的边界 |
+| --- | --- | --- |
+| engine / serving | 执行模型 / 把执行能力提供为持续服务 | 能离线生成不等于服务链完整 |
+| PagedAttention / APC | 分页寻址 / 前缀结果复用 | 物理组织与复用策略不是同一问题 |
+| DP / EP / EPLB | 分请求 / 分专家 / 调整专家负载 | 请求路由与专家放置的控制权不同 |
+| verify budget | 本轮给候选验证分多少计算 | 验证长度不等于实际接受长度 |
+| bounded replay | 只重放有界后缀重建特定状态 | 本文模型采用近似语义 |
+| batch invariant | 改变同批请求组成时保持结果一致 | 与固定随机种子是不同条件 |
+
+
+</details>
+
+<details>
+<summary>查看八张原图及逐图解读</summary>
+
+![原文：请求阶段与延迟位置](../../images/inference-engine-comparison/01-request-stages.png)
+
+**图意解读：** 橙色输入交给 Prefill，绿色对象表示可继续使用的历史状态，Decode 持续读写状态并产生输出。它是计算示意；图中把输出画在 Decode 右边，不表示首 token 必须经过单独一次 Decode。Prefill 的结果通常已经可供首 token 采样。客户端 TTFT 还包含排队、协议处理和传输，图中也没有按真实耗时画比例。
+
+![原文：三引擎定位与交付范围](../../images/inference-engine-comparison/07-delivery-comparison.jpg)
+
+**图意解读：** 这是一张作者整理的定位表。它有助于区别专用模型执行核心和通用服务入口，但没有列出版本、模型与硬件的全部组合条件。某列列出一种设备，不代表该列所有模型、投机算法和并行组合都能在该设备上运行。竖表在窄屏可打开原图查看，下面保留更容易比较的文字入口。
+
+![原文：DeepInfer 核心与外围集成](../../images/inference-engine-comparison/03-serving-boundary.png)
+
+**图意解读：** 中间是执行核心，虚线圈出外部缓存、分离编排和多副本负载均衡。图的控制边界比机箱图标更重要：引擎拥有本次执行的 tensor 与块管理，不等于它拥有跨请求的全局缓存目录和服务路由。这里的“还需集成”不能改写成“DeepInfer 没有 KV”。
+
+![原文：分页管理与前缀复用](../../images/inference-engine-comparison/02-paging-prefix-reuse.png)
+
+**图意解读：** 上半图的 `0/1/2 → 7/2/9` 表达逻辑块到物理块的映射；下半图表达两个请求共享稳定前缀。两幅图属于不同抽象层，不能读成“vLLM 只有分页、SGLang 才有复用”。SGLang 也管理物理 KV，vLLM 也实现前缀缓存。
+
+![原文：Attention 分请求、MoE 分专家](../../images/inference-engine-comparison/04-attention-dp-moe-ep.png)
+
+**图意解读：** 上方按请求组织 Attention，下方按专家路由 token，再把结果送回对应请求。图在上下各画 GPU，是为了展示同组设备在不同层的职责，并非证明存在两套物理设备池；也不能把它当 Attention–FFN 分离部署图。专家路由解决计算去向，EPLB 处理专家副本放置，外部入口负载均衡则分配服务请求。
+
+![原文：两条请求的验证预算](../../images/inference-engine-comparison/05-verification-budget.png)
+
+**图意解读：** A 验证 4 个、B 验证 2 个是构造示意，不是性能结果。绿色候选代表送去验证的连续前缀，不表示它们都将被接受；灰色候选也不能绕过验证成为输出。预算取决于预计收益与执行成本，最终提交仍以验证结果为准。
+
+![原文：有限后缀重放](../../images/inference-engine-comparison/06-bounded-replay.png)
+
+**图意解读：** 左边复用 Block KV，右边重建 SWA；图底部的“依赖模型结构”和“近似重建”是必要条件。橙色块数量不是配置值。特定层后缀工作被缩短，也不能读成整个请求只需计算这些 token。
+
+![原文：缓存与执行机制比较表](../../images/inference-engine-comparison/08-mechanism-comparison.jpg)
+
+**图意解读：** 表中缓存、投机、调度、并行与结构化输出是不同维度。“支持”没有告诉读者默认是否启用、与什么组合兼容或收益是多少；例如前缀复用、动态验证与批次不变性仍有各自条件。这张图保留为原文的导航摘要，不作为部署兼容证明。
+
+</details>
+
+[comparison-di-readme]: https://github.com/deepseek-ai/DeepInfer/blob/553741557a57df44a46fb3ab72b6aafeaf945337/README.md
+[comparison-di-qa]: https://github.com/deepseek-ai/DeepInfer/blob/553741557a57df44a46fb3ab72b6aafeaf945337/doc/inference_deployment_qa.md
+[comparison-sg-planner]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/speculative/dspark_components/dspark_planner.py#L70
+[comparison-vl-av]: https://docs.vllm.ai/en/latest/features/speculative_decoding/adaptive_verification/
+[comparison-sg-hicache]: https://docs.sglang.io/docs/advanced_features/hicache_design
+[comparison-recipe]: https://github.com/deepseek-ai/deepseek-recipe/blob/935817c66f5d6e64838f419692545f06787e485f/README.md
+[comparison-recipe-server]: https://github.com/deepseek-ai/deepseek-recipe/blob/935817c66f5d6e64838f419692545f06787e485f/server-py/README.md
 
 [readme]: https://github.com/deepseek-ai/DeepInfer/blob/553741557a57df44a46fb3ab72b6aafeaf945337/README.md
 [qa]: https://github.com/deepseek-ai/DeepInfer/blob/553741557a57df44a46fb3ab72b6aafeaf945337/doc/inference_deployment_qa.md

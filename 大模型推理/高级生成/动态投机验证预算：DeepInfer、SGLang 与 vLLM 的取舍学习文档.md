@@ -18,7 +18,7 @@
 
 这些提交不是同一发布时间的对照组。本文的 vLLM 基线也不是仓内 KV 生命周期文章所用的 `f727951d…`，不可把新行为回填到旧版本。
 
-先修：[Draft / Verify / Commit](<../../sglang/source-study/08-advanced-generation/03-投机解码的DraftVerifyCommit.md>)。来源背景：[三引擎比较文章整理](<../分布式服务/DeepInfer、vLLM 与 SGLang 的交付范围与机制比较学习文档.md>)、[DeepInfer DSpark](<../分布式服务/DeepInfer 专用推理引擎与生产系统边界学习文档.md#6-dspark少验证低收益草稿而不是免除验证>)、[Kimi K3 协同优化](<../../sglang/模型适配/SGLang Kimi K3 推理协同优化学习文档.md>)。本篇新增价值是把这些资料中的“动态验证”落实为可核对的决策链，不重复原图或 benchmark。
+先修：[Draft / Verify / Commit](<../../sglang/source-study/08-advanced-generation/03-投机解码的DraftVerifyCommit.md>)。来源背景：[三引擎比较文章整理](<../分布式服务/DeepInfer%20专用推理引擎与生产系统边界学习文档.md#delivery-boundary>)、[DeepInfer DSpark](<../分布式服务/DeepInfer 专用推理引擎与生产系统边界学习文档.md#6-dspark少验证低收益草稿而不是免除验证>)、[Kimi K3 协同优化](<../../sglang/性能工程/SGLang%20Kimi%20K3%20推理协同优化学习文档.md>)。本篇新增价值是把这些资料中的“动态验证”落实为可核对的决策链，不重复原图或 benchmark。
 
 ### 术语速查
 

@@ -413,5 +413,5 @@ floor((prompt_tokens - 1) / 16) × 16
 - llm-d Precise Prefix Cache Routing：<https://llm-d.ai/docs/well-lit-paths/foundations/precise-prefix-cache-routing>
 - LMCache 仓库：<https://github.com/LMCache/LMCache>
 - Mooncake 仓库：<https://github.com/kvcache-ai/Mooncake>
-- [vLLM APC 链式哈希学习文档](../../vllm/KV%E7%BC%93%E5%AD%98/vLLM%20APC%20%E9%93%BE%E5%BC%8F%E5%93%88%E5%B8%8C%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
-- [SGLang RadixAttention 前缀缓存命中定义学习文档](../../sglang/KV%E7%BC%93%E5%AD%98/SGLang%20RadixAttention%20%E5%89%8D%E7%BC%80%E7%BC%93%E5%AD%98%E5%91%BD%E4%B8%AD%E5%AE%9A%E4%B9%89%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
+- [vLLM APC 链式哈希学习文档](../../vllm/KV缓存/vLLM%20V1%20KV%20Cache%20管理全生命周期源码学习文档.md#apc-design-and-tail)
+- [SGLang RadixAttention 前缀缓存命中定义学习文档](../../sglang/KV缓存/SGLang%20KV%20Pool、请求视图与%20HiCache%20工程学习文档.md#prefix-match-to-readable-kv)

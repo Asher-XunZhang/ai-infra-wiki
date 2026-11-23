@@ -1,6 +1,6 @@
 # SGLang 调度循环与批次执行旅程
 
-一轮调度既可能提交当前批，也可能处理旧批的结果；一个 PP microbatch 又可能跨过多个 stage 和本地轮次。本文先建立完整执行旅程，再把 CPU 控制流、GPU 数据流与状态提交分开。它是源码分析型学习资料，配合[交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/loop-journey/)逐步阅读。
+调度器每轮要决定算哪些请求、把工作交给设备，再用结果更新请求。开启 Overlap 后，CPU 可能在处理旧批结果时，让 GPU 继续算新批；使用 PP 时，同一批还会经过多个模型阶段。本文沿一条请求走通这三种过程，配合[交互课程](https://asher-xunzhang.github.io/ai-infra-wiki/sglang/loop-journey/)阅读。
 
 ## 0. 阅读基线与范围
 
@@ -29,6 +29,36 @@
 | FutureMap | 在设备上接力下一轮输入 token 等信息 | 由前一轮写入，后续执行消费；普通非 Overlap 也使用 |
 
 先修：[普通请求运行时](<SGLang 普通请求运行时与资源生命周期学习文档.md>)、[推理全景](<SGLang 推理全景学习指南.md>)。下一步：[执行分层](<SGLang 执行分层与硬件机制学习文档.md>) → [KV 内存管理](<../KV缓存/SGLang KV 映射与共享回收学习文档.md>) → [调度准入与回撤](<SGLang 调度准入与容量回撤学习文档.md>)。
+
+<a id="scheduler-decisions"></a>
+## 从路由到执行：先定位是哪一个决定
+
+“调度”常用来指四件事。请求先送到一个实例；实例排出尝试顺序；Scheduler 根据预算决定本轮工作；执行循环再安排准备、计算和结果处理。下面的表是职责地图，各项未必对应独立进程。
+
+| 决定 | 需要回答的问题 | 结果 |
+| --- | --- | --- |
+| 路由 | 把请求交给哪个实例？ | 目标实例，可能考虑负载和缓存位置 |
+| 排序 | 等待队列先尝试谁？ | 候选顺序，如 FCFS、LPM 或优先级 |
+| 准入和份额 | 数据与资源够不够，本轮算多少？ | 被接纳的请求、模式与 token 范围 |
+| 执行时序 | 何时准备、提交、读取结果？ | Normal、Overlap 或 PP 的依赖顺序 |
+
+例如 R1 先到，R2 命中了更长前缀。排序策略可能先尝试 R2，但它仍可能在等缓存回载或请求槽位。即使选中了 R2，CPU 也要满足数据依赖才能提交和消费结果。后面的 Normal / Overlap 讲最后一行；排序和预算继续读[调度准入与回撤](<SGLang 调度准入与容量回撤学习文档.md>)。
+
+### 同一条请求，需要记住三个不同的进度
+
+| 观察对象 | 以 R1 为例 | 为什么单独看 |
+| --- | --- | --- |
+| 请求 | 输入、已确认输出与结束原因 | R1 可以跨很多轮计算 |
+| 执行批 B0、B1 | 本轮成员、输入位置与执行结果 | 一轮可以包含多条请求；旧批结果可能稍后才处理 |
+| 资源 | 请求映射、共享 KV、设备上的在途读写 | 请求结束后，有的缓存可保留，有的使用者还未退出 |
+
+下面的 R1、B0、B1 始终按这三种含义使用。`running_batch` 保存可继续生成的请求集合，它非空时，本轮也可能先执行新 Prefill。
+
+### 前缀命中改变工作量，不替代准入
+
+假设同一实例已有兼容且在设备上可用的 6000-token 前缀，两条请求各有 1000-token 私有后缀。它们的逻辑输入仍各是 7000 token；忽略末 token 重算和页对齐时，各自新算约 1000 token。公共部分可以共享，但私有后缀、未来输出、请求槽位仍需空间。
+
+若前缀还在 Host 或远端，则先确认回载条件；数据可读后再按预算接纳。这里是用于解释职责的算例，不是本课关闭 HiCache 的 Normal / Overlap 场景。完整的匹配与页粒度见[缓存主文](<../KV缓存/SGLang KV Pool、请求视图与 HiCache 工程学习文档.md>)。
 
 ## 1. 先走通普通循环
 
@@ -211,6 +241,75 @@ PP 的 `PP0 · L1` 与 `PP1 · L1` 是不同的本地轮次，分别着色。跨
 已复核相关旧资料：[调度主循环](../source-study/03-scheduling/01-NormalEventLoop与调度主循环.md)、[Overlap 的 CPU/GPU 依赖](../source-study/03-scheduling/05-Overlap中的CPU与GPU依赖.md)、[调度器架构与时间模型](../source-study/architecture/04-调度器架构与时间模型.md)、[调度器生命周期与 Overlap](<SGLang 调度器请求生命周期与重叠调度学习文档.md>)、[执行分层](<SGLang 执行分层与硬件机制学习文档.md>)、[并行模式](<../并行方法/SGLang 并行分工与执行拓扑学习文档.md>)和 [PD PP loop 复核记录](../分离部署/PD%20Prefill%20PP%20loop%20源码复核记录.md)。
 
 整合增量是把“输入组织、一次执行、跨轮结果、各级本地循环”放入可追踪的统一教学场景；不是替换旧课的深层对象或预算分析。历史源码课程的 `72d5…` 与其他综述的固定版本保留；本文行为逐项在 `279339…` 重新确认，不把不同基线拼成同一实现。旧课程保留独立用途并增加互达入口，无需再产出重复综合稿。
+
+<a id="scheduler-source-record"></a>
+## 来源附录：调度文章与历史抽查
+
+本文 Normal / Overlap / 普通 PP 的实现以文首 `279339f113` 为准。以下保留原调度总览的来源登记与 `6e312af8` 静态抽查；它们解释资料的取舍，不能与主文拼成同一版本调用链。系统源码课程另固定 `72d5c5bb73`。
+
+<details>
+<summary>展开八条来源、排除理由和历史抽查范围</summary>
+
+### 历史资料与抽查版本
+
+#### 八条来源逐项登记
+
+编号沿用输入顺序，便于回查。所有来源均于 **2026-09-09** 重新读取；发布时间根据页面 `ct` 转为北京时间，作者与账号分别记录。
+
+| 编号 | 原文完整标题与链接 | 作者 / 账号 | 发布时间 | 本次处理 |
+| --- | --- | --- | --- | --- |
+| S01 | [SGLang 双 Stream 重叠调度：如何把 CPU 后处理藏到 GPU 计算背后](https://mp.weixin.qq.com/s/fnVVmI8HUwpTqokcN3D-5A) | HelloKitty / 我只是个大语言模型 | 2026-09-06 | 按约定排除，不纳入正文或源码证据 |
+| S02 | [从 KV Cache 到 Zero Overhead Scheduling，一文读懂 SGLang 的调度巧思](https://mp.weixin.qq.com/s/-O5W_4CGD0XJMAtHckn3nw) | 原作者 Chayenne Zhao；页面署名“关注AI Infra” / 智猩猩AI | 2026-01-12 | 纳入请求生命周期、batch 视图、缓存寻址和 Overlap；对用词和版本边界作限定 |
+| S03 | [小进探索sglang：sglang中的scheduler调度原理和代码解析](https://mp.weixin.qq.com/s/baB0ozQrVuaqZrTphSCUvg) | lil2j / 小进在学大模型 | 2025-12-08 | 纳入主循环、跨轮合并和 admission；剔除有误或不可辨读的配图与局部解释 |
+| S04 | [Prefill chunk size 从 64K 调到 16K：省显存，也能提吞吐吗？](https://mp.weixin.qq.com/s/8fPRQaX8ik03r4yAtmRMjA) | 魏新宇 / 大魏分享 | 2026-09-07 | 纳入 Chunk 专题第 14～16 节；保留四张技术图并核对论文与固定源码 |
+| S05 | [SGLang推理优化-调度器核心ScheduleBatch](https://mp.weixin.qq.com/s/e--Z3OKzilcZuJFoi7Hizg) | kason_zhang / LLM高性能计算 | 2026-06-05 | 纳入 EXTEND/DECODE 组批、对象生命周期和请求示例 |
+| S06 | [从请求调度到 RadixAttention：SGLang 整体架构与原理](https://mp.weixin.qq.com/s/N7bsnWP4WoYypAPgWDU-eg) | Tiny点 / 原生引擎 | 2026-09-01 | 纳入本文职责地图与缓存协同；对 chunk 插入 Decode 和缓存复用前提作限定 |
+| S07 | [SGLang Overview：设计哲学与关键机制](https://mp.weixin.qq.com/s/uy71V2JZn3Cnc0mYYwxsaw) | 方弦 / 吃果冻不吐果冻皮 | 2026-04-10 | 关键机制存在多处错误，排除技术内容；核对依据见下表 |
+| S08 | [SGLang：大模型高效推理框架的技术内幕](https://mp.weixin.qq.com/s/sSfwIAwsWRVAJdHU2OVQdw) | 小零花 / 技术零花 | 2026-07-31 | 零开销调度的核心解释错误，排除技术内容和性能数字 |
+
+S02 页面标注了[知乎原始文章](https://zhuanlan.zhihu.com/p/1992587332189197731)，S07 页面标注了[知乎原始文章](https://zhuanlan.zhihu.com/p/2020514624856957623)。这两个原始地址用于追溯，不算本次新增的独立证据。各文章属于技术博客/图文解读，不是运行验证报告。
+
+#### 来源筛选依据
+
+| 对象 | 核对后的结论 | 依据与处理 |
+| --- | --- | --- |
+| S08 对零开销调度的解释 | CPU 仍负责调度、内存分配、前缀匹配；Overlap 隐藏部分开销 | [官方 v0.4 说明](https://www.lmsys.org/blog/2024-12-04-sglang-v0-4/#zero-overhead-batch-scheduler)及固定版 `Scheduler.event_loop_overlap`。排除整篇作为技术依据，不保留其 GPU 接管调度的模型 |
+| S07 的默认配置与延迟保证 | 固定版 `schedule_policy` 声明默认 `fcfs`，`enable_mixed_chunk` 声明默认 `False`；限制单轮 token 数不能保证请求 TTFT 上界 | [配置声明](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/server_args.py#L744)、[混合开关](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/server_args.py#L920)。这里是固定版声明值，模型钩子和显式配置仍需看最终生效值 |
+| S07 对其他引擎能力的判断 | vLLM 官方提供 JSON、regex、grammar 等结构化输出功能 | [vLLM 官方结构化输出文档](https://docs.vllm.ai/en/latest/features/structured_outputs/)。该来源不能用于建立“仅 SGLang 支持”的选型判断 |
+| S07 对 TP 调度和进程边界的描述 | 接收入口由部分 rank 承担，接收的请求再广播；多个 rank 启动 Scheduler。普通路径中 Scheduler 可直接调用本进程的 worker/runner | [启动循环](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/entrypoints/engine.py#L873)、[请求广播](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/managers/scheduler_components/request_receiver.py#L88)。不采用“只有 rank 0 调度”或“每层 batch 都是独立进程”的解释 |
+| S03 的局部内容 | Prefill-first 与 FCFS 属于不同决策层；普通生成首 token 通常在最终 Prefill 产生 | 正文分别解释阶段选择与队列排序；三张错误或难以可靠辨读的图排除，见[配图处理记录](../../images/sglang-scheduler/SOURCES.md) |
+
+S07 存在多个互相影响的错误，S08 的错误落在本次主线核心，因此不采用“保留大段内容、仅附免责声明”的方式。对 S02/S03/S06 的局部不严谨表述，只纳入可核对的机制，并直接使用准确说法。
+
+#### 官方抽查基线
+
+| 项目 | 内容 |
+| --- | --- |
+| 官方仓库 | [sgl-project/sglang](https://github.com/sgl-project/sglang) |
+| 版本选择 | 使用 S04 明确引用的 commit `6e312af8c25ccedd1dcd2583358be038ab4875b0`；不跟随浮动 `main` |
+| 读取时间 | 2026-09-09 |
+| 读取方式 | 按固定 commit 下载官方源文件和文档到临时目录，仅静态阅读 |
+| 固定源码入口 | [固定源码快照](https://github.com/sgl-project/sglang/tree/6e312af8c25ccedd1dcd2583358be038ab4875b0) |
+| 分支与工作区状态 | 未检出分支；临时目录不是 Git 工作区。未修改本地 SGLang 源码仓库；Wiki 原有未提交内容保留 |
+| 抽查范围 | Scheduler 主循环、选批、排序/预算、结果处理、请求广播、worker 边界、显存默认值、AITER 特定分支 |
+| 不展开内容 | PD 传输协议安全审计、PP 多 stage 调度、Speculative Decoding 全部状态、模型内核实现、生产调参 |
+| 验证边界 | 静态事实不等于 GPU 运行正确；未复现任何来源 benchmark，没有测得性能或精度结论 |
+
+证据用法：**原文信息**用于提出问题和理解设计；**官方静态抽查**用于确认具体代码关系；**整理者归纳**用于机制图、教学例子和排障路线。它们不应互换。
+
+
+研究原始依据：[Sarathi-Serve v3](https://arxiv.org/html/2403.02310v3)。它用于解释来源 S04 的调度与性能图，不作为本篇固定版 SGLang 的实测结果。
+
+
+历史抽查的完整文件入口：
+
+- [Scheduler](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/managers/scheduler.py)：主循环与结果处理。
+- [SchedulePolicy / PrefillAdder](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/managers/schedule_policy.py)：排序与预算。
+- [memory_hook](https://github.com/sgl-project/sglang/blob/6e312af8c25ccedd1dcd2583358be038ab4875b0/python/sglang/srt/arg_groups/memory_hook.py)：显存默认值的派生。
+
+</details>
+
+单轮 token 上限不能单独保证 TTFT：请求还可能排队、多轮处理输入或等待资源。理解 chunk 对显存及性能的影响，继续读[Chunked Prefill 与调度器显存预算](<SGLang Chunked Prefill 与调度器显存预算学习文档.md>)。图源与采用记录保留在[调度原图记录](../../images/sglang-scheduler/SOURCES.md)和[Chunk 原图记录](../../images/sglang-chunk-size-tradeoffs/SOURCES.md)。
 
 [normal]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L1907
 [overlap]: https://github.com/sgl-project/sglang/blob/279339f113b79af84f27fd3ac92d0a13bd3f4cbd/python/sglang/srt/managers/scheduler.py#L1942

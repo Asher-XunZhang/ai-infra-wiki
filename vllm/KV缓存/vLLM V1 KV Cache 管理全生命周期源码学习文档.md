@@ -4,7 +4,7 @@
 
 KV Connector 如何把 KV 扩展到远端、CPU 或其他实例，见配套文档：[vLLM V1 KV Connector 架构与实现地图源码学习文档](../%E5%88%86%E7%A6%BB%E9%83%A8%E7%BD%B2/vLLM%20V1%20KV%20Connector%20%E6%9E%B6%E6%9E%84%E4%B8%8E%E5%AE%9E%E7%8E%B0%E5%9C%B0%E5%9B%BE%E6%BA%90%E7%A0%81%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)。
 
-> 阅读边界：本文是对指定 commit 的静态源码梳理，没有运行单测、模型推理或性能实验。文中的“源码事实”来自当前代码；“可以理解为”“设计上”等措辞表示整理者归纳。
+> 阅读边界：本文是对指定 commit 的静态源码梳理，没有运行单测、模型推理或性能实验。文中的“源码事实”来自该固定提交；“可以理解为”“设计上”等措辞表示整理者归纳。
 
 ## 0. 阅读基线与范围
 
@@ -402,6 +402,37 @@ hash(parent_hash, current_tokens, model-affecting-extra-keys)
 
 多 group 场景还会在内部 key 中加入 group id，避免相同 token hash 让不同缓存语义的 group 串用页面。若使用非 SHA 的进程内 hash 且没有固定 `PYTHONHASHSEED`，跨进程/重启的 hash 可复现性也不是默认保证，源码会给出 warning。
 
+<a id="apc-design-and-tail"></a>
+### 5.1.1 用三个块理解“相同前缀”
+
+假设每个物理块能放 16 个 token。旧请求已保存前 33 个 token，新请求与它共享这 33 个 token，后面还有自己的内容。前两个完整块覆盖 32 个位置，第三块只保存了一个有效位置。
+
+链式哈希把前面的内容一起纳入后一个块的身份。例如两个块都恰好包含 `[A,B]`，它们若接在不同上下文后面，通常不应共享同一份 KV。`hash(parent_hash, current_tokens, extra_keys)` 解决的是这种身份判断，至于块目前还在不在、能复用多少，还要继续查询缓存管理器。
+
+| 步骤 | 本例需要确认什么 | 对应机制 |
+| --- | --- | --- |
+| 身份 | token、前序上下文和附加输入是否一致？ | 链式 hash 与 extra keys |
+| 存在 | 要复用的块是否仍有有效缓存条目？ | BlockPool 的 hash 查询 |
+| 粒度 | 只能复用前 32 个，还是也记录了第 33 个位置？ | Manager 能力、hash 粒度与 partial-tail 记录 |
+| 固定 | 命中块会不会被本轮其他分配驱逐？ | `touch` 与引用计数 |
+| 续写 | 第三块要继续写入时，是否仍被别人共享？ | 按具体路径判断 COW |
+
+此处的 16 和 33 是教学尺寸。即使第三块有记录，实际命中仍受 Manager、对齐和 logits 所需重算等条件限制，不保证本例总能跳过全部 33 个位置。
+
+### 5.1.2 查找算法不能只从哈希公式推出来
+
+早期资料 [《KV Cache 前缀匹配的设计分野》](https://mp.weixin.qq.com/s/GciJebFszheSqU-s3yZPMQ)（Lychee & Ethan，读取于 2026-07-17）用“完整块、平坦 hash 表、连续命中与二分查找”介绍 APC。该资料没有固定 vLLM 提交，它可帮助理解设计思路，不能作为本篇实现的逐项说明。
+
+在本篇固定提交中，[`FullAttentionManager.find_longest_cache_hit`](https://github.com/vllm-project/vllm/blob/f727951d3f0dbeb9acdb8a2f7ebfecaeb67090b3/vllm/v1/core/single_type_kv_cache_manager.py#L682) 先从开头逐块查询完整块，遇到第一个未命中就停止；启用适用的细粒度路径后，再从长到短探测首个不完整块的内部 hash 边界。因此不能将原文的 `O(log N)` 二分模型写成这一版所有 Manager 的查找算法。
+
+链式哈希说明“后一个身份包含前缀”，单独这一条并不能说明所有前驱数据都仍驻留。要解释连续命中、允许跳过的区间和共同恢复位置，必须看 Manager 的查询与保留规则。滑窗或递推状态也有各自路径，不能套用 Full Attention 的扫描图。
+
+### 5.1.3 何时登记，以及哈希碰撞意味着什么
+
+APC 复用的是已经算好且满足该路径稳定条件的前缀。原文用“延迟标记”解释新块不能过早暴露；本篇应回到 `cache_blocks`、`cache_full_blocks` 和下文 partial-tail 的具体登记时点，而不是统一假定所有块都在同一个 batch 结束点登记。
+
+链式哈希也没有消除碰撞。散列算法、附加身份和隔离范围需要一起核对；不掌握这些条件时，不能把“hash 一样”直接解释为内容已经逐字节核验。本文没有统计碰撞率或运行错误复用实验。
+
 ### 5.2 hash block size 与 KV group block size
 
 当前代码允许 hash 粒度与某些 group 的物理 block 粒度不同，并通过 `resolve_kv_cache_block_sizes` 协调。这对混合 KV 类型和 partial-tail 支持很重要：
@@ -421,9 +452,7 @@ hash(parent_hash, current_tokens, model-affecting-extra-keys)
 - 命中时需要固定尾块，避免在续写前被驱逐；
 - 尾部只命中一部分、却还要继续写同一逻辑块时，可能触发 COW。
 
-这与仓库内基于较早资料整理的 APC 文档存在版本差异。阅读当前源码时，不应再把“只有完整 block 才可能缓存”当作无条件结论。
-
-延伸阅读：[vLLM APC 链式哈希学习文档](vLLM%20APC%20%E9%93%BE%E5%BC%8F%E5%93%88%E5%B8%8C%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)。
+这解释了上面 33-token 例子为什么要继续询问“尾部是否真的有记录”。早期资料中的“只认完整块”不是本篇固定实现的无条件结论。
 
 ### 5.4 LRU 与引用计数共同决定可驱逐性
 

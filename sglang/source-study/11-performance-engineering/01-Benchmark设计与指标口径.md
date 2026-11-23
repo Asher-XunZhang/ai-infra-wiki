@@ -1,12 +1,16 @@
 # Benchmark 设计与指标口径
 
-> **先建立架构心智模型：** [M11 · 网关服务治理与性能诊断全景](<../architecture/11-网关服务治理与性能诊断全景.md>)。先看职责、数据和生命周期，再回到本篇源码细节。
+> 架构导读：[M11 · 网关服务治理与性能诊断全景](<../architecture/11-网关服务治理与性能诊断全景.md>)。
 
 本文是**源码分析型学习资料**。面向已经理解请求、调度、缓存和服务观测，准备回答“怎样测出一个有解释力的性能结果”的读者。
 
 先写清楚**测了谁、送了什么请求、从哪里开始计时、哪些结果参与统计**，再比较数字。同名的 throughput 或 TTFT，可能来自不同边界。
 
 **Pages 配套：** [标准负载与达标吞吐](../../../pages/sglang/benchmark-lab/index.html)，继续固定本文的 `72d5c5bb`；浏览器与协议检查不等于运行过模型或 GPU 实验。
+
+**怎么读：** 要测在线服务，先看 serving 请求与 R1/R2/R3 算例。one_batch 和 offline 回答其他计时问题。
+
+主线：[1. 人话版：秒表放在哪里，问题就变了](#1-人话版秒表放在哪里问题就变了) → [5. 数据集：标称 1024 输入，不一定真的送了 1024](#5-数据集标称-1024-输入不一定真的送了-1024) → [6. serving：从到达计划走到首个可见输出](#6-serving从到达计划走到首个可见输出) → [8. 汇总公式与 R1/R2/R3 手算](#8-汇总公式与-r1r2r3-手算) → [10. 一份能复查的最小实验设计](#10-一份能复查的最小实验设计)。
 
 ## 0. 阅读基线与范围
 
@@ -82,6 +86,9 @@ DatasetRow 的 text_prompt_len 缺省取 prompt_len，vision_prompt_len 缺省�
 
 ## 3. one_batch：一个固定 batch 怎样被计时
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 ### 3.1 合成请求不经过普通服务准入
 
 默认合成输入是在 [0, 10000) 抽整数 IDs，构造 Req，并设置完整输入及 extend 范围；它不是一份自然语言任务集，也不能保证任意模型词表都适用这个 ID 区间。传入自定义 prompt 时则先分词，再按 batch 大小截取或重复最后一条。[S4] [S9]
@@ -124,7 +131,12 @@ latency_test 先用第一个 batch_size/input_len 组合预热，输出取 min(3
 
 因此做 A/B 对照要保存具体 shape、实际 token 长度、graph/backend/量化等配置，以及重复轮次。不要把 sweep 里的一行当成自动完成统计置信度的实验。
 
+</details>
+
 ## 4. offline：整批请求进入 Engine，测的是一次调用
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 throughput_test 创建 Engine 或 Runtime，准备 tokenizer 和数据，再调用 throughput_test_once。默认 backend 为 engine；Engine 的真实调度可能动态拆批，数据集的请求总数不是实际每轮 GPU batch 大小。[S11] [S13]
 
@@ -141,6 +153,8 @@ Profiler 启动在计时前；停止、等 trace 文件、获取 server_info 都
 预热使用至多 16 条、目标输入 256、输出 16、range_ratio=1 的随机请求，默认执行，--skip-warmup 可跳过执行。预热样本的构造仍发生在该判断之前。预热后睡眠 0.5 s，再正式测量；这条驱动链没有显式 flush。[S13]
 
 因此“模型已热”和“前缀缓存冷”需分别记录。last_gen_throughput 又只是从 server_info.internal_states[0] 取出的服务侧最近生成速率，不能代替整次 offline 输出数 / elapsed。[S12]
+
+</details>
 
 ## 5. 数据集：标称 1024 输入，不一定真的送了 1024
 
@@ -236,6 +250,9 @@ benchmark_start_time 位于预热、可选 flush、1 s sleep 和 profiler 启动
 
 ## 7. 相同缩写，不同协议可能记录了不同事件
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 | 项目 | native /generate | OpenAI Completion | OpenAI Chat |
 | --- | --- | --- | --- |
 | 首次 TTFT | 首个非空累计 text | 首个非空 choices[0].text | 首个非空 content 或 reasoning 文本 |
@@ -251,6 +268,8 @@ benchmark_start_time 位于预热、可选 flush、1 s sleep 和 profiler 启动
 Chat 会把 reasoning_content 或回退 reasoning 与 content 合并进入 generated_text；不能只以最终 answer 文本重新分词来解释它的 token 数。非流式 Chat 的 TPOT 公式甚至会因 TTFT=E2E 得到 0，ITL 列表为空也会汇总成 0；这些是观测边界，不代表模型没有 Decode 成本。[S25] [S28] [S29]
 
 另一个条件分支：服务报告 accept_length>0，且 backend 为 sglang-oai 或 sglang-oai-chat 时，calculate_metrics 对每个后续 text_chunk 重新分词，再把块间隔按其 token 数拆开。该规则不会使所有 backend 的 ITL 自动可比，单独分词一个块也不保证等于对完整输出分词后的增量。[S25]
+
+</details>
 
 ## 8. 汇总公式与 R1/R2/R3 手算
 
@@ -385,6 +404,9 @@ serving 的 --output-details 会保存 input_lens、output_lens、ttfts、itls�
 
 ## 12. 源码阅读路线与测试证据
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 ### 12.1 带着问题回到代码
 
 | 阅读问题 | 仓内相对路径 / 符号 |
@@ -410,6 +432,8 @@ serving 的 --output-details 会保存 input_lens、output_lens、ttfts、itls�
 | `test/registered/bench_fn/test_steady_state_benchmark.py`：trim 窗口、恢复普通计算器两个用例 | 合成观测的窗口预期、临时替换恢复 [S44] [S45] | 真实业务稳态、真实逐 token 时刻 |
 
 总共三份测试文件的八个选定用例，只阅读定义和相关 helper，没有运行。独立教学算术检查也不等同于运行这些测试。
+
+</details>
 
 ## 13. 练习、验收与下一篇
 

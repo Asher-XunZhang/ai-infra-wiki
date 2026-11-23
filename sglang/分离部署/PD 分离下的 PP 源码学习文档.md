@@ -4,6 +4,19 @@
 
 > 历史基线说明：表中上游链接用于定位开源项目；本文的 `muxi-main` 是历史阅读分支，不表示该分支或提交属于官方 `main`。历史结论需按所列版本核对；当前开源实现请使用固定的官方源码链接。
 
+## 首读路线
+
+| 你要做什么 | 进入章节 |
+| --- | --- |
+| 先认清请求、激活、KV 三条通路 | [1. 先建立整体地图](#1-先建立整体地图) |
+| 用一条请求串起全程 | [13. 一个请求的 E2E PP 行为 walkthrough](#13-一个请求的-e2e-pp-行为-walkthrough) |
+| 再查队列与状态 | [5. KVPoll 状态与 Queue 状态机](#5-kvpoll-状态与-queue-状态机) |
+| 追 Prefill 的循环 | [6. PD Prefill 下的 PP 调度循环](#6-pd-prefill-下的-pp-调度循环) |
+| 按需进入 Decode | [7. PD Decode 下的 PP 调度循环](#7-pd-decode-下的-pp-调度循环) |
+| 遇到故障时倒查 | [14. 小白排障地图](#14-小白排障地图) |
+
+源码片段可以按需展开。版本、分支和配置以本篇基线为准；下列路线只调整阅读顺序。
+
 ## 0. 阅读基线与范围
 
 **源码基线**
@@ -18,18 +31,18 @@
 
 **2026-09-17 独立补充基线：** 第 11.5 节及其交互图已升级到[sgl-project/sglang](https://github.com/sgl-project/sglang) 的 `main` / `279339f113b79af84f27fd3ac92d0a13bd3f4cbd`，读取时源码工作区干净，只读未实验。本文其余章节仍为历史 `muxi-main` 分析，不能当成当前开源版本的逐项说明；当前 PP 主线请读 [PP loop 源码说明](PD%20Prefill%20PP%20loop%20%E4%BA%A4%E4%BA%92%E5%9B%BE.md)。
 
-**产物假设**
+**图和源码怎样配合**
 
-产物以一份主 Markdown 学习文档为核心，图用 Mermaid 内嵌，或在需要更复杂视觉表达时额外生成 PNG/SVG。本版先使用 Mermaid，保持文档可直接阅读和 diff。
+正文中的 Mermaid 图用于说明请求、数据和状态怎样流转，可配合每节的源码锚点阅读。
 
 **怎么读本文**
 
-每章尽量按四件事展开：
+每章先解释机制，再给出关键源码、流程图和例子。阅读时可以按下面的顺序：
 
-1. 先讲人话：先把源码行为翻译成普通语言。
-2. 再贴关键源码：只摘最能说明分支和数据流的片段。
-3. 再画流程图：用 Mermaid 把控制流和数据流连起来。
-4. 最后给例子或比喻：把抽象的 rank、stage、KV transfer 拉回到具体场景。
+1. 先读机制解释，确认这一节解决什么问题。
+2. 对照关键代码，找到分支条件和状态变化。
+3. 沿流程图追踪请求、控制消息与实际数据。
+4. 用例子核对各个 rank 和 stage 的工作。
 
 **术语速查**
 
@@ -105,6 +118,9 @@ proxy tensor 和 KV cache 的关系容易混：它们通常在同一次模型 fo
 
 关键路由逻辑如下：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/managers/scheduler.py
 elif disaggregation_mode == DisaggregationMode.PREFILL:
@@ -115,6 +131,8 @@ elif disaggregation_mode == DisaggregationMode.DECODE:
     if server_args.pp_size > 1:
         scheduler.event_loop_pp_disagg_decode()
 ```
+
+</details>
 
 ### 总览图
 
@@ -174,6 +192,9 @@ PP 不是只打开 `--pp-size` 就完事。源码里会自动关掉一些调度�
 
 关键字段：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/server_args.py
 tp_size: int = 1
@@ -182,7 +203,12 @@ pp_max_micro_batch_size: Optional[int] = None
 pp_async_batch_depth: int = 0
 ```
 
+</details>
+
 打开 PP 后，源码直接关闭 overlap schedule：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/server_args.py
@@ -194,7 +220,12 @@ def _handle_pipeline_parallelism(self):
         )
 ```
 
+</details>
+
 启动检查里的硬约束：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/server_args.py
@@ -211,6 +242,8 @@ if self.pp_size > 1:
         )
         assert self.speculative_algorithm in {"EAGLE", "EAGLE3", "NEXTN"}
 ```
+
+</details>
 
 还有一个额外边界：DFLASH speculative 明确要求 `pp_size == 1`，所以不进入本文主线。
 
@@ -238,6 +271,9 @@ flowchart TD
 
 ## 3. PP rank 是怎么编队的
 
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
+
 ### 人话版
 
 PP 和 TP 是两种方向的切法：
@@ -250,6 +286,9 @@ PP 和 TP 是两种方向的切法：
 ### 源码锚点
 
 `parallel_state.py::initialize_model_parallel()` 里构建 PP group：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/distributed/parallel_state.py
@@ -271,7 +310,12 @@ _PP = init_model_parallel_group(
 )
 ```
 
+</details>
+
 源码还提供这些查询函数：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 def get_pp_group() -> GroupCoordinator:
@@ -284,6 +328,8 @@ def get_pipeline_model_parallel_world_size():
 def get_pipeline_model_parallel_rank():
     return get_pp_group().rank_in_group
 ```
+
+</details>
 
 ### rank 编组图
 
@@ -323,6 +369,9 @@ TP collective 的作用是让同一个 PP stage 内的 TP ranks 一起把本 sta
 
 源码里的 PP tensor 发送发生在 `self.pp_group` 上：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
 self.pp_group.send_tensor_dict(
@@ -334,9 +383,14 @@ self.pp_group.send_tensor_dict(
 )
 ```
 
+</details>
+
 也就是说，主要通信方向仍然是 PP group：`rank0 -> rank2 -> rank4 -> rank6`、`rank1 -> rank3 -> rank5 -> rank7`。`all_gather_group` 只是可选的 TP 维度补充，用来在需要时让接收侧恢复它期望的 tensor 形状。
 
 `GroupCoordinator.send_tensor_dict()` 里能看到这个优化：如果传入了 `all_gather_group`，发送端只发当前 TP rank 对应的 slice，接收端再在 TP group 内 all-gather 回原形状。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/distributed/parallel_state.py
@@ -349,6 +403,8 @@ if use_all_gather:
     tensor = tensor.reshape(orig_shape)
 ```
 
+</details>
+
 这样设计的好处是保留 TP 分片编号：上一 stage 的 TP rank 0 把自己这条分片链交给下一 stage 的 TP rank 0，TP rank 1 也交给下一 stage 的 TP rank 1。否则就要在每个 PP 边界做一次“全量 gather -> 发送 -> 再切分”，通信量更大，布局也更复杂。
 
 ### 比喻
@@ -357,7 +413,12 @@ TP 是一个工位上两个人同时拧同一个零件，PP 是零件从第一�
 
 ---
 
+</details>
+
 ## 4. 模型层如何被切给不同 PP stage
+
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
 
 ### 人话版
 
@@ -373,6 +434,9 @@ TP 是一个工位上两个人同时拧同一个零件，PP 是零件从第一�
 ### 源码锚点
 
 层切分工具仍是公共的 `utils/common.py::make_layers()`：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/utils/common.py
@@ -394,7 +458,12 @@ modules = torch.nn.ModuleList(
 return modules, start_layer, end_layer
 ```
 
+</details>
+
 `PPMissingLayer` 的作用很像“空座位”：它不算真实层，但让 `self.layers[i]` 的编号仍和全局模型层号一致。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/layers/utils/common.py
@@ -402,7 +471,12 @@ class PPMissingLayer(torch.nn.Identity):
     ...
 ```
 
+</details>
+
 proxy tensor 是很薄的 dict 包装。它不关心模型语义，只负责把上一 stage 产出的中间张量按 key 交给下一 stage。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/model_executor/forward_batch_info.py
@@ -413,7 +487,12 @@ class PPProxyTensors:
         return self.tensors[key]
 ```
 
+</details>
+
 GLM5 的入口类很短，它把自己接到 DeepSeek/DSA 的通用实现上：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/models/glm4_moe.py
@@ -422,7 +501,12 @@ class GlmMoeDsaForCausalLM(DeepseekV2ForCausalLM):
         super().determine_num_fused_shared_experts("GlmMoeDsaForCausalLM")
 ```
 
+</details>
+
 真正的 PP 初始化在 `DeepseekV2Model`。这段对 GLM5 也生效：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/models/deepseek_v2.py
@@ -454,7 +538,12 @@ class DeepseekV2Model(nn.Module):
             self.norm = PPMissingLayer(return_tuple=True)
 ```
 
+</details>
+
 GLM5 的 forward 里除了 `hidden_states/residual`，还可能带 `topk_indices`。这是 NSA/DSA 的关键：某些层会复用前面 stage 算出的 sparse index，因此 PP proxy 不能只传隐藏状态。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/models/deepseek_v2.py
@@ -491,7 +580,12 @@ def forward(..., pp_proxy_tensors=None):
         hidden_states, _ = self.norm(hidden_states, residual)
 ```
 
+</details>
+
 最后的 `DeepseekV2ForCausalLM` 只有在 last rank 才真正产出 logits。GLM5 继承它，所以也遵循这个行为：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/models/deepseek_v2.py
@@ -506,6 +600,8 @@ if self.pp_group.is_last_rank:
 else:
     return hidden_states
 ```
+
+</details>
 
 其他普通 decoder-only 模型也遵循同一套 PP 套路：first rank 做 embedding，中间 stage 传 `hidden_states/residual`，last rank 才做 norm 和输出头；本文后面涉及模型细节时默认以 GLM5 为主例。
 这意味着读 GLM5 NSA/DSA 的 PP 行为时要同时看两层：`GlmMoeDsaForCausalLM` 这个 GLM5 入口，以及 `DeepseekV2Model/DeepseekV2ForCausalLM` 共享路径里的 topk index、compressed MLA、state cache 处理。
@@ -530,6 +626,8 @@ flowchart LR
 
 ---
 
+</details>
+
 ## 5. KVPoll 状态与 Queue 状态机
 
 ### 人话版
@@ -550,6 +648,9 @@ flowchart LR
 
 `KVPoll` 定义很小，但它贯穿 bootstrap、prealloc、transfer、release：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/disaggregation/base/conn.py
 class KVPoll:
@@ -560,7 +661,12 @@ class KVPoll:
     Success = 4
 ```
 
+</details>
+
 Prefill 和 Decode 文件顶部的注释已经把两边的 request life cycle 写得很直白：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -573,6 +679,11 @@ Life cycle of a request in the prefill server
 """
 ```
 
+</details>
+
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/disaggregation/decode.py
 """
@@ -584,6 +695,8 @@ Life cycle of a request in the decode server
 4. RunningBatch
 """
 ```
+
+</details>
 
 ### KVPoll 状态表
 
@@ -600,6 +713,9 @@ Life cycle of a request in the decode server
 - Decode 本地的 `CommonKVReceiver.init()` 会把 receiver 状态设成 `WaitingForInput`，意思是“我已经解析到 prefill rank mapping，并准备好接收 metadata”。
 - Prefill 侧的 sender poll 到 `WaitingForInput`，才表示 decode 后续通过 `send_metadata()` 把 page indices、state indices、metadata buffer index、`decode_prefix_len` 等目的信息送到了 prefill bootstrap 通道。
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/disaggregation/common/conn.py
 def init(self, prefill_dp_rank: int):
@@ -613,6 +729,8 @@ def init(self, prefill_dp_rank: int):
     self._setup_bootstrap_infos()
     self.kv_mgr.update_status(self.bootstrap_room, KVPoll.WaitingForInput)
 ```
+
+</details>
 
 ### Prefill queue 状态机
 
@@ -641,6 +759,9 @@ flowchart TD
 
 关键源码入口：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/disaggregation/prefill.py
 class PrefillBootstrapQueue:
@@ -649,6 +770,8 @@ class PrefillBootstrapQueue:
 
 def process_disagg_prefill_inflight_queue(...): ...
 ```
+
+</details>
 
 `PrefillBootstrapQueue.add()` 创建当前 PP stage 自己的 sender；`pop_bootstrapped()` 在 poll 到 `WaitingForInput` 后分配 metadata buffer、计算 `decode_prefix_len`、调用 sender `init()`；`process_disagg_prefill_inflight_queue()` 在 forward 后持续 poll sender，成功后释放本地 prefill KV 和 metadata buffer。
 
@@ -682,6 +805,9 @@ flowchart TD
 
 关键源码入口：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/disaggregation/decode.py
 class DecodePreallocQueue:
@@ -691,6 +817,8 @@ class DecodePreallocQueue:
 class DecodeTransferQueue:
     def pop_transferred(...): ...
 ```
+
+</details>
 
 `DecodePreallocQueue.add()` 创建 receiver；`pop_preallocated()` 负责真正分配 decode 侧 `req_to_token_pool`、KV page 和 metadata buffer，并通过 `send_metadata()` 告诉 prefill 往哪里写；`DecodeTransferQueue.pop_transferred()` 在 receiver `Success` 后读取 metadata buffer，把 output token、cached token、spec/logprob 信息提交回 `Req`。
 
@@ -765,6 +893,9 @@ Prefill PP 主循环要同时照看两条线：
 
 核心入口：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
 def event_loop_pp_disagg_prefill(self):
@@ -790,7 +921,12 @@ def event_loop_pp_disagg_prefill(self):
             self.process_disagg_prefill_inflight_queue(next_release_rids)
 ```
 
+</details>
+
 如果按三段式重新标注，上面这段循环可以读成：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -814,7 +950,12 @@ self.process_bootstrapped_queue(bootstrap_data)
 self.process_disagg_prefill_inflight_queue(next_release_rids)
 ```
 
+</details>
+
 请求接收在 `scheduler.py::recv_requests()` 里已经兼容 PP：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler.py
@@ -830,7 +971,12 @@ else:
     )
 ```
 
+</details>
+
 控制面发送用 Python object：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -846,7 +992,12 @@ def _pp_send_pyobj_to_next_stage(self, data, async_send=False):
         )
 ```
 
+</details>
+
 数据面发送用 tensor dict，并打上消息类型：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -867,7 +1018,12 @@ def _pp_recv_proxy_tensors(self):
         )
 ```
 
+</details>
+
 last PP stage 的 output 不是直接回 tokenizer，而是先转成 tensor dict，再沿 PP ring 回到前面 stage 做统一后处理：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -892,6 +1048,8 @@ def _pp_prep_batch_result(...):
     )
 ```
 
+</details>
+
 ### `preprocess` 的完整时间线
 
 #### 1. request 是怎么进 PP stage 的
@@ -899,6 +1057,9 @@ def _pp_prep_batch_result(...):
 PP0 从 tokenizer/RPC 收到请求；非 PP0 从前一个 PP stage 收到请求 pyobj。这样所有 PP stage 都能知道同一批 rid 的控制信息。这个阶段走的是控制面，不是 KV 数据面。
 
 在 prefill disagg 模式下，`process_input_requests()` 会把请求放进 `disagg_prefill_bootstrap_queue`。放进去时会创建本 PP stage 自己的 KV sender：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -915,11 +1076,16 @@ def add(self, req: Req, num_kv_heads: int) -> None:
     self.queue.append(req)
 ```
 
+</details>
+
 这里的重点是 `pp_rank=self.pp_rank`：PP0、PP1、PPlast 都会各自创建 sender。后面不是“某一个 stage 代发全部 KV”，而是每个 stage 发送自己负责层的 KV/state。
 
 #### 2. bootstrap 是什么时候 ready 的
 
 Prefill 侧每轮都会 poll `disagg_prefill_bootstrap_queue.queue`。PP0 先看自己本地哪些 rid 已经 `WaitingForInput`，然后把 `[good_rids, bad_rids]` 传给 PP1；PP1 和自己的本地状态合并；最后一个 PP stage 得到全 stage 共识。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -939,12 +1105,17 @@ def _pp_pd_get_bootstrapped_ids(self):
     return [good_bootstrapped_rids, bad_bootstrapped_rids]
 ```
 
+</details>
+
 为什么 good 要取交集？因为只有每个 PP stage 都 ready，这个请求才真的能跑完整条 pipeline。为什么 bad 要取并集？因为任意一个 stage 失败，这个请求都不能假装成功。
 
 `WaitingForInput` 从哪里来？这里要分清两侧视角：
 
 - Decode 本地的 `CommonKVReceiver.init()` 会先查 prefill rank mapping、建 bootstrap infos，并把 decode 侧 room 标成 `WaitingForInput`，意思是“receiver 已经建好，接下来可以做 prealloc/send_metadata”。
 - Prefill 侧的 sender 初始多半还是 `Bootstrapping`；只有 decode 后续 `send_metadata()` 把 page indices、state indices、metadata buffer index、`decode_prefix_len` 等信息发到 prefill bootstrap socket 后，prefill 侧 poll 才能看到可继续的状态。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/common/conn.py
@@ -960,11 +1131,16 @@ def init(self, prefill_dp_rank: int):
     self.kv_mgr.update_status(self.bootstrap_room, KVPoll.WaitingForInput)
 ```
 
+</details>
+
 所以，`_pp_pd_get_bootstrapped_ids()` 里的 `KVPoll.WaitingForInput` 对 prefill 来说，含义是“decode 的收货地址和元数据入口已经通过 bootstrap 通道到了，可以把这个 rid 放进 prefill waiting queue”。
 
 #### 3. bootstrap ready 后，request 怎么进入 waiting queue
 
 共识结果绕回后，每个 PP stage 调 `process_bootstrapped_queue()`。它会再次从 `PrefillBootstrapQueue.pop_bootstrapped()` 里把对应 rid 取出来，初始化 sender，并把请求放到 `waiting_queue`。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -979,11 +1155,16 @@ def process_bootstrapped_queue(self, bootstrapped_rids):
     self.waiting_queue.extend(good_reqs)
 ```
 
+</details>
+
 `pop_bootstrapped()` 做的关键动作有三个：
 
 1. poll sender，确认 decode 已经 `WaitingForInput`。
 2. 分配 `metadata_buffer_index`，准备后面写 output metadata。
 3. 读取 `decode_prefix_len`，算出只需要发送多少增量 KV page，然后 `req.disagg_kv_sender.init(...)`。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -994,11 +1175,16 @@ num_pages = kv_to_page_num(num_kv_indices_to_send, self.token_to_kv_pool.page_si
 req.disagg_kv_sender.init(num_pages, req.metadata_buffer_index)
 ```
 
+</details>
+
 这就是 prefill 侧真正“知道该发哪些 KV、写到哪个 metadata buffer”的时刻。
 
 #### 4. batch 和 proxy tensor 怎么准备
 
 bootstrap 完成的请求进入 `waiting_queue` 后，普通 prefill 调度逻辑会把它们组成 batch：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1008,7 +1194,12 @@ batch = self.maybe_prepare_mlp_sync_batch(batch)
 self.mbs[mb_id] = batch
 ```
 
+</details>
+
 如果当前 stage 不是 first PP rank，还要从上一 stage 收到 `PPProxyTensors`。在 GLM5 DSA 场景里，它通常承载 `hidden_states`、`residual`，以及需要跨层继续传递的 `topk_indices`。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1016,20 +1207,30 @@ if self.cur_batch:
     pp_proxy_tensors = self._pp_recv_proxy_tensors()
 ```
 
+</details>
+
 #### 5. transfer poll 为什么也放在 preprocess
 
 同一个循环还会 poll 已经在传输中的请求：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
 transferred_rids = self._pp_pd_get_prefill_transferred_ids()
 ```
 
+</details>
+
 这一步看的不是“当前要跑的 batch”，而是“前面已经 forward 完、KV 已经开始发的请求”。所以它会和下一轮 batch 准备交错在一起，减少空等。
 
 ### `process` 的完整时间线
 
 `process` 的核心就是 `_pp_launch_batch()`。它调用 `run_batch()`，只跑当前 PP stage 拥有的模型层。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1040,6 +1241,8 @@ result, self.launch_event = self._pp_launch_batch(
     self.last_rank_comm_queue,
 )
 ```
+
+</details>
 
 放到 GLM5 DSA 的模型切层里看：
 
@@ -1055,6 +1258,9 @@ result, self.launch_event = self._pp_launch_batch(
 
 当前 stage forward 结束后，如果不是最后一个 PP stage，就把中间激活发给下一 stage。这里发的是模型隐藏状态，不是 KV cache。KV cache 在每个 stage 自己的 `token_to_kv_pool` 里，后面由 disagg KV sender 发给 decode。
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
 self.send_proxy_work = self._pp_send_dict_to_next_stage(
@@ -1064,9 +1270,14 @@ self.send_proxy_work = self._pp_send_dict_to_next_stage(
 )
 ```
 
+</details>
+
 #### 2. KV transfer 在哪里被推进
 
 Prefill forward 结束后，请求会进入 `disagg_prefill_inflight_queue`，KV sender 开始或继续发送本 stage 的 KV/state/metadata。PP loop 每轮会 poll 这些 sender：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -1078,11 +1289,16 @@ def process_disagg_prefill_inflight_queue(self, rids_to_check=None):
     )
 ```
 
+</details>
+
 `poll_and_all_reduce_attn_cp_tp_group()` 说明这里不只是单卡看自己，它会在 attention CP/TP 组里聚合状态，避免一个 TP/CP rank 还没传完时另一个 rank 误以为完成。
 
 #### 3. release 为什么必须做 PP 共识
 
 每个 PP stage 只持有自己那段层的 KV。PP0 transfer 完成，只能说明 PP0 的层到了；PP1/PPlast 不一定到了。所以 `_pp_pd_get_prefill_transferred_ids()` 会沿 PP stage 取交集：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1099,6 +1315,8 @@ def _pp_pd_get_prefill_transferred_ids(self):
         transferred_rids = list(set(prev_transferred_rids) & set(curr_transferred_rids))
     return transferred_rids
 ```
+
+</details>
 
 最后一个 PP stage 得到“全 stage 都完成”的 rid 后，把 release rids 绕回 PP0；各 stage 再用 `process_disagg_prefill_inflight_queue(next_release_rids)` 清理对应 inflight 请求。
 
@@ -1206,6 +1424,9 @@ Decode 侧的核心状态有五个：
 
 ### 源码锚点
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
 def event_loop_pp_disagg_decode(self):
@@ -1227,7 +1448,12 @@ def event_loop_pp_disagg_decode(self):
             self.process_decode_transfer_queue(next_release_rids)
 ```
 
+</details>
+
 Decode transfer 完成的共识函数：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1250,11 +1476,16 @@ def _pp_pd_get_decode_transferred_ids(self):
         )
 ```
 
+</details>
+
 ### `preprocess` 的完整时间线
 
 #### 1. request 进入 decode prealloc queue
 
 Decode 收到请求后，会创建 `DecodeRequest` 和 KV receiver。这里还没有真正分配完整 KV 位置，只是把请求放进 prealloc 队列，并尽量解析 prefill dp rank。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/decode.py
@@ -1268,7 +1499,12 @@ def add(self, req: Req, is_retracted: bool = False) -> None:
             decode_req.kv_receiver.init(prefill_dp_rank)
 ```
 
+</details>
+
 `kv_receiver.init()` 做的是 bootstrap 连接准备：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/common/conn.py
@@ -1283,6 +1519,8 @@ def init(self, prefill_dp_rank: int):
     self.kv_mgr.update_status(self.bootstrap_room, KVPoll.WaitingForInput)
 ```
 
+</details>
+
 `_setup_bootstrap_infos()` 会按 `target_cp_ranks`、`target_tp_ranks`、`target_pp_ranks` 去 prefill bootstrap server 查询每个目标 rank 的连接信息。这里拿到的是“向哪些 prefill rank 建 transfer 连接”的路由表。
 
 #### 2. prealloc 为什么必须先发生
@@ -1293,6 +1531,9 @@ Prefill 不能随便把 KV 写到 decode，它必须知道 decode 侧具体写�
 2. 如果 decode radix cache 命中了前缀，计算 `prefix_len`，只为增量部分分配。
 3. 调 `_pre_alloc()` 占好 KV page。
 4. 把 page indices、state indices、metadata buffer index 发给 prefill。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/decode.py
@@ -1309,11 +1550,16 @@ decode_req.kv_receiver.send_metadata(
 )
 ```
 
+</details>
+
 这就是“prealloc”的真正含义：不是简单地说“我准备好了”，而是 decode 真的把 KV 页、请求 token 映射、metadata buffer 都占好了，并把这些地址发给 prefill。
 
 #### 3. prealloc 也要做 PP 共识
 
 Decode PP 中每个 stage 都要有自己的 KV 接收状态。PP0 先拿本地 good/bad prealloc rid，后续 PP stage 和自己的状态合并：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1333,7 +1579,12 @@ def _pp_pd_get_prealloc_ids(self):
     return [good_prealloc_rids, bad_prealloc_rids]
 ```
 
+</details>
+
 共识结果绕回来后，`process_prealloc_queue()` 才会真正把成功请求推进 `disagg_decode_transfer_queue`：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1344,6 +1595,8 @@ def process_prealloc_queue(self, prealloc_rids):
     )
     self.disagg_decode_transfer_queue.extend(good_reqs)
 ```
+
+</details>
 
 所以 prealloc 的时间线是：
 
@@ -1363,6 +1616,9 @@ request arrives
 
 Decode 本身也有 PP forward，只是要等请求真正进入 `waiting_queue` 后才会被 `get_next_disagg_decode_batch_to_run()` 取出来。对已经可以跑的 decode batch，流程和 Prefill 类似：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
 batch = self.get_next_disagg_decode_batch_to_run()
@@ -1371,6 +1627,8 @@ if self.cur_batch and not self.cur_batch.forward_mode.is_prebuilt():
 result, self.launch_event = self._pp_launch_batch(...)
 ```
 
+</details>
+
 这里有个 decode 特有的小分支：如果 `forward_mode.is_prebuilt()`，说明 batch 可能已经预构建，不需要普通 proxy tensor 接收路径；源码会跳过 `_pp_recv_proxy_tensors()` 和部分结果后处理。
 
 ### `postprocess` 的完整时间线
@@ -1378,6 +1636,9 @@ result, self.launch_event = self._pp_launch_batch(...)
 #### 1. transfer 完成如何被发现
 
 Decode transfer queue 会 poll 每个 request 的 receiver。只有 receiver 报 `KVPoll.Success`，才说明 prefill 已经把 KV/state/metadata 写到 decode 指定位置。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/decode.py
@@ -1391,7 +1652,12 @@ def pop_transferred(self, rids_to_check=None) -> List[Req]:
         done = self._commit_transfer_to_req(decode_req)
 ```
 
+</details>
+
 `_commit_transfer_to_req()` 会从 metadata buffer 里读回 prefill 写入的结果，例如 output token、cached tokens、logprob/spec 信息，并校验 `bootstrap_room` 防止串房间：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/decode.py
@@ -1406,9 +1672,14 @@ actual_room = output_bootstrap_room[0].item()
 expected_room = decode_req.req.bootstrap_room
 ```
 
+</details>
+
 #### 2. release 后请求如何开始 decode
 
 release rids 绕回后，`process_decode_transfer_queue()` 会把这些 rid 对应的请求从 transfer queue 取出，放入 `waiting_queue`：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1416,6 +1687,8 @@ def process_decode_transfer_queue(self, release_rids):
     released_reqs = self.disagg_decode_transfer_queue.pop_transferred(release_rids)
     self.waiting_queue.extend(released_reqs)
 ```
+
+</details>
 
 到这里，请求才真正完成了“从 prefill 集群迁移上下文到 decode 集群”的动作。下一轮 decode scheduler 取 batch 时，它才有资格参加 decode forward。
 
@@ -1488,6 +1761,9 @@ PP 下最容易卡住的就是“每个 stage 看到的请求状态不一样”�
 
 Prefill bootstrap：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
 def _pp_pd_get_bootstrapped_ids(self):
@@ -1501,7 +1777,12 @@ def _pp_pd_get_bootstrapped_ids(self):
     return [good_bootstrapped_rids, bad_bootstrapped_rids]
 ```
 
+</details>
+
 Decode prealloc：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1515,13 +1796,20 @@ def _pp_pd_get_prealloc_ids(self):
         bad_prealloc_rids = list(set(prev_bad) | set(curr_bad))
 ```
 
+</details>
+
 Decode transfer：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 transferred_rids = list(
     set(prev_transferred_rids) & set(curr_transferred_rids)
 )
 ```
+
+</details>
 
 ### 共识图
 
@@ -1556,6 +1844,9 @@ PD 分离真正的数据搬运是 KV cache。Prefill 每个 PP stage 只拥有�
 
 `CommonKVManager._resolve_rank_mapping()` 里的 PP 约束：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/disaggregation/common/conn.py
 # PP rank mapping - decode pp size should be equal to prefill pp size or 1
@@ -1569,7 +1860,12 @@ else:
     required_prefill_response_num *= info.pp_size // self.pp_size
 ```
 
+</details>
+
 Decode 会把映射结果记到 receiver 上：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/common/conn.py
@@ -1585,7 +1881,12 @@ self.kv_mgr.required_prefill_response_num_table[self.bootstrap_room] = (
 )
 ```
 
+</details>
+
 bootstrap server 以 DP/CP/TP/PP 四维注册 prefill rank：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/common/conn.py
@@ -1600,7 +1901,12 @@ def _is_ready(self) -> bool:
     return self._registered_count >= expected
 ```
 
+</details>
+
 KV 指针会按 PP 拥有的层切：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/common/conn.py
@@ -1610,6 +1916,8 @@ def get_mla_kv_ptrs_with_pp(...):
 def get_non_mla_kv_ptrs_with_pp(...):
     ...
 ```
+
+</details>
 
 对普通 K/V cache，是按 `prefill_start_layer/end_layer` 切 K/V 指针；对 MLA/DeepSeek V4，源码会进入 MLA 相关切片逻辑，compressed MLA 还要按 section/compression ratio 找真实指针范围。
 
@@ -1641,6 +1949,9 @@ Prefill PP0 只生产第 0 段层的 KV，PP1 只生产第 1 段层的 KV。Deco
 
 ## 10. KV 后端速查：Mooncake / NIXL / Ascend
 
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
+
 ### 人话版
 
 PP 负责回答“哪个 PP stage 拥有哪些层的 KV”，KV 后端负责回答“这些 KV 怎么搬到 decode”。这一章只做速查，复杂叠加行为放到第 11 章展开。
@@ -1655,6 +1966,9 @@ PP 负责回答“哪个 PP stage 拥有哪些层的 KV”，KV 后端负责回�
 
 Mooncake 的 `_send_kv_cache()` 会区分 target/draft，并根据当前 PP stage 的 `prefill_start_layer` 发送本 stage 拥有的层：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/disaggregation/mooncake/conn.py
 prefill_start_layer = (
@@ -1664,7 +1978,12 @@ prefill_start_layer = (
 )
 ```
 
+</details>
+
 NIXL 的状态对象直接按 PP rank 记账：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/nixl/conn.py
@@ -1675,7 +1994,12 @@ class TransferStatus:
     received_state_per_pp: Set[int]
 ```
 
+</details>
+
 Ascend 分支里也识别 PP：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/ascend/conn.py
@@ -1685,6 +2009,8 @@ if self.pp_size > 1:
             self.get_mla_kv_ptrs_with_pp(...)
         )
 ```
+
+</details>
 
 ### 后端关系图
 
@@ -1700,7 +2026,12 @@ flowchart TD
 
 ---
 
+</details>
+
 ## 11. 叠加 MTP、GLM5 NSA/DSA、CP 时发生什么
+
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
 
 ### 11.1 GLM5 DSA/NSA 如何改变 PP proxy
 
@@ -1713,6 +2044,9 @@ flowchart TD
 #### 源码锚点
 
 启动参数会把 `GlmMoeDsaForCausalLM` 放进 DSA/NSA 分支。注释也明确把它归到 GLM5：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/server_args.py
@@ -1729,7 +2063,12 @@ if model_arch in [
             self.attention_backend = "nsa"
 ```
 
+</details>
+
 GLM5 的模型入口继承 `DeepseekV2ForCausalLM`，所以 PP forward 使用 `DeepseekV2Model`：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/models/glm4_moe.py
@@ -1738,7 +2077,12 @@ class GlmMoeDsaForCausalLM(DeepseekV2ForCausalLM):
         super().determine_num_fused_shared_experts("GlmMoeDsaForCausalLM")
 ```
 
+</details>
+
 `DeepseekV2Model.forward()` 在非 first PP rank 接收 `topk_indices`，在非 last PP rank 需要时继续传下去：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/models/deepseek_v2.py
@@ -1758,6 +2102,8 @@ if not self.pp_group.is_last_rank:
     return PPProxyTensors(proxy_tensors)
 ```
 
+</details>
+
 #### indexer/topk 数据方向：只有前传，没有下一层回传
 
 这里最容易混淆的是两个名字都带 `topk` 的对象：
@@ -1768,6 +2114,9 @@ if not self.pp_group.is_last_rank:
 | `topk_p/topk_index` | MTP/EAGLE speculative | draft/spec 用的候选 token 概率和 token id | PPlast 回到 PP0 做后处理，再随 P->D metadata 到 Decode |
 
 GLM5 NSA/DSA 的 `topk_indices` 不是 draft token，也不是 Decode 回传给 Prefill 的信息。它是在 target 模型 forward 过程中由当前层的 indexer 算出来，或者由 `skip_topk` 层复用上一层已经算好的索引。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/models/deepseek_common/attention_forward_methods/forward_mla.py
@@ -1785,7 +2134,12 @@ else:
     )
 ```
 
+</details>
+
 回到 `DeepseekV2Model.forward()`，每层 forward 的返回值会把 `topk_indices` 交给下一层的 `prev_topk_indices`。如果 PP 切层刚好把“产生 topk 的层”和“复用 topk 的层”切到两个 stage，上一 stage 就把它放进 `PPProxyTensors`，下一 stage 在 preprocess/forward 开始时取出来。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/models/deepseek_v2.py
@@ -1801,9 +2155,14 @@ hidden_states, residual, topk_indices = layer(
 )
 ```
 
+</details>
+
 所以它不是“下一层算完再回传给上一层，上一层等这个结果继续算”。真实执行顺序更像接力赛：上一层或上一 PP stage 把索引棒交出去，下一层拿着继续跑。上一层 forward 已经结束，不再等待下一层回传。
 
 `indexer_topk_output` 是另一件事：它是 state capturer 在 forward 结束后把 indexer topk 捕获出来，供返回/诊断/后处理使用，不改变 PP stage 间的计算依赖方向。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/state_capturer/indexer_topk.py
@@ -1814,6 +2173,8 @@ def maybe_capture_indexer_topk(layer_id: int, topk_indices: Optional[torch.Tenso
         cap.capture(layer_id=layer_id, topk_indices=topk_indices)
     return topk_indices
 ```
+
+</details>
 
 #### 图
 
@@ -1856,6 +2217,9 @@ PP+MTP/spec 在源码里有两个关键限制：
 
 `scheduler.py::maybe_init_draft_worker()` 会跳过非 last PP rank：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/managers/scheduler.py
 skip_prefill_pp_mtp_draft = (
@@ -1869,7 +2233,12 @@ if skip_prefill_pp_mtp_draft:
     return
 ```
 
+</details>
+
 GLM5 继承的 `DeepseekV2ForCausalLM` 支持 EAGLE3 捕获辅助 hidden states，而且只在 last PP rank 生效：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/models/deepseek_v2.py
@@ -1881,7 +2250,12 @@ def set_eagle3_layers_to_capture(self, layer_ids=None):
     self.model.layers_to_capture = [val + 1 for val in layer_ids]
 ```
 
+</details>
+
 last PP stage 的 spec 输出会被塞进 PP output tensor dict：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1894,7 +2268,12 @@ tensor_dict.update(
 )
 ```
 
+</details>
+
 前面的 stage 收到 output 后重建 `EagleDraftInput`，让 scheduler 后处理能继续走 spec 路径：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1906,7 +2285,12 @@ batch.spec_info = EagleDraftInput(
 )
 ```
 
+</details>
+
 KV 侧也有同样的“last PP rank 才发 draft KV”规则：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -1917,6 +2301,8 @@ def _should_send_draft_kv(self) -> bool:
         return True
     return self.pp_rank == self.pp_size - 1
 ```
+
+</details>
 
 #### 为什么在 Prefill 阶段做 MTP？
 
@@ -1937,6 +2323,9 @@ def _should_send_draft_kv(self) -> bool:
 
 Decode 侧的 prealloc 会先给请求分配接收位置，再通过 `send_metadata()` 把“目的地址”发给 Prefill。这里的 `metadata_buffer_index` 可以理解成 Decode 留给 Prefill 写回结果的一张回执格子。
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/disaggregation/decode.py
 decode_req.metadata_buffer_index = (
@@ -1951,7 +2340,12 @@ decode_req.kv_receiver.send_metadata(
 )
 ```
 
+</details>
+
 PPlast 算完完整 target hidden 后，会把 speculative payload 放进 PP output tensor dict。这个 output 是 PP 内部从 last stage 回到前面 stage 的结果回流，由 `_pp_send_output_to_next_stage()` 沿 PP group 发送 `msg_type="output"`，目的是让非 last stage 也能得到同一个 batch 的最终输出并进入统一后处理。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -1964,7 +2358,12 @@ tensor_dict.update(
 )
 ```
 
+</details>
+
 Prefill 后处理会把这些 spec 字段挂到 `Req`，然后和 KV transfer 的最后一段一起写到 Decode 预留的 metadata buffer。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -1974,7 +2373,12 @@ req.hidden_states_tensor = batch.spec_info.hidden_states[i].cpu().clone()
 self.send_kv_chunk(req, last_chunk=True)
 ```
 
+</details>
+
 Decode 收到后，不会把 draft 结果再发回 Prefill，而是在 Decode 本地把 `Req` 里的 `output_topk_p/output_topk_index/hidden_states_tensor` 组装成下一步要用的 `EagleDraftInput`。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/decode_schedule_batch_mixin.py
@@ -1986,6 +2390,8 @@ spec_info = EagleDraftInput(
     new_seq_lens=self.seq_lens,
 )
 ```
+
+</details>
 
 #### 图
 
@@ -2028,6 +2434,9 @@ GLM5 DSA/NSA 的 KV 传输不只是“复制一块 KV cache”。在异构 PD �
 
 Mooncake manager 根据环境变量开启 GLM NSA FP8 wire pack：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/disaggregation/mooncake/conn.py
 self.enable_glm_nsa_fp8_wire_pack = (
@@ -2037,7 +2446,12 @@ if self.enable_glm_nsa_fp8_wire_pack:
     self._normalize_glm_nsa_fp8_state_args()
 ```
 
+</details>
+
 wire format 的页面尺寸和 item length 在公共 helper 中定义：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/common/glm_nsa_fp8_wire.py
@@ -2049,7 +2463,12 @@ MAIN_MLA_TRTLLM_TARGET_ITEM_LEN = PAGE_SIZE * MAIN_MLA_TRTLLM_TARGET_TOKEN_BYTES
 NSA_INDEX_TARGET_ITEM_LEN = PAGE_SIZE * (NSA_INDEX_DIM + NSA_INDEX_SCALE_BYTES)
 ```
 
+</details>
+
 发送 main MLA pages 时，Mooncake 会按当前 PP stage 的 layer range 取源层、目标层，再打包：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/mooncake/conn.py
@@ -2065,7 +2484,12 @@ active_layer_ids = [
 ]
 ```
 
+</details>
+
 真正发送时，GLM5 NSA FP8 分支优先走 `send_glm_nsa_fp8_main_packed()`：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/mooncake/conn.py
@@ -2082,7 +2506,12 @@ if self.enable_glm_nsa_fp8_wire_pack and is_mla_backend and state_type == "nsa":
     return ret, False
 ```
 
+</details>
+
 NSA state 也有独立的 packed 发送路径：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/mooncake/conn.py
@@ -2096,6 +2525,8 @@ if self.enable_glm_nsa_fp8_wire_pack and state_type == "nsa":
         prefill_start_layer=prefill_start_layer,
     )
 ```
+
+</details>
 
 #### 图
 
@@ -2132,6 +2563,9 @@ CP 是 Context Parallel，把长上下文相关的 attention/cache 工作再切�
 
 Prefill KV manager 初始化时，如果打开 `enable_nsa_cache_layer_split`，会把 layer shard 写进 `token_to_kv_pool`：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/disaggregation/prefill.py
 if getattr(self.scheduler.server_args, "enable_nsa_cache_layer_split", False):
@@ -2143,7 +2577,12 @@ if getattr(self.scheduler.server_args, "enable_nsa_cache_layer_split", False):
     self.token_to_kv_pool.layer_shard_size = layer_shard_size
 ```
 
+</details>
+
 同一个初始化过程会保留 PP stage 的层范围，并对不属于本 CP rank 的层填零长度洞：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -2164,9 +2603,14 @@ kv_data_ptrs, kv_data_lens, kv_item_lens = apply_layer_split_holes(
 )
 ```
 
+</details>
+
 这个 keep mask 的含义是：本 CP rank 拥有的 layer/state 保留真实长度，不拥有的 layer/state 仍保留位置，但长度填成 0。这样 wire protocol 仍然是按 PP stage 的连续 layer 范围描述，不会因为 CP 切层导致 decode 侧找不到 layer 编号。
 
 `CommonKVManager` 会把 layer split 记下来。打开后，prefill 端不会把非 0 CP rank 当 dummy：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/common/conn.py
@@ -2181,7 +2625,12 @@ self.is_dummy_cp_rank = (
 )
 ```
 
+</details>
+
 Decode 侧连接 prefill ranks 时，如果 layer split 打开，就不能只连一个 CP rank，而要增加 expected response 数量。这里的 `required_prefill_response_num` 是 decode 判定“这个 room 的 KV 是否全部到齐”的关键计数：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/common/conn.py
@@ -2190,6 +2639,8 @@ if not self.enable_all_cp_ranks_for_transfer and not getattr(info, "layer_split"
 else:
     required_prefill_response_num *= info.attn_cp_size // self.attn_cp_size
 ```
+
+</details>
 
 #### PP / TP / CP 协调图
 
@@ -2321,6 +2772,8 @@ flowchart TD
 
 ---
 
+</details>
+
 ## 12. 核心对象生命周期
 
 ### 人话版
@@ -2356,6 +2809,9 @@ flowchart TD
 
 源码上，PP request 转发走 Python object，不是 tensor，也不是 KV：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/managers/scheduler.py
 if self.pp_rank == 0:
@@ -2370,7 +2826,12 @@ else:
     )
 ```
 
+</details>
+
 进入 PD prefill 后，`Req` 会先被塞进 `PrefillBootstrapQueue.queue`。进入 PD decode 后，`Req` 会被包装成 `DecodeRequest`，再放进 `DecodePreallocQueue`。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/decode.py
@@ -2382,6 +2843,8 @@ class DecodeRequest:
     metadata_buffer_index: int = -1
 ```
 
+</details>
+
 小白理解：`Req` 是工单本体，`rid` 是工单号，后面 PP 共识只传工单号，是为了轻量同步“哪些工单可以推进”。
 
 ### bootstrap_room：P/D 对齐同一间房
@@ -2389,6 +2852,9 @@ class DecodeRequest:
 `bootstrap_room` 是 Prefill sender 和 Decode receiver 对齐同一次 transfer 的房间号。没有它，decode 写好的目的地址和 prefill 准备发送的 KV 就无法匹配。
 
 Prefill 侧创建 sender 时会带上 room 和当前 `pp_rank`：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -2401,7 +2867,12 @@ req.disagg_kv_sender = kv_sender_class(
 )
 ```
 
+</details>
+
 Decode 侧 receiver 初始化时也围绕同一个 room 建 bootstrap infos：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/common/conn.py
@@ -2410,7 +2881,12 @@ def init(self, prefill_dp_rank: int):
     self.kv_mgr.update_status(self.bootstrap_room, KVPoll.WaitingForInput)
 ```
 
+</details>
+
 到 metadata 提交阶段，Decode 还会校验写回来的 `output_bootstrap_room`，防止 metadata buffer 串房间：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/decode.py
@@ -2420,11 +2896,16 @@ if actual_room != expected_room:
     prepare_abort(...)
 ```
 
+</details>
+
 ### KV sender / receiver：真正搬 KV 的两端
 
 KV sender 属于 Prefill，KV receiver 属于 Decode。它们不是模型层，也不是 request 本身，而是 PD transfer 的连接对象。
 
 Decode receiver 的第一阶段是查路由：我要从哪些 prefill PP/TP/CP rank 收数据。第二阶段是 `send_metadata()`：我已经分配好了 decode 侧 KV page 和 metadata buffer，你可以按这些地址写。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/base/conn.py
@@ -2442,7 +2923,12 @@ class BaseKVReceiver(ABC):
         """Notify the prefill server about the kv indices, aux index, and state_indices."""
 ```
 
+</details>
+
 Prefill sender 在 `pop_bootstrapped()` 里拿到这些信息后才 `init()`，此时它知道要传多少 page、metadata 写到哪里：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -2453,6 +2939,8 @@ num_pages = kv_to_page_num(num_kv_indices_to_send, self.token_to_kv_pool.page_si
 req.disagg_kv_sender.init(num_pages, req.metadata_buffer_index)
 ```
 
+</details>
+
 小白理解：receiver 先把“收货地址”写给 sender，sender 才能在 forward 后把 KV 包裹寄过去。
 
 ### metadata_buffer_index：小块结果回写区
@@ -2460,6 +2948,9 @@ req.disagg_kv_sender.init(num_pages, req.metadata_buffer_index)
 `metadata_buffer_index` 不是 KV cache 本体，它更像每个请求的一张结果回执。Prefill 会把 next token、cached token、logprob、spec topk/hidden states、`bootstrap_room` 等小块 metadata 写进去；Decode 在 transfer success 后读出来，合并回 `Req`。
 
 Decode prealloc 时分配 metadata buffer 并发给 Prefill：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/decode.py
@@ -2474,7 +2965,12 @@ decode_req.kv_receiver.send_metadata(
 )
 ```
 
+</details>
+
 Prefill transfer 完成后释放自己的 metadata index：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -2484,7 +2980,12 @@ for req in done_reqs:
     )
 ```
 
+</details>
+
 Decode 读完并提交后也释放 index：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/decode.py
@@ -2493,9 +2994,14 @@ assert idx != -1
 self.req_to_metadata_buffer_idx_allocator.free(idx)
 ```
 
+</details>
+
 ### batch / microbatch slot：PP loop 的执行载体
 
 `ScheduleBatch` 是真正拿去跑模型的 batch；microbatch slot 是 PP loop 为了异步 pipeline 准备的槽位。一个 slot 会经历：准备 batch、接收 proxy、launch forward、回收 output、推进 release。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -2507,7 +3013,12 @@ result, self.launch_event = self._pp_launch_batch(
 )
 ```
 
+</details>
+
 `_pp_launch_batch()` 里真正调用 `run_batch()`。last PP rank 会把输出暂存到 `last_rank_comm_queue`，等后续 output tensor dict 回传给前面 stage 做统一后处理：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -2523,6 +3034,8 @@ if self.pp_group.is_last_rank:
     )
 ```
 
+</details>
+
 ### PPProxyTensors：模型隐藏状态接力棒
 
 `PPProxyTensors` 只服务模型 forward。它不是 KV cache，也不负责 P/D 传输。非 last PP stage forward 后，把下一 stage 继续算所需的中间激活打包进去。GLM5 DSA 场景里，它可能包含：
@@ -2533,6 +3046,9 @@ if self.pp_group.is_last_rank:
 
 发送时用 tensor dict，并标记 `msg_type="proxy"`：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
 self.send_proxy_work = self._pp_send_dict_to_next_stage(
@@ -2542,7 +3058,12 @@ self.send_proxy_work = self._pp_send_dict_to_next_stage(
 )
 ```
 
+</details>
+
 接收时只接收 proxy 类型，避免和 last rank output tensor dict 混在一起：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -2553,9 +3074,14 @@ def _pp_recv_proxy_tensors(self):
         )
 ```
 
+</details>
+
 ### KV transfer 与 release_rids：数据到齐后的放行
 
 KV transfer 的启动点在 Prefill forward 后。请求被放入 `disagg_prefill_inflight_queue`，sender 开始或继续把本 PP stage 的 KV/state/metadata 发给 Decode。
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -2563,7 +3089,12 @@ self.disagg_prefill_inflight_queue.append(req)
 self.send_kv_chunk(req, last_chunk=True)
 ```
 
+</details>
+
 Prefill inflight queue 持续 poll。成功后释放 prefill 侧 KV cache、清理 sender、释放 metadata buffer，并 stream 完成结果：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/prefill.py
@@ -2574,7 +3105,12 @@ elif poll == KVPoll.Success:
     done_reqs.append(req)
 ```
 
+</details>
+
 Decode transfer queue 也持续 poll receiver。成功后 `_commit_transfer_to_req()` 读取 metadata buffer，把 output token 和缓存统计等提交回 request：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/decode.py
@@ -2584,7 +3120,12 @@ if poll == KVPoll.Success:
         transferred_reqs.append(decode_req.req)
 ```
 
+</details>
+
 但在 PP 下，单个 stage 成功还不够。`release_rids` 必须是所有 PP stage 都完成后的共识结果：
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/managers/scheduler_pp_mixin.py
@@ -2598,6 +3139,8 @@ def _pp_pd_get_decode_transferred_ids(self):
             set(prev_transferred_rids) & set(curr_transferred_rids)
         )
 ```
+
+</details>
 
 小白理解：一个请求的 KV 不是一个包，而是多个 PP stage、可能再乘 TP/CP shard 的一组包。release 就是“所有必须到的包都到了”的签字。
 
@@ -2716,11 +3259,19 @@ flowchart LR
 
 关键源码链可以这样记：
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/managers/scheduler.py
 elif self.disaggregation_mode == DisaggregationMode.DECODE:
     self.disagg_decode_prealloc_queue.add(req, is_retracted=is_retracted)
 ```
+
+</details>
+
+<details>
+<summary>查看固定版本的源码片段</summary>
 
 ```python
 # python/sglang/srt/disaggregation/decode.py
@@ -2735,11 +3286,18 @@ decode_req.kv_receiver.send_metadata(
 )
 ```
 
+</details>
+
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # python/sglang/srt/disaggregation/mooncake/conn.py
 if arrived_response_num == expected_response_num:
     self.update_status(bootstrap_room, KVPoll.Success)
 ```
+
+</details>
 
 ### 同一个请求下三条 topk / 回传线
 

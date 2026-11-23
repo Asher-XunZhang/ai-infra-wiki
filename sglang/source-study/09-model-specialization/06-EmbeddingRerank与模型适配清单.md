@@ -1,10 +1,14 @@
 # Embedding、Rerank 与模型适配清单
 
-> **先建立架构心智模型：** [M10 · 模型装配状态形态与输入输出](<../architecture/10-模型装配状态形态与输入输出.md>)。先看职责、数据和生命周期，再回到本篇源码细节。
+> 架构导读：[M10 · 模型装配状态形态与输入输出](<../architecture/10-模型装配状态形态与输入输出.md>)。
 
 本文是 **09-06，源码分析型学习资料**。承接 [多模态输入链路](05-图像视频音频输入的处理链路.md)，回到纯文本，沿 LlamaEmbeddingModel 走通一次“请求 → Prefill → 池化向量 → 返回与回收”。随后对照 BERT 分类式 Rerank 和 Qwen3 文本解码式 Rerank，再把阶段 09 的内容收束成模型适配清单。
 
 人话版：生成模型要继续写下一个字；Embedding 模型把一段输入整理成一串可比较的数字；Rerank 模型判断查询与候选内容有多相关。这些任务可以共享许多执行基础设施，但“使用了 Transformer”不等于输出代表同一种东西。
+
+**怎么读：** 先完成一次 Embedding 的输入、池化、返回与释放；分类式和解码式 Rerank 分别查阅。
+
+主线：[1. 先把向量、分数和概率分开](#1-先把向量分数和概率分开) → [3. R1 从 API 进入 Scheduler](#3-r1-从-api-进入-scheduler) → [4. 一次 Prefill 如何变成两个向量](#4-一次-prefill-如何变成两个向量) → [5. 非生成任务的完成、输出和资源回收](#5-非生成任务的完成输出和资源回收) → [9. 新模型适配：从注册追到输出契约](#9-新模型适配从注册追到输出契约)。
 
 ## 0. 阅读基线与范围
 
@@ -239,6 +243,9 @@ encoding_format=float 返回浮点列表；base64 路径把值打包为**小端 
 
 ## 6. 分类式 Rerank：把查询和候选联合读完
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 ### 6.1 一个查询怎样变成 N 条 pair 请求
 
 设查询 Q，候选 D0、D1、D2。OpenAIServingRerank 在 cross_encoder 路由中构造：
@@ -294,7 +301,12 @@ _build_rerank_response 把每个结果映射回 request.documents[idx]，保留�
 
 **来源与边界：** [Retrieve & Re-Rank](https://www.sbert.net/examples/sentence_transformer/applications/retrieve_rerank/README.html)，Sentence Transformers，未标独立发布日期。语料库和检索系统不由本篇 SGLang 接口自动提供；图中的应用流程也不表示所有 rerank 都采用分类式 cross-encoder，解码式打分见正文。 [来源档案 F33](../../../images/sglang-source-study/SOURCES.md#f33)。
 
+</details>
+
 ## 7. 解码式打分与 Qwen3 文本 Rerank
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 7.1 Engine.score 并不是 Embedding API 的别名
 
@@ -341,7 +353,12 @@ yes/no ID 优先通过 tokenizer 动态取得；函数还有写明风险的固�
 
 Qwen3 文本 reranker 若以 --is-embedding 启动而进入非生成模式，会被这一入口拒绝。[S49] “不生成长文本”不意味着它应该选择 embedding 模式。
 
+</details>
+
 ## 8. 原始池化状态与 MIS：只增加必要对照
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 8.1 pre-head hidden states 与最终分数要分别取
 
@@ -373,6 +390,8 @@ delimiter indices：[2,6,8]
 pool_at_delimiter_positions 从 delimiter 的前一位置抽取状态，得到每请求不同数量的行；score_and_pool 在 MIS 分支按这些位置算任务头。[S75] [S52] 返回后处理再核对 item 数加一，并丢弃首个 query 边界项，见 [MIS 结果处理](https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/tokenizer_manager_score_mixin.py#L111)。
 
 **这只证明局部位置/消费契约。** 把多个候选拼进同一输入，要进一步验证其 attention 隔离、提示语义和各模型实现；本篇不把普通拼接当成与独立 pair 打分等价。
+
+</details>
 
 ## 9. 新模型适配：从注册追到输出契约
 
@@ -417,6 +436,9 @@ test_external_models 用外部模型/processor 包启动示例模型并检查生
 
 ## 10. 模型能力 → 配置 → 执行 → 状态 → 验证
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 | 代表能力 | 配置/模式 | 执行出口 | 状态与限制 | 最小验证方向 |
 | --- | --- | --- | --- | --- |
 | Llama 生成基线 | CausalLM、generation | LM head/logits → 采样 | 因果 KV、停止与 Decode | next-token 分布、生成与回收 |
@@ -429,7 +451,12 @@ test_external_models 用外部模型/processor 包启动示例模型并检查生
 
 依据沿用 [S2] [S5] [S15] [S21] [S39] [S45] [S49] [S52] [S54]。表格是本轮读取范围的适配地图，不是完整兼容矩阵或全部功能组合已测试的声明。
 
+</details>
+
 ## 11. 给新模型的可执行验收清单
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 这里的“可执行”指每项都有明确证据目标；本轮没有替用户运行这些实验。
 
@@ -461,6 +488,8 @@ flowchart TD
 
 **图意解读：** 每个框都是证据要求，不是看到下一框有代码就可以跳过前一框。尤其是“能够导出向量”不能替代训练任务匹配和真实检索质量验证。
 
+</details>
+
 ## 12. 排障地图
 
 | 现象 | 优先检查 | 源码锚点 | 避免误判 |
@@ -479,6 +508,9 @@ flowchart TD
 | 网络向量解码全错 | base64 内容的小端 float32 格式 | [S32] | 内部 BF16 就用 BF16 解码网络结果 |
 
 ## 13. 测试入口与本轮证据
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 13.1 已阅读哪些定义
 
@@ -506,6 +538,8 @@ flowchart TD
 - 两维 float32 的 8 字节 payload 与 12 字符 base64 长度。
 
 这些只检查数学、索引和表示账本，没有调用项目函数。另核对固定源码符号/行号、正文导航、引用、表格与 Mermaid 文字关系；Mermaid 未做渲染截图验证。
+
+</details>
 
 ## 14. 练习与下一阶段
 

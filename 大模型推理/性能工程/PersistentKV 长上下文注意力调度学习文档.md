@@ -391,6 +391,6 @@ PersistentKV 的价值主张是：直接读取分页 KV，把单长序列拆成�
 ## 12. 参考与延伸
 
 - 《GPU空等：KV Cache调度优化》：https://mp.weixin.qq.com/s/Ha3uOnwBeplvGfSDJndC7Q
-- [vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档](../%E8%BF%90%E8%A1%8C%E6%97%B6/vLLM%20%E4%BB%8E%E8%BF%9E%E7%BB%AD%E6%89%B9%E5%A4%84%E7%90%86%E5%88%B0%20PagedAttention%20%E7%9A%84%E5%BC%95%E6%93%8E%E5%B7%A5%E4%BD%9C%E6%B5%81%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
+- [vLLM 从连续批处理到 PagedAttention 的引擎工作流学习文档](../../vllm/运行时/vLLM%20从连续批处理到%20PagedAttention%20的引擎工作流学习文档.md)
 
 本文未找到并复核 PersistentKV 的一手论文、代码仓库或 vLLM 合入记录，因此所有实现状态与性能数字都保留原文边界。

@@ -1,10 +1,14 @@
 # Diffusion 服务与生成流程入门
 
-> **先建立架构心智模型：** [M12 · DSL与Diffusion及插件边界](<../architecture/12-DSL与Diffusion及插件边界.md>)。先看职责、数据和生命周期，再回到本篇源码细节。
+> 架构导读：[M12 · DSL与Diffusion及插件边界](<../architecture/12-DSL与Diffusion及插件边界.md>)。
 
 本文是**源码分析型学习资料**，面向已经了解“一条文本请求如何进入 SGLang”、第一次阅读图像和视频生成代码的读者。
 
 本篇沿 **Flux 单张文生图 → 普通一体化服务 → fullres 去噪 → 文件与图片响应**走通一条主线，再用视频任务接口和 Wan 的流水线说明扩展边界。重点是请求、条件、latent、采样步骤和最终媒体的生命周期。
+
+**怎么读：** 先只看 Flux 单张文生图，从请求经过 latent 和去噪走到图片响应；视频是单独分支。
+
+主线：[2. 先建立整体地图](#2-先建立整体地图) → [3. API 参数如何变成内部 Req](#3-api-参数如何变成内部-req) → [4. pipeline 怎样把各个阶段串起来](#4-pipeline-怎样把各个阶段串起来) → [6. R1 walkthrough：从 512 × 512 到 1024 个 latent 位置](#6-r1-walkthrough从-512--512-到-1024-个-latent-位置) → [7. 一次去噪迭代究竟做了什么](#7-一次去噪迭代究竟做了什么) → [8. 从 latent 到图片文件，再到 HTTP 响应](#8-从-latent-到图片文件再到-http-响应)。
 
 ## 0. 阅读基线与范围
 
@@ -137,6 +141,9 @@ HTTP create_app 挂载图片和视频路由；lifespan 初始化 AsyncSchedulerC
 
 下面是发往 `POST /v1/images/generations` 的请求体示意，**未发送**。假定目标服务已加载本篇选定的 Flux pipeline；省略 model 字段，避免把请求字段误读成运行中换模型的命令。
 
+<details>
+<summary>查看代码或配置原文</summary>
+
 ```json
 {
   "prompt": "A red cube on a plain white table",
@@ -151,6 +158,8 @@ HTTP create_app 挂载图片和视频路由；lifespan 初始化 AsyncSchedulerC
   "progressive_mode": "fullres"
 }
 ```
+
+</details>
 
 4 步只用于缩短教学账本，不是 Flux 画质推荐。CPU generator 表示随机数生成器的选择，不表示模型在 CPU 上运行。[S36] [S44] 本篇不展示或声称产生了相应图片。
 
@@ -430,6 +439,9 @@ sequenceDiagram
 
 ## 9. 视频沿用什么，又增加什么
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 视频生成也可以复用“输入 → 条件 → latent → 采样 → 解码”的框架，但不能把每个视频帧当作独立图片循环，或把 num_frames 当作 num_inference_steps。
 
 ### 9.1 Wan 的代表入口
@@ -463,6 +475,8 @@ create_video 在准备和校验请求后，把初始 job 写入 VIDEO_STORE，�
 delete_video 的函数体没有向 Scheduler 发送 abort，也没有在这里取消后台生成 task 或删除媒体文件。[S73] 这是具体入口的源码边界，不能把任务记录删除当作完整取消协议。
 
 实时视频、分段生成、音视频联合模型和分离式 encoder/denoiser/decoder 服务仍需沿各自入口分析，不由本节推导支持范围。
+
+</details>
 
 ## 10. 错误与资源边界：按最后成功的一步定位
 
@@ -501,6 +515,9 @@ GPUWorker._execute_forward_common 捕获异常并填入 OutputBatch.error；非 
 
 ## 11. 源码阅读路线与既有测试
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 ### 11.1 按问题回到符号
 
 下列路径均相对于 SGLang 仓库根目录。链接固定到本篇 commit，类中同名方法应连同类名定位。
@@ -538,6 +555,8 @@ GPUWorker._execute_forward_common 捕获异常并填入 OutputBatch.error；非 
 | TestProgressiveRouter 的 fullres 用例 [S84] | Dummy stage，断言选 standard 且不创建 progressive | Flux 数值、画质或渐进模式性能通过 |
 
 这样分层后，单测能够成为验证计划的入口，而不会被包装成尚未发生的端到端结果。
+
+</details>
 
 ## 12. 练习、验收与下一篇
 

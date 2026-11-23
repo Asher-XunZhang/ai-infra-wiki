@@ -1,10 +1,14 @@
 # MLA、稀疏注意力与混合状态模型
 
-> **先建立架构心智模型：** [M10 · 模型装配状态形态与输入输出](<../architecture/10-模型装配状态形态与输入输出.md>)。先看职责、数据和生命周期，再回到本篇源码细节。
+> 架构导读：[M10 · 模型装配状态形态与输入输出](<../architecture/10-模型装配状态形态与输入输出.md>)。
 
 本文是 **09-04，源码分析型学习资料**。承接 [MultiLoRA 加载、调度与隔离](03-MultiLoRA加载调度与隔离.md)，从已经熟悉的 Llama Attention 出发，沿 DeepSeek MLA 走通一次计算，再对照 DSA、DeepSeek V4、Kimi K3 与 Qwen3.5。重点是：**模型换了以后，哪些层、权重投影、缓存布局、请求状态和提交规则也必须一起换？**
 
 人话版：普通 Attention 像为每个历史 token 留一张可查询的卡片。MLA 把每张卡片的内容压缩；稀疏注意力挑选本轮要读的卡片；V4 还把一段历史整理成较少的记录；递推层则持续更新一本“读到这里的笔记”。这些方式可以组合，但笔记不能靠删除几张卡片自动退回过去。
+
+**怎么读：** 先走 DeepSeek MLA 的一个完整例子。DSA、V4、Kimi 与 Qwen 是不同模型分支，按需展开。
+
+主线：[2. MLA 的对象与维度：先看一层](#2-mla-的对象与维度先看一层) → [3. 为什么可以直接在 latent 上做 Attention](#3-为什么可以直接在-latent-上做-attention) → [4. 完整主线：8 个输入 token 怎样走到第 3 个输出](#4-完整主线8-个输入-token-怎样走到第-3-个输出) → [10. 混合模型的共同难点：请求、状态与 checkpoint 对齐](#10-混合模型的共同难点请求状态与-checkpoint-对齐)。
 
 ## 0. 阅读基线与代表路径
 
@@ -234,6 +238,9 @@ T × H × ((D_n+D_r)+D_v) × 2 = 800 字节
 
 ## 5. 同一个 MLA 模型，为何 Prefill 可以走 MHA
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 ### 5.1 “展开计算”没有强迫“展开存储”
 
 将主线的 disable_ragged 选择放开后，attention_backend_handler 根据 backend、模式、prefix 长度、chunk 容量及图捕获状态等决定 MHA_ONE_SHOT、MHA_CHUNKED_KV 或 MLA。[S6] 因此不能写成“所有 Prefill 都是 MHA，所有 Decode 都是 MLA”。
@@ -252,7 +259,12 @@ Chunked KV 路径分块取历史压缩 KV、恢复计算所需 K/V，再合并 A
 
 至少记录“模型 Attention 类、实际 backend 名、本轮 forward_mode、分发方法、KV dtype/形状”。字段声明中的 flashinfer_mla_disable_ragged 默认 False；本篇主线显式选择 True。[S8] 这只是阅读隔离条件，不是性能推荐。
 
+</details>
+
 ## 6. DSA：主 MLA 缓存之外，增加一条选历史的链路
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 6.1 先区分三种 topk
 
@@ -314,7 +326,12 @@ Indexer 可以根据长度走只准备 key 的快捷路径；对应 key 仍为�
 
 此外，声明 skip_topk 的共享层不能因为没拿到前层 topk 就随意重算本层 Indexer；should_run_indexer 明确限制，并保留 NextN 的特定回退。[S26] 本节不展开共享层传播，但这说明“每一层都一定拥有可用 Indexer 权重”并不成立。
 
+</details>
+
 ## 7. DeepSeek V4：窗口、压缩记录和压缩状态同时存在
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 7.1 ratio=4/128 与 MLA rank 是两种压缩轴
 
@@ -367,7 +384,12 @@ clear_unaccepted_c128_draft_states 对**非 ONLINE_C128**且多候选等条件�
 
 这只能支持该局部分支的规则，不能推导所有 V4 投机路径都靠此函数完成提交。正文不把源码里未使用的非 paged helper 限制当成整个 V4 的投机支持结论。
 
+</details>
+
 ## 8. Kimi K3：KDA 与 MLA 两种层怎样接在一起
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 8.1 配置层号从 1 开始，执行层号从 0 开始
 
@@ -400,7 +422,12 @@ KDAAttnBackend.forward_extend 取得当前层 conv 与 temporal，按请求状�
 
 若要保存前缀 checkpoint，conv 窗口和 temporal 必须对齐到同一有效边界。代码对需要的中间状态 snapshot 检查实际执行 kernel 的 supports_track_state_snapshot；不能只看配置 backend 名就认定会写出所需状态。[S54]
 
+</details>
+
 ## 9. Qwen3.5：GDN 层如何与全注意力共享执行框架
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 9.1 模型钩子先决定层型，再决定池
 
@@ -426,6 +453,8 @@ Qwen3_5GatedDeltaNet.forward 先做输入投影，普通分支整理 query/key/v
 Decode 可以走 packed kernel，也可以 split 后进入 dispatcher；不论融合程度怎样，均传入状态池和状态索引。[S66] Extend/Verify 分开处理，有普通 intermediate_ssm、ReplaySSM 等不同协议。[S67] 本节只沿普通 checkpoint 协议：TritonGDNKernel.extend 把状态和索引交给 chunk_gated_delta_rule；target_verify 额外传 intermediate buffer 与候选位置。[S68] [S69]
 
 “线性 Attention”不能解释成“没有状态”，也不能仅凭名字认定 KDA 与 GDN 的门控、卷积、dtype 和 kernel 可以互换。
+
+</details>
 
 ## 10. 混合模型的共同难点：请求、状态与 checkpoint 对齐
 
@@ -495,6 +524,9 @@ R2 = 9 - 5 = 4
 
 ## 11. 模型能力到实现、状态与验证入口的对照
 
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
+
 | 能力/条件 | 配置或模型钩子 | 层/算子路径 | 状态/验证入口 |
 | --- | --- | --- | --- |
 | MLA 压缩 KV | R、D_r、q_lora_rank；backend 分发 | absorbed prepare/core；w_kc/w_vc | MLATokenToKVPool；本篇独立代数账本 [S3] [S9]—[S25] |
@@ -506,6 +538,8 @@ R2 = 9 - 5 = 4
 | 投机状态提交 | accept_index、accept_lens、实际协议 | 普通 scatter / 专用协议分支 | conv 与 temporal 必须一致 [S70]—[S72] |
 
 此表把**源码入口、静态分支与测试定义**关联起来，不是支持矩阵认证。模型能注册、buffer 能分配、测试文件存在，都不能单独证明精度、吞吐或跨节点状态迁移正确。
+
+</details>
 
 ## 12. 小白排障地图
 
@@ -523,6 +557,9 @@ R2 = 9 - 5 = 4
 | V4 压缩边界后异常 | ratio、子池层号、压缩状态与候选清理 | [S45]—[S47] | 只检查压缩 KV payload 即可 |
 
 ## 13. 怎样验证，才有资格写“工作正常”
+
+<details>
+<summary>按问题展开本节的分支、配置或验证细节</summary>
 
 ### 13.1 本次读到的五种测试证据
 
@@ -549,6 +586,8 @@ R2 = 9 - 5 = 4
 | 模型与性能 | 固定权重、固定输入，质量与冷/热负载分别测 | 设备/软件版本、实际配置、重复次数、延迟与内存峰值 |
 
 这里给的是后续验证设计，不表示本次已执行，也不在没有设备条件的本地环境拼凑启动成功结论。
+
+</details>
 
 ## 14. 阅读路线与自检
 

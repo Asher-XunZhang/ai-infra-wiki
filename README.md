@@ -78,7 +78,7 @@
 
 ## 仓库内容与阅读方式
 
-AI 推理系统很容易被拆成一堆孤立名词：Continuous Batching、PagedAttention、Radix Cache、PD 分离、TP/PP/EP/CP……但真实系统从来不是按名词运行的。
+理解推理系统，可以从一条请求开始：它何时被接纳，模型怎样计算，历史状态放在哪里，结果又怎样回到客户端。批处理、缓存和并行机制都可以放回这条链路中理解。
 
 文档围绕请求执行过程展开：
 
@@ -118,7 +118,7 @@ flowchart LR
 
 ## 知识星图
 
-调度专题可从[总览与学习路线](<sglang/运行时/SGLang 调度机制总览与学习路线.md>)开始：先拆清路由、队列排序、admission 和 Overlap，再用请求生命周期与 64K→16K 的 chunk 对照理解性能取舍。来源清单记录了八条资料的采用、排除和核对依据。
+调度专题可从[调度循环与批次旅程](<sglang/运行时/SGLang%20调度循环与批次执行旅程学习文档.md#scheduler-decisions>)开始：先拆清路由、队列排序、admission 和 Overlap，再用请求生命周期与 64K→16K 的 chunk 对照理解性能取舍。来源清单记录了八条资料的采用、排除和核对依据。
 
 同一个机制经常横跨多条主线。下面这张图适合用来判断“下一篇该往哪里跳”。
 
@@ -152,7 +152,7 @@ flowchart TB
 | --- | --- | --- |
 | 吞吐 / TTFT / TPOT | 请求什么时候被选中，Prefill 会不会阻塞 Decode？ | [Chunked Prefill 与共推](<大模型推理/调度方法/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) |
 | OOM / 可服务并发 | 每个 token 的 KV 占多少，碎片和冗余在哪里？ | [KV Cache 容量优化地图](<大模型推理/KV缓存/KV Cache 容量优化技术地图学习文档.md>) |
-| 前缀缓存命中 | “相同前缀”如何编码，命中后复用了哪一层资源？ | [RadixAttention 前缀命中定义](<sglang/KV缓存/SGLang RadixAttention 前缀缓存命中定义学习文档.md>) |
+| 前缀缓存命中 | “相同前缀”如何编码，命中后复用了哪一层资源？ | [RadixAttention 前缀命中定义](<sglang/KV缓存/SGLang%20KV%20Pool、请求视图与%20HiCache%20工程学习文档.md#prefix-match-to-readable-kv>) |
 | 多卡扩展 | 切模型、切专家、切序列分别改变了什么？ | [Context Parallel、PCP 与 DCP](<大模型推理/并行方法/Context Parallel、PCP 与 DCP 总体学习文档.md>) |
 | PD 分离 | 谁发起传输，KV 到齐前请求处于什么状态？ | [PD Prefill 请求生命周期](<sglang/分离部署/PD Prefill PP=3 请求生命周期源码学习文档.md>) |
 | Kernel / Trace | 一段耗时属于调度空洞、通信还是算子本身？ | [SGLang Torch Profiler 与 Trace](<sglang/性能工程/SGLang Torch Profiler 与 Trace 性能分析学习文档.md>) |

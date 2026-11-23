@@ -291,7 +291,7 @@ sequence/request 槽位是否够
 
 一个 block 尚未填满时，其后续 token 可能改变整个 block 的内容标识，通常不适合当作稳定共享单元。APC 因而更容易在完整 block 上建立可复用 hash。
 
-链式哈希和二分命中过程见 [vLLM APC 链式哈希学习文档](../KV%E7%BC%93%E5%AD%98/vLLM%20APC%20%E9%93%BE%E5%BC%8F%E5%93%88%E5%B8%8C%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)。
+链式哈希和二分命中过程见 [vLLM APC 链式哈希学习文档](../KV缓存/vLLM%20V1%20KV%20Cache%20管理全生命周期源码学习文档.md#apc-design-and-tail)。
 
 ## 8. 原文性能数字应该怎样读
 
@@ -346,7 +346,7 @@ API 层负责协议、认证/限流（若部署提供）、chat template、流�
 ## 11. 进一步阅读
 
 - 存储粒度与计算粒度：[vLLM Chunked Prefill 与 Block Size 学习文档](vLLM%20Chunked%20Prefill%20%E4%B8%8E%20Block%20Size%20%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
-- 前缀命中：[vLLM APC 链式哈希学习文档](../KV%E7%BC%93%E5%AD%98/vLLM%20APC%20%E9%93%BE%E5%BC%8F%E5%93%88%E5%B8%8C%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
+- 前缀命中：[vLLM APC 链式哈希学习文档](../KV缓存/vLLM%20V1%20KV%20Cache%20管理全生命周期源码学习文档.md#apc-design-and-tail)
 - 分布式 KV 接入：[Mooncake 与 vLLM 接入地图学习文档](../%E5%88%86%E7%A6%BB%E9%83%A8%E7%BD%B2/Mooncake%20%E4%B8%8E%20vLLM%20%E6%8E%A5%E5%85%A5%E5%9C%B0%E5%9B%BE%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
 - 跨框架心智模型：[LLM 推理系统心智模型与 SGLang、vLLM 选型边界学习文档](../../%E5%A4%A7%E6%A8%A1%E5%9E%8B%E6%8E%A8%E7%90%86/%E6%8E%A8%E7%90%86%E5%9F%BA%E7%A1%80/LLM%20%E6%8E%A8%E7%90%86%E7%B3%BB%E7%BB%9F%E5%BF%83%E6%99%BA%E6%A8%A1%E5%9E%8B%E4%B8%8E%20SGLang%E3%80%81vLLM%20%E9%80%89%E5%9E%8B%E8%BE%B9%E7%95%8C%E5%AD%A6%E4%B9%A0%E6%96%87%E6%A1%A3.md)
 

@@ -50,6 +50,19 @@ Python 包元数据让 vLLM 找到扩展入口；平台注册回调返回平台�
 
 跨进程的完整调用与导入顺序见 [多进程启动中的插件注册与补丁生效](<vLLM 多进程启动中的插件注册与补丁生效顺序学习文档.md>)。该篇另以 HCU 记录的官方集成提交为主线，区分 fork 继承的快照、spawn 的重新初始化，以及 Worker 配置绑定；不与本文三组独立快照合并成一个部署组合。
 
+### 沿启动路线检查四个位置
+
+一个 HCU 插件已经安装，却没有影响模型执行时，先不要反复重装。按下面的路线检查：前端有没有发现并允许入口，EngineCore 是否建立了自己的扩展状态，Worker 最后构造了哪个类，以及 HCU 补丁是否已经按该 Worker 的配置生效。
+
+| 位置 | 本步在做什么 | 这一步成功后还缺什么 |
+| --- | --- | --- |
+| 包元数据与前端 | 发现入口、执行注册、形成配置 | Core 与 Worker 还要建立各自的运行状态 |
+| EngineCore | 加载 general plugins，再创建 Executor 等对象 | 执行任务仍需派发给正确 Worker |
+| WorkerWrapper | 取得本 rank 配置、加载扩展、解析 Worker 类 | Worker 还要初始化设备、加载模型并创建 Runner |
+| HCU Worker | 绑定本 Worker 配置并应用对应补丁，再进入父类初始化 | 设备、模型和具体计算路径仍需实际验证 |
+
+这是 HCU 目标提交 `58ad1f3b` 的调用路线摘要；后面的平台选择表仍属于 `33fa579e`。两个版本共同说明“安装、注册、选中、实际使用”是不同步骤，但不能交换它们的代码分支。[固定版本附录](<vLLM 多进程启动中的插件注册与补丁生效顺序学习文档.md>)保留完整调用链、fork/spawn 和 HCU 导入协调器。
+
 ### 每轮计算再决定“算什么、怎么算”
 
 ![从调度计划到设备执行的逻辑层次](../../images/vllm-hardware-plugins/02-execution-stack.png)
@@ -260,6 +273,23 @@ Ascend 的 `register()` 返回平台类路径；general plugin 则包括 Connect
 第一次读可以按“第 1–3 节整体地图 → 第 4 节具体装配 → 第 5 节数据契约”推进；需要对照另一种设备体系时再读第 6 节。自测应能解释：为什么列出 Entry Points 还不能证明平台激活，为什么 `torch.cuda` 不足以识别底层硬件，为什么 Runtime Patch 需要考虑进程与导入顺序，以及为什么同样大小的 KV 页也可能无法由另一种 Kernel 正确读取。
 
 参考：原文及其[官方插件机制入口](https://docs.vllm.ai/en/latest/design/plugin_system/)。在线文档会变化，本文具体分支行为优先对应下列固定源码。
+
+<a id="plugin-version-comparison"></a>
+## 补充：两份上游快照能共用哪些解释
+
+2026-11-23 按公开固定提交重新读取两版的 `plugins/__init__.py`、`platforms/__init__.py`、`v1/engine/core.py` 和 `v1/worker/worker_base.py`，只比较源码文件，没有导入 vLLM 或插件。
+
+| 检查点 | `33fa579e` | `58ad1f3b` | 本文怎样处理 |
+| --- | --- | --- | --- |
+| `load_general_plugins` | 检查进程内 guard，再加载并执行回调 | 同一函数的 AST 相同 | 共用加载器解释；不承诺跨进程回调次数 |
+| EngineCore 初始化 | general plugins 在 Executor 构造之前 | 相同的相对顺序 | 共用 Core 的职责说明 |
+| Worker 类解析前 | 调用 `register_triton_kernel_overrides()` | 所读 `init_worker` 中没有这一步 | 该插入点只归到 `33fa579e`，不回填 HCU 目标版本 |
+| Platform 探测异常 | 区分内置与外部插件的日志级别 | 统一走所读 debug 记录分支 | 保留版本说明，不统一异常处理细节 |
+| Worker 多模态缓存初始化 | 使用该版本的接收缓存辅助函数 | 显式处理 shared worker lock，再初始化对应缓存 | 留在各自实现，不拼成一条通用分支 |
+
+依据：[33fa 插件加载器](https://github.com/vllm-project/vllm/blob/33fa579edcf4f90d76c62e82db6ec6c9aefd73f5/vllm/plugins/__init__.py)、[58ad 插件加载器](https://github.com/vllm-project/vllm/blob/58ad1f3b8973b23943107b51230d594050b42ec3/vllm/plugins/__init__.py)、[33fa WorkerWrapper](https://github.com/vllm-project/vllm/blob/33fa579edcf4f90d76c62e82db6ec6c9aefd73f5/vllm/v1/worker/worker_base.py)、[58ad WorkerWrapper](https://github.com/vllm-project/vllm/blob/58ad1f3b8973b23943107b51230d594050b42ec3/vllm/v1/worker/worker_base.py)、[33fa 平台选择](https://github.com/vllm-project/vllm/blob/33fa579edcf4f90d76c62e82db6ec6c9aefd73f5/vllm/platforms/__init__.py)、[58ad 平台选择](https://github.com/vllm-project/vllm/blob/58ad1f3b8973b23943107b51230d594050b42ec3/vllm/platforms/__init__.py)。Core 的对应入口见两版 `vllm/v1/engine/core.py::EngineCore.__init__`。
+
+因此保留一篇机制主文和一份固定版本附录。初读只走本篇启动路线；需要排查 HCU 的类替换与进程内状态时，再查附录，避免重复读两轮总览。
 
 [article]: https://mp.weixin.qq.com/s/CsX8BdUvlVh_Y1DqZcuW_A
 [v-plugins]: https://github.com/vllm-project/vllm/blob/33fa579edcf4f90d76c62e82db6ec6c9aefd73f5/vllm/plugins/__init__.py#L33

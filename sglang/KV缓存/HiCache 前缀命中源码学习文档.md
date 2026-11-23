@@ -4,7 +4,18 @@
 
 先把结论放在前面：HiCache 的“命中”有多个阶段。树上匹配到前缀、Host 有候选副本、L3 查询到对象、GPU 分配了回载位置、计算 stream 可以读取，分别由不同条件保证。排障时必须说明自己观察的是哪一步。
 
-建议先读第 1～4 节理解对象和匹配，再读第 5～9 节走完整请求，最后用第 10～14 节核对边界和练习。数据搬运与资源退役的完整说明见姊妹篇 [HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档](<HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>)。
+匹配长度和恢复位置的问题用本篇；D2H、L3 预取与逐层回载的顺序用[上传与回载深读](<HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>)。
+
+## 首读路线
+
+| 你要做什么 | 进入章节 |
+| --- | --- |
+| 先看匹配、数据与准入的区别 | [1. 先建立整体地图：一条请求要过哪些门](#1-先建立整体地图一条请求要过哪些门) |
+| 沿数值例子走完一次命中 | [6. 一个完整的数值 walkthrough](#6-一个完整的数值-walkthrough) |
+| 核对 Host 命中如何变成可用前缀 | [7. Host 命中怎样变成 GPU 前缀](#7-host-命中怎样变成-gpu-前缀) |
+| 按现象找检查点 | [12. 小白排障地图](#12-小白排障地图) |
+
+源码片段可以按需展开。版本、分支和配置以本篇基线为准；下列路线只调整阅读顺序。
 
 ## 0. 阅读基线与范围
 
@@ -97,6 +108,9 @@ flowchart TD
 
 ## 2. 请求实际拿什么去匹配
 
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
+
 ### 2.1 token 相同之前，先问请求表示是否相同
 
 `Req.init_next_round_input` 刷新 `fill_ids`，以 `full_untruncated_fill_ids` 为基础构造 RadixKey，并传入 `extra_key`、`cache_salt` 和 `limit`。[S03]
@@ -117,12 +131,17 @@ RadixKey 的 `child_key_at` 把 token 页和命名空间组合成子节点查找
 
 `Req._compute_max_prefix_len` 先把最大匹配长度设成 `input_len - 1`；若请求特定区间的 logprob，还可能进一步缩短。[S09]
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # Req._compute_max_prefix_len 的关键分支
 max_prefix_len = input_len - 1
 if self.return_logprob and self.logprob_start_len >= 0:
     max_prefix_len = min(max_prefix_len, self.logprob_start_len)
 ```
+
+</details>
 
 源码把这项限制解释为给 logprob 计算保留位置。教学上应记住：缓存匹配长度受到执行输出需要约束，不是越接近 prompt 总长就越“正确”。
 
@@ -140,7 +159,12 @@ TreeCore 的 `match_prefix` 先处理可能的 bigram 视图，再执行 `page_a
 
 本文数值例子使用普通 FULL attention；EAGLE/bigram、SWA 尾部重算和多模态输入有额外条件，不能把原始 token 个数公式直接套过去。
 
+</details>
+
 ## 3. 树节点保存的到底是什么
+
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
 
 ### 3.1 索引与数据分开
 
@@ -184,6 +208,8 @@ flowchart LR
 树上可能已经登记 host_value，但 D2H 尚未完成。也可能已经登记设备 value，但 H2D 尚未完成。相关操作通过 pending ID、ongoing 表、锁与事件追踪。[S13]、[S14]
 
 本篇使用“设备可引用边界”描述索引语义；实际读字节仍须满足执行事件。源码中的 `backuped`、`value is not None` 等结构条件，不能单独替代 I/O 完成证据。
+
+</details>
 
 ## 4. match_prefix 的控制流逐步拆解
 
@@ -358,12 +384,17 @@ sequenceDiagram
 
 它先用 Host 匹配估算本轮需要重算的 token，但会在回载以后再使用实际设备索引重算输入量。这是“预计可以省掉的工作”和“真正省掉的工作”的交接点。
 
+<details>
+<summary>查看固定版本的源码片段</summary>
+
 ```python
 # PrefillAdder.add_one_req 的关键交接，省略无关参数
 new_indices, req.last_node = self.tree_cache.init_load_back(...)
 req.host_loaded_length = len(new_indices)
 req.prefix_indices = torch.cat([req.prefix_indices, new_indices])
 ```
+
+</details>
 
 以上片段省略号表示教学节选，不是可直接执行的独立程序。
 
@@ -432,6 +463,9 @@ TP worker 在执行相应 batch 时设置 consumer；设备 KV pool 逐层读取
 
 ## 10. 混合模型与其他模式的边界
 
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
+
 ### 10.1 FULL 命中不代表全部状态命中
 
 Unified TreeCore 会对全部组件运行 validator。FULL、SWA、Mamba 的状态含义不同：普通 attention 可引用历史 KV，滑动窗口要求相应窗口数据，状态递推模型还需要合法状态检查点。[S04]、[S31]
@@ -463,7 +497,12 @@ HiRadixCache.match_prefix 也区分设备索引和 Host 命中；它沿 evicted 
 
 读旧文档时可用这张表迁移概念，但函数名和具体返回边界应以目标类为准。
 
+</details>
+
 ## 11. TP、PP 与 P/D：哪些“就绪”互不等价
+
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
 
 ### 11.1 HiCache 的同步对象
 
@@ -479,7 +518,9 @@ HiCache 的 `_all_reduce` 在 PP0 的 attention 相关组先做归约，再通�
 | PP forward | 这次计算的中间激活怎样送到下一 stage | microbatch、proxy tensor |
 | PD transfer | Prefill 产生的 KV 怎样交给 Decode | sender/receiver、bootstrap、transfer 状态 |
 
-一个 HiCache load ACK 不能替代 P/D transfer 成功；一个 PP RID 名单也不能证明 H2D 字节可读。具体 PP 控制流见 [SGLang PP 共识机制源码学习文档](<../分离部署/SGLang PP 共识机制源码学习文档.md>)。
+一个 HiCache load ACK 不能替代 P/D transfer 成功；一个 PP RID 名单也不能证明 H2D 字节可读。具体 PP 控制流见 [SGLang PP 共识机制源码学习文档](<../并行方法/SGLang%20PP%20共识机制源码学习文档.md>)。
+
+</details>
 
 ## 12. 小白排障地图
 
@@ -534,6 +575,9 @@ HiCache 的 `_all_reduce` 在 PP0 的 attention 相关组先做归约，再通�
 HiCache 前缀复用是一条“合法键匹配 → 分层数据恢复 → 资源准入 → 设备事件约束”的链路；任何单个 hit 长度都只能解释其中一个阶段。
 
 ## 16. 固定源码索引
+
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
 
 下列链接定位到本篇读取的 commit。行号由该快照的源码符号生成并复核；本篇所有图和数值例子均为教学整理，没有替代运行验证。
 
@@ -616,3 +660,5 @@ HiCache 前缀复用是一条“合法键匹配 → 分层数据恢复 → 资�
 [S65]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/unified_cache/unified_tree_core.py#L821
 [S66]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/unified_cache/components/full_component.py#L105
 [S68]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/unified_cache/unified_tree_core.py#L704
+
+</details>

@@ -4,7 +4,7 @@
 
 从逻辑前缀到物理 KV，再追踪 Host 和外部存储的回载与释放。
 
-本文是学习导航，分类与阅读顺序由整理者归纳。技术资料继续保留各自的来源、版本和验证边界；导航不表示已完成运行或性能复现。
+各篇文章的来源、源码版本和验证范围见文首说明。阅读顺序可按自己的问题调整。
 
 ## 先修知识
 
@@ -19,13 +19,12 @@
 
 ## 阅读顺序
 
-首轮读前三篇即可。Mooncake 与 HiCache 源码是存储支线；Unified 是混合状态支线，建议配合通用模型结构专题阅读。
+先用物理页的交互例子建立直觉，再读 KV Pool 主文，把匹配、地址和可读数据连起来。技术演进、分层 I/O 和混合状态按问题选读。
 
 | 顺序 | 资料 | 阅读定位 | 学习重点 |
 | --- | --- | --- | --- |
-| 1 | [SGLang RadixAttention 与 HiCache KV Cache 技术主线](<SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>) | 起步 | 用技术主线建立 Radix 与分层缓存的整体地图。 |
-| 2 | [SGLang RadixAttention 前缀缓存命中定义](<SGLang RadixAttention 前缀缓存命中定义学习文档.md>) | 主线 | 明确 token 匹配与物理 KV 复用的条件。 |
-| 3 | [SGLang KV Pool、请求视图与 HiCache 工程](<SGLang KV Pool、请求视图与 HiCache 工程学习文档.md>) | 主线 | 拆清物理池、请求视图和缓存生命周期控制。 |
+| 演进选读 | [SGLang RadixAttention 与 HiCache KV Cache 技术主线](<SGLang RadixAttention 与 HiCache KV Cache 技术主线学习文档.md>) | 参考 | 沿技术演进认识 Radix、HiCache、HiSparse 与 ShadowRadix；具体实现按各自版本读。 |
+| 主线 | [SGLang KV Pool、请求视图与 HiCache 工程](<SGLang KV Pool、请求视图与 HiCache 工程学习文档.md>) | 主线 | 用一个前缀例子连接索引、请求映射、物理位置与数据可读条件。 |
 | 4 | [Mooncake 与 SGLang HiCache](<Mooncake 与 SGLang HiCache 学习文档.md>) | 选读：接入 | 先看外部存储接在哪里，再下钻源码。 |
 | 5 | [HiCache 前缀命中源码](<HiCache 前缀命中源码学习文档.md>) | 深入 | 核对页对齐、树匹配与设备可用前缀。 |
 | 6 | [HiCache 下 SGLang L1、L2、L3 与上传回载源码](<HiCache 下 SGLang L1、L2、L3 与上传回载源码学习文档.md>) | 深入 | 沿 D2H、L3 和 H2D 跟踪事件与资源所有权。 |
@@ -54,8 +53,6 @@
 ## 本目录收录范围
 
 收录 SGLang 的缓存索引、分配器、物理池、复用、分层存储和混合状态缓存；跨服务角色的请求与 KV 交接归 disaggregation。
-
-后续文章先加入阅读表，标明先修、定位和学习重点。当形成多篇相互关联且需要独立导航的子主题时，再建立子目录；跨主题内容保留一份正文，由相关 README 交叉引用。
 
 ## 容量与回载交互
 

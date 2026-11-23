@@ -674,7 +674,7 @@ Mermaid 是可维护的机制示意，不是运行 trace、真实进程数或 GP
 
 1. [SGLang 调度器请求生命周期与重叠调度](<../../sglang/运行时/SGLang 调度器请求生命周期与重叠调度学习文档.md>)：从“每轮算什么”走到“每轮选谁算”。
 2. [Chunked Prefill 与 Prefill-Decode 共推](<../调度方法/Chunked Prefill 与 Prefill-Decode 共推学习文档.md>)：理解一轮 token budget 怎样容纳不同阶段的请求。
-3. [SGLang RadixAttention 前缀缓存命中定义](<../../sglang/KV缓存/SGLang RadixAttention 前缀缓存命中定义学习文档.md>)：理解“输入相同”和“物理 KV 命中”的差别。
+3. [SGLang RadixAttention 前缀缓存命中定义](<../../sglang/KV缓存/SGLang%20KV%20Pool、请求视图与%20HiCache%20工程学习文档.md#prefix-match-to-readable-kv>)：理解“输入相同”和“物理 KV 命中”的差别。
 4. [PD 分离下的 PP](<../../sglang/分离部署/PD 分离下的 PP 源码学习文档.md>)：理解层内计算、组内激活传递和跨 P/D KV 传递。
 5. [KV Cache 容量优化技术地图](<../KV缓存/KV Cache 容量优化技术地图学习文档.md>)：继续学习 GQA、MLA、滑窗等机制如何改变缓存成本。
 

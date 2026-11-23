@@ -6,6 +6,19 @@ HiCache 的标准 `cache` 模式包含一层真正由树管理的 Host KV 缓存
 
 本文与 [HiCache 前缀命中源码学习文档](<HiCache 前缀命中源码学习文档.md>)组成两篇递进专题：前篇解释“能复用到哪里”，本篇解释“如何把数据送到那里并安全交接”。
 
+## 首读路线
+
+| 你要做什么 | 进入章节 |
+| --- | --- |
+| 先分清四个搬运方向 | [1. 先看三层数据，再看四个方向](#1-先看三层数据再看四个方向) |
+| 跟随两个完整请求例子 | [14. 两个贯穿生命周期的例子](#14-两个贯穿生命周期的例子) |
+| 查 L3 预取 | [8. L3→Host：预取是一个有退出条件的状态机](#8-l3host预取是一个有退出条件的状态机) |
+| 查 Host 到 GPU 回载 | [9. Host→GPU：回载不是一条同步 memcpy](#9-hostgpu回载不是一条同步-memcpy) |
+| 查取消与失败收尾 | [13. 取消、detach 与失败收尾](#13-取消detach-与失败收尾) |
+| 按故障现象倒查 | [16. 排障地图](#16-排障地图) |
+
+源码片段可以按需展开。版本、分支和配置以本篇基线为准；下列路线只调整阅读顺序。
+
 ## 0. 阅读基线与范围
 
 | 项目 | 内容 |
@@ -51,7 +64,7 @@ HiCache 的标准 `cache` 模式包含一层真正由树管理的 Host KV 缓存
 
 同一逻辑前缀可能同时拥有设备和 Host 副本，也可能只留下 Host 或外部对象。层级是一种数据位置与管理关系，不是“每次请求都依次跑过三层”。
 
-**官方设计补充（读取于 2026-10-27）：** [HiCache 的 Tier Sharing Scope](https://docs.sglang.io/docs/advanced_features/hicache_design#tier-sharing-scope) 明确 L1/L2 属于单个推理实例；增大 Host pool 不会自动汇聚多机内存。跨实例复用依赖 L3 后端的实际共享范围、命名空间和配置，本地文件后端也不天然跨机。这是后续在线文档的范围说明，与本文固定源码基线分开记录；本次没有运行共享缓存实验。比较入口见 [三类引擎的交付与缓存边界](<../../大模型推理/分布式服务/DeepInfer、vLLM 与 SGLang 的交付范围与机制比较学习文档.md>)。
+**官方设计补充（读取于 2026-10-27）：** [HiCache 的 Tier Sharing Scope](https://docs.sglang.io/docs/advanced_features/hicache_design#tier-sharing-scope) 明确 L1/L2 属于单个推理实例；增大 Host pool 不会自动汇聚多机内存。跨实例复用依赖 L3 后端的实际共享范围、命名空间和配置，本地文件后端也不天然跨机。这是后续在线文档的范围说明，与本文固定源码基线分开记录；本次没有运行共享缓存实验。比较入口见 [三类引擎的交付与缓存边界](<../../大模型推理/分布式服务/DeepInfer%20专用推理引擎与生产系统边界学习文档.md#delivery-boundary>)。
 
 ```mermaid
 flowchart LR
@@ -83,6 +96,9 @@ flowchart TD
 [S35]、[S39]、[S17]、[S21]
 
 ## 2. 从配置追到实际对象
+
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
 
 ### 2.1 默认选择链与 HiCache 组装
 
@@ -141,6 +157,8 @@ flowchart TD
 | 未配置 L3 | enable_storage 不成立 | L1/L2 仍可独立工作 |
 
 [S23]、[S36]、[S21]
+
+</details>
 
 ## 3. 核心对象与所有权
 
@@ -247,6 +265,9 @@ sequenceDiagram
 
 ## 5. D2H ACK 与节点分裂：为什么需要片段追踪
 
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
+
 ### 5.1 ACK 不是一个裸布尔值
 
 HiCacheAck 带有起止事件、node IDs 和计量信息。`writing_check` 按约定的 ready count 消费队首 ACK，并调用 `finish_event.synchronize()`，然后处理关联节点。[S37]、[S42]
@@ -279,6 +300,8 @@ flowchart TD
 ```
 
 **图意解读：** 树拓扑会变化，正在进行的数据操作仍有原本的覆盖区间。学习异步缓存生命周期时，要同时记录“逻辑节点是谁”和“这次操作搬了哪些槽位”。
+
+</details>
 
 ## 6. Host→L3：真正的外部上传
 
@@ -483,6 +506,9 @@ LayerDoneCounter 的 producer 槽循环复用前，源码断言上一轮对应 f
 
 ## 11. TP/PP 同步：传播什么，等待什么
 
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
+
 ### 11.1 先看前台 ready counts
 
 `_sync_hicache_ready_counts` 在 PP0 统计队首连续完成 ACK，以及若干存储结果队列的可消费数量；通过 `_all_reduce` 归约并传播。[S34]
@@ -526,9 +552,14 @@ flowchart TD
 - PP proxy 负责跨模型层传递中间激活。
 - P/D transfer 把 Prefill 的 KV 交给 Decode。
 
-三者会在 Scheduler 生命周期中相遇，但各自拥有不同对象与完成条件。深入 PP 见 [SGLang PP 共识机制源码学习文档](<../分离部署/SGLang PP 共识机制源码学习文档.md>)；历史内部分支文档中的补充节会单独标注这份官方快照，避免混合版本。
+三者会在 Scheduler 生命周期中相遇，但各自拥有不同对象与完成条件。深入 PP 见 [SGLang PP 共识机制源码学习文档](<../并行方法/SGLang%20PP%20共识机制源码学习文档.md>)；历史内部分支文档中的补充节会单独标注这份官方快照，避免混合版本。
+
+</details>
 
 ## 12. buffer_only、混合组件与 HiRadixCache 对照
+
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
 
 ### 12.1 Host 是缓存还是临时中转
 
@@ -551,6 +582,8 @@ PoolTransfer 显式表达 pool name、索引、keys、命中策略和关联节�
 源码中 HiRadixCache 仍展示基于 TreeNode 的匹配、备份与回载实现，适合对照旧资料；本篇主路径采用 Unified 的 NodeId、TreeCore 和组件动作，避免把旧路径写成默认类。[S32]、[S01]
 
 二者可迁移的理解是“树与物理池分离、命中与回载分离、引用与事件分离”；不能迁移的部分是未经核对的函数签名、模型支持范围和具体同步条件。
+
+</details>
 
 ## 13. 取消、detach 与失败收尾
 
@@ -702,6 +735,9 @@ HiCache 用树状态决定“保留哪段 KV”，用 controller 和 backend 决
 
 ## 19. 固定源码索引
 
+<details>
+<summary>展开本节的可选路径与实现细节</summary>
+
 下面每个锚点均定位到本篇固定 commit 的实际符号；图与数值例子为整理者教学推演。验证覆盖静态源码和文档关系，没有硬件运行结论。
 
 | 锚点 | 文件与符号 | 固定版本 |
@@ -819,3 +855,5 @@ HiCache 用树状态决定“保留哪段 KV”，用 controller 和 backend 决
 [S67]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/unified_radix_cache.py#L316
 [S69]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/cache_controller.py#L53
 [S70]: https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/unified_radix_cache.py#L698
+
+</details>
