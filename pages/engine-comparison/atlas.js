@@ -199,6 +199,8 @@ const chapterFromHash = () => {
         sourceCta: ['查看 release', 'Open release'],
       },
       control: {
+        sgGraphChoice: ['普通 Decode / Extend 示例：每轮只选一条', 'Ordinary decode/extend example: one path per step'],
+        sgGraphBackend: ['BCG 是可选后端：重放 → host 工作 → 继续重放；捕获提前完成。', 'Optional BCG backend: replay → host work → resume; capture happens earlier.'],
         chapter: ['本章主题', 'Chapter topics'],
         prev: ['上一步', 'Previous step'],
         next: ['下一步', 'Next step'],
@@ -832,6 +834,14 @@ const chapterFromHash = () => {
             '未命中的尾部作为新分支插入；同一前缀的请求共享已经命中的节点。',
             'The unmatched tail is inserted as a new branch. Requests with the same prefix share the already-matched nodes.',
           ],
+          sg_decode_input: [
+            '上一轮采样得到的 token ID 成为下一轮输入。本例已有 12 个已计算位置，新输入的零基 position=12；前向读取历史 KV，并为这个新位置生成 K/V。',
+            'The previous sampled token ID becomes the next input. With 12 computed positions, its zero-based position is 12; forward reads historical KV and computes K/V for this new position.',
+          ],
+          sg_append: [
+            '本例每页容纳 4 个位置。position=12 对应第 4 页的首个位置，即图中的 page 13–16；本轮只写入这一位置，其他位置尚未计算。旧页继续保留，不把旧 KV 搬进新页。',
+            'With four positions per page, position 12 is the first slot of page 13–16. Only that slot is written this step; the other positions remain uncomputed. Existing pages stay in place.',
+          ],
           vl_hash: [
             '逐块计算链式 hash；完整块可复用，表项指向物理 block id。部分块索引是条件分支，不当作所有后端规则。',
             'Chained hashes are computed block by block. Full blocks can be reused, and entries point to physical block ids. Partial-block indexing is conditional and not a rule for every backend.',
@@ -1050,6 +1060,10 @@ const chapterFromHash = () => {
           sg_graph: [
             'ModelRunner 按执行模式（decode / prefill / idle）从不同的执行器与图形捕获路径中选择。',
             'ModelRunner chooses among execution paths and captured graphs by forward mode (decode, prefill, or idle).',
+          ],
+          sg_graph_output: [
+            'ModelRunnerOutput 承载本轮 logits_output 等结果及 can_run_graph 状态，返回执行侧调用者；后续采样和结果处理再推进请求。',
+            'ModelRunnerOutput returns this step’s logits_output and can_run_graph state to the execution-side caller; sampling and result processing then advance the request.',
           ],
           sg_decode: [
             'decode 通常使用按 batch size 捕获的 CUDA graph；固定输入形状的重放减少逐层 launch 开销。',
@@ -1811,8 +1825,8 @@ const chapterFromHash = () => {
             },
             2: {
               sg: [
-                '取消路径从 AbortReq 开始，先移队列，再释放 KV，最后把 AbortReq 回传给 TokenizerManager 收尾。',
-                'The cancel path starts with AbortReq, removes queue entries, releases KV, and returns AbortReq to TokenizerManager for cleanup.',
+                '示例为未分配 KV 的普通 waiting 请求：移出队列，再通知 TokenizerManager 收尾。运行中的请求先标记 to_finish，按后续结果处理路径清理。',
+                'Example: an ordinary waiting request with no KV allocated is removed and TokenizerManager is notified. Running requests first receive to_finish and use subsequent result cleanup.',
               ],
               vl: [
                 '取消路径是 frontend ABORT → EngineCore → Scheduler.finish_requests → 释放 block/connector → EngineCoreOutputs 收尾。',
@@ -1821,8 +1835,8 @@ const chapterFromHash = () => {
             },
             3: {
               sg: [
-                '固定形状走 decode graph，可变 prefill 走 piecewise；BCG 可选地把重放在动态点断开。',
-                'Fixed shapes use decode graphs, variable prefill uses piecewise graphs; BCG can optionally break replay at dynamic points.',
+                '模式、形状及后端条件符合时，选择 Decode 或 Prefill 图；普通路径没有适用图时走 EagerRunner。BCG 是可选后端，可在动态边界处理主机工作后继续重放。',
+                'Mode, shape and backend eligibility select a decode or prefill graph; ordinary paths without a match use EagerRunner. Optional BCG can handle host work at a dynamic boundary and resume replay.',
               ],
               vl: [
                 'CompilationConfig / CUDAGraphMode 选择 NONE / PIECEWISE / FULL；torch.compile 可选，FULL 不强制依赖它，组合由 batch descriptor、允许模式与已捕获 keys 决定。',
@@ -1853,8 +1867,8 @@ const chapterFromHash = () => {
             },
             2: {
               sg: [
-                'AbortReq → queue/KV cleanup → stream end',
-                'AbortReq → queue/KV cleanup → stream end',
+                'waiting example: AbortReq → remove → frontend cleanup',
+                'waiting example: AbortReq → remove → frontend cleanup',
               ],
               vl: [
                 'ABORT → finish_requests → block/connector free',
@@ -1863,8 +1877,8 @@ const chapterFromHash = () => {
             },
             3: {
               sg: [
-                'decode graph + piecewise + optional BCG',
-                'decode graph + piecewise + optional BCG',
+                'decode / prefill graph / eager · optional BCG backend',
+                'decode / prefill graph / eager · optional BCG backend',
               ],
               vl: [
                 'allowed combo · backend constraints',
@@ -2052,9 +2066,9 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         ],
         edges: [
           { id: 'http-tokenizer', d: 'M114 110V142' },
-          { id: 'tokenizer-scheduler', d: 'M192 170H218V97H244', label: 'ZMQ', lx: 204, ly: 157 },
-          { id: 'scheduler-workers', d: 'M362 130V190', label: 'GPU', lx: 371, ly: 166 },
-          { id: 'scheduler-detok', d: 'M244 97H214V274H192', label: 'token ids', lx: 218, ly: 238, anchor: 'middle' },
+          { id: 'tokenizer-scheduler', d: 'M192 170H218V97H244', label: 'ZMQ', lx: 226, ly: 157 },
+          { id: 'scheduler-workers', d: 'M362 130V190', label: 'local call', lx: 371, ly: 166 },
+          { id: 'scheduler-detok', d: 'M244 97H214V274H192', label: 'token ids', lx: 222, ly: 266 },
           { id: 'detok-tokenizer', d: 'M114 254V198', label: 'text', lx: 123, ly: 228 },
         ],
         active: [
@@ -2081,7 +2095,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         ],
         edges: [
           { id: 'frontend-async', d: 'M114 110V142' },
-          { id: 'async-engine', d: 'M192 170H218V97H244', label: 'ZMQ', lx: 204, ly: 157 },
+          { id: 'async-engine', d: 'M192 170H218V97H244', label: 'ZMQ', lx: 226, ly: 157 },
           { id: 'engine-workers', d: 'M362 130V202', label: 'dispatch', lx: 371, ly: 166 },
           { id: 'engine-async', d: 'M244 90H210V180H192', label: 'outputs', lx: 226, ly: 139 },
           { id: 'async-stream', d: 'M114 198V254', label: 'SSE', lx: 123, ly: 228 },
@@ -2104,18 +2118,21 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           { id: 'path2', x: 244, y: 177, w: 94, h: 50, label: 'page 5–8', tag: 'matched', detailKey: 'nodes.prefix.sg_path' },
           { id: 'other', x: 382, y: 132, w: 96, h: 46, label: 'page 9–12', tag: 'cached · no match', detailKey: 'nodes.prefix.sg_path' },
           { id: 'tail', x: 382, y: 232, w: 96, h: 46, label: 'page 9–12', tag: 'new · compute', detailKey: 'nodes.prefix.sg_tail' },
+          { id: 'decodeInput', x: 38, y: 288, w: 150, h: 46, label: 'sampled token', tag: 'next input · pos 12', detailKey: 'nodes.prefix.sg_decode_input' },
+          { id: 'next', x: 382, y: 288, w: 96, h: 46, label: 'page 13–16', tag: 'new · pos 12', detailKey: 'nodes.prefix.sg_append' },
         ],
         edges: [
           { id: 'root-path1', d: 'M98 206H122' },
           { id: 'path1-path2', d: 'M216 202H244' },
           { id: 'path2-other', d: 'M338 196C360 196 360 161 382 161' },
           { id: 'path2-tail', d: 'M338 208C360 208 360 249 382 249' },
+          { id: 'input-next', d: 'M188 311H382', label: 'forward → K/V', lx: 285, ly: 302, anchor: 'middle' },
         ],
         active: [
           { nodes: [], edges: [] },
           { nodes: ['root', 'path1', 'path2'], edges: ['root-path1', 'path1-path2'] },
           { nodes: ['tail'], edges: ['path2-tail'] },
-          { nodes: ['path1', 'path2', 'tail'], edges: ['root-path1', 'path1-path2', 'path2-tail'] },
+          { nodes: ['decodeInput', 'next'], edges: ['input-next'] },
         ],
         noteKey: 'scenes.prefix.note.sg',
       },
@@ -2152,14 +2169,14 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         edges: [
           { id: 'waiting-adder', d: 'M138 142H158' },
           { id: 'adder-batch', d: 'M290 142H310' },
-          { id: 'running-gpu', d: 'M138 224H158' },
+          { id: 'running-batch', d: 'M84 252V264H502V146H490', label: 'merge', lx: 497, ly: 190, anchor: 'end' },
           { id: 'batch-gpu', d: 'M350 178V188H224V196' },
           { id: 'gpu-output', d: 'M290 224H310' },
         ],
         active: [
           { nodes: ['waiting', 'running'], edges: [] },
           { nodes: ['waiting', 'adder', 'batch'], edges: ['waiting-adder', 'adder-batch'] },
-          { nodes: ['running', 'batch', 'gpu', 'overlap'], edges: ['running-gpu', 'batch-gpu'] },
+          { nodes: ['running', 'batch', 'gpu', 'overlap'], edges: ['running-batch', 'batch-gpu'] },
           { nodes: ['gpu', 'output'], edges: ['gpu-output'] },
         ],
         noteKey: 'scenes.batch.note.sg',
@@ -2205,11 +2222,11 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           { id: 'router-prefill', d: 'M168 76H190' },
           { id: 'prefill-kv', d: 'M257 104V128', label: 'KV', lx: 266, ly: 119 },
           { id: 'kv-decode', d: 'M324 154H422V104', label: 'KV', lx: 338, ly: 144 },
-          { id: 'l1-l2', d: 'M168 238H190', twoWay: true },
-          { id: 'l2-l3', d: 'M324 238H354', twoWay: true },
+          { id: 'l1-l2', d: 'M190 238H168' },
+          { id: 'l2-l3', d: 'M354 238H324' },
         ],
         active: [
-          { nodes: ['router', 'prefill', 'decode'], edges: ['router-prefill'] },
+          { nodes: ['router', 'prefill'], edges: ['router-prefill'] },
           { nodes: ['prefill', 'kv', 'decode'], edges: ['prefill-kv', 'kv-decode'] },
           { nodes: ['l1', 'l2', 'l3'], edges: ['l1-l2', 'l2-l3'] },
           { nodes: ['scale'], edges: [] },
@@ -2223,21 +2240,23 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           { id: 'decode', x: 354, y: 48, w: 136, h: 56, label: 'Decode pool', tag: 'KV consumer', detailKey: 'nodes.disagg.vl_decode' },
           { id: 'connector', x: 190, y: 128, w: 134, h: 52, label: 'KVConnectorV1', tag: 'V2 hooks', detailKey: 'nodes.disagg.vl_connector' },
           { id: 'meta', x: 30, y: 212, w: 138, h: 52, label: 'Scheduler meta', tag: 'per step', detailKey: 'nodes.disagg.vl_meta' },
-          { id: 'remote', x: 190, y: 212, w: 134, h: 52, label: 'remote KV', tag: 'block load', detailKey: 'nodes.disagg.vl_offload' },
-          { id: 'offload', x: 354, y: 212, w: 136, h: 52, label: 'offload / HMA', tag: 'block owner', detailKey: 'nodes.disagg.vl_offload' },
+          { id: 'remote', x: 190, y: 212, w: 134, h: 52, label: 'Worker connector', tag: 'bind metadata', detailKey: 'nodes.disagg.vl_connector' },
+          { id: 'offload', x: 354, y: 212, w: 136, h: 52, label: 'Backend store', tag: 'backend-specific', detailKey: 'nodes.disagg.vl_offload' },
+          { id: 'gpu', x: 190, y: 286, w: 134, h: 52, label: 'GPU KV cache', tag: 'load destination', detailKey: 'nodes.disagg.vl_offload' },
           { id: 'scale', x: 30, y: 298, w: 460, h: 52, label: 'Parallel controls', tag: 'TP · PP · DP · EP · elastic', detailKey: 'nodes.disagg.vl_scale' },
         ],
         edges: [
           { id: 'router-prefill', d: 'M168 76H190' },
           { id: 'prefill-connector', d: 'M257 104V128', label: 'KV', lx: 266, ly: 119 },
           { id: 'connector-decode', d: 'M324 154H422V104', label: 'KV', lx: 338, ly: 144 },
-          { id: 'meta-remote', d: 'M168 238H190', twoWay: true },
-          { id: 'remote-offload', d: 'M324 238H354', twoWay: true },
+          { id: 'meta-remote', d: 'M168 238H190' },
+          { id: 'remote-offload', d: 'M324 238H354' },
+          { id: 'offload-gpu', d: 'M422 264V312H324', label: 'KV load', lx: 380, ly: 301, solid: true },
         ],
         active: [
-          { nodes: ['router', 'prefill', 'decode'], edges: ['router-prefill'] },
+          { nodes: ['router', 'prefill'], edges: ['router-prefill'] },
           { nodes: ['prefill', 'connector', 'decode'], edges: ['prefill-connector', 'connector-decode'] },
-          { nodes: ['meta', 'remote', 'offload'], edges: ['meta-remote', 'remote-offload'] },
+          { nodes: ['meta', 'remote', 'offload', 'gpu'], edges: ['meta-remote', 'remote-offload', 'offload-gpu'] },
           { nodes: ['scale'], edges: [] },
         ],
         noteKey: 'scenes.disagg.note.vl',
@@ -2258,14 +2277,14 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           { id: 'tok-sched', d: 'M166 77H214', label: 'PUSH → PULL', lx: 190, ly: 68, anchor: 'middle' },
           { id: 'sched-detok', d: 'M346 77H376', label: 'PUSH', lx: 361, ly: 68, anchor: 'middle' },
           { id: 'detok-tok', d: 'M435 106V124H96V106', label: 'text · PUSH → PULL', lx: 432, ly: 136, anchor: 'end' },
-          { id: 'rpc-sched', d: 'M166 167H190V91H214', label: 'DEALER', lx: 190, ly: 143, anchor: 'middle' },
-          { id: 'workers-sched', d: 'M280 142V106', label: 'in-process', lx: 287, ly: 127 },
+          { id: 'rpc-sched', d: 'M96 192V210H190V91H214', label: 'DEALER', lx: 143, ly: 203, anchor: 'middle' },
+          { id: 'workers-sched', d: 'M280 106V142', label: 'in-process', lx: 287, ly: 127 },
         ],
         active: [
           { nodes: ['tok', 'sched'], edges: ['tok-sched'] },
           { nodes: ['sched', 'detok', 'tok'], edges: ['sched-detok', 'detok-tok'] },
-          { nodes: ['sched', 'rpc', 'workers'], edges: ['rpc-sched', 'workers-sched'] },
-          { nodes: ['protocol', 'tok', 'sched', 'detok'], edges: [] },
+          { nodes: ['sched', 'workers'], edges: ['workers-sched'] },
+          { nodes: ['protocol', 'rpc', 'sched'], edges: ['rpc-sched'] },
         ],
         protocolRows: [
           ['PUSH / PULL', 'pyobj · ipc:// or tcp://'],
@@ -2277,7 +2296,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       },
       vl: {
         nodes: [
-          { id: 'frontend', x: 26, y: 48, w: 164, h: 58, label: 'AsyncLLM / Rust', tag: 'ROUTER + PULL', detailKey: 'nodes.wire.vl_frontend' },
+          { id: 'frontend', x: 26, y: 48, w: 164, h: 58, label: 'AsyncLLM', tag: 'ROUTER + PULL', detailKey: 'nodes.wire.vl_frontend' },
           { id: 'core', x: 240, y: 48, w: 164, h: 58, label: 'EngineCore', tag: 'DEALER + PUSH', detailKey: 'nodes.wire.vl_core' },
           { id: 'dp', x: 26, y: 142, w: 164, h: 50, label: 'DP coordinator', tag: 'ZMQ control', detailKey: 'nodes.wire.vl_dp' },
           { id: 'workers', x: 240, y: 142, w: 164, h: 50, label: 'Workers', tag: 'response MQ', detailKey: 'nodes.wire.vl_workers' },
@@ -2288,19 +2307,19 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           { id: 'output', d: 'M240 89H190', label: 'OUT', lx: 215, ly: 102, anchor: 'middle' },
           { id: 'core-workers', d: 'M300 106V142', label: 'shm MQ', lx: 307, ly: 127 },
           { id: 'workers-core', d: 'M344 142V106', label: 'response', lx: 351, ly: 127 },
-          { id: 'frontend-dp', d: 'M108 106V142', label: 'DP', lx: 115, ly: 126 },
+          { id: 'frontend-dp', d: 'M108 142V106', label: 'load / wave', lx: 115, ly: 126 },
         ],
         active: [
           { nodes: ['frontend', 'core'], edges: ['request'] },
           { nodes: ['core', 'frontend'], edges: ['output'] },
           { nodes: ['core', 'workers'], edges: ['core-workers', 'workers-core'] },
-          { nodes: ['dp', 'protocol'], edges: ['frontend-dp'] },
+          { nodes: ['frontend', 'dp', 'protocol'], edges: ['frontend-dp'] },
         ],
         protocolRows: [
           ['FRONTEND', 'ROUTER in · PULL out'],
           ['ENGINECORE', 'DEALER in · PUSH out'],
           ['EXECUTOR', 'shm ring · ZMQ fallback'],
-          ['WIRE TYPES', 'ADD · ABORT · UTILITY'],
+          ['DP coord', 'DP > 1 · load / request-wave'],
         ],
         noteKey: 'scenes.wire.note.vl',
       },
@@ -2319,11 +2338,13 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           ],
           edges: [
             { id: 'req-radix', d: 'M154 76H180', label: 'checkpoint', lx: 167, ly: 67, anchor: 'middle' },
-            { id: 'radix-pool', d: 'M330 76H356', label: 'unlock/free', lx: 343, ly: 67, anchor: 'middle' },
+            { id: 'radix-keep', d: 'M330 76H344V176H356' },
+            { id: 'radix-evict', d: 'M255 104V150', label: 'unlock', lx: 262, ly: 130 },
             { id: 'reuse-radix', d: 'M154 176H168V104H180', label: 'match', lx: 154, ly: 145 },
-            { id: 'evict-pool', d: 'M330 176H340V128H423V104', label: 'free', lx: 346, ly: 140 },
+            { id: 'evict-pool', d: 'M330 166H336V118H423V104', label: 'on eviction', lx: 392, ly: 129, anchor: 'middle' },
           ],
-          activeNodes: ['radix', 'pool', 'evict'],
+          activeNodes: ['req', 'radix', 'keep', 'evict'],
+          activeEdges: ['req-radix', 'radix-keep', 'radix-evict'],
         },
         vl: {
           nodes: [
@@ -2361,7 +2382,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             { id: 'release-waiting', d: 'M180 176H162', label: 'requeue', lx: 171, ly: 168, anchor: 'middle' },
             { id: 'retract-ratio', d: 'M455 106V150', label: 'ratio', lx: 462, ly: 128 },
           ],
-          activeNodes: ['running', 'retract', 'release'],
+          activeNodes: ['pressure', 'running', 'retract', 'release', 'waiting', 'ratio'],
         },
         vl: {
           nodes: [
@@ -2387,19 +2408,17 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           nodes: [
             { id: 'abort', x: 30, y: 48, w: 132, h: 56, label: 'Abort / disconnect', tag: 'AbortReq', detailKey: 'nodes.crosscut.sg_abort' },
             { id: 'scheduler', x: 180, y: 48, w: 150, h: 56, label: 'Scheduler', tag: 'waiting / running', detailKey: 'nodes.crosscut.sg_sched' },
-            { id: 'queues', x: 356, y: 48, w: 134, h: 56, label: 'queues', tag: 'pop / filter', detailKey: 'nodes.crosscut.sg_queues' },
-            { id: 'kv', x: 30, y: 150, w: 132, h: 52, label: 'release KV', tag: 'tree / pool', detailKey: 'nodes.crosscut.sg_kv' },
+            { id: 'queues', x: 356, y: 48, w: 134, h: 56, label: 'waiting queue', tag: 'not admitted · pop', detailKey: 'nodes.crosscut.sg_queues' },
             { id: 'reply', x: 180, y: 150, w: 150, h: 52, label: 'TokenizerManager', tag: 'abort reply', detailKey: 'nodes.crosscut.sg_reply' },
             { id: 'stream', x: 356, y: 150, w: 134, h: 52, label: 'stream end', tag: 'SSE close', detailKey: 'nodes.crosscut.sg_reply' },
           ],
           edges: [
             { id: 'abort-scheduler', d: 'M162 76H180', label: 'AbortReq', lx: 171, ly: 67, anchor: 'middle' },
             { id: 'scheduler-queues', d: 'M330 76H356', label: 'pop/filter', lx: 343, ly: 67, anchor: 'middle' },
-            { id: 'queues-kv', d: 'M423 104V128H96V150', label: 'free KV', lx: 260, ly: 140 },
-            { id: 'scheduler-reply', d: 'M255 104V150', label: 'reply', lx: 262, ly: 128 },
+            { id: 'queues-reply', d: 'M423 104V128H255V150', label: 'abort reply', lx: 350, ly: 122, anchor: 'middle' },
             { id: 'reply-stream', d: 'M330 176H356', label: 'close', lx: 343, ly: 167, anchor: 'middle' },
           ],
-          activeNodes: ['scheduler', 'queues', 'kv'],
+          activeNodes: ['abort', 'scheduler', 'queues', 'reply', 'stream'],
         },
         vl: {
           nodes: [
@@ -2423,21 +2442,22 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       3: {
         sg: {
           nodes: [
-            { id: 'graph', x: 30, y: 48, w: 132, h: 56, label: 'ModelRunner', tag: 'forward mode', detailKey: 'nodes.crosscut.sg_graph' },
-            { id: 'decode', x: 180, y: 48, w: 150, h: 56, label: 'CudaGraphRunner', tag: 'decode shapes', detailKey: 'nodes.crosscut.sg_decode' },
-            { id: 'piece', x: 356, y: 48, w: 134, h: 56, label: 'Piecewise graph', tag: 'prefill chunks', detailKey: 'nodes.crosscut.sg_piece' },
-            { id: 'host', x: 30, y: 150, w: 132, h: 52, label: 'host boundary', tag: 'break', detailKey: 'nodes.crosscut.sg_bcg' },
-            { id: 'bcg', x: 180, y: 150, w: 150, h: 52, label: 'Breakable CUDA Graph', tag: 'optional', detailKey: 'nodes.crosscut.sg_bcg' },
-            { id: 'replay', x: 356, y: 150, w: 134, h: 52, label: 'resume replay', tag: 'dynamic tail', detailKey: 'nodes.crosscut.sg_replay' },
+            { id: 'graph', x: 150, y: 40, w: 220, h: 56, label: 'ModelRunner.forward', tag: 'mode + graph eligibility', detailKey: 'nodes.crosscut.sg_graph' },
+            { id: 'decode', x: 24, y: 178, w: 145, h: 58, label: 'Decode graph', tag: 'CudaGraphRunner', detailKey: 'nodes.crosscut.sg_decode' },
+            { id: 'piece', x: 188, y: 178, w: 145, h: 58, label: 'Prefill graph', tag: 'piecewise / BCG', detailKey: 'nodes.crosscut.sg_piece' },
+            { id: 'eager', x: 352, y: 178, w: 144, h: 58, label: 'EagerRunner', tag: 'ordinary forward', detailKey: 'nodes.crosscut.sg_graph' },
+            { id: 'result', x: 100, y: 320, w: 320, h: 56, label: 'ModelRunnerOutput', tag: 'logits_output + flags', detailKey: 'nodes.crosscut.sg_graph_output' },
           ],
           edges: [
-            { id: 'graph-decode', d: 'M162 76H180', label: 'shape', lx: 171, ly: 67, anchor: 'middle' },
-            { id: 'graph-piece', d: 'M96 104V122H423V104', label: 'chunk', lx: 260, ly: 116 },
-            { id: 'piece-bcg', d: 'M423 104V134H255V150', label: 'capture', lx: 360, ly: 128 },
-            { id: 'bcg-host', d: 'M180 176H162', label: 'break', lx: 171, ly: 168, anchor: 'middle' },
-            { id: 'bcg-replay', d: 'M330 176H356', label: 'resume', lx: 343, ly: 168, anchor: 'middle' },
+            { id: 'graph-fork', d: 'M260 96V130' },
+            { id: 'graph-decode', d: 'M260 130H96V178' },
+            { id: 'graph-piece', d: 'M260 130V178' },
+            { id: 'graph-eager', d: 'M260 130H424V178' },
+            { id: 'decode-result', d: 'M96 236V292H180V320' },
+            { id: 'piece-result', d: 'M260 236V320' },
+            { id: 'eager-result', d: 'M424 236V292H340V320' },
           ],
-          activeNodes: ['decode', 'piece', 'bcg'],
+          activeNodes: ['graph', 'decode', 'result'],
         },
         vl: {
           nodes: [
@@ -2570,9 +2590,11 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         h('path', {
           d: edge.d,
           className: `ia-edge${edge.solid ? ' is-solid' : ''}${active ? ' is-active' : ''}`,
+          style:edge.solid?{strokeDasharray:'none'}:undefined,
           markerEnd: `url(#${active ? activeId : idleId})`,
           markerStart: edge.twoWay ? `url(#${active ? activeId : idleId})` : undefined,
         }),
+        edge.solid&&active?h('path',{d:edge.d,className:'rv-pulse',style:{stroke:'var(--board-accent)'}}):null,
         edge.label
           ? h(
               'text',
@@ -2655,7 +2677,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       );
     }
 
-    function EngineBoard({ side, chapter, step, stepCount, t, footKey, children, v2Detail=true }) {
+    function EngineBoard({ side, chapter, step, stepCount, t, footKey, children, v2Detail=true, roleOverview=false }) {
       const engine = ENGINE[side];
       const release = RELEASES[side];
       const [zoomed, setZoomed] = React.useState(false);
@@ -2664,7 +2686,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       return h(
         'article',
         {
-          className: `ia-board ia-board--${side}${zoomed ? ' is-zoomed' : ''}`,
+          className: `ia-board ia-board--${side}${roleOverview?' ia-board--roles':''}${zoomed ? ' is-zoomed' : ''}`,
           'data-engine': side,
         },
         h(
@@ -2683,25 +2705,25 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             h('span', { className: 'ia-boardVersion' }, engine.version),
             h('span', { className: 'ia-boardDate' }, release.date),
           ),
-          h('button', {
+          !roleOverview?h('button', {
             className: 'ia-boardZoom', type: 'button', 'aria-pressed': zoomed,
             onClick: () => setZoomed(value => !value),
-          }, t(zoomed ? 'board.fit' : 'board.zoom')),
+          }, t(zoomed ? 'board.fit' : 'board.zoom')):null,
         ),
-        stepSource ? h(window.AtlasSourceStep.Annotation, { ...stepSource, side, sources: SOURCE_LINKS }) : null,
+        stepSource&&!roleOverview ? h(window.AtlasSourceStep.Annotation, { ...stepSource, side, sources: SOURCE_LINKS }) : null,
         h(
           'div',
           {
             className: 'ia-boardStage',
-            tabIndex: 0,
+            tabIndex: roleOverview?undefined:0,
             role: 'region',
-            'aria-label': t(zoomed ? 'board.scrollHint' : 'board.fullView'),
+            'aria-label': roleOverview?`${engine.name} module responsibilities`:t(zoomed ? 'board.scrollHint' : 'board.fullView'),
           },
           h('div', { className: 'ia-boardSvgWrap' }, v2Detail && side==='vl' && window.AtlasV2.supports(chapter,step) ? h(window.AtlasV2.Diagram,{chapter,step,en:atlasLocale.lang==='en'}) : children),
         ),
         zoomed ? h('p', { className: 'ia-boardScrollHint' }, t('board.scrollHint')) : null,
-        h('p', { className: 'ia-sceneNote' }, t(noteKey)),
-        h(
+        !roleOverview?h('p', { className: 'ia-sceneNote' },t(noteKey)):null,
+        !roleOverview?h(
           'footer',
           { className: 'ia-boardFoot' },
           h(
@@ -2714,7 +2736,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             { className: 'ia-boardStep' },
             `${String(step + 1).padStart(2, '0')} / ${String(stepCount).padStart(2, '0')}`,
           ),
-        ),
+        ):null,
       );
     }
 
@@ -2873,7 +2895,8 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
               null,
               h('path', {
                 d: 'M298 41V82',
-                className: `ia-splitMarker${step >= 1 ? ' is-active' : ''}`,
+                className: 'ia-splitMarker',
+                style:step>=1?{stroke:'var(--board-accent)'}:undefined,
               }),
               h(
                 'text',
@@ -2898,7 +2921,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       const uid = `prefix-${side}`;
       const isVl = side === 'vl';
       const tableTag = step >= 2 ? '[17, 18, 31]' : step >= 1 ? '[17, 18, ?]' : '[?, ?, ?]';
-      const nodes = layout.nodes.map((node) =>
+      const nodes = layout.nodes.filter(node=>!['next','decodeInput'].includes(node.id)||step===3).map((node) =>
         node.id === 'table' ? { ...node, tag: tableTag } : node,
       );
 
@@ -3003,7 +3026,8 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             { x: 38, y: 126, className: 'ia-sceneKicker is-inside' },
             'UnifiedRadixCache · longest prefix',
           ) : null,
-          layout.edges.map((edge) =>
+          !isVl&&step===3?h('text',{x:38,y:263,className:'ia-sceneKicker'},'old pages stay; compute KV for the new input'):null,
+          layout.edges.filter(edge=>edge.id!=='input-next'||step===3).map((edge) =>
             h(Edge, {
               key: edge.id,
               edge,
@@ -3207,6 +3231,8 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       const activeNodes = new Set(state.nodes);
       const activeEdges = new Set(state.edges);
       const uid = `disagg-${side}`;
+      const shownNodes=layout.nodes.filter(n=>side!=='vl'||(n.id==='gpu'?step===2:n.id==='scale'?step!==2:true));
+      const shownEdges=layout.edges.filter(e=>e.id!=='offload-gpu'||step===2);
       return h(
         EngineBoard,
         { side, chapter: 'disagg', step, stepCount: 4, t },
@@ -3223,8 +3249,8 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           h('text', { x: 30, y: 32, className: 'ia-sceneKicker' },
             side === 'sg' ? 'prefix-aware route · PD roles' : 'connector-owned transport · DP coordination'),
           h('text', { x: 38, y: 202, className: 'ia-sceneKicker is-inside' },
-            side === 'sg' ? 'HiCache tiers' : 'block ownership / offload'),
-          layout.edges.map((edge) =>
+            side === 'sg' ? 'restore: L3 → L2 → L1' : 'control metadata ≠ KV payload'),
+          shownEdges.map((edge) =>
             h(Edge, {
               key: edge.id,
               edge,
@@ -3233,7 +3259,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
               uid,
             }),
           ),
-          layout.nodes.map((node) =>
+          shownNodes.map((node) =>
             h(NodeBox, {
               key: node.id,
               node,
@@ -3268,8 +3294,8 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             : step === 1
               ? [1, 2]
               : step === 2
-                ? [3]
-                : [0, 1, 2, 3]
+                ? []
+                : [3]
           : [Math.min(step, 3)];
 
       const protocolChildren = h(
@@ -3456,7 +3482,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             rx: 6,
             className: 'ia-gaugeFill',
           }),
-          h('text', { x: 478, y: 249, textAnchor: 'end', className: 'ia-gaugeLabel' }, '≈92%'),
+          h('text', { x: 478, y: 249, textAnchor: 'end', className: 'ia-gaugeLabel' }, 'example ≈92%'),
           labels.map((label, index) =>
             chip(42 + index * 148, 282, 132, label, index === 1, `chip-${index}`),
           ),
@@ -3470,7 +3496,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
       if (step === 2) {
         const labels = isSg
-          ? ['AbortReq', 'queue / batch', 'KV + reply']
+          ? ['AbortReq', 'pop waiting', 'notify TM']
           : ['ABORT frame', 'finish_requests', 'blocks + outputs'];
         return h(
           'g',
@@ -3539,8 +3565,11 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
     function CrosscutBoard({ step, side, t, selected, onSelect }) {
       const layout = CROSSCUT_LAYOUT[step][side];
-      const activeNodes = new Set(layout.activeNodes || []);
-      const activeEdges = new Set(layout.edges.map((edge) => edge.id));
+      const [graphPath,setGraphPath]=React.useState('decode');
+      React.useEffect(()=>setGraphPath('decode'),[step]);
+      const graphChoice=side==='sg'&&step===3;
+      const activeNodes = new Set(graphChoice?['graph',graphPath,'result']:layout.activeNodes || []);
+      const activeEdges = new Set(graphChoice?['graph-fork',`graph-${graphPath}`,`${graphPath}-result`]:layout.activeEdges || layout.edges.map((edge) => edge.id));
       const uid = `crosscut-${step}-${side}`;
       return h(
         EngineBoard,
@@ -3552,17 +3581,22 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           t,
           footKey: `scenes.crosscut.foot.${step}.${side}`,
         },
+        graphChoice?h('fieldset',{className:'rv-graph-controls',style:{'--ia-graph-accent':'var(--ia-sgScene)'}},
+          h('legend',null,t('control.sgGraphChoice')),
+          h('div',{className:'rv-graph-choices'},[['decode','Decode graph'],['piece','Prefill graph'],['eager','Eager']].map(([value,title])=>h('button',{
+            key:value,type:'button','data-sg-graph-choice':value,'aria-pressed':graphPath===value,onClick:()=>setGraphPath(value),
+          },title)))):null,
         h(
           'svg',
           {
-            viewBox: '0 0 520 366',
+            viewBox: graphChoice?'0 0 520 410':'0 0 520 366',
             className: 'ia-svg',
             role: 'group',
             'aria-label': `${ENGINE[side].name} crosscut module ${step + 1}`,
           },
           h(SvgDefs, { uid }),
           h(CanvasGrid, { uid }),
-          h(CrosscutDecor, { step, side, t }),
+          graphChoice?h('text',{x:24,y:402,className:'ia-decorCaption'},t('control.sgGraphBackend')):h(CrosscutDecor, { step, side, t }),
           layout.edges.map((edge) =>
             h(Edge, {
               key: edge.id,
@@ -3594,7 +3628,9 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       );
     }
 
-    function Scene({ chapter, step, t, selected, onSelect, ownership, tp, tokens }) {
+    function Scene({ chapter, step, t, selected, onSelect, ownership, tp, tokens, roleOverview, showSources, onLocate }) {
+      if(chapter==='process'&&roleOverview)return h(React.Fragment,null,['sg','vl'].map(side=>h(EngineBoard,{key:side,side,chapter,step,stepCount:4,t,roleOverview:true,v2Detail:false},
+        h(window.AtlasRoles.Body,{side,en:atlasLocale.lang==='en',selected,onSelect,onLocate,showSources}))));
       if (chapter === 'metrics' || (chapter === 'process' && ownership)) return h(React.Fragment, null,
         ['sg','vl'].map(side => h(EngineBoard, {key:side,side,chapter:chapter==='process'?'ownership':chapter,step,stepCount:4,t},
           h(chapter === 'metrics' ? window.AtlasBoundaries.Metrics : window.AtlasBoundaries.Ownership,
@@ -4293,7 +4329,9 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         const [chapterIndex, setChapterIndex] = useState(() => resumeChapter >= 0 ? resumeChapter : chapterFromHash());
         const [step, setStep] = useState(() => resumeChapter >= 0 ? Math.max(0,Math.min(Number(updateResume.step)||0,CHAPTERS[resumeChapter].steps-1)) : Math.max(0,Math.min(3,Number(new URL(location.href).searchParams.get('step'))||0)));
         const [selected, setSelected] = useState(null);
-        const [ownership,setOwnership]=useState(()=>new URL(location.href).searchParams.get('view')==='ownership');
+        const readProcessView=()=>{const u=new URL(location.href),v=u.searchParams.get('view');return ['roles','ownership','request'].includes(v)?v:u.searchParams.has('step')||u.searchParams.get('depth')==='source'?'request':'roles';};
+        const [processView,setProcessView]=useState(readProcessView);
+        const ownership=processView==='ownership';
         const [tp,setTp]=useState(()=>new URL(location.href).searchParams.get('tp')==='1'?1:2);
         const [tokens,setTokens]=useState(()=>[1,2,4].includes(Number(new URL(location.href).searchParams.get('tokens')))?Number(new URL(location.href).searchParams.get('tokens')):2);
         const [readerView, setReaderView] = useState(readReaderView);
@@ -4330,6 +4368,18 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         useEffect(() => { window.dispatchEvent(new Event('learning:navigation')); }, [chapter.id]);
         const hasOverview = ['wire','prefix','batch','disagg'].includes(chapter.id);
         const shownDepth = hasOverview ? readerView.depth : 'modules';
+        const roleOverview=chapter.id==='process'&&processView==='roles';
+        const staticReason=roleOverview?['这是模块职责与逻辑关系总览；调用关系不表示独立进程或串行耗时。','This is a responsibility map; call relationships do not imply separate processes or serial durations.']:chapter.id==='metrics'
+          ? ['本步标记计时端点与统计样本；事件间距不表示耗时。','This step marks measurement endpoints and samples; spacing does not represent elapsed time.']
+          : chapter.id==='prefix'&&(shownDepth==='overview'||step===0)
+            ? ['本视图比较前缀输入与复用结果；地址访问见模块过程。','This view compares prefix inputs and reuse; see module process for address access.']
+            : chapter.id==='batch'&&step===0
+              ? ['候选请求仍在等待，尚未交给执行。','Candidate requests are waiting; no work has been dispatched.']
+              : chapter.id==='disagg'&&step===3
+                ? ['本步展示可选配置范围，没有模拟请求流。','This step shows optional configuration scope, without simulated request flow.']
+                : chapter.id==='process'&&ownership&&step!==2
+                  ? ['本步查看进程归属与资源状态；请求交接见请求路径。','This step shows process ownership and resource state; see Request path for handoffs.']
+                  : null;
         const { sourceOpen } = readerView;
         const updateReaderView = next => {
           setReaderView(next);
@@ -4347,7 +4397,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         const label=(zh,english)=>en?english:zh;
         // All reader choices survive reload/history; changing depth keeps the
         // observation question, topology, and shared pulse phase intact.
-        useEffect(()=>{const u=new URL(location.href);u.searchParams.set('step',step);u.searchParams.set('view',ownership?'ownership':'request');u.searchParams.set('tp',tp);u.searchParams.set('tokens',tokens);history.replaceState(null,'',u);},[step,ownership,tp,tokens]);
+        useEffect(()=>{const u=new URL(location.href);u.searchParams.set('step',step);u.searchParams.set('view',processView);u.searchParams.set('tp',tp);u.searchParams.set('tokens',tokens);history.replaceState(null,'',u);},[step,processView,tp,tokens]);
 
         useEffect(() => {
           const sync = () => {
@@ -4356,7 +4406,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             setChapterIndex(next);
             setStep(Math.max(0,Math.min(3,Number(new URL(location.href).searchParams.get('step'))||0)));
             setReaderView(readReaderView());
-            setOwnership(new URL(location.href).searchParams.get('view')==='ownership');
+            setProcessView(readProcessView());
             setTp(new URL(location.href).searchParams.get('tp')==='1'?1:2);
             const n=Number(new URL(location.href).searchParams.get('tokens'));setTokens([1,2,4].includes(n)?n:2);
             setSelected(null);
@@ -4411,7 +4461,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
         const handleSelectNode = useCallback(
           (picked) => {
-            const key = `${chapter.id}:${picked.side}:${picked.id}`;
+            const key = `${chapter.id}:${picked.side}:${picked.roleId||picked.id}`;
             setSelected((current) =>
               current && current.key === key
                 ? null
@@ -4437,7 +4487,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           h(
             'main',
             {
-              className: 'ia-page', ref:pageRef, 'data-depth':shownDepth, 'data-source-open':sourceOpen, 'data-chapter':chapter.id, 'data-step':step,
+              className: 'ia-page', ref:pageRef, 'data-depth':shownDepth, 'data-source-open':sourceOpen, 'data-chapter':chapter.id, 'data-step':step, 'data-process-view':processView,
               'data-reduced-motion': reduceMotion ? 'true' : 'false',
             },
             h('div', { className: 'ia-windowSafe', 'aria-hidden': 'true' }),
@@ -4513,8 +4563,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             h('p', { className: 'ia-controlHint' }, t('control.hint')),
             h(StepRail, { chapter, step, t, onStep: goToStep }),
             chapter.id==='process'?h('div',{className:'ib-controls',role:'group','aria-label':label('进程观察方式','Process view')},
-              h('button',{type:'button','data-process-view':'request','aria-pressed':!ownership,onClick:()=>{setOwnership(false);setSelected(null);}},label('请求路径','Request path')),
-              h('button',{type:'button','data-process-view':'ownership','aria-pressed':ownership,onClick:()=>{setOwnership(true);setSelected(null);}},label('职责与 KV 归属','Roles & KV ownership')),
+              [['roles',label('01 先认职责','01 Responsibilities')],['ownership',label('02 看进程与 KV 归属','02 Processes & KV')],['request',label('03 追踪请求路径','03 Request path')]].map(([view,title])=>h('button',{key:view,type:'button','data-process-view':view,'aria-pressed':processView===view,onClick:()=>setProcessView(view)},title)),
               ownership?h('label',null,'TP ',h('select',{'aria-label':label('张量并行规模','Tensor parallel size'),value:tp,onChange:e=>setTp(Number(e.target.value))},h('option',{value:1},'1'),h('option',{value:2},'2'))):null):null,
             chapter.id==='process'&&ownership?h('p',{className:'ia-controlHint'},label('L1–L5 是职责，不是五个进程。此图限定单机 Python 文本服务、单 API / 单 Detokenizer、PP=DP=1，普通 Full Attention 缓存且无外部后端；vLLM 采用 TP1 uni / TP2 mp，不计 launcher、监控和辅助进程。','L1–L5 are roles, not five processes. Single-node Python text service, one API / one Detokenizer, PP=DP=1, ordinary full-attention cache without an external backend; vLLM uses TP1 uni / TP2 mp. Launcher, monitoring, and helper processes are excluded.')):null,
             chapter.id==='metrics'?h('p',{className:'ia-controlHint'},label('范围：普通 Python 文本流式服务，开启指标；非 PD、无投机/重试/取消、无 stop 字符串，按 EOS 或长度终止。四步是四个观察问题，不是四段串行执行。','Scope: ordinary Python text streaming with metrics; no PD, speculation, retries, cancellation, or stop strings; EOS/length termination. These are four observation questions, not four serial execution phases.')):null,
@@ -4526,15 +4575,15 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                   onClick: () => updateReaderView({ ...readerView, depth: mode }),
                 }, mode === 'overview' ? label('总览', 'Overview') : label('模块过程', 'Module process')))) : null,
               h('button', { type: 'button', onClick: () => setPulsePlaying(playing => !playing),
-                'aria-pressed': pulsePlaying, 'data-pulse-toggle': true },
-                pulsePlaying ? label('暂停脉冲', 'Pause pulses') : label('播放脉冲', 'Play pulses'))),
-            h('p', { className: 'ia-controlHint' }, label(
-              '脉冲表示本阶段的活跃交接。线长和传播速度仅用于示意。',
-              'Pulses mark active handoffs in this step. Line length and pulse speed are illustrative.')),
+                disabled:!!staticReason||reduceMotion,'aria-pressed': !staticReason&&!reduceMotion&&pulsePlaying, 'data-pulse-toggle': true },
+                staticReason?label('静态示意','Static view'):reduceMotion?label('已减少动态效果','Reduced motion'):pulsePlaying ? label('暂停脉冲', 'Pause pulses') : label('播放脉冲', 'Play pulses'))),
+            h('p', { className: 'ia-controlHint','data-flow-hint':true }, staticReason?staticReason[en?1:0]:reduceMotion?label('已遵循减少动态效果设置；仍可切换步骤和场景。','Reduced motion is enabled; steps and scenarios remain interactive.'):label(
+              '脉冲标记当前讲解的交接，不表示这些操作同时执行。线长与速度仅作示意。',
+              'Pulses mark the handoffs being explained, not simultaneous execution. Line length and speed are illustrative.')),
             h(
               'p',
               { className: 'ia-srOnly', 'aria-live': 'polite' },
-              `${t('stage.step')} ${step + 1} / ${stepCount}: ${t(stepTitleKey)}`,
+              roleOverview?label('模块职责总览','Module responsibility overview'):`${t('stage.step')} ${step + 1} / ${stepCount}: ${t(stepTitleKey)}`,
             ),
             h(
               'section',
@@ -4551,16 +4600,16 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                     h('span', { className: 'ia-stageNum' }, chapter.num),
                     h('span', null, t(chapter.questionKey)),
                   ),
-                  h('h2', { className: 'ia-stageTitle', id: 'ia-stage-title' }, t(stepTitleKey)),
+                  h('h2', { className: 'ia-stageTitle', id: 'ia-stage-title' }, roleOverview?label('先认清模块分工，再追一条请求','Recognize each role, then follow a request'):t(stepTitleKey)),
                 ),
                 h(
                   'div',
                   { className: 'ia-stageMeta' },
                   h('button', {
                     type: 'button', className: 'ia-source-toggle', 'data-source-toggle': true,
-                    'aria-expanded': sourceOpen, 'aria-controls': sourceOpen ? 'ia-source-sg ia-source-vl' : undefined,
+                    'aria-expanded': sourceOpen, 'aria-controls': sourceOpen ? roleOverview?'ia-module-roles-sg ia-module-roles-vl':'ia-source-sg ia-source-vl' : undefined,
                     onClick: () => updateReaderView({ ...readerView, sourceOpen: !sourceOpen }),
-                  }, sourceOpen ? label('收起图上源码', 'Hide source annotations') : label('展开图上源码', 'Show source annotations')),
+                  }, roleOverview?(sourceOpen?label('收起源码入口','Hide source links'):label('显示模块源码入口','Show module sources')):sourceOpen ? label('收起图上源码', 'Hide source annotations') : label('展开图上源码', 'Show source annotations')),
                   h(
                     'span',
                     { className: 'ia-stepCounter' },
@@ -4568,15 +4617,15 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                   ),
                 ),
               ),
-              h(window.AtlasLessonNotes.StepNote, { topic: chapter.id, step, en, depth: shownDepth }),
+              roleOverview?h('p',{className:'ir-view-intro'},label('分组与缩进表示对象组织关系，箭头表示调用或结果交接；rank 是并行组的成员编号。先认清下列分工，再切换视图查看进程、通信与 KV 位置。点击条目可看细分职责并在原请求图定位。','Grouping/indentation shows object organization; arrows show calls or returned results. A rank is a member’s index in a parallel group. Start with these roles, then switch views for processes, communication and KV placement. Select a role for details or locate it in the request diagram.')):h(window.AtlasLessonNotes.StepNote, { topic: chapter.id, step, en, depth: shownDepth }),
               h('div', { className: 'ia-comparison' },
-                h('p', { className: 'ia-comparisonHint', id: 'ia-comparison-hint' }, t('board.comparisonScroll')),
+                !roleOverview?h('p', { className: 'ia-comparisonHint', id: 'ia-comparison-hint' }, t('board.comparisonScroll')):null,
                 h('div', {
-                  className: 'ia-boardGrid', role: 'region', tabIndex: 0,
-                  'aria-label': t('board.comparison'), 'aria-describedby': 'ia-comparison-hint',
+                  className: 'ia-boardGrid'+(roleOverview?' ir-grid':''), role: 'region', tabIndex: roleOverview?undefined:0,
+                  'aria-label': t('board.comparison'), 'aria-describedby': roleOverview?undefined:'ia-comparison-hint',
                 }, h(StepSourceContext.Provider, { value: sourceOpen ? { chapter: chapter.id, step, en, ownership, tp, tokens } : null },
                   h(shownDepth === 'overview' ? DepthOverview : Scene, {
-                    chapter: chapter.id, step, t, selected, onSelect: handleSelectNode, ownership, tp, tokens,
+                    chapter: chapter.id, step, t, selected, onSelect: handleSelectNode, ownership, tp, tokens,roleOverview,showSources:sourceOpen,onLocate:()=>setProcessView('request'),
                   }))),
               ),
               h(
@@ -4585,8 +4634,10 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                 h('span', { className: 'ia-hintRule', 'aria-hidden': 'true' }),
                 t('board.hint'),
               ),
-              h(ChapterLinks, { chapter, t }),
-              selected
+              roleOverview?h('div',{className:'ib-controls ir-next',role:'group','aria-label':label('继续阅读','Continue reading')},
+                h('button',{type:'button','data-process-next':'ownership',onClick:()=>setProcessView('ownership')},label('继续：看进程与 KV 归属','Continue: processes & KV')),
+                h('button',{type:'button','data-process-next':'request',onClick:()=>setProcessView('request')},label('直接追踪请求','Follow the request'))):h(ChapterLinks, { chapter, t }),
+              selected&&!roleOverview
                 ? h(
                     'aside',
                     {
@@ -4625,13 +4676,14 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                         h(CloseIcon),
                       ),
                     ),
-                    NODE_ROLE_KEYS[selected.detailKey] ? h('p', { className: 'ia-inspectorRole' }, h('strong', null, t(NODE_ROLE_KEYS[selected.detailKey]))) : null,
-                    h('p', { className: 'ia-inspectorBody' }, t(selected.detailKey)),
+                    selected.role?h('p',{className:'ia-inspectorRole'},h('strong',null,selected.role[en?1:0])):NODE_ROLE_KEYS[selected.detailKey] ? h('p', { className: 'ia-inspectorRole' }, h('strong', null, t(NODE_ROLE_KEYS[selected.detailKey]))) : null,
+                    h('p', { className: 'ia-inspectorBody' }, selected.description?selected.description[en?1:0]:t(selected.detailKey)),
+                    selected.source?h('a',{href:selected.source,target:'_blank',rel:'noreferrer'},label('查看固定版本源码 ↗','View pinned source ↗')):null,
                   )
                 : null,
               h(
                 'div',
-                { className: 'ia-verdict' },
+                { className: 'ia-verdict',hidden:roleOverview },
                 h(
                   'div',
                   { className: 'ia-verdictCol ia-verdictCol--sg' },

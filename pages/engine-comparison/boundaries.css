@@ -12,6 +12,7 @@
 .ib-ranks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 .ib-ranks>.ib-process:only-child{grid-column:1/-1}
 .ib-role{display:flex;gap:7px;align-items:flex-start;padding:7px 5px;border:1px solid transparent;border-radius:4px;min-width:0}
+.ib-role>div{min-width:0;overflow-wrap:anywhere}
 .ib-role strong{font-size:12px;line-height:1.4;display:block;overflow-wrap:anywhere}
 .ib-role.is-active{border-color:var(--ib-accent);background:color-mix(in srgb,var(--ib-accent) 9%,transparent)}
 .ib-role-level{font-family:var(--ia-mono);color:var(--ib-accent);font-size:11px;flex:none}

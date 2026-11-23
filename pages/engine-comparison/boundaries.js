@@ -84,7 +84,7 @@ window.AtlasBoundaries = (() => {
     const ledger=h(Role,{level:'L3',name:sg?'UnifiedRadixCache · Pools':'KVCacheManager · BlockPool',detail:admitted?tr(['R1 已取得地址；账本标记持有','R1 has addresses; ownership recorded']):tr(['空闲位置与前缀索引','Free positions and prefix index']),active:step===1});
     const scheduler=h(Role,{level:'L2',name:'Scheduler',detail:admitted?tr(['R1 进入本轮 batch','R1 admitted to this batch']):tr(['候选队列与 token 预算','Candidates and token budget']),active:step===1});
     const worker=rank=>h('div',{className:'ib-worker',key:rank},
-      h(Role,{level:'L4',name:sg?'TpModelWorker → ModelRunner':'Worker → ModelRunner',detail:tr(['准备输入并执行本 rank 模型','Prepare inputs and run this model rank']),active:step===2}),
+      h(Role,{level:'L4',name:sg?'TpModelWorker → ModelRunner':'Worker → ModelRunner',detail:sg?tr(['TpModelWorker 衔接调用；ModelRunner 组织计算','TpModelWorker bridges calls; ModelRunner organizes computation']):tr(['Worker 管执行环境；ModelRunner 组织计算','Worker manages the environment; ModelRunner organizes computation']),active:step===2}),
       h(Path,{label:tr(['地址定位后写 K/V','Write K/V at assigned addresses']),active:step===2,write:true}),
       h('div',{className:'ib-gpu','data-written':written},h('strong',null,`GPU ${rank}`),
         h('span',null,written?tr([`R1 的 K/V · rank ${rank} 本地数据`,`R1 K/V · rank ${rank} local data`]):tr(['尚未写入 R1 的 K/V','R1 K/V not written yet'])),

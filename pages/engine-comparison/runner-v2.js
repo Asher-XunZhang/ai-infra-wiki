@@ -39,9 +39,9 @@
     ],
     wire:[
       ['前端 ROUTER → EngineCore DEALER 传输入帧，Core PUSH → 前端 PULL 传输出帧；Worker 改用 V2 不改变这层协议。','Frontend ROUTER → Core DEALER carries inputs; Core PUSH → frontend PULL carries outputs. Worker V2 does not change this protocol.'],
-      ['本例 TP2 / 本机 mp：Executor 用消息队列派发 execute_model / sample_tokens；载荷是调度计划与控制数据，不是模型权重或完整 KV。','For local TP2/mp, Executor dispatches execute_model / sample_tokens over message queues. Payloads are plans and control data, not weights or full KV tensors.'],
+      ['Core 消费 CPU 可读的 ModelRunnerOutput 并更新请求后，把 EngineCoreOutputs 从 PUSH 输出通道送到前端 PULL。返回载荷与输入的 ROUTER/DEALER 通道分开；Worker 的 response MQ 属于前一个执行边界。','After consuming CPU-readable ModelRunnerOutput and updating requests, Core sends EngineCoreOutputs over its PUSH output channel to frontend PULL. This return path is separate from ROUTER/DEALER inputs; worker response MQ belongs to the preceding execution boundary.'],
       ['V2 把新请求写入持久 RequestState，已有请求增量更新 block IDs 与进度；再按 idx_mapping 准备本批 GPU 输入。输出 D2H 完成后，Worker response MQ 才能交回可读结果。','V2 adds persistent RequestState for new requests and updates blocks/progress for existing ones. idx_mapping gathers this batch. Worker response MQ returns readable results only after output D2H completes.'],
-      ['前端 ZMQ、Worker 消息队列、GPU collective 是不同通信边界。V2 仍通过现有 Executor 参与 TP / PP；多机通信与部署组合须另核对。','Frontend ZMQ, Worker queues and GPU collectives are separate boundaries. V2 uses the existing Executor for TP/PP; multi-node transports and combinations need separate checks.'],
+      ['DP>1 时，独立的 DPCoordinator 收集引擎负载与 request-wave 状态并发布给前端，供路由参考；它不是搬运 KV 的通道。本页默认 DP=1，此处单独展示可选扩展。Worker 内采用 V2 不改变这层控制边界。','At DP>1, a separate DPCoordinator collects engine load and request-wave state and publishes them to frontends for routing; it does not carry KV. This page defaults to DP=1 and shows the optional extension separately. Worker V2 does not change this control boundary.'],
     ],
     prefix:[
       ['前缀 hash 和可复用 block 仍由 EngineCore 内的 KVCacheManager / BlockPool 管理；V2 不在 GPU 上重新做这套全局前缀查找。','KVCacheManager / BlockPool in EngineCore still own prefix hashes and reusable blocks. V2 does not repeat that global lookup on the GPU.'],
@@ -92,16 +92,19 @@
   const sources=Object.entries(src).map(([k,[path]])=>({key:'sources.v2_'+k,url:BASE+path}));
   const choose=(p,en)=>p[en?1:0];
   function Diagram({chapter,step,en}) {
+    const [graphMode,setGraphMode]=React.useState('FULL');
+    const [loadMode,setLoadMode]=React.useState('async');
+    React.useEffect(()=>{setGraphMode('FULL');setLoadMode('async');},[chapter,step]);
     const id=`rv2-${chapter}-${step}`;
     const tr=(zh,english)=>en?english:zh;
     const items=[];
     const label=(x,y,s,cls='rv-label',anchor='start')=>h('text',{x,y,className:cls,textAnchor:anchor},s);
-    const box=(x,y,w,title,sub='',key,active=false)=>{
-      const g=h('g',{className:'rv-node'+(active?' is-active':'')},
+    const box=(x,y,w,title,sub='',key,active=false,graphPath)=>{
+      const g=h('g',{className:'rv-node'+(active?' is-active':''),'data-graph-mode':graphPath},
         h('rect',{x,y,width:w,height:53,rx:6}),label(x+10,y+21,title,'rv-title'),sub?label(x+10,y+40,sub,'rv-sub'):null);
       items.push(key?h('a',{key:items.length,href:BASE+src[key][0],target:'_blank',rel:'noreferrer','aria-label':src[key][1]},g):h('g',{key:items.length},g));
     };
-    const arrow=(d,active=false,control=false)=>items.push(h('g',{key:items.length},
+    const arrow=(d,active=false,control=false,edgeId)=>items.push(h('g',{key:items.length,'data-graph-edge':edgeId,className:active?'is-active':undefined},
       h('path',{d,className:'rv-line'+(control?' is-control':''),markerEnd:`url(#${id}-arrow)`}),
       active?h('path',{d,className:'rv-pulse'+(control?' is-control':'')}):null));
     const note=(x,y,zh,english)=>items.push(label(x,y,tr(zh,english)));
@@ -146,10 +149,10 @@
         arrow('M399 109V153',true);
         box(22,153,206,'execute_model','GPU forward → hidden states','execute',true);
         arrow('M300 180H228',true);
-        box(22,255,206,'ExecuteModelState',tr('保存本轮引用，等待采样','step references for sampling'),'execute');
-        arrow('M125 206V255',false,true);
-        box(300,255,198,'sample_tokens','logits → sampled token IDs','sample');
-        arrow('M228 282H300',false,true);
+        box(22,255,206,'ExecuteModelState',tr('保存本轮引用，供采样读取','step references for sampling'),'execute',true);
+        arrow('M125 206V255',true,true);
+        box(300,255,198,'sample_tokens','logits → sampled token IDs','sample',true);
+        arrow('M228 282H300',true,true);
         note(22,359,'普通自回归、PP1；先前向，再采样，再满足结果可读条件。','Ordinary AR, PP1: forward → sample → readable result.');
       } else {
         title=tr('采样后：两条 CUDA stream 的依赖','After sampling: dependencies across two CUDA streams');
@@ -157,67 +160,91 @@
         box(300,55,198,'postprocess_sampled','GPU last_sampled_tokens ← t1','sample',true);
         arrow('M228 82H300',true);note(22,38,'GPU main stream','GPU main stream');
         note(22,160,'GPU output copy stream','GPU output copy stream');
-        box(22,179,206,'wait_stream(main)',tr('只等此处之前的采样依赖','wait for prior sampling work'),'async');
-        arrow('M125 108V179',false,true);
+        box(22,179,206,'wait_stream(main)',tr('只等此处之前的采样依赖','wait for prior sampling work'),'async',true);
+        arrow('M125 108V179',true,true);
         box(300,179,198,'D2H → copy_event',tr('token IDs 复制到 CPU','copy token IDs to CPU'),'async',true);
         arrow('M228 206H300',true);
         note(250,143,'可重叠','may overlap');
-        box(300,286,198,'get_output()',tr('等 event，再读 CPU 数组','wait for event, then read CPU'),'async');
-        arrow('M399 232V286',false,true);
-        box(22,286,206,'Scheduler update','ModelRunnerOutput → output','queue');
+        box(300,286,198,'get_output()',tr('等 event，再读 CPU 数组','wait for event, then read CPU'),'async',true);
+        arrow('M399 232V286',true,true);
+        box(22,286,206,'Scheduler update','ModelRunnerOutput → output','queue',true);
         arrow('M300 313H228',true);
         note(22,365,'启用 async scheduling：输出线程等结果，Core 可继续派发。','Async scheduling: output thread waits; Core may enqueue more.');
       }
     } else if(chapter==='disagg') {
-      title=tr('加载何时启动？什么时候才允许计算？','When do loads start, and when is execution allowed?');
+      const sync=loadMode==='sync';
+      title=sync?tr('同步分支：先启动加载，再按依赖消费 KV','Sync loads start before forward; consumers obey dependencies'):tr('异步分支：R2 先计算，R1 等 KV 就绪','Async loads: R2 runs while R1 waits for KV');
       box(22,58,206,'pre_forward','bind metadata · preemptions','connector',true);
-      box(300,58,198,'GPU forward',tr('本轮已准入的工作','work admitted to this step'),'execute',true);
-      arrow('M228 85H300',false,true);
-      note(22,143,'has_sync_kv_loads = true','has_sync_kv_loads = true');
-      note(22,164,'在 forward 前 start_load_kv；消费依赖由后端落实。','start_load_kv before forward; backend enforces read readiness.');
-      box(300,196,198,'post_forward',tr('异步路径：此处 start_load_kv','async path: start_load_kv here'),'connector',true);
-      arrow('M399 111V196',false,true);
-      box(22,196,206,'KV payload','','connector',true);
-      note(32,237,'P GPU','P GPU');note(179,237,'D GPU','D GPU');arrow('M76 233H171',true);
-      arrow('M300 223H228',true,true);
-      box(22,304,206,'finished_recving',tr('Worker 结果回传 Scheduler','Worker result → Scheduler'),'ready');
-      arrow('M125 249V304',true,true);
-      box(300,304,198,'WAITING → schedule',tr('就绪检查 + 本轮资源/预算','readiness + resource/budget gate'),'ready');
-      arrow('M228 331H300',false,true);
-      note(22,386,'两条加载分支不是串联；零 token 轮也可推进 connector。','Load branches are alternatives; zero-token steps can service KV.');
+      box(300,58,198,sync?'start_load_kv':'GPU forward: R2',sync?'has_sync_kv_loads = true':tr('本轮已准入的其他请求','other work admitted to this step'),sync?'connector':'execute',true);
+      arrow('M228 85H300',true,true,'load-first');
+      if(sync){
+        box(22,196,206,'KV transfer','','connector',true);
+        note(32,237,'backend','backend');note(179,237,'GPU','GPU');arrow('M87 233H167',true);
+        arrow('M399 111V150H125V196',true,true,'load-start');
+        box(300,196,198,'GPU forward',tr('消费前由后端保证依赖','backend enforces read readiness'),'execute',true);
+        arrow('M228 223H300',true,true,'load-consume');
+        box(22,304,206,'post_forward','collect connector results','connector',true);
+        arrow('M399 249V277H125V304',true,true);
+        box(300,304,198,'Scheduler update',tr('本轮结果与 connector 状态','step results + connector state'),'ready',true);
+      }else{
+        box(300,196,198,'post_forward',tr('此处 start_load_kv(R1)','start_load_kv(R1) here'),'connector',true);
+        arrow('M399 111V196',true,true,'load-start');
+        box(22,196,206,'R1 KV transfer','','connector',true);
+        note(32,237,'backend','backend');note(179,237,'D GPU','D GPU');arrow('M87 233H167',true);
+        arrow('M300 223H228',true,true,'load-request');
+        box(22,304,206,'finished_recving: R1',tr('Worker 结果回传 Scheduler','Worker result → Scheduler'),'ready',true);
+        arrow('M125 249V304',true,true);
+        box(300,304,198,'R1: WAITING → ready',tr('随后仍检查预算与 KV 资源','then check budget and KV resources'),'ready',true);
+      }
+      arrow('M228 331H300',true,true,'load-result');
+      note(22,143,sync?'启动加载不等于全部 KV 已可读；消费依赖由后端落实。':'has_sync_kv_loads = false；当前 forward 不消费 R1 的远端 KV。',sync?'Starting a load does not make all KV ready; backend enforces reads.':'has_sync_kv_loads = false; this forward does not consume R1 KV.');
+      note(22,386,sync?'此图只展示同步分支；捕获和重放均保留 connector 边界。':'示例：R1 接收成功；零 token 轮也可推进 connector。',sync?'Sync branch only; capture and replay preserve connector boundaries.':'Example: R1 receives successfully; zero-token steps can service KV.');
     } else if(chapter==='crosscut'&&step<3) {
       title=tr('Scheduler 资源账本与 V2 本地状态分开清理','Scheduler resource accounting and V2 state clean up separately');
       const preempt=step===1;
-      box(22,53,206,preempt?'PREEMPTED':step===2?'FINISHED_ABORTED':'FINISHED',preempt?'num_computed_tokens = 0':tr('请求终态已记录','terminal status recorded'),'free',true);
+      box(22,53,206,preempt?'PREEMPTED':step===2?'FINISHED_ABORTED':'FINISHED',preempt?'num_computed_tokens = 0':step===2?tr('示例：R1 已建立执行侧槽位','Example: R1 has a worker slot'):tr('请求终态已记录','terminal status recorded'),'free',true);
       box(300,53,198,'KVCacheManager.free',tr('减引用；可保留完整块 hash','release refs; retain full hashes'),'free',true);
-      arrow('M228 80H300',false,true);
+      arrow('M228 80H300',true,true);
       box(22,168,206,preempt?'preempted_req_ids':'finished_req_ids','SchedulerOutput → Worker','cleanup',true);
       arrow('M125 106V168',true,true);
       box(300,168,198,'V2.finish_requests','_remove_request(R1)','cleanup',true);
       arrow('M228 195H300',true,true);
       box(300,275,198,'RequestState',tr('移除 R1 → 槽位 s；槽位可再用','remove R1 → slot s; reusable slot'),'state',true);
-      arrow('M399 221V275',false,true);
+      arrow('M399 221V275',true,true);
       note(22,263,preempt?'回到 waiting':'delay_free 可能延迟 blocks 回收',preempt?'Back to waiting':'delay_free may defer block reuse');
       note(22,287,preempt?'恢复时重建状态':'本地请求槽位 ≠ KV 物理块',preempt?'Rebuild state on resume':'Request slot ≠ physical KV block');
       note(22,365,'清理状态不是擦除 KV，也不是取消已发出的 GPU kernel。','State cleanup neither erases KV nor preempts issued kernels.');
     } else {
       title=tr('V2 怎样选择已捕获的图？','How does V2 select a captured graph?');
-      box(22,54,206,'Batch descriptor','tokens · requests · decode shape','graph',true);
+      box(22,54,206,'Batch shape','tokens · requests · decode shape','graph',true);
       box(300,54,198,'CudaGraphManager','match captured candidates','graph',true);
-      arrow('M228 81H300',false,true);
-      box(22,176,145,'FULL','fill inputs → replay','replay');
-      box(188,176,145,'PIECEWISE','compiled / breakable','replay');
-      box(354,176,144,'NONE','model(**inputs)','replay');
-      arrow('M399 107V143H94V176',false,true);
-      arrow('M399 143H260V176',false,true);
-      arrow('M399 143H426V176',false,true);
-      note(22,265,'符合已捕获候选 → FULL / PIECEWISE；不符合 → NONE。','Compatible capture → FULL / PIECEWISE; otherwise → NONE.');
-      note(22,290,'每次只选一条；不是三个依次执行的阶段。','Exactly one path per dispatch, not three sequential stages.');
-      box(22,320,476,'GPU buffers',tr('重放复用地址；输入值与 Attention metadata 按本轮更新','Replay reuses addresses; inputs and attention metadata are updated'),'replay');
+      arrow('M228 81H300',true,true,'descriptor');
+      box(22,176,145,'FULL','fill inputs → replay','replay',graphMode==='FULL','FULL');
+      box(188,176,145,'PIECEWISE','compiled / breakable','replay',graphMode==='PIECEWISE','PIECEWISE');
+      box(354,176,144,'NONE','model(**inputs)','replay',graphMode==='NONE','NONE');
+      arrow('M399 107V143',true,true,'dispatch');
+      [['FULL',94],['PIECEWISE',260],['NONE',426]].forEach(([mode,x])=>{
+        arrow(`M399 143H${x}V176`,graphMode===mode,true,mode);
+        arrow(`M${x} 229V320`,graphMode===mode,false,mode+'-output');
+      });
+      box(22,320,476,tr('本轮模型输出','Model output for this step'),tr('三条路径均计算本轮输入；这里展示选中路径的结果','Each path computes this step’s inputs; only the selected path runs'),'replay',true);
+      note(22,393,graphMode==='NONE'?'无兼容候选：普通前向继续计算，不跳过本轮。':'图已提前捕获；本轮更新输入与 metadata 后执行。',graphMode==='NONE'?'No compatible capture: ordinary forward still computes this step.':'Graphs were captured earlier; update inputs and metadata each step.');
     }
-    return h('svg',{viewBox:'0 0 520 410',className:'ia-svg rv-diagram',role:'group','aria-label':title,'data-v2-topic':chapter},
+    const svg=h('svg',{viewBox:'0 0 520 410',className:'ia-svg rv-diagram',role:'group','aria-label':title,'data-v2-topic':chapter,'data-load-mode':chapter==='disagg'?loadMode:undefined,'data-graph-selection':chapter==='crosscut'&&step===3?graphMode:undefined},
       h('title',null,title),h('defs',null,h('marker',{id:id+'-arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'},h('path',{d:'M0 0L10 5L0 10Z',fill:'var(--ia-vlScene)'}))),
       label(22,22,title,'rv-heading'),items);
+    if(chapter==='disagg')return h(React.Fragment,null,
+      h('fieldset',{className:'rv-graph-controls'},h('legend',null,tr('示例：选择加载启动时机','Example: choose when the load starts')),
+        h('div',{className:'rv-graph-choices'},[['async',tr('异步：前向后启动','Async: after forward')],['sync',tr('同步：前向前启动','Sync: before forward')]].map(([value,caption])=>h('button',{
+          key:value,type:'button','aria-pressed':loadMode===value,'data-load-choice':value,onClick:()=>setLoadMode(value),
+        },caption)))),svg);
+    if(chapter!=='crosscut'||step!==3)return svg;
+    return h(React.Fragment,null,
+      h('fieldset',{className:'rv-graph-controls'},
+        h('legend',null,tr('示例匹配结果：每轮只选一条路径','Example dispatch result: one path per step')),
+        h('div',{className:'rv-graph-choices'},['FULL','PIECEWISE','NONE'].map(mode=>h('button',{
+          key:mode,type:'button','aria-pressed':graphMode===mode,'data-graph-choice':mode,onClick:()=>setGraphMode(mode),
+        },mode)))),svg);
   }
   function supports(chapter,step) {
     return (chapter==='wire'&&step===2)||(chapter==='prefix'&&step>=2)||(chapter==='batch'&&step>=2)||(chapter==='disagg'&&step===1)||chapter==='crosscut';

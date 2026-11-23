@@ -1,5 +1,46 @@
 # Pages 可视化细节层级复核
 
+## 第 01 主题的模块职责阅读起点（2026-11-19）
+
+默认入口改为“先认职责 → 看进程与 KV 归属 → 追踪请求路径”，三个视图替换同一主图区域，保留原有阶段、TP1/TP2、源码、请求流和暂停控制。职责总览同时给出各模块的一句职责；桌面并排对照，手机按 SGLang、vLLM 纵向阅读。默认不重复展示原阶段结论、通信源码条或第二张进程图，源码通过条目或统一开关按需显示。
+
+vLLM 用对象分组表达 EngineCore 与 Scheduler/Executor、Worker 与 ModelRunner V2 的关系，分别说明组织循环、决定任务、派发调用、管理执行环境和组织计算。SGLang 按 Scheduler → TpModelWorker → ModelRunner 的真实调用关系组织，并保留 Detokenizer 的文本回程；没有补造独立 Executor。Model、Attention 与 Kernel 分别解释模型结构、注意力计算和设备算子，不把它们画成独立进程或串行耗时段。
+
+点击职责条目使用原选中状态展开细节，能在请求图中定位所属节点或区域；一个区域包含多个职责时，条目仍能分别选中。切换视图不改变阶段、TP 条件、源码开关和脉冲暂停状态。裸 `#process` 使用职责总览；显式 `view=request`、`view=ownership`、旧 `step` 深链接及 `depth=source` 入口继续恢复原观察方式。
+
+分层采用静态职责图、进程归属和请求流三种观察问题，不新增时间轨道或播放器。固定源码核对：[vLLM EngineCore.step](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/engine/core.py#L665)、[Executor 派发](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/executor/abstract.py#L265)、[Worker 初始化执行环境](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu_worker.py#L449)、[SGLang TpModelWorker 调用](https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/managers/tp_worker.py#L622)。各条目另有对应固定源码入口，普通服务与可选后端的范围分别保留。
+
+本地验收通过：构建、导航生成一致性与文档链接检查；7 主题 / 28 步骤及 56 个双语阶段布局；职责总览 1440px 并排与 390px 纵向阅读、独立条目选择和原图定位；TP1/TP2、源码与暂停保持；320px 归属说明换行；三章 17 步路线、主题历史返回及无脚本阅读。默认阅读提示同步到路线内容源后重新生成，首页仅改变对应的阅读提示。
+
+## 第二章全章活动路径复核（2026-11-19）
+
+逐项读取并渲染 7 个主题的 28 个模块步骤，对照总览、当前步骤说明和固定源码注释。这里的脉冲标记本步讲解的交接及依赖，不表示相关操作同时执行，也不表示真实持续时间。
+
+| 当前课程与四步范围 | 检查结果与处理 |
+| --- | --- |
+| 01 进程与请求路径：入口、调度、执行、回程；另查 TP1/TP2 归属视图 | 保留主请求链。SGLang 的 Scheduler → TpModelWorker 明确为本进程调用；归属视图没有传递动作时禁用脉冲按钮，说明它在展示包含关系和资源状态 |
+| 02 进程间通信：入口、回程、执行面、管理扩展 | 保留上轮修复的管理 RPC。将 SGLang 本地执行调用的箭头改为 Scheduler → Worker；vLLM 回程步骤的文字重新对应 Core PUSH → Frontend PULL，Worker response MQ 属于前一层执行交接 |
+| 03 前缀缓存：输入、命中、补算、下一轮 | 输入和总览保持静态，取消没有传递含义的移动分界线。SGLang 下一轮补出 sampled token → 前向生成 K/V → page 13–16 的首个位置（零基 position 12），旧页保留；切回补算时撤回新增页。vLLM 的槽位映射保留已有实现 |
+| 04 调度与批处理：候选、预算、前向与采样、结果提交 | 候选等待没有交接，使用静态提示。SGLang running 请求先合入 ScheduleBatch，取消绕过批次直接到 GPU 的错误箭头。vLLM 补齐保存 ExecuteModelState、采样依赖、copy_event 与 CPU 消费之间的活动控制路径，保持 main/copy stream 的依赖说明 |
+| 05 生命周期与执行：完成、回撤、取消、图执行 | SGLang 完成时仅播放 checkpoint、解除保护与保留缓存；下次命中和条件驱逐保持静态。回撤补齐等待队列与预留比率的结果高亮。取消选取未分配 KV 的普通 waiting 请求，不播放虚构释放；运行中的 to_finish 路径另作说明。普通 Decode/Extend 的图选择每轮只激活 Decode graph、Prefill graph 或 Eager 之一，保留可选 BCG 解释。vLLM 补齐本地资源回收和请求槽位清理的活动路径 |
+| 06 P/D 分离与扩展：选点、KV 加载、分层恢复、配置范围 | 选点只高亮当前入口。vLLM 同步/异步加载改为可切换的两种示例：同步先启动加载再依后端约束消费；异步明确当前 forward 处理 R2，R1 接收成功后才参与后续准入。SGLang HiCache 本步只播放 L3 → L2 → L1 恢复，不同时播放回写。vLLM 将 metadata、加载控制与后端 → GPU KV 载荷分开，不把 HMA 画成 KV 存储层。配置范围保持静态 |
+| 07 延迟口径：首输出、结束、首次排队、ITL | 保留端点、事件和样本图以及 1/2/4 token 算例；这里没有模拟传输，禁用脉冲按钮并说明事件间距不代表耗时 |
+
+**表达取舍。** 复用既有总览、模块过程、图上源码与全页脉冲时钟。选择分支和展开源码保持暂停与相位；静态视图不提供无效的播放操作。分支、查表、归属和计时端点不额外增加泳道；已有 main/copy stream 依赖图保留，不用同宽线段推断后端等待或耗时。
+
+**核对入口。** [SGLang 普通前向分支](https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/model_executor/model_runner.py#L1991)、[等待与运行请求的不同取消路径](https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/managers/scheduler.py#L5675)、[KV 结算与解除保护](https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/mem_cache/common.py#L400)、[vLLM 同步与异步加载](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/kv_connector.py#L54)。保留各课原有固定提交，本轮没有运行 GPU/RDMA 或性能实验。
+
+## 第二章通信与图执行路径复核（2026-11-19）
+
+沿用本章固定源码基线，修复两个可复现的表达缺口：
+
+| 位置 | 核对与调整 | 分层和执行轨道取舍 |
+| --- | --- | --- |
+| 02 进程间通信 · 控制面与扩展 | SGLang 总览原先只高亮请求链节点而没有活动连线；改为 Engine RPC → Scheduler，并将本地模型执行留在前一步。源码对应 `Engine.collective_rpc` 与 `Scheduler.handle_rpc_request`。vLLM 显示 DP coordinator → 前端的负载与 request-wave 发布，明确仅在 DP>1 时适用 | 复用总览、模块过程和图上源码。此处解释管理消息的载荷与通道归属，不呈现跨 rank 执行耗时，因此不增加泳道；脉冲复用全页时钟 |
+| 05 生命周期与执行 · 图执行选择 | vLLM 原图所有连线均为静态。加入批次形状 → 候选匹配 → 单个执行分支 → 本轮模型输出的脉冲；可切换 FULL、PIECEWISE、NONE 的示例匹配结果，未选分支保持静态。捕获仍是提前准备，NONE 也执行本轮计算 | 复用单张分支图与就地源码展开，不复制播放器。学习问题是互斥路径和输出，不是并行耗时，因此不加泳道；分支选择、源码展开和语言切换均保留当前脉冲时刻及暂停状态 |
+
+源码入口：[SGLang 管理调用](https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/entrypoints/engine.py#L1862)、[Scheduler 管理处理](https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/managers/scheduler.py#L5608)、[vLLM DP 协调职责](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/engine/coordinator.py#L20)、[候选匹配](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/cudagraph_utils.py#L523)与[执行分支](https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L2053)。本次只核对源码与网页教学行为，未执行后端性能实验。
+
 ## 第二章 ModelRunner V2 调用链复核（2026-11-13）
 
 第二章保留 SGLang `297e54fd105e974cdf401e5b4d20253a22c16f90` 与 vLLM `4ba787ec9959e566d3b587a796dff07673324da5` 两个固定版本。vLLM 路径明确为 **V1 引擎 + ModelRunner V2**；不更换第三章的 `279339f113`，也不把第三方文章的旧提交混入本章。

@@ -9,6 +9,9 @@ window.AtlasSourceStep = (() => {
     tokenizer: SG + 'managers/tokenizer_manager.py',
     prefill: SG + 'managers/scheduler.py#L4052',
     forward: SG + 'managers/scheduler.py#L4614',
+    rpc: SG + 'entrypoints/engine.py#L1862',
+    sgForwardGraph: SG + 'model_executor/model_runner.py#L1991',
+    vlCoordinator: 'https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/engine/coordinator.py#L20',
     finishTime: SG + 'managers/tokenizer_manager.py#L2750',
     commit: SG + 'managers/scheduler.py#L5074',
     abort: SG + 'managers/scheduler.py#L5675',
@@ -50,12 +53,12 @@ window.AtlasSourceStep = (() => {
         vl: detail('vlCore', 'EngineCoreOutputs', 'Core · PUSH', '送回独立的输出 socket', 'Return results on a separate output socket', 'Frontend · PULL'),
       },
       {
-        sg: detail('sgReceiver', 'request_receiver.py', ['入口 rank 的请求输入', 'Request input on the receiving rank'], '先同步请求，随后各 rank 执行本地部分', 'Synchronize inputs before each rank runs its part', ['各 rank 的调度输入', 'Scheduling inputs on each rank']),
+        sg: detail('forward', 'Scheduler.run_batch', 'ScheduleBatch', '在本进程内调用 TpModelWorker 执行本轮工作', 'Call TpModelWorker within the process for this step', ['本 rank 的执行结果', 'Rank-local execution result']),
         vl: detail('v2_mp', 'WorkerProc.handle_output', 'AsyncOutput.copy_event', '等复制结果可供 CPU 读取', 'Wait for the copied result to become CPU-readable', 'Worker response MQ'),
       },
       {
-        sg: detail('abort', 'Scheduler.abort_request', 'AbortReq.rid', '按请求 ID 执行取消路径', 'Apply cancellation by request ID', ['对应请求的状态更新', 'State change for that request']),
-        vl: detail('vlCore', 'EngineCoreProc', 'ABORT · request IDs', '把控制消息送入核心的取消处理', 'Dispatch the control message to core cancellation', 'Scheduler'),
+        sg: detail('rpc', 'Engine.collective_rpc → Scheduler.handle_rpc_request', 'RpcReqInput(method, parameters)', '通过独立 DEALER 通道调用管理方法，再返回执行状态', 'Invoke a management method over the separate DEALER channel and return its status', 'RpcReqOutput(success, message)'),
+        vl: detail('vlCoordinator', 'DPCoordinator · DP > 1', ['各 DP 引擎的负载与运行状态', 'Load and running state of DP engines'], '向前端发布负载与 request-wave 状态，供路由参考', 'Publish load and request-wave state to frontends for routing', ['前端更新状态；不搬运 KV', 'Frontend state update; no KV transfer']),
       },
     ],
     prefix: [
@@ -104,12 +107,12 @@ window.AtlasSourceStep = (() => {
         vl: detail('vlSched', 'Scheduler preemption', 'PREEMPTED', '清理分配并重置已计算进度', 'Release allocations and reset computed progress', 'num_computed_tokens = 0'),
       },
       {
-        sg: detail('abort', 'Scheduler.abort_request', 'AbortReq', '按当前所在队列走对应的取消和收尾路径', 'Cancel and clean up according to the request’s current queue', ['停止后续执行与输出', 'Stop subsequent work and output']),
+        sg: detail('abort', 'Scheduler.abort_request', ['普通 waiting 请求；尚未分配 KV', 'Ordinary waiting request; no KV allocated'], '从等待队列移除并通知前端清理状态；运行中另走 to_finish 路径', 'Remove from waiting and notify frontend cleanup; running requests use to_finish instead', ['结束请求；无需释放不存在的 KV', 'Request ends; no unallocated KV to free']),
         vl: detail('v2_cleanup', 'V2.finish_requests', 'finished_req_ids', '执行侧消费完成集合后清理本地请求槽位', 'Clean up worker-local request slots after consuming finished IDs', ['请求槽位可再分配', 'Request slot becomes reusable']),
       },
       {
-        sg: detail('sgGraph', 'Breakable CUDA Graph backend', ['当前形状与已捕获图', 'Current shape and captured graphs'], '兼容时使用已捕获的执行路径', 'Use a captured execution path when compatible', ['图重放或可用的回退路径', 'Replay or the available fallback']),
-        vl: detail('v2_graph', 'CudaGraphManager.dispatch', ['batch descriptor', 'Batch descriptor'], '查找兼容的已捕获候选', 'Find a compatible captured candidate', 'FULL / PIECEWISE / NONE'),
+        sg: detail('sgForwardGraph', 'ModelRunner.forward', ['forward mode 与图适用条件', 'Forward mode and graph eligibility'], '选择匹配的 Decode / Prefill 图；普通路径无适用图时进入 EagerRunner', 'Select a matching decode/prefill graph; ordinary cases without one use EagerRunner', 'ModelRunnerOutput'),
+        vl: detail('v2_graph', 'CudaGraphManager.dispatch', ['批次形状与请求数', 'Batch shape and request count'], '查找兼容的已捕获候选', 'Find a compatible captured candidate', 'BatchExecutionDescriptor.cg_mode'),
       },
     ],
     disagg: [
@@ -119,7 +122,7 @@ window.AtlasSourceStep = (() => {
       },
       {
         sg: detail('transfer', 'Decode transfer queue', 'KVPoll.Success', '接收侧完成检查后移出传输队列', 'Leave the transfer queue after the receiver completes its checks', ['交给 Decode 侧后续处理', 'Pass to subsequent Decode handling']),
-        vl: detail('v2_ready', 'Scheduler remote-KV gate', 'finished_recving', '收到就绪结果后，再参与本轮预算判断', 'Check this step’s budget after a successful receive', ['可候选调度', 'Eligible for scheduling']),
+        vl: detail('v2_connector', 'ActiveKVConnector.pre_forward / post_forward', 'has_sync_kv_loads', '同步分支在前向前启动加载；异步分支延至前向后，接收成功后再检查准入', 'Start sync loads before forward; defer async loads until after, then check admission after successful receive', ['后端落实消费依赖；异步结果经 finished_recving 回传', 'Backend read dependencies; async results via finished_recving']),
       },
       {
         sg: detail('hierarchy', 'HiCache prefetch', ['下层缓存中的前缀', 'Prefix in a lower cache tier'], '由缓存控制器发起预取', 'Start prefetch through the cache controller', ['等待恢复到可用位置', 'Wait for the prefix to become usable']),

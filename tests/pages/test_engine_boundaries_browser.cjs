@@ -20,6 +20,169 @@ const alive=pid=>{try{process.kill(pid,0);return true;}catch{return false;}};
   const snapshot=async name=>{if(shots){fs.mkdirSync(shots,{recursive:true});await page.locator('.ia-boardGrid').screenshot({path:path.join(shots,name+'.png')});}};
   const sourceToggle=page.locator('[data-source-toggle]');
   const noOverflow=async()=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'page overflow');
+  // The default reading entry explains roles before process placement. Every
+  // responsibility is readable without hover or opening individual notes.
+  await goto('#process');await page.locator('.ir-map').first().waitFor();
+  assert.equal(await page.locator('.ia-page').getAttribute('data-process-view'),'roles');
+  assert.equal(await page.locator('.ir-map').count(),2);
+  const vlRoles=page.locator('.ia-board--vl .ir-map');
+  for(const id of ['core','scheduler','executor','worker','runner','model','attention','kernel']){
+   const text=await vlRoles.locator(`[data-module-role="${id}"] .ir-role span`).innerText();
+   assert(text.length>10,`visible responsibility for ${id}`);
+  }
+  assert.equal(await page.locator('.ia-board--sg [data-module-role="executor"]').count(),0,'do not invent an SGLang Executor');
+  assert.equal(await page.locator('.ia-stepRail').isVisible(),false,'static roles do not pose as execution stages');
+  await vlRoles.locator('[data-module-role="scheduler"] .ir-role').click();
+  await vlRoles.locator('[data-module-role="executor"] .ir-role').click();
+  assert.equal(await vlRoles.locator('[data-module-role="executor"] .ir-role').getAttribute('aria-expanded'),'true','roles sharing an original diagram region remain distinct');
+  assert.match(await vlRoles.locator('.ir-detail').innerText(),/uni.*mp.*execute_model/s);
+  assert.match(await vlRoles.locator('.ir-detail a').getAttribute('href'),/4ba787ec.*executor\/abstract.py/);
+  await sourceToggle.click();assert.equal(await page.locator('.ir-map a').count(),17);
+  assert.equal(await page.locator('.ia-source-step').count(),0,'all-module sources replace a single stage annotation');
+  await vlRoles.locator('[data-locate-role="executor"]').click();
+  assert.equal(await page.locator('.ia-page').getAttribute('data-process-view'),'request');
+  assert.equal(await page.locator('.ia-board--vl [data-node-id="engine"].is-selected').count(),1);
+  assert.match(await page.locator('.ia-inspectorRole').innerText(),/派发/);
+  assert.equal(await page.locator('.ia-source-step').count(),2);
+  await page.locator('.ia-stepItem').nth(2).click();await page.locator('[data-pulse-toggle]').click();
+  const roleTime=await page.locator('.ia-page').getAttribute('data-pulse-time');
+  await page.locator('button[data-process-view="roles"]').click();
+  await vlRoles.locator('[data-module-role="runner"] .ir-role').click();
+  await vlRoles.locator('[data-locate-role="runner"]').click();
+  assert.equal(await page.locator('.ia-page').getAttribute('data-step'),'2');
+  assert.equal(await page.locator('.ia-page').getAttribute('data-pulse-time'),roleTime);
+  assert.equal(await page.locator('[data-pulse-toggle]').getAttribute('aria-pressed'),'false');
+  assert.equal(await page.locator('.ia-board--vl [data-node-id="workers"].is-selected').count(),1);
+  await page.locator('button[data-process-view="ownership"]').click();
+  await page.getByLabel('张量并行规模',{exact:true}).selectOption('1');
+  await page.locator('button[data-process-view="roles"]').click();await page.locator('[data-process-next="ownership"]').click();
+  assert.equal(await page.getByLabel('张量并行规模',{exact:true}).inputValue(),'1');
+  await goto('?view=roles&step=2#process');await page.reload();await page.locator('.ir-map').first().waitFor();
+  assert.equal(await page.locator('.ia-page').getAttribute('data-process-view'),'roles');
+  for(const lang of ['en','zh']){
+   await page.evaluate(lang=>atlasLocale.setLang(lang),lang);
+   for(const width of [1440,390]){
+    await page.setViewportSize({width,height:1000});await noOverflow();
+    const boxes=await page.locator('.ia-board').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
+    if(width===390)assert(boxes[1].y>=boxes[0].bottom,'mobile roles read vertically');
+    else assert(Math.abs(boxes[0].y-boxes[1].y)<1,'desktop roles compare side by side');
+    const bad=await page.locator('.ir-map,.ir-role,.ir-detail').evaluateAll(es=>es.filter(e=>e.scrollWidth>e.clientWidth+1).map(e=>e.className));
+    assert.deepEqual(bad,[],`${lang}/${width} responsibility text overflow`);
+   }
+  }
+  await snapshot('module-roles-mobile');await page.setViewportSize({width:1440,height:1000});await snapshot('module-roles-desktop');
+  // Execution and management have different endpoints. The overview must keep
+  // an actual active handoff, rather than disconnected request-path nodes.
+  await goto('?depth=overview&step=3#wire');
+  const sgWire=page.locator('.ia-board--sg');
+  assert.match(await sgWire.innerText(),/Engine RPC/);
+  assert(!/TokenizerManager|Detokenizer/.test(await sgWire.innerText()));
+  assert.equal(await sgWire.locator('[data-edge-id="rpc-sched"].is-active').count(),1);
+  assert.equal(await page.locator('.ia-board--vl [data-edge-id="frontend-dp"] path').getAttribute('d'),'M108 142V106');
+  await sourceToggle.click();
+  assert.match(await sgWire.locator('.ia-source-step').innerText(),/collective_rpc.*handle_rpc_request/s);
+  assert.match(await page.locator('.ia-board--vl .ia-source-step').innerText(),/DPCoordinator/);
+  await sourceToggle.click();
+  await snapshot('wire-management-overview');
+  await page.locator('.ia-stepItem').nth(2).click();
+  assert.equal(await sgWire.locator('[data-edge-id="rpc-sched"]').count(),0);
+  assert.equal(await sgWire.locator('[data-edge-id="workers-sched"].is-active').count(),1);
+  await goto('?depth=modules&step=3#wire');
+  assert.equal(await sgWire.locator('[data-edge-id="rpc-sched"].is-active').count(),1);
+  assert.deepEqual(await sgWire.locator('.ia-protocolRow.is-live .ia-protocolKey').allTextContents(),['DEALER RPC']);
+  assert.deepEqual(await page.locator('.ia-board--vl .ia-protocolRow.is-live .ia-protocolKey').allTextContents(),['DP coord']);
+  // Exactly one V2 graph branch runs. It shares the existing clock and remains
+  // selected when source details or language are changed.
+  await goto('?step=3#crosscut');
+  const graph=page.locator('.rv-diagram');
+  const graphPhase=()=>graph.locator('[data-graph-edge="descriptor"] .rv-pulse').evaluate(e=>getComputedStyle(e).strokeDashoffset);
+  const moving=await graphPhase();await page.waitForTimeout(160);assert.notEqual(await graphPhase(),moving);
+  await page.locator('[data-pulse-toggle]').click();
+  const graphFrozen=await graphPhase();await page.waitForTimeout(160);assert.equal(await graphPhase(),graphFrozen);
+  for(const mode of ['FULL','PIECEWISE','NONE']){
+   await page.locator(`[data-graph-choice="${mode}"]`).click();
+   assert.equal(await graph.getAttribute('data-graph-selection'),mode);
+   assert.deepEqual(await graph.locator('[data-graph-mode].is-active').evaluateAll(es=>es.map(e=>e.dataset.graphMode)),[mode]);
+   assert.equal(await graph.locator('.rv-pulse').count(),4,'input, dispatch, selected branch, selected output');
+   assert.equal(await graph.locator(`[data-graph-edge="${mode}"] .rv-pulse`).count(),1);
+   for(const other of ['FULL','PIECEWISE','NONE'].filter(m=>m!==mode))assert.equal(await graph.locator(`[data-graph-edge="${other}"] .rv-pulse`).count(),0);
+   assert.equal(await graphPhase(),graphFrozen,'changing the example keeps the paused clock');
+   await sourceToggle.click();assert.equal(await graphPhase(),graphFrozen);
+   assert.equal(await graph.getAttribute('data-graph-selection'),mode);
+   await sourceToggle.click();
+   await snapshot('v2-graph-'+mode);
+  }
+  await page.locator('#lang-toggle').click();
+  assert.equal(await graph.getAttribute('data-graph-selection'),'NONE');
+  assert.match(await page.locator('.ia-board--vl .rv-graph-controls legend').innerText(),/one path/);
+  await page.locator('#lang-toggle').click();
+  await page.locator('[data-pulse-toggle]').click();await page.waitForTimeout(160);assert.notEqual(await graphPhase(),graphFrozen);
+  for(const width of [768,390,320]){await page.setViewportSize({width,height:1000});await noOverflow();}
+  await snapshot('v2-graph-mobile');
+  await page.setViewportSize({width:1440,height:1000});
+  // Completion preserves reusable entries; neither a future cache hit nor
+  // conditional eviction is an action performed by every finishing request.
+  await goto('?step=0#crosscut');
+  const sgBoard=page.locator('.ia-board--sg');
+  assert.equal(await sgBoard.locator('[data-edge-id="evict-pool"].is-active').count(),0);
+  assert.equal(await sgBoard.locator('[data-edge-id="reuse-radix"].is-active').count(),0);
+  assert.equal(await sgBoard.locator('[data-edge-id="radix-keep"].is-active').count(),1);
+  await goto('?step=2#crosscut');
+  assert.equal(await sgBoard.locator('[data-node-id="kv"]').count(),0,'the selected waiting request has no allocated KV to free');
+  assert.match(await sgBoard.locator('[data-node-id="queues"]').textContent(),/not admitted/);
+  assert(!/KV \+ reply/.test(await sgBoard.locator('.ia-svg').textContent()),'waiting cleanup does not imply KV release');
+  assert.match(await sgBoard.locator('.ia-sceneNote').textContent(),/未分配 KV/);
+  await goto('?step=3#crosscut');
+  await page.locator('[data-pulse-toggle]').click();
+  const sgPhase=()=>sgBoard.locator('[data-edge-id="graph-fork"] path').evaluate(e=>getComputedStyle(e).strokeDashoffset);
+  const sgFrozen=await sgPhase();
+  for(const mode of ['decode','piece','eager']){
+   await page.locator(`[data-sg-graph-choice="${mode}"]`).click();
+   const active=await sgBoard.locator('.ia-edgeGroup.is-active').evaluateAll(es=>es.map(e=>e.dataset.edgeId));
+   assert.deepEqual(active,['graph-fork',`graph-${mode}`,`${mode}-result`]);
+   assert.equal(await sgPhase(),sgFrozen);
+   await sourceToggle.click();assert.equal(await sgPhase(),sgFrozen);
+   assert.equal(await page.locator(`[data-sg-graph-choice="${mode}"]`).getAttribute('aria-pressed'),'true');
+   await sourceToggle.click();
+  }
+  await page.locator('[data-pulse-toggle]').click();await page.waitForTimeout(160);assert.notEqual(await sgPhase(),sgFrozen);
+  await goto('?depth=modules&step=3#prefix');
+  assert.match(await sgBoard.locator('[data-node-id="next"]').textContent(),/13–16.*pos 12/);
+  assert.match(await sgBoard.locator('[data-node-id="decodeInput"]').textContent(),/sampled token/);
+  assert.equal(await sgBoard.locator('[data-edge-id="input-next"].is-active').count(),1);
+  await page.locator('.ia-stepItem').nth(2).click();
+  assert.equal(await sgBoard.locator('[data-node-id="next"]').count(),0,'returning to prefill removes the decode append');
+  await goto('?depth=overview&step=2#batch');
+  assert.equal(await sgBoard.locator('[data-edge-id="running-batch"].is-active').count(),1);
+  assert.equal(await sgBoard.locator('[data-edge-id="running-gpu"]').count(),0,'running requests still join the batch plan');
+  await goto('?depth=modules&step=2#disagg');
+  const restore=await sgBoard.locator('[data-edge-id="l1-l2"] path').getAttribute('d');
+  assert.equal(restore,'M190 238H168','restore moves CPU → GPU');
+  assert.equal(await page.locator('.ia-board--vl [data-edge-id="offload-gpu"] .rv-pulse').count(),1,'payload has its own pulse over the solid path');
+  assert.equal(await page.locator('.ia-board--vl [data-node-id="scale"]').count(),0,'configuration card does not cover the GPU destination');
+  await goto('?depth=modules&step=1#disagg');
+  await page.locator('[data-pulse-toggle]').click();
+  const loadPhase=()=>page.locator('.rv-pulse').first().evaluate(e=>getComputedStyle(e).strokeDashoffset);
+  const loadFrozen=await loadPhase();
+  for(const mode of ['async','sync']){
+   await page.locator(`[data-load-choice="${mode}"]`).click();
+   assert.equal(await page.locator('.rv-diagram').getAttribute('data-load-mode'),mode);
+   const text=await page.locator('.rv-diagram').textContent();
+   assert.match(text,mode==='sync'?/has_sync_kv_loads = true/:/R2.*R1.*has_sync_kv_loads = false/s);
+   assert(!text.includes(mode==='sync'?'R2':'has_sync_kv_loads = true'),'alternative paths are not superimposed');
+   assert.equal(await loadPhase(),loadFrozen);
+   await sourceToggle.click();assert.equal(await loadPhase(),loadFrozen);await sourceToggle.click();
+  }
+  await page.locator('#lang-toggle').click();
+  assert.equal(await page.locator('.rv-diagram').getAttribute('data-load-mode'),'sync');
+  await page.locator('#lang-toggle').click();
+  await page.locator('[data-pulse-toggle]').click();await page.waitForTimeout(160);assert.notEqual(await loadPhase(),loadFrozen);
+  // Static input, ownership, configuration and metric views explain the lack
+  // of flow instead of offering an ineffective pause button.
+  for(const query of ['?depth=overview&step=1#prefix','?depth=modules&step=0#prefix','?step=0#batch','?step=3#disagg','?step=0#metrics','?view=ownership&step=0#process']){
+   await goto(query);assert.equal(await page.locator('[data-pulse-toggle]').isDisabled(),true,query);
+   assert((await page.locator('[data-flow-hint]').textContent()).length>15);
+  }
   await goto('?view=ownership&tp=2&step=2#process');
   assert.equal(await page.locator('.ia-chapterTab').count(),7);
   assert.deepEqual(await page.locator('[data-process-count]').evaluateAll(es=>es.map(e=>e.dataset.processCount)),['4','4']);
@@ -110,7 +273,7 @@ const alive=pid=>{try{process.kill(pid,0);return true;}catch{return false;}};
   const topics=['process','wire','prefix','batch','crosscut','disagg','metrics'];
   const threeLayerTopics=['wire','prefix','batch','disagg'];
   for(const topic of topics){
-   await goto('?depth=modules#'+topic);
+   await goto('?view=request&depth=modules#'+topic);
    assert.equal(await page.locator('[data-depth-choice]').count(),threeLayerTopics.includes(topic)?2:0);
    assert.equal(await page.locator('.ia-source-step').count(),0);
    await sourceToggle.click();
@@ -192,6 +355,10 @@ const alive=pid=>{try{process.kill(pid,0);return true;}catch{return false;}};
    assert.equal(await p.locator('.ib-path-pulse:visible').count(),0);
    await p.locator('.ia-stepItem').nth(0).click();assert.equal(await p.locator('[data-written=true]').count(),0);
    await p.goto(base+'/engine-comparison/?depth=modules&step=3#batch');await p.locator('.rv-diagram').waitFor();
+   assert.equal(await p.locator('.rv-pulse:visible').count(),0);
+   await p.goto(base+'/engine-comparison/?step=3#crosscut');await p.locator('.rv-diagram').waitFor();
+   await p.locator('[data-graph-choice="PIECEWISE"]').click();
+   assert.equal(await p.locator('[data-graph-mode].is-active').getAttribute('data-graph-mode'),'PIECEWISE');
    assert.equal(await p.locator('.rv-pulse:visible').count(),0);
   }finally{await reduced.close();}
   assert.deepEqual(errors,[]);

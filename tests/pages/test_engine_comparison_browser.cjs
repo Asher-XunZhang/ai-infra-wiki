@@ -92,7 +92,7 @@ const diagramGeometry=async(page,label)=>{
   browser=await chromium.connect(server.wsEndpoint());
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(BASE+'engine-comparison/index.html#process');await page.waitForLoadState('load');
+  await page.goto(BASE+'engine-comparison/index.html?view=request#process');await page.waitForLoadState('load');
   assert.match(await page.locator('.ia-releaseCol').innerText(),/297e54f/);
   await page.locator('.ia-referenceDetails').last().locator('summary').click();
   assert.match(await page.locator('.ia-sourceBody').innerText(),/297e54f/);
@@ -167,7 +167,7 @@ const diagramGeometry=async(page,label)=>{
   await page.locator('#lang-toggle').click();
 
   // Node notes retain the stage and leave the stage effects running.
-  await page.goto(BASE+'engine-comparison/index.html#process');await page.waitForLoadState('load');
+  await page.goto(BASE+'engine-comparison/index.html?view=request#process');await page.waitForLoadState('load');
   await page.locator('.ia-board--sg .ia-node[data-node-id=scheduler]').click();
   assert.equal(await page.locator('.ia-inspector').isVisible(),true);
   assert.match(await page.locator('.ia-inspector').innerText(),/Scheduler/);
@@ -194,6 +194,7 @@ const diagramGeometry=async(page,label)=>{
   assert.match(await page.locator('.ia-inspectorRole').innerText(),/前端结果包/);
   assert.match(await page.locator('.ia-inspectorBody').innerText(),/EngineCoreOutputs/);
   await page.locator('.ia-chapterTab').nth(CHAPTERS.indexOf('disagg')).click();
+  await page.locator('.ia-stepItem').nth(1).click(); // Both roles participate in the KV handoff.
   for(const side of ['sg','vl'])for(const [node,role] of [['prefill',/输入计算者/],['decode',/续写执行者/]]){
    await page.locator(`.ia-board--${side} .ia-node[data-node-id=${node}]`).click();
    assert.match(await page.locator('.ia-inspectorRole').innerText(),role);
@@ -360,7 +361,7 @@ const diagramGeometry=async(page,label)=>{
   const reduced=await browser.newContext({reducedMotion:'reduce',viewport:{width:390,height:900}});
   try{
    const reducedPage=await reduced.newPage();reducedPage.on('pageerror',e=>errors.push(e.message));
-   await reducedPage.goto(BASE+'engine-comparison/index.html#process');await reducedPage.waitForLoadState('load');
+   await reducedPage.goto(BASE+'engine-comparison/index.html?view=request#process');await reducedPage.waitForLoadState('load');
    assert.equal(await reducedPage.locator('.ia-page').getAttribute('data-reduced-motion'),'true');
    assert.equal(await reducedPage.locator('.ia-playButton,.ia-speed,.ia-playProgress').count(),0);
    await reducedPage.waitForTimeout(100);

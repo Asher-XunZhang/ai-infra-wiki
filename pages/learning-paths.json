@@ -37,7 +37,7 @@
       },
       {
         "path": "engine-comparison/index.html#process",
-        "hint": "先沿请求路径读四步，TP 职责图可按需展开。"
+        "hint": "先认模块职责，再看进程与 KV 归属，最后沿请求路径读四步。"
       },
       {
         "path": "engine-comparison/index.html#prefix",
@@ -228,8 +228,8 @@
         "serving"
       ],
       "adds": [
-        "把已经学过的生成与回程，放到两套引擎的进程和组件中。初读先沿请求路径走四步，再看职责与 TP 拓扑。",
-        "Place generation and response delivery in each engine’s processes and components. Start with the request path; explore TP ownership afterwards."
+        "把已经学过的生成与回程，接到两套引擎的模块分工中。先认职责，再看进程与 KV 归属，最后追踪请求。",
+        "Connect generation and response delivery to each engine’s modules. Start with responsibilities, then process and KV ownership, then follow a request."
       ]
     },
     "wire": {

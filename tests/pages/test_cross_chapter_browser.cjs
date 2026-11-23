@@ -26,6 +26,7 @@ const alive=pid=>{try{process.kill(pid,0);return true}catch{return false}};
   assert(await page.locator(`.site-sidebar [data-chapter="${chapter}"]`).evaluate(e=>e.open),'current chapter opens');
   if(i===8||i===11)assert.equal(await page.locator('.site-sidebar .chapter-nav[open]').count(),1,'crossing chapters focuses the current chapter');
   if(catalog.beginner.steps[i].path.includes('engine-comparison/')){
+   if(await page.locator('button[data-process-view="request"]').count())await page.locator('button[data-process-view="request"]').click();
    await page.locator('.ia-stepItem').last().click();assert.equal(await page.locator('.ia-stepItem[aria-current=step]').count(),1);assert.equal(await page.locator('.ia-topic-pager').isVisible(),false);
   }
   if(i===8){

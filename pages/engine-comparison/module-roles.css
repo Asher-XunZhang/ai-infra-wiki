@@ -1,0 +1,34 @@
+.ia-page .ia-boardGrid.ir-grid{grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;align-items:stretch}
+.ia-board--roles .ia-boardStage{overflow:visible}
+.ia-board--roles .ia-boardSvgWrap{min-width:0!important;max-width:none}
+.ir-map{padding:14px;display:grid;gap:8px;color:var(--ia-scene-ink);font-size:13px}
+.ir-group{border-left:2px solid var(--board-accent);padding:0 0 0 12px;margin:0 0 0 5px;display:grid;gap:6px}
+.ir-subgroup{padding-left:12px;display:grid;gap:6px}
+.ir-item{min-width:0;border:1px solid var(--ia-scene-line);border-radius:6px;background:var(--ia-scene-2);overflow-wrap:anywhere}
+.ir-role{display:grid;grid-template-columns:minmax(0,135px) minmax(0,1fr);gap:10px;width:100%;padding:10px 12px;border:0;background:none;color:inherit;text-align:left;cursor:pointer;font:inherit;line-height:1.6}
+.ir-role strong{display:block;font-weight:650;font-size:14px;letter-spacing:0}
+.ir-role span{display:block;color:var(--ia-scene-muted);font-size:13px}
+.ir-item:hover,.ir-item.is-selected{border-color:var(--board-accent)}
+.ir-item.is-selected{box-shadow:inset 3px 0 var(--board-accent)}
+.ir-role:focus-visible,.ir-detail button:focus-visible,.ir-source:focus-visible{outline:2px solid var(--board-accent);outline-offset:3px}
+.ir-handoff{margin:0;padding:0 10px;color:var(--ia-scene-muted);font-size:11px;line-height:1.5;display:flex;gap:9px;align-items:center}
+.ir-handoff span{color:var(--board-accent);font-size:17px}
+.ir-return{font-size:12px;line-height:1.7;margin:3px 0 0;padding:10px 12px;border-top:1px solid var(--ia-scene-line);color:var(--ia-scene-muted)}
+.ir-detail{padding:0 12px 10px;font-size:12px;line-height:1.75}
+.ir-detail p{margin:0 0 8px;color:var(--ia-scene-ink)}
+.ir-detail-links{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.ir-detail a,.ir-source{font-size:11px;color:var(--board-accent);text-decoration:underline;text-underline-offset:3px}
+.ir-source{display:inline-block;margin:0 12px 9px}
+.ir-detail button{border:1px solid var(--ia-scene-line);border-radius:4px;background:transparent;color:var(--ia-scene-ink);padding:5px 8px;font:inherit;cursor:pointer}
+.ir-view-intro{font-size:13px;line-height:1.75;margin:0 0 14px;color:var(--ia-muted)}
+.ia-page[data-chapter=process][data-process-view=roles] .ia-transport,
+.ia-page[data-chapter=process][data-process-view=roles] .ia-controls+.ia-controlHint,
+.ia-page[data-chapter=process][data-process-view=roles] .ia-stepRail,
+.ia-page[data-chapter=process][data-process-view=roles] .ia-stageMeta .ia-stepCounter,
+.ia-page[data-chapter=process][data-process-view=roles] .ia-verdict,
+.ia-page[data-chapter=process][data-process-view=roles] .ia-fork,
+.ia-page[data-chapter=process][data-process-view=roles] .ia-view-controls,
+.ia-page[data-chapter=process][data-process-view=roles] [data-flow-hint]{display:none}
+.ir-next{margin-top:12px}
+@media(max-width:900px){.ia-page .ia-boardGrid.ir-grid{grid-template-columns:minmax(0,1fr);gap:18px}.ir-map{padding:12px}.ir-role{padding:10px}.ir-group{padding-left:10px}}
+@media(max-width:600px){.ir-role{display:block}.ir-role span{margin-top:3px}.ir-subgroup{padding-left:9px}}
