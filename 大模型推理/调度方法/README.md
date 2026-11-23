@@ -20,10 +20,13 @@
 | --- | --- | --- | --- |
 | 1 | [Chunked Prefill 与 Prefill-Decode 共推](<Chunked Prefill 与 Prefill-Decode 共推学习文档.md>) | 主线 | 从批处理方式理解长输入怎样与逐 token 生成共享资源。 |
 | 2 | [SGLang Overlap 与 DeepInfer ZOS 的依赖和状态提交对比](<SGLang Overlap 与 DeepInfer ZOS 的依赖和状态提交对比学习文档.md>) | 整合深入：先修请求循环与 Prefill/Decode | 分开设备输入、CPU 提交、共享读写和资源存活，理解 Grammar、变长投机与收尾的依赖。 |
+| 3 | [LLM 推理调度的分层决策与 SLO 取舍](<LLM 推理调度的分层决策与 SLO 取舍学习文档.md>) | 选读：研究地图；先修 Prefill/Decode、KV 与实例调度 | 分开资源规划、派发、排序、准入和执行；用 VTC 理解租户公平与延迟目标的区别，按证据进入具体机制。 |
+
+研究集群服务弹性时，再读[弹性扩缩容、模型驻留与冷启动](<../分布式服务/LLM 弹性扩缩容、模型驻留与冷启动学习文档.md>)；它展开资源准备与状态迁移，不作为 Chunked Prefill 的前置知识。
 
 ## 自测与下一步
 
-能区分请求排队、组批、切 chunk 与 KV 存储分页，并说明吞吐和时延的取舍。
+能区分请求排队、组批、切 chunk 与 KV 存储分页，并说明吞吐和时延的取舍。深入阅读后，还应能解释请求数公平、服务量公平与 SLO 达标为什么不同。
 
 按目标继续：
 
