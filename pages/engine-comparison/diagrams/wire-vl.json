@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "通信拓扑：vLLM",
+    "locale": "zh-CN",
+    "output": "wire-vl.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/vllm-project/vllm",
+      "revision": "4ba787ec9959e566d3b587a796dff07673324da5"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "职责组件"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "auto"
+  },
+  "components": [
+    {
+      "id": "input",
+      "type": "backend",
+      "label": "AsyncLLM",
+      "sublabel": "入口与输出",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/async_llm.py",
+          "line": 879,
+          "end_line": 910
+        }
+      ],
+      "pos": [
+        40,
+        40
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "EngineCore",
+      "sublabel": "输入 DEALER / 输出 PUSH",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/core.py",
+          "line": 667,
+          "end_line": 697
+        }
+      ],
+      "pos": [
+        300,
+        40
+      ]
+    },
+    {
+      "id": "executor",
+      "type": "backend",
+      "label": "Executor",
+      "sublabel": "本轮执行计划",
+      "sources": [
+        {
+          "path": "vllm/v1/executor/abstract.py",
+          "line": 265,
+          "end_line": 290
+        }
+      ],
+      "pos": [
+        300,
+        200
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "Worker",
+      "sublabel": "本地 mp 执行",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu_worker.py",
+          "line": 449,
+          "end_line": 490
+        }
+      ],
+      "pos": [
+        300,
+        360
+      ]
+    },
+    {
+      "id": "rpc",
+      "type": "backend",
+      "label": "DPCoordinator",
+      "sublabel": "仅 DP > 1 的扩展",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/coordinator.py",
+          "line": 20,
+          "end_line": 50
+        }
+      ],
+      "pos": [
+        40,
+        360
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "request",
+      "from": "input",
+      "to": "core",
+      "label": "请求帧"
+    },
+    {
+      "id": "output",
+      "from": "core",
+      "to": "input",
+      "label": "EngineCoreOutputs"
+    },
+    {
+      "id": "dispatch",
+      "from": "core",
+      "to": "executor",
+      "label": "SchedulerOutput"
+    },
+    {
+      "id": "execute",
+      "from": "executor",
+      "to": "worker",
+      "label": "执行调用 / MQ"
+    },
+    {
+      "id": "result",
+      "from": "worker",
+      "to": "executor",
+      "label": "CPU 可读结果"
+    },
+    {
+      "id": "load",
+      "from": "rpc",
+      "to": "input",
+      "label": "负载 / wave"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "阅读条件",
+      "items": [
+        "节点是组件，不自动等于独立进程。",
+        "箭头区分请求、结果与管理消息；KV 载荷不经前端请求 MQ。"
+      ]
+    }
+  ]
+}

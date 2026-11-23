@@ -1,0 +1,303 @@
+{
+  "schema": 1,
+  "generator": "Archify 3.3",
+  "diagrams": {
+    "admission-sg": {
+      "sourceSha256": "edf8f830859da18e36e28083c87c954b11099133107521b0e876d9baaad1d2e7",
+      "svgSha256": "58679bdd54ddd5cbe31e67d4893604d4a0f3100da0fd3dc68ed5e686cc09d684",
+      "nativeHtmlSha256": "d1c23014fabd1d5cf2365cd8597eda877fe1e4852e83821523a65efdd0a5349f",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "admission-vl": {
+      "sourceSha256": "3b40992839e38bcf4a2937d65e09f2a20bd64e33587b591fc593a3f7f3c98a9f",
+      "svgSha256": "e0c225b190d21bdea18cca2452f5008007613d6456385983f36502406f34ceff",
+      "nativeHtmlSha256": "a61f6b3a5c355d8ec713c55d019d8e5a8f4f6110403a761b658efba32d146c82",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "coord-messages-vl": {
+      "sourceSha256": "c48e5716c6346bff8cde7cf15da48f9dbfbdea5c595d274f403eea04cab1859c",
+      "svgSha256": "2768bb46083f1ba701aeab7282264cc706888b5fccecbd244fc1e6760f9e4a80",
+      "nativeHtmlSha256": "a760bcabd9f74dd56f71b2b5970c007e5dd7ddfdd8605c47370d695cd42e8078",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "execute-messages-sg": {
+      "sourceSha256": "001eb8151ea94b478b4c3cdd2ad624b926f1307f9d7b4831c496522e9cff6a17",
+      "svgSha256": "da52af4f41f5cadb3b4a60b74a2d78210e4e1c06ed4bdf90b77d9394abe96d55",
+      "nativeHtmlSha256": "c4e68b979b411a63d4389fe83338a0c1c1c15213c75308df5336435e8217fc8a",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "graph-sg": {
+      "sourceSha256": "7ac8bb9cddb1618e51a5dbf12d87ab5413a7df02f423f6b8c51b939c533b2eeb",
+      "svgSha256": "fe70d40ee61980d0b13c2dfb0e43e0133ecff3b24f5ee8c47cc6a7c867a54640",
+      "nativeHtmlSha256": "48035dd2fd767c1d1b9fc506f1b0d027f7872d907052ac22bc7606bf8be705cd",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "graph-vl": {
+      "sourceSha256": "2f491b99d3af6184431908e633d2a6dc7ed86cf0e94d514f69809acddf930630",
+      "svgSha256": "5684283599ca9acc0bc0f047de9f58257833cdc5f66fa42a419588dde8e43235",
+      "nativeHtmlSha256": "04eb8ded20560844654678769ceab551284f7064d4ab52d683ac7fede5f49974",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "kv-flow-sg": {
+      "sourceSha256": "0e4a135ef25e0160c448eaf5077e097b275be885e69c0663f6e1201c26421f9c",
+      "svgSha256": "e71b8d184206ae3677dbbd7dcdc251f8404d0ebf6a775ae903a0666a04bbadd1",
+      "nativeHtmlSha256": "0e8f9741dc824a9c58d9f47ce9bcb66e9af4a11ec74ecfc6ca697e482301f5c7",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "kv-flow-vl": {
+      "sourceSha256": "041e2da57aad1d60fad1248194d909e066594824368ffe7e52f211a32912e00f",
+      "svgSha256": "554ac48ae5c3269fdff53b4899aa6063e11a30cc43c00724dd600aa38621919a",
+      "nativeHtmlSha256": "ec569a4ce9babbee8a5af9eda3c5b27df3918d1f8ebb75fdbab9773bd702bc09",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "lifecycle-sg": {
+      "sourceSha256": "bc4eb5f8cdca86480915cd5b50eb0ea9d91c9958b1f480d3e8864d7946c1599a",
+      "svgSha256": "fc7fe7617fb6da9e836c7b588d72dc1780e53fbdd55fe8893771b58197c9b475",
+      "nativeHtmlSha256": "9784650b9178ff2c60e98da4394d65b3892ad8d1c2c49255230f948389b25faa",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "lifecycle-vl": {
+      "sourceSha256": "a266bd143a222b96b64a4c077499bac0ef9113b0c9111f6114299e76cdb88052",
+      "svgSha256": "fc7fe7617fb6da9e836c7b588d72dc1780e53fbdd55fe8893771b58197c9b475",
+      "nativeHtmlSha256": "f4ded7d13a95fb15b686f6042c6ef3f47c3f12b40f2f49ce5d5178cbdf9df249",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "messages-sg": {
+      "sourceSha256": "56d70701f80a0d07f26e6ace9a2dbb61bc0277ab0aae093c4f677b6ecacdba97",
+      "svgSha256": "f7d7a335c3181c11c576928fa05298be9ca1aa18fdd69df1d3ddb3ae95c8576f",
+      "nativeHtmlSha256": "af280a8bb5f66e405f85c8a87427b3f1e3fb0e4c4678e4dd804a9caba23a05de",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "messages-vl": {
+      "sourceSha256": "00e741a9f85adf112bc67e655a7d03404236562beb4ba37c9b90d2994023cbec",
+      "svgSha256": "b2ac5038af934b4a28a9d2cb12d94f28f26b77d5dc02d575a9b6e37f1e770664",
+      "nativeHtmlSha256": "7c60c74d5085451ecd1ef9f50a4485001ff860652a18c9aa017f84720430ae29",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "pd-overview-sg": {
+      "sourceSha256": "507bd457259b3e577d34922f98cc61e9ed3e153fc7c2c86d2af48a93ddf20f75",
+      "svgSha256": "8219c2f893e282539bccd818c8c09d39e5476d2d17071a1d5dac94609486f8d0",
+      "nativeHtmlSha256": "92f66b3ea50c1c9049c6c7466e3c36178504ee4dc19e08cd3b792acc247fd80b",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "pd-overview-vl": {
+      "sourceSha256": "23977f36980c5bd6c136b78d52521374508cb59356c581c4f41e801d02066d56",
+      "svgSha256": "6948b05c1ccfcd6b97db192010049bef42a1d06994c948ed01d09e21128ae544",
+      "nativeHtmlSha256": "0d7b4667dfc01e2e4e367a47a97167d5378fe9f605c3c804c89c254aeb0c077e",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "pd-sg": {
+      "sourceSha256": "cd308d6ddfdeb3f7354a2a2bbedbab662797218d5664d320e3f297a6fae558f2",
+      "svgSha256": "96cffc5977bbd13560b81db197d87f825311a85d8c332239342ef7221eef2fb7",
+      "nativeHtmlSha256": "f5bfdf044e45ddb14aeb6770cdfb9a1a3fea5c9ddb1d88d427074e26f0b2a475",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "pd-vl": {
+      "sourceSha256": "6f221a9fad470cafa5fa60dcc0e1c0a2cb8711fd01e0f95a8a5b5ff881c07706",
+      "svgSha256": "4d4fc385c19c7aa02fb38821713e6bd8a63755d7f9555aa2cd5207d0cbd5ec30",
+      "nativeHtmlSha256": "ce363f14b93f30844ebbabc53533736ca329dacd3e0703cf887c463afbb57cd7",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "process-sg-tp1": {
+      "sourceSha256": "b3efc90f2d4157628b61e9135c876277c26b4e6fad5aa7afc45e736f4ae237e0",
+      "svgSha256": "f195693b0510fc9edaee87d4bf0e29b7fe4cda4407419e3774a51c402f747725",
+      "nativeHtmlSha256": "de4226457eb22ed4e88a31e18fbd3e5b440c9460aa0f458b06b1be6b4d94999d",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "process-sg-tp2": {
+      "sourceSha256": "9e1e1db8e6d2458713257702d6fab781a1dfe6d5a7c117daa49e3f9f368f8066",
+      "svgSha256": "ae1b6d2d11e717579c8206e4d90fee041976b66082e05d1b638819e121e203cd",
+      "nativeHtmlSha256": "9c9cce9aa3d42f4dba4f07f67f818f32dbc0815c3a90380097dfc2e225ab7927",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "process-vl-tp1": {
+      "sourceSha256": "cee74d404d44da80805be8ca796455af9158b5b6935902aa4a3c26cc842e89ca",
+      "svgSha256": "2f89a852a7d87b18691dcf73195ba1f84eed15fc3883a2b97ee086887ee61934",
+      "nativeHtmlSha256": "657c625ae4e109e8527e069ebde31adc4cda00f6de941c33010b08a3e6c0274d",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "process-vl-tp2": {
+      "sourceSha256": "eef9258556dc17c9ec62b85730a9513aad92c3ccb5dc9dc94834560f05bafe57",
+      "svgSha256": "15051ba3bdd1f3cc04a17f1ded29ca08e3fea67c6d3ec29d95571654fa8fb9ff",
+      "nativeHtmlSha256": "dd4dc97ca6f7878b5160c6ea0fbcd7705aec0602716ce0973abb07bd9fe2fd4a",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "restore-sg": {
+      "sourceSha256": "0ced07706c39dbbd5a803a23fa63c868d40502d7dc6ad631bd1213d013536b19",
+      "svgSha256": "a21698ec6c51cab85478c7bbd459f053e3c7ce0bd863d823707b428e091d4ed7",
+      "nativeHtmlSha256": "7dc9cea6b3bb0bf0f3084ccac8e275abdec886da37354a6b6d208d7b8b74a2b4",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "restore-vl": {
+      "sourceSha256": "5ac8fc76e0a81b5807a1791d2c72b924e0595040faf4948243d3c4507dd47c6d",
+      "svgSha256": "8a8969dde7ab6cfd205ebf2840aabe1bd6f39f770381d6b3c18e7247de875467",
+      "nativeHtmlSha256": "85e4a6d5efaa93b902f9a518ccb4f09dce1ca3b9d87897da37e70fa535e8be43",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "roles-sg": {
+      "sourceSha256": "601a5a9e534650a3d897b5a5265c274c9cc2658e8837dd6f1aa4a7c616da43c7",
+      "svgSha256": "43aba950f640720ced854a0e36806da836b9b4e84cf7de940cb4372a6194447d",
+      "nativeHtmlSha256": "7d3d947f29c7f5e3f3f647b824e956246767b3af989d875fd50a6df8d4ae1dd1",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "roles-vl": {
+      "sourceSha256": "aed7a21e4d580cacb151ef70f5372108a7ea7ff4cd1d3db3284e082ffb12fe31",
+      "svgSha256": "c765e03f413f58c394ea09f433bbfb617431cd0f631b1130dd6071ff0a30c70c",
+      "nativeHtmlSha256": "a528bbe4ba62ff398ea20ae8dd8b3e1d16bfdab2d9b7a637c0fb4aa5e0bf16d4",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "rpc-messages-sg": {
+      "sourceSha256": "6b3aa03cbd6829ac5e5ff436c9e0870273d6788ead2d3db73c6f874b55fefc95",
+      "svgSha256": "d539961419cbe08555f9e2bf805f3464eb3509b505ec763382932109418bcf16",
+      "nativeHtmlSha256": "38e0d4473d14c8b53283aa941ac9a08376bfa85636c95ad2c3f1df7f56854274",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "wire-sg": {
+      "sourceSha256": "4a89b190234b8811fb5eaf7f1e204312bd0cda069256af0c23bac34f6eb3bf81",
+      "svgSha256": "96f80e09462695c5054c265a8bcc8caca21b89dfa77c850490b1fff9c037d4b6",
+      "nativeHtmlSha256": "329fdaa4c4e7997799a3a5185416216543d43d3a72dbd255bef1e192ed0bdfe6",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    },
+    "wire-vl": {
+      "sourceSha256": "3b32fee3e7966f25ec4b4890f0cb99da33ddf6dddccfc5447e8cda4767d3f6d4",
+      "svgSha256": "ebdf4354a9038dcd446a51ca22408166105daa14b82639909ad14e394262f711",
+      "nativeHtmlSha256": "1f75af251f9165e94c5f6d22f8a8bd353190b7feb037ba9c3e4652c65637a4e3",
+      "gates": {
+        "validate": "pass",
+        "deliver": "pass",
+        "check": "pass",
+        "browser-check": "pass"
+      }
+    }
+  }
+}

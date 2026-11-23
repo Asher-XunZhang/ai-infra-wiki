@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "vLLM：TP=2 的进程与数据归属",
+    "locale": "zh-CN",
+    "output": "process-vl-tp2.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/vllm-project/vllm",
+      "revision": "4ba787ec9959e566d3b587a796dff07673324da5"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "职责组件"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "auto"
+  },
+  "components": [
+    {
+      "id": "input",
+      "type": "backend",
+      "label": "API / AsyncLLM",
+      "sublabel": "输入与响应",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/async_llm.py",
+          "line": 879,
+          "end_line": 910
+        }
+      ],
+      "pos": [
+        40,
+        40
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "EngineCore",
+      "sublabel": "组织本轮循环",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/core.py",
+          "line": 667,
+          "end_line": 697
+        }
+      ],
+      "pos": [
+        300,
+        180
+      ]
+    },
+    {
+      "id": "scheduler",
+      "type": "backend",
+      "label": "Scheduler",
+      "sublabel": "决定任务与 KV 分配",
+      "sources": [
+        {
+          "path": "vllm/v1/core/sched/scheduler.py",
+          "line": 699,
+          "end_line": 742
+        }
+      ],
+      "pos": [
+        300,
+        320
+      ]
+    },
+    {
+      "id": "executor",
+      "type": "backend",
+      "label": "Executor",
+      "sublabel": "mp 派发到 Worker",
+      "sources": [
+        {
+          "path": "vllm/v1/executor/abstract.py",
+          "line": 265,
+          "end_line": 290
+        }
+      ],
+      "pos": [
+        300,
+        460
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "Worker · r0",
+      "sublabel": "本 rank 执行环境",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu_worker.py",
+          "line": 449,
+          "end_line": 490
+        }
+      ],
+      "pos": [
+        300,
+        650
+      ]
+    },
+    {
+      "id": "runner",
+      "type": "backend",
+      "label": "ModelRunner · r0",
+      "sublabel": "准备输入与前向",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/model_runner.py",
+          "line": 1764,
+          "end_line": 1804
+        }
+      ],
+      "pos": [
+        300,
+        790
+      ]
+    },
+    {
+      "id": "gpu",
+      "type": "backend",
+      "label": "GPU 0 K/V",
+      "sublabel": "本 rank 的设备驻留数据",
+      "sources": [
+        {
+          "path": "vllm/model_executor/layers/attention/attention.py",
+          "line": 490,
+          "end_line": 521
+        }
+      ],
+      "pos": [
+        300,
+        980
+      ]
+    },
+    {
+      "id": "worker-1",
+      "type": "backend",
+      "label": "Worker · r1",
+      "sublabel": "本 rank 执行环境",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu_worker.py",
+          "line": 449,
+          "end_line": 490
+        }
+      ],
+      "pos": [
+        560,
+        650
+      ]
+    },
+    {
+      "id": "runner-1",
+      "type": "backend",
+      "label": "ModelRunner · r1",
+      "sublabel": "准备输入与前向",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/model_runner.py",
+          "line": 1764,
+          "end_line": 1804
+        }
+      ],
+      "pos": [
+        560,
+        790
+      ]
+    },
+    {
+      "id": "gpu-1",
+      "type": "backend",
+      "label": "GPU 1 K/V",
+      "sublabel": "本 rank 的设备驻留数据",
+      "sources": [
+        {
+          "path": "vllm/model_executor/layers/attention/attention.py",
+          "line": 490,
+          "end_line": 521
+        }
+      ],
+      "pos": [
+        560,
+        980
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "input-core",
+      "from": "input",
+      "to": "core",
+      "label": "请求消息"
+    },
+    {
+      "id": "core-schedule",
+      "from": "core",
+      "to": "scheduler",
+      "label": "调度"
+    },
+    {
+      "id": "schedule-execute",
+      "from": "scheduler",
+      "to": "executor",
+      "label": "计划"
+    },
+    {
+      "id": "core-output",
+      "from": "core",
+      "to": "input",
+      "label": "输出消息"
+    },
+    {
+      "id": "scheduler-worker",
+      "from": "executor",
+      "to": "worker",
+      "label": "执行计划 · IPC"
+    },
+    {
+      "id": "worker-runner",
+      "from": "worker",
+      "to": "runner",
+      "label": "调用"
+    },
+    {
+      "id": "write-kv",
+      "from": "runner",
+      "to": "gpu",
+      "label": "前向写入 K/V"
+    },
+    {
+      "id": "scheduler-worker-1",
+      "from": "executor",
+      "to": "worker-1",
+      "label": "执行计划 · IPC"
+    },
+    {
+      "id": "worker-runner-1",
+      "from": "worker-1",
+      "to": "runner-1",
+      "label": "调用"
+    },
+    {
+      "id": "write-kv-1",
+      "from": "runner-1",
+      "to": "gpu-1",
+      "label": "前向写入 K/V"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "API / 主进程",
+      "wraps": [
+        "input"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Worker 进程 · rank 0",
+      "wraps": [
+        "worker",
+        "runner"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "设备内存 · GPU 0",
+      "wraps": [
+        "gpu"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Worker 进程 · rank 1",
+      "wraps": [
+        "worker-1",
+        "runner-1"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "设备内存 · GPU 1",
+      "wraps": [
+        "gpu-1"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "EngineCore 进程",
+      "wraps": [
+        "core",
+        "scheduler",
+        "executor"
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "阅读条件",
+      "items": [
+        "单节点、单 API、PP=DP=1；只计图中的服务进程。",
+        "rank 是并行组成员；GPU K/V 驻留与 CPU 地址账本分开，不假设所有模型均匀切分 KV。"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 672 200" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" data-reader-fit="intrinsic-height" data-reader-min-text="7.5" data-reader-primary-text="14">
+        <title id="archify-diagram-title">P/D：先看三个角色</title>
+        <desc id="archify-diagram-description">由 Archify 生成的架构图。</desc>
+        <style>.c-mask { fill:var(--ac-surface,#101720); }
+.c-grid { fill:none; stroke:var(--ac-grid,#1c2834); }
+.c-region,.c-security-group { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); stroke-width:1; }
+.c-lane { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); }
+.c-backend,.c-frontend,.c-cloud,.c-database,.c-messagebus,.c-security,.c-external,
+.c-start,.c-active,.c-waiting,.c-decision,.c-success,.c-failure,.c-neutral {
+ fill:var(--ac-node,#172433); stroke:var(--ac-accent,#94a8ff); }
+.a-default,.a-emphasis,.a-dashed,.a-return,.a-security { fill:none; stroke:var(--ac-line,#91a0b4); }
+.a-dashed { stroke-dasharray:4 4; }
+.a-return { stroke-dasharray:3 4; }
+.a-emphasis { stroke-width:2; }
+.m-default,.m-emphasis,.m-dashed,.m-return,.m-security { fill:var(--ac-line,#91a0b4); }
+.t-primary { fill:var(--ac-text,#edf2f7); }
+.t-muted,.t-label,.t-small { fill:var(--ac-muted,#a8b7c8); }
+text { fill:var(--ac-text,#edf2f7); font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+[data-semantic-sigil] { display:none; }
+[data-graph-role="structural-frame-label-mask"],.phase-chip { fill:var(--ac-surface,#101720); stroke:var(--ac-frame,#60738a); }
+</style><!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-default" />
+          </marker>
+          <marker id="arrowhead-emphasis" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-emphasis" />
+          </marker>
+          <marker id="arrowhead-security" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-security" />
+          </marker>
+          <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-dashed" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" class="c-grid" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Boundaries (behind everything) -->
+
+
+        <!-- Connection paths (before components for correct z-order) -->
+        <g data-graph-role="automatic-crossover" style="--step:0">
+          <path data-graph-role="automatic-crossover-underlay" d="M 176 85 L 268 85" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="router" data-edge-to="prefill" data-edge-label="选择 P" data-edge-key="0" data-edge-id="select-p" data-composition-points="176,85;268,85" data-composition-crossover="halo" data-composition-independent="true" d="M 176 85 L 268 85" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:1">
+          <path data-graph-role="automatic-crossover-underlay" d="M 112 108 L 112 124 Q 112 132 120 132 L 559.4 132 Q 567.4 132 567.4 124 L 567.4 108" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="router" data-edge-to="decode" data-edge-label="选择 D" data-edge-key="1" data-edge-id="select-d" data-composition-points="112,108;112,132;567.4,132;567.4,108" data-composition-crossover="halo" data-composition-independent="true" d="M 112 108 L 112 124 Q 112 132 120 132 L 559.4 132 Q 567.4 132 567.4 124 L 567.4 108" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:2">
+          <path data-graph-role="automatic-crossover-underlay" d="M 403 71 L 503.4 71" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="prefill" data-edge-to="decode" data-edge-label="KV 经后端交接" data-edge-key="2" data-edge-id="payload" data-composition-points="403,71;503.4,71" data-composition-crossover="halo" data-composition-independent="true" d="M 403 71 L 503.4 71" class="a-default" data-animate="edge" style="--step:2" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+
+        <!-- Components -->
+        <g id="node-router" data-node-id="router" data-node-label="外部 Router" tabindex="0" role="button" aria-label="聚焦外部 Router，选择实例 / 请求角色, 架构组件" aria-pressed="false" data-node-kind="backend" data-node-sublabel="选择实例 / 请求角色" data-node-context="架构组件">
+          <title>外部 Router · 选择实例 / 请求角色 · 架构组件</title>
+          <rect x="48" y="48" width="128" height="60" rx="8" class="c-mask"/>
+          <rect x="48" y="48" width="128" height="60" rx="8" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(54 54) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="112" y="76" class="t-primary" font-size="12.1" font-weight="600" text-anchor="middle">外部 Router</text>
+        <text data-detail="context" x="112" y="92" class="t-muted" font-size="10.5" text-anchor="middle">选择实例 / 请求角色</text>
+        </g>
+
+        <g id="node-prefill" data-node-id="prefill" data-node-label="Prefill 实例" tabindex="0" role="button" aria-label="聚焦Prefill 实例，计算输入并产生 KV, 架构组件" aria-pressed="false" data-node-kind="backend" data-node-sublabel="计算输入并产生 KV" data-node-context="架构组件">
+          <title>Prefill 实例 · 计算输入并产生 KV · 架构组件</title>
+          <rect x="268" y="48" width="135" height="60" rx="8" class="c-mask"/>
+          <rect x="268" y="48" width="135" height="60" rx="8" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(274 54) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="335.5" y="76" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">Prefill 实例</text>
+        <text data-detail="context" x="335.5" y="92" class="t-muted" font-size="10.5" text-anchor="middle">计算输入并产生 KV</text>
+        </g>
+
+        <g id="node-decode" data-node-id="decode" data-node-label="Decode 实例" tabindex="0" role="button" aria-label="聚焦Decode 实例，接收 KV 并继续生成, 架构组件" aria-pressed="false" data-node-kind="backend" data-node-sublabel="接收 KV 并继续生成" data-node-context="架构组件">
+          <title>Decode 实例 · 接收 KV 并继续生成 · 架构组件</title>
+          <rect x="503.4" y="48" width="128" height="60" rx="8" class="c-mask"/>
+          <rect x="503.4" y="48" width="128" height="60" rx="8" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(509.4 54) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="567.4" y="76" class="t-primary" font-size="12.1" font-weight="600" text-anchor="middle">Decode 实例</text>
+        <text data-detail="context" x="567.4" y="92" class="t-muted" font-size="10.5" text-anchor="middle">接收 KV 并继续生成</text>
+        </g>
+
+        <!-- Connection labels -->
+        <g data-detail="context" data-edge-from="router" data-edge-to="prefill" data-edge-label="选择 P" data-edge-key="0" data-edge-id="select-p">
+          <rect x="202.6" y="65" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="222" y="75" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">选择 P</text>
+        </g>
+        <g data-detail="context" data-edge-from="router" data-edge-to="decode" data-edge-label="选择 D" data-edge-key="1" data-edge-id="select-d">
+          <rect x="320.3" y="112" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="339.7" y="122" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">选择 D</text>
+        </g>
+        <g data-detail="context" data-edge-from="prefill" data-edge-to="decode" data-edge-label="KV 经后端交接" data-edge-key="2" data-edge-id="payload">
+          <rect x="417" y="51" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="453.2" y="61" class="t-edge-default" font-size="9.3" font-weight="500" text-anchor="middle">KV 经后端交接</text>
+        </g>
+
+        <!-- Boundary labels (foreground masks keep routes out of titles) -->
+
+
+        <!-- Legend -->
+        <g data-legend="" data-legend-bridge="">
+          <text x="40" y="164" class="t-primary" font-size="12" font-weight="650">图例</text>
+          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="职责组件" data-legend-x="40" data-legend-baseline="184" data-legend-width="93">
+            <rect x="40" y="175" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
+            <text x="62" y="184" class="t-muted" font-size="10" font-weight="500">职责组件</text>
+          </g>
+        </g>
+      </svg>

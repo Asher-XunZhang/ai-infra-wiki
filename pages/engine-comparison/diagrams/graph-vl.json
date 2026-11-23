@@ -1,0 +1,162 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "每轮选择一条图执行路径",
+    "locale": "zh-CN",
+    "output": "graph-vl.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/vllm-project/vllm",
+      "revision": "4ba787ec9959e566d3b587a796dff07673324da5"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "判断与执行"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "control",
+      "label": "本轮判断与处理"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "shape",
+      "type": "backend",
+      "label": "本批条件?",
+      "sublabel": "形状 / 模式 / 后端",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/cudagraph_utils.py",
+          "line": 523,
+          "end_line": 552
+        }
+      ],
+      "lane": "control",
+      "col": 0,
+      "width": 160,
+      "height": 66
+    },
+    {
+      "id": "FULL",
+      "type": "backend",
+      "label": "FULL",
+      "sublabel": "填输入缓冲再 replay",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/cudagraph_utils.py",
+          "line": 523,
+          "end_line": 552
+        }
+      ],
+      "lane": "control",
+      "col": 1,
+      "yOffset": -100,
+      "width": 160,
+      "height": 66
+    },
+    {
+      "id": "PIECEWISE",
+      "type": "backend",
+      "label": "PIECEWISE",
+      "sublabel": "编译分段 / breakable",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/cudagraph_utils.py",
+          "line": 523,
+          "end_line": 552
+        }
+      ],
+      "lane": "control",
+      "col": 1,
+      "yOffset": 0,
+      "width": 160,
+      "height": 66
+    },
+    {
+      "id": "NONE",
+      "type": "backend",
+      "label": "NONE",
+      "sublabel": "无兼容候选，普通前向",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/cudagraph_utils.py",
+          "line": 523,
+          "end_line": 552
+        }
+      ],
+      "lane": "control",
+      "col": 1,
+      "yOffset": 100,
+      "width": 160,
+      "height": 66
+    },
+    {
+      "id": "output",
+      "type": "backend",
+      "label": "本轮输出",
+      "sublabel": "仍计算当前输入",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/model_runner.py",
+          "line": 2053,
+          "end_line": 2084
+        }
+      ],
+      "lane": "control",
+      "col": 2,
+      "width": 160,
+      "height": 66
+    }
+  ],
+  "edges": [
+    {
+      "id": "choose-FULL",
+      "from": "shape",
+      "to": "FULL",
+      "label": "FULL"
+    },
+    {
+      "id": "choose-PIECEWISE",
+      "from": "shape",
+      "to": "PIECEWISE",
+      "label": "PIECEWISE"
+    },
+    {
+      "id": "choose-NONE",
+      "from": "shape",
+      "to": "NONE",
+      "label": "NONE"
+    },
+    {
+      "id": "FULL-output",
+      "from": "FULL",
+      "to": "output"
+    },
+    {
+      "id": "PIECEWISE-output",
+      "from": "PIECEWISE",
+      "to": "output"
+    },
+    {
+      "id": "NONE-output",
+      "from": "NONE",
+      "to": "output"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "条件与结果",
+      "items": [
+        "捕获属于提前准备；每轮更新输入，并且只执行一条匹配路径。",
+        "SGLang 的 BCG 是可选后端能力；不作为额外串行阶段。"
+      ]
+    }
+  ]
+}

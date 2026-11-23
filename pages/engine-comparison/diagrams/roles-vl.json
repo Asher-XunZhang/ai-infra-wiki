@@ -1,0 +1,273 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "vLLM：模块职责与调用关系",
+    "locale": "zh-CN",
+    "output": "roles-vl.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/vllm-project/vllm",
+      "revision": "4ba787ec9959e566d3b587a796dff07673324da5"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "职责组件"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "auto"
+  },
+  "components": [
+    {
+      "id": "input",
+      "type": "backend",
+      "label": "API / AsyncLLM",
+      "sublabel": "整理请求与输出",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/async_llm.py",
+          "line": 879,
+          "end_line": 910
+        }
+      ],
+      "pos": [
+        40,
+        40
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "EngineCore",
+      "sublabel": "组织调度、执行与更新",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/core.py",
+          "line": 667,
+          "end_line": 697
+        }
+      ],
+      "pos": [
+        300,
+        40
+      ]
+    },
+    {
+      "id": "scheduler",
+      "type": "backend",
+      "label": "Scheduler",
+      "sublabel": "选择请求与 token 工作量",
+      "sources": [
+        {
+          "path": "vllm/v1/core/sched/scheduler.py",
+          "line": 699,
+          "end_line": 742
+        }
+      ],
+      "pos": [
+        300,
+        180
+      ]
+    },
+    {
+      "id": "executor",
+      "type": "backend",
+      "label": "Executor",
+      "sublabel": "派发调用并汇集结果",
+      "sources": [
+        {
+          "path": "vllm/v1/executor/abstract.py",
+          "line": 265,
+          "end_line": 290
+        }
+      ],
+      "pos": [
+        300,
+        320
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "Worker",
+      "sublabel": "管理设备与执行环境",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu_worker.py",
+          "line": 449,
+          "end_line": 490
+        }
+      ],
+      "pos": [
+        300,
+        500
+      ]
+    },
+    {
+      "id": "runner",
+      "type": "backend",
+      "label": "ModelRunner V2",
+      "sublabel": "准备输入并组织计算",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/model_runner.py",
+          "line": 1764,
+          "end_line": 1804
+        }
+      ],
+      "pos": [
+        300,
+        640
+      ]
+    },
+    {
+      "id": "model",
+      "type": "backend",
+      "label": "Model",
+      "sublabel": "定义各层前向结构",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/model_runner.py",
+          "line": 2053,
+          "end_line": 2084
+        }
+      ],
+      "pos": [
+        40,
+        820
+      ]
+    },
+    {
+      "id": "attention",
+      "type": "backend",
+      "label": "Attention",
+      "sublabel": "读取当前输入与历史 KV",
+      "sources": [
+        {
+          "path": "vllm/model_executor/layers/attention/attention.py",
+          "line": 490,
+          "end_line": 521
+        }
+      ],
+      "pos": [
+        300,
+        820
+      ]
+    },
+    {
+      "id": "kernel",
+      "type": "backend",
+      "label": "Kernel",
+      "sublabel": "执行设备上的具体算子",
+      "sources": [
+        {
+          "path": "vllm/v1/attention/backends/flash_attn.py",
+          "line": 1222,
+          "end_line": 1247
+        }
+      ],
+      "pos": [
+        300,
+        960
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "input-core",
+      "from": "input",
+      "to": "core",
+      "label": "内部请求"
+    },
+    {
+      "id": "core-schedule",
+      "from": "core",
+      "to": "scheduler",
+      "label": "调用调度"
+    },
+    {
+      "id": "schedule-execute",
+      "from": "scheduler",
+      "to": "executor",
+      "label": "本轮计划"
+    },
+    {
+      "id": "executor-worker",
+      "from": "executor",
+      "to": "worker",
+      "label": "执行调用"
+    },
+    {
+      "id": "worker-runner",
+      "from": "worker",
+      "to": "runner",
+      "label": "调用"
+    },
+    {
+      "id": "runner-model",
+      "from": "runner",
+      "to": "model",
+      "label": "前向"
+    },
+    {
+      "id": "model-attention",
+      "from": "model",
+      "to": "attention",
+      "label": "子层"
+    },
+    {
+      "id": "attention-kernel",
+      "from": "attention",
+      "to": "kernel",
+      "label": "后端算子"
+    },
+    {
+      "id": "core-output",
+      "from": "core",
+      "to": "input",
+      "label": "结果"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "EngineCore 内的组织与决策对象",
+      "wraps": [
+        "core",
+        "scheduler",
+        "executor"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "每个 rank 的执行对象",
+      "wraps": [
+        "worker",
+        "runner"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "模型计算结构与算子实现",
+      "wraps": [
+        "model",
+        "attention",
+        "kernel"
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "阅读条件",
+      "items": [
+        "逻辑职责链，不是独立进程链或严格串行耗时。",
+        "SchedulerOutput 由 Core 转交 Executor；图中计划箭头表示逻辑交接。"
+      ]
+    }
+  ]
+}

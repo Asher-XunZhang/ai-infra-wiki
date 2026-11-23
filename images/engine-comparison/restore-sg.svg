@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 632 176" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" data-reader-fit="intrinsic-height" data-reader-min-text="7.5" data-reader-primary-text="14">
+        <title id="archify-diagram-title">分层恢复：控制与 KV 驻留</title>
+        <desc id="archify-diagram-description">由 Archify 生成的架构图。</desc>
+        <style>.c-mask { fill:var(--ac-surface,#101720); }
+.c-grid { fill:none; stroke:var(--ac-grid,#1c2834); }
+.c-region,.c-security-group { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); stroke-width:1; }
+.c-lane { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); }
+.c-backend,.c-frontend,.c-cloud,.c-database,.c-messagebus,.c-security,.c-external,
+.c-start,.c-active,.c-waiting,.c-decision,.c-success,.c-failure,.c-neutral {
+ fill:var(--ac-node,#172433); stroke:var(--ac-accent,#94a8ff); }
+.a-default,.a-emphasis,.a-dashed,.a-return,.a-security { fill:none; stroke:var(--ac-line,#91a0b4); }
+.a-dashed { stroke-dasharray:4 4; }
+.a-return { stroke-dasharray:3 4; }
+.a-emphasis { stroke-width:2; }
+.m-default,.m-emphasis,.m-dashed,.m-return,.m-security { fill:var(--ac-line,#91a0b4); }
+.t-primary { fill:var(--ac-text,#edf2f7); }
+.t-muted,.t-label,.t-small { fill:var(--ac-muted,#a8b7c8); }
+text { fill:var(--ac-text,#edf2f7); font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+[data-semantic-sigil] { display:none; }
+[data-graph-role="structural-frame-label-mask"],.phase-chip { fill:var(--ac-surface,#101720); stroke:var(--ac-frame,#60738a); }
+</style><!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-default" />
+          </marker>
+          <marker id="arrowhead-emphasis" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-emphasis" />
+          </marker>
+          <marker id="arrowhead-security" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-security" />
+          </marker>
+          <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-dashed" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" class="c-grid" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Boundaries (behind everything) -->
+
+
+        <!-- Connection paths (before components for correct z-order) -->
+        <g data-graph-role="automatic-crossover" style="--step:0">
+          <path data-graph-role="automatic-crossover-underlay" d="M 168 78 L 260 78" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="storage" data-edge-to="host" data-edge-label="恢复" data-edge-key="0" data-edge-id="restore-host" data-composition-points="168,78;260,78" data-composition-crossover="halo" data-composition-independent="true" d="M 168 78 L 260 78" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:1">
+          <path data-graph-role="automatic-crossover-underlay" d="M 380 78 L 472 78" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="host" data-edge-to="gpu" data-edge-label="恢复 KV" data-edge-key="1" data-edge-id="restore-gpu" data-composition-points="380,78;472,78" data-composition-crossover="halo" data-composition-independent="true" d="M 380 78 L 472 78" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+
+        <!-- Components -->
+        <g id="node-storage" data-node-id="storage" data-node-label="L3 存储" tabindex="0" role="button" aria-label="聚焦L3 存储，可选持久层, 架构组件" aria-pressed="false" data-node-kind="backend" data-node-sublabel="可选持久层" data-node-context="架构组件">
+          <title>L3 存储 · 可选持久层 · 架构组件</title>
+          <rect x="48" y="48" width="120" height="60" rx="8" class="c-mask"/>
+          <rect x="48" y="48" width="120" height="60" rx="8" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(54 54) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="108" y="76" class="t-primary" font-size="14" font-weight="600" text-anchor="middle">L3 存储</text>
+        <text data-detail="context" x="108" y="92" class="t-muted" font-size="10.5" text-anchor="middle">可选持久层</text>
+        </g>
+
+        <g id="node-host" data-node-id="host" data-node-label="L2 CPU" tabindex="0" role="button" aria-label="聚焦L2 CPU，主机恢复, 架构组件" aria-pressed="false" data-node-kind="backend" data-node-sublabel="主机恢复" data-node-context="架构组件">
+          <title>L2 CPU · 主机恢复 · 架构组件</title>
+          <rect x="260" y="48" width="120" height="60" rx="8" class="c-mask"/>
+          <rect x="260" y="48" width="120" height="60" rx="8" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(266 54) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="320" y="76" class="t-primary" font-size="14" font-weight="600" text-anchor="middle">L2 CPU</text>
+        <text data-detail="context" x="320" y="92" class="t-muted" font-size="10.5" text-anchor="middle">主机恢复</text>
+        </g>
+
+        <g id="node-gpu" data-node-id="gpu" data-node-label="L1 GPU KV" tabindex="0" role="button" aria-label="聚焦L1 GPU KV，恢复的目标地址, 架构组件" aria-pressed="false" data-node-kind="backend" data-node-sublabel="恢复的目标地址" data-node-context="架构组件">
+          <title>L1 GPU KV · 恢复的目标地址 · 架构组件</title>
+          <rect x="472" y="48" width="120" height="60" rx="8" class="c-mask"/>
+          <rect x="472" y="48" width="120" height="60" rx="8" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(478 54) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="532" y="76" class="t-primary" font-size="13.3" font-weight="600" text-anchor="middle">L1 GPU KV</text>
+        <text data-detail="context" x="532" y="92" class="t-muted" font-size="10.5" text-anchor="middle">恢复的目标地址</text>
+        </g>
+
+        <!-- Connection labels -->
+        <g data-detail="context" data-edge-from="storage" data-edge-to="host" data-edge-label="恢复" data-edge-key="0" data-edge-id="restore-host">
+          <rect x="199" y="58" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="214" y="68" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">恢复</text>
+        </g>
+        <g data-detail="context" data-edge-from="host" data-edge-to="gpu" data-edge-label="恢复 KV" data-edge-key="1" data-edge-id="restore-gpu">
+          <rect x="404.2" y="58" width="43.6" height="14" rx="3" class="c-mask"/>
+          <text x="426" y="68" class="t-edge-default" font-size="9.9" font-weight="500" text-anchor="middle">恢复 KV</text>
+        </g>
+
+        <!-- Boundary labels (foreground masks keep routes out of titles) -->
+
+
+        <!-- Legend -->
+        <g data-legend="" data-legend-bridge="">
+          <text x="40" y="140" class="t-primary" font-size="12" font-weight="650">图例</text>
+          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="职责组件" data-legend-x="40" data-legend-baseline="160" data-legend-width="93">
+            <rect x="40" y="151" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
+            <text x="62" y="160" class="t-muted" font-size="10" font-weight="500">职责组件</text>
+          </g>
+        </g>
+      </svg>

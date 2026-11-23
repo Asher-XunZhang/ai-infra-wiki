@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 534 1128" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" data-reader-fit="intrinsic-height" data-reader-min-text="7.5" data-reader-primary-text="14">
+        <title id="archify-diagram-title">vLLM：TP=1 的进程与数据归属</title>
+        <desc id="archify-diagram-description">由 Archify 生成的架构图。</desc>
+        <style>.c-mask { fill:var(--ac-surface,#101720); }
+.c-grid { fill:none; stroke:var(--ac-grid,#1c2834); }
+.c-region,.c-security-group { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); stroke-width:1; }
+.c-lane { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); }
+.c-backend,.c-frontend,.c-cloud,.c-database,.c-messagebus,.c-security,.c-external,
+.c-start,.c-active,.c-waiting,.c-decision,.c-success,.c-failure,.c-neutral {
+ fill:var(--ac-node,#172433); stroke:var(--ac-accent,#94a8ff); }
+.a-default,.a-emphasis,.a-dashed,.a-return,.a-security { fill:none; stroke:var(--ac-line,#91a0b4); }
+.a-dashed { stroke-dasharray:4 4; }
+.a-return { stroke-dasharray:3 4; }
+.a-emphasis { stroke-width:2; }
+.m-default,.m-emphasis,.m-dashed,.m-return,.m-security { fill:var(--ac-line,#91a0b4); }
+.t-primary { fill:var(--ac-text,#edf2f7); }
+.t-muted,.t-label,.t-small { fill:var(--ac-muted,#a8b7c8); }
+text { fill:var(--ac-text,#edf2f7); font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+[data-semantic-sigil] { display:none; }
+[data-graph-role="structural-frame-label-mask"],.phase-chip { fill:var(--ac-surface,#101720); stroke:var(--ac-frame,#60738a); }
+</style><!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-default" />
+          </marker>
+          <marker id="arrowhead-emphasis" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-emphasis" />
+          </marker>
+          <marker id="arrowhead-security" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-security" />
+          </marker>
+          <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-dashed" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" class="c-grid" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Boundaries (behind everything) -->
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" data-composition-frame-label="API / 主进程" x="10" y="10" width="209" height="110" rx="12" class="c-region" stroke-width="1"/>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="1" data-composition-frame-label="设备内存 · GPU 0" x="270" y="950" width="207" height="110" rx="12" class="c-region" stroke-width="1"/>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="2" data-composition-frame-label="EngineCore 进程" x="270" y="150" width="224" height="720" rx="12" class="c-region" stroke-width="1"/>
+
+        <!-- Connection paths (before components for correct z-order) -->
+        <g data-graph-role="automatic-crossover" style="--step:0">
+          <path data-graph-role="automatic-crossover-underlay" d="M 189 77 L 352 77 Q 360 77 360 85 L 360 180" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="input" data-edge-to="core" data-edge-label="请求消息" data-edge-key="0" data-edge-id="input-core" data-composition-points="189,77;360,77;360,180" data-composition-crossover="halo" data-composition-independent="true" d="M 189 77 L 352 77 Q 360 77 360 85 L 360 180" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:1">
+          <path data-graph-role="automatic-crossover-underlay" d="M 360 240 L 360 320" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="core" data-edge-to="scheduler" data-edge-label="调度" data-edge-key="1" data-edge-id="core-schedule" data-composition-points="360,240;360,320" data-composition-crossover="halo" data-composition-independent="true" d="M 360 240 L 360 320" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:2">
+          <path data-graph-role="automatic-crossover-underlay" d="M 361 380 L 361 460" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="scheduler" data-edge-to="executor" data-edge-label="计划" data-edge-key="2" data-edge-id="schedule-execute" data-composition-points="361,380;361,460" data-composition-crossover="halo" data-composition-independent="true" d="M 361 380 L 361 460" class="a-default" data-animate="edge" style="--step:2" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:3">
+          <path data-graph-role="automatic-crossover-underlay" d="M 300 203 L 122.5 203 Q 114.5 203 114.5 195 L 114.5 100" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="core" data-edge-to="input" data-edge-label="输出消息" data-edge-key="3" data-edge-id="core-output" data-composition-points="300,203;114.5,203;114.5,100" data-composition-crossover="halo" data-composition-independent="true" d="M 300 203 L 122.5 203 Q 114.5 203 114.5 195 L 114.5 100" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:4">
+          <path data-graph-role="automatic-crossover-underlay" d="M 360 520 L 360 650" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="executor" data-edge-to="worker" data-edge-label="本地调用" data-edge-key="4" data-edge-id="scheduler-worker" data-composition-points="360,520;360,650" data-composition-crossover="halo" data-composition-independent="true" d="M 360 520 L 360 650" class="a-default" data-animate="edge" style="--step:4" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:5">
+          <path data-graph-role="automatic-crossover-underlay" d="M 364 710 L 364 790" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="worker" data-edge-to="runner" data-edge-label="调用" data-edge-key="5" data-edge-id="worker-runner" data-composition-points="364,710;364,790" data-composition-crossover="halo" data-composition-independent="true" d="M 364 710 L 364 790" class="a-default" data-animate="edge" style="--step:5" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:6">
+          <path data-graph-role="automatic-crossover-underlay" d="M 382 850 L 382 980" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="runner" data-edge-to="gpu" data-edge-label="前向写入 K/V" data-edge-key="6" data-edge-id="write-kv" data-composition-points="382,850;382,980" data-composition-crossover="halo" data-composition-independent="true" d="M 382 850 L 382 980" class="a-default" data-animate="edge" style="--step:6" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+
+        <!-- Components -->
+        <g id="node-input" data-node-id="input" data-node-label="API / AsyncLLM" tabindex="0" role="button" aria-label="聚焦API / AsyncLLM，输入与响应, API / 主进程" aria-pressed="false" data-node-kind="backend" data-node-sublabel="输入与响应" data-node-context="API / 主进程">
+          <title>API / AsyncLLM · 输入与响应 · API / 主进程</title>
+          <rect x="40" y="40" width="149" height="60" rx="8" class="c-mask"/>
+          <rect x="40" y="40" width="149" height="60" rx="8" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 46) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="114.5" y="68" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">API / AsyncLLM</text>
+        <text data-detail="context" x="114.5" y="84" class="t-muted" font-size="10.5" text-anchor="middle">输入与响应</text>
+        </g>
+
+        <g id="node-core" data-node-id="core" data-node-label="EngineCore" tabindex="0" role="button" aria-label="聚焦EngineCore，组织本轮循环, EngineCore 进程" aria-pressed="false" data-node-kind="backend" data-node-sublabel="组织本轮循环" data-node-context="EngineCore 进程">
+          <title>EngineCore · 组织本轮循环 · EngineCore 进程</title>
+          <rect x="300" y="180" width="120" height="60" rx="8" class="c-mask"/>
+          <rect x="300" y="180" width="120" height="60" rx="8" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(306 186) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="360" y="208" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">EngineCore</text>
+        <text data-detail="context" x="360" y="224" class="t-muted" font-size="10.5" text-anchor="middle">组织本轮循环</text>
+        </g>
+
+        <g id="node-scheduler" data-node-id="scheduler" data-node-label="Scheduler" tabindex="0" role="button" aria-label="聚焦Scheduler，决定任务与 KV 分配, EngineCore 进程" aria-pressed="false" data-node-kind="backend" data-node-sublabel="决定任务与 KV 分配" data-node-context="EngineCore 进程">
+          <title>Scheduler · 决定任务与 KV 分配 · EngineCore 进程</title>
+          <rect x="300" y="320" width="122" height="60" rx="8" class="c-mask"/>
+          <rect x="300" y="320" width="122" height="60" rx="8" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(306 326) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="361" y="348" class="t-primary" font-size="13.7" font-weight="600" text-anchor="middle">Scheduler</text>
+        <text data-detail="context" x="361" y="364" class="t-muted" font-size="10.5" text-anchor="middle">决定任务与 KV 分配</text>
+        </g>
+
+        <g id="node-executor" data-node-id="executor" data-node-label="Executor" tabindex="0" role="button" aria-label="聚焦Executor，uni 本地调用, EngineCore 进程" aria-pressed="false" data-node-kind="backend" data-node-sublabel="uni 本地调用" data-node-context="EngineCore 进程">
+          <title>Executor · uni 本地调用 · EngineCore 进程</title>
+          <rect x="300" y="460" width="120" height="60" rx="8" class="c-mask"/>
+          <rect x="300" y="460" width="120" height="60" rx="8" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(306 466) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="360" y="488" class="t-primary" font-size="14" font-weight="600" text-anchor="middle">Executor</text>
+        <text data-detail="context" x="360" y="504" class="t-muted" font-size="10.5" text-anchor="middle">uni 本地调用</text>
+        </g>
+
+        <g id="node-worker" data-node-id="worker" data-node-label="Worker · r0" tabindex="0" role="button" aria-label="聚焦Worker · r0，本 rank 执行环境, EngineCore 进程" aria-pressed="false" data-node-kind="backend" data-node-sublabel="本 rank 执行环境" data-node-context="EngineCore 进程">
+          <title>Worker · r0 · 本 rank 执行环境 · EngineCore 进程</title>
+          <rect x="300" y="650" width="128" height="60" rx="8" class="c-mask"/>
+          <rect x="300" y="650" width="128" height="60" rx="8" class="c-backend" data-animate="node" style="--step:5" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(306 656) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="364" y="678" class="t-primary" font-size="12.1" font-weight="600" text-anchor="middle">Worker · r0</text>
+        <text data-detail="context" x="364" y="694" class="t-muted" font-size="10.5" text-anchor="middle">本 rank 执行环境</text>
+        </g>
+
+        <g id="node-runner" data-node-id="runner" data-node-label="ModelRunner · r0" tabindex="0" role="button" aria-label="聚焦ModelRunner · r0，准备输入与前向, EngineCore 进程" aria-pressed="false" data-node-kind="backend" data-node-sublabel="准备输入与前向" data-node-context="EngineCore 进程">
+          <title>ModelRunner · r0 · 准备输入与前向 · EngineCore 进程</title>
+          <rect x="300" y="790" width="164" height="60" rx="8" class="c-mask"/>
+          <rect x="300" y="790" width="164" height="60" rx="8" class="c-backend" data-animate="node" style="--step:6" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(306 796) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="382" y="818" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">ModelRunner · r0</text>
+        <text data-detail="context" x="382" y="834" class="t-muted" font-size="10.5" text-anchor="middle">准备输入与前向</text>
+        </g>
+
+        <g id="node-gpu" data-node-id="gpu" data-node-label="GPU 0 K/V" tabindex="0" role="button" aria-label="聚焦GPU 0 K/V，本 rank 的设备驻留数据, 设备内存 · GPU 0" aria-pressed="false" data-node-kind="backend" data-node-sublabel="本 rank 的设备驻留数据" data-node-context="设备内存 · GPU 0">
+          <title>GPU 0 K/V · 本 rank 的设备驻留数据 · 设备内存 · GPU 0</title>
+          <rect x="300" y="980" width="147" height="60" rx="8" class="c-mask"/>
+          <rect x="300" y="980" width="147" height="60" rx="8" class="c-backend" data-animate="node" style="--step:7" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(306 986) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="373.5" y="1008" class="t-primary" font-size="14" font-weight="600" text-anchor="middle">GPU 0 K/V</text>
+        <text data-detail="context" x="373.5" y="1024" class="t-muted" font-size="10.5" text-anchor="middle">本 rank 的设备驻留数据</text>
+        </g>
+
+        <!-- Connection labels -->
+        <g data-detail="context" data-edge-from="input" data-edge-to="core" data-edge-label="请求消息" data-edge-key="0" data-edge-id="input-core">
+          <rect x="335.8" y="108.5" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="360" y="118.5" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">请求消息</text>
+        </g>
+        <g data-detail="context" data-edge-from="core" data-edge-to="scheduler" data-edge-label="调度" data-edge-key="1" data-edge-id="core-schedule">
+          <rect x="324" y="273" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="339" y="283" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">调度</text>
+        </g>
+        <g data-detail="context" data-edge-from="scheduler" data-edge-to="executor" data-edge-label="计划" data-edge-key="2" data-edge-id="schedule-execute">
+          <rect x="325" y="413" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="340" y="423" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">计划</text>
+        </g>
+        <g data-detail="context" data-edge-from="core" data-edge-to="input" data-edge-label="输出消息" data-edge-key="3" data-edge-id="core-output">
+          <rect x="90.3" y="131.5" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="114.5" y="141.5" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">输出消息</text>
+        </g>
+        <g data-detail="context" data-edge-from="executor" data-edge-to="worker" data-edge-label="本地调用" data-edge-key="4" data-edge-id="scheduler-worker">
+          <rect x="305.6" y="578" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="329.8" y="588" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">本地调用</text>
+        </g>
+        <g data-detail="context" data-edge-from="worker" data-edge-to="runner" data-edge-label="调用" data-edge-key="5" data-edge-id="worker-runner">
+          <rect x="328" y="743" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="343" y="753" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">调用</text>
+        </g>
+        <g data-detail="context" data-edge-from="runner" data-edge-to="gpu" data-edge-label="前向写入 K/V" data-edge-key="6" data-edge-id="write-kv">
+          <rect x="308.4" y="908" width="67.6" height="14" rx="3" class="c-mask"/>
+          <text x="342.2" y="918" class="t-edge-default" font-size="9.3" font-weight="500" text-anchor="middle">前向写入 K/V</text>
+        </g>
+
+        <!-- Boundary labels (foreground masks keep routes out of titles) -->
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="0" data-composition-frame-kind="region" data-composition-frame-label="API / 主进程">
+          <rect data-graph-role="structural-frame-label-mask" x="14" y="20" width="74.8" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="18" y="33" class="t-cloud" font-size="9" font-weight="600">API / 主进程</text>
+        </g>
+
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="1" data-composition-frame-kind="region" data-composition-frame-label="设备内存 · GPU 0">
+          <rect data-graph-role="structural-frame-label-mask" x="274" y="960" width="96.39999999999999" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="278" y="973" class="t-cloud" font-size="9" font-weight="600">设备内存 · GPU 0</text>
+        </g>
+
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="2" data-composition-frame-kind="region" data-composition-frame-label="EngineCore 进程">
+          <rect data-graph-role="structural-frame-label-mask" x="368" y="160" width="91" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="372" y="173" class="t-cloud" font-size="9" font-weight="600">EngineCore 进程</text>
+        </g>
+
+        <!-- Legend -->
+        <g data-legend="" data-legend-bridge="">
+          <text x="40" y="1092" class="t-primary" font-size="12" font-weight="650">图例</text>
+          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="职责组件" data-legend-x="40" data-legend-baseline="1112" data-legend-width="93">
+            <rect x="40" y="1103" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
+            <text x="62" y="1112" class="t-muted" font-size="10" font-weight="500">职责组件</text>
+          </g>
+        </g>
+      </svg>

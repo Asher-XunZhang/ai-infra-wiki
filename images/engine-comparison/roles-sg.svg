@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 748" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" data-reader-fit="intrinsic-height" data-reader-min-text="7.5" data-reader-primary-text="14">
+        <title id="archify-diagram-title">SGLang：模块职责与调用关系</title>
+        <desc id="archify-diagram-description">由 Archify 生成的架构图。</desc>
+        <style>.c-mask { fill:var(--ac-surface,#101720); }
+.c-grid { fill:none; stroke:var(--ac-grid,#1c2834); }
+.c-region,.c-security-group { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); stroke-width:1; }
+.c-lane { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); }
+.c-backend,.c-frontend,.c-cloud,.c-database,.c-messagebus,.c-security,.c-external,
+.c-start,.c-active,.c-waiting,.c-decision,.c-success,.c-failure,.c-neutral {
+ fill:var(--ac-node,#172433); stroke:var(--ac-accent,#94a8ff); }
+.a-default,.a-emphasis,.a-dashed,.a-return,.a-security { fill:none; stroke:var(--ac-line,#91a0b4); }
+.a-dashed { stroke-dasharray:4 4; }
+.a-return { stroke-dasharray:3 4; }
+.a-emphasis { stroke-width:2; }
+.m-default,.m-emphasis,.m-dashed,.m-return,.m-security { fill:var(--ac-line,#91a0b4); }
+.t-primary { fill:var(--ac-text,#edf2f7); }
+.t-muted,.t-label,.t-small { fill:var(--ac-muted,#a8b7c8); }
+text { fill:var(--ac-text,#edf2f7); font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+[data-semantic-sigil] { display:none; }
+[data-graph-role="structural-frame-label-mask"],.phase-chip { fill:var(--ac-surface,#101720); stroke:var(--ac-frame,#60738a); }
+</style><!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-default" />
+          </marker>
+          <marker id="arrowhead-emphasis" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-emphasis" />
+          </marker>
+          <marker id="arrowhead-security" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-security" />
+          </marker>
+          <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-dashed" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" class="c-grid" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Boundaries (behind everything) -->
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" data-composition-frame-label="调度与本 rank 执行对象" x="270" y="10" width="202" height="390" rx="12" class="c-region" stroke-width="1"/>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="1" data-composition-frame-label="模型计算结构与算子实现" x="10" y="430" width="461" height="250" rx="12" class="c-region" stroke-width="1"/>
+
+        <!-- Connection paths (before components for correct z-order) -->
+        <g data-graph-role="automatic-crossover" style="--step:0">
+          <path data-graph-role="automatic-crossover-underlay" d="M 204 70 L 300 70" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="input" data-edge-to="scheduler" data-edge-label="内部请求" data-edge-key="0" data-edge-id="input-plan" data-composition-points="204,70;300,70" data-composition-crossover="halo" data-composition-independent="true" d="M 204 70 L 300 70" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:1">
+          <path data-graph-role="automatic-crossover-underlay" d="M 374 100 L 374 180" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="scheduler" data-edge-to="worker" data-edge-label="批次" data-edge-key="1" data-edge-id="schedule-call" data-composition-points="374,100;374,180" data-composition-crossover="halo" data-composition-independent="true" d="M 374 100 L 374 180" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:2">
+          <path data-graph-role="automatic-crossover-underlay" d="M 371 240 L 371 320" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="worker" data-edge-to="runner" data-edge-label="调用" data-edge-key="2" data-edge-id="worker-runner" data-composition-points="371,240;371,320" data-composition-crossover="halo" data-composition-independent="true" d="M 371 240 L 371 320" class="a-default" data-animate="edge" style="--step:2" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:3">
+          <path data-graph-role="automatic-crossover-underlay" d="M 364 380 L 364 460" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="runner" data-edge-to="model" data-edge-label="前向" data-edge-key="3" data-edge-id="runner-model" data-composition-points="364,380;364,460" data-composition-crossover="halo" data-composition-independent="true" d="M 364 380 L 364 460" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:4">
+          <path data-graph-role="automatic-crossover-underlay" d="M 361 520 L 361 600" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="model" data-edge-to="attention" data-edge-label="子层" data-edge-key="4" data-edge-id="model-attention" data-composition-points="361,520;361,600" data-composition-crossover="halo" data-composition-independent="true" d="M 361 520 L 361 600" class="a-default" data-animate="edge" style="--step:4" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:5">
+          <path data-graph-role="automatic-crossover-underlay" d="M 300 630 L 174 630" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="attention" data-edge-to="kernel" data-edge-label="后端算子" data-edge-key="5" data-edge-id="attention-kernel" data-composition-points="300,630;174,630" data-composition-crossover="halo" data-composition-independent="true" d="M 300 630 L 174 630" class="a-default" data-animate="edge" style="--step:5" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:6">
+          <path data-graph-role="automatic-crossover-underlay" d="M 360 100 L 360 116 Q 360 124 352 124 L 125.5 124 Q 117.5 124 117.5 132 L 117.5 180" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="scheduler" data-edge-to="return" data-edge-label="采样 IDs" data-edge-key="6" data-edge-id="output-token" data-composition-points="360,100;360,124;117.5,124;117.5,180" data-composition-crossover="halo" data-composition-independent="true" d="M 360 100 L 360 116 Q 360 124 352 124 L 125.5 124 Q 117.5 124 117.5 132 L 117.5 180" class="a-default" data-animate="edge" style="--step:6" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:7">
+          <path data-graph-role="automatic-crossover-underlay" d="M 103.5 180 L 103.5 100" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="return" data-edge-to="input" data-edge-label="文本片段" data-edge-key="7" data-edge-id="output-text" data-composition-points="103.5,180;103.5,100" data-composition-crossover="halo" data-composition-independent="true" d="M 103.5 180 L 103.5 100" class="a-default" data-animate="edge" style="--step:7" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        </g>
+
+        <!-- Components -->
+        <g id="node-input" data-node-id="input" data-node-label="TokenizerManager" tabindex="0" role="button" aria-label="聚焦TokenizerManager，整理输入与响应, 架构组件" aria-pressed="false" data-node-kind="backend" data-node-sublabel="整理输入与响应" data-node-context="架构组件">
+          <title>TokenizerManager · 整理输入与响应 · 架构组件</title>
+          <rect x="40" y="40" width="164" height="60" rx="8" class="c-mask"/>
+          <rect x="40" y="40" width="164" height="60" rx="8" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 46) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="122" y="68" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">TokenizerManager</text>
+        <text data-detail="context" x="122" y="84" class="t-muted" font-size="10.5" text-anchor="middle">整理输入与响应</text>
+        </g>
+
+        <g id="node-scheduler" data-node-id="scheduler" data-node-label="Scheduler" tabindex="0" role="button" aria-label="聚焦Scheduler，选择本轮请求与 token, 调度与本 rank 执行对象" aria-pressed="false" data-node-kind="backend" data-node-sublabel="选择本轮请求与 token" data-node-context="调度与本 rank 执行对象">
+          <title>Scheduler · 选择本轮请求与 token · 调度与本 rank 执行对象</title>
+          <rect x="300" y="40" width="134" height="60" rx="8" class="c-mask"/>
+          <rect x="300" y="40" width="134" height="60" rx="8" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(306 46) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="367" y="68" class="t-primary" font-size="14" font-weight="600" text-anchor="middle">Scheduler</text>
+        <text data-detail="context" x="367" y="84" class="t-muted" font-size="10.5" text-anchor="middle">选择本轮请求与 token</text>
+        </g>
+
+        <g id="node-worker" data-node-id="worker" data-node-label="TpModelWorker" tabindex="0" role="button" aria-label="聚焦TpModelWorker，衔接本 rank 的执行, 调度与本 rank 执行对象" aria-pressed="false" data-node-kind="backend" data-node-sublabel="衔接本 rank 的执行" data-node-context="调度与本 rank 执行对象">
+          <title>TpModelWorker · 衔接本 rank 的执行 · 调度与本 rank 执行对象</title>
+          <rect x="300" y="180" width="142" height="60" rx="8" class="c-mask"/>
+          <rect x="300" y="180" width="142" height="60" rx="8" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(306 186) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="371" y="208" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">TpModelWorker</text>
+        <text data-detail="context" x="371" y="224" class="t-muted" font-size="10.5" text-anchor="middle">衔接本 rank 的执行</text>
+        </g>
+
+        <g id="node-runner" data-node-id="runner" data-node-label="ModelRunner" tabindex="0" role="button" aria-label="聚焦ModelRunner，准备输入并组织前向, 调度与本 rank 执行对象" aria-pressed="false" data-node-kind="backend" data-node-sublabel="准备输入并组织前向" data-node-context="调度与本 rank 执行对象">
+          <title>ModelRunner · 准备输入并组织前向 · 调度与本 rank 执行对象</title>
+          <rect x="300" y="320" width="128" height="60" rx="8" class="c-mask"/>
+          <rect x="300" y="320" width="128" height="60" rx="8" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(306 326) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="364" y="348" class="t-primary" font-size="12.1" font-weight="600" text-anchor="middle">ModelRunner</text>
+        <text data-detail="context" x="364" y="364" class="t-muted" font-size="10.5" text-anchor="middle">准备输入并组织前向</text>
+        </g>
+
+        <g id="node-model" data-node-id="model" data-node-label="Model" tabindex="0" role="button" aria-label="聚焦Model，定义模型各层的计算, 模型计算结构与算子实现" aria-pressed="false" data-node-kind="backend" data-node-sublabel="定义模型各层的计算" data-node-context="模型计算结构与算子实现">
+          <title>Model · 定义模型各层的计算 · 模型计算结构与算子实现</title>
+          <rect x="300" y="460" width="122" height="60" rx="8" class="c-mask"/>
+          <rect x="300" y="460" width="122" height="60" rx="8" class="c-backend" data-animate="node" style="--step:4" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(306 466) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="361" y="488" class="t-primary" font-size="14" font-weight="600" text-anchor="middle">Model</text>
+        <text data-detail="context" x="361" y="504" class="t-muted" font-size="10.5" text-anchor="middle">定义模型各层的计算</text>
+        </g>
+
+        <g id="node-attention" data-node-id="attention" data-node-label="Attention" tabindex="0" role="button" aria-label="聚焦Attention，结合当前输入与历史 KV, 模型计算结构与算子实现" aria-pressed="false" data-node-kind="backend" data-node-sublabel="结合当前输入与历史 KV" data-node-context="模型计算结构与算子实现">
+          <title>Attention · 结合当前输入与历史 KV · 模型计算结构与算子实现</title>
+          <rect x="300" y="600" width="141" height="60" rx="8" class="c-mask"/>
+          <rect x="300" y="600" width="141" height="60" rx="8" class="c-backend" data-animate="node" style="--step:5" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(306 606) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="370.5" y="628" class="t-primary" font-size="14" font-weight="600" text-anchor="middle">Attention</text>
+        <text data-detail="context" x="370.5" y="644" class="t-muted" font-size="10.5" text-anchor="middle">结合当前输入与历史 KV</text>
+        </g>
+
+        <g id="node-kernel" data-node-id="kernel" data-node-label="Kernel" tabindex="0" role="button" aria-label="聚焦Kernel，在设备上执行具体算子, 模型计算结构与算子实现" aria-pressed="false" data-node-kind="backend" data-node-sublabel="在设备上执行具体算子" data-node-context="模型计算结构与算子实现">
+          <title>Kernel · 在设备上执行具体算子 · 模型计算结构与算子实现</title>
+          <rect x="40" y="600" width="134" height="60" rx="8" class="c-mask"/>
+          <rect x="40" y="600" width="134" height="60" rx="8" class="c-backend" data-animate="node" style="--step:6" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 606) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="107" y="628" class="t-primary" font-size="14" font-weight="600" text-anchor="middle">Kernel</text>
+        <text data-detail="context" x="107" y="644" class="t-muted" font-size="10.5" text-anchor="middle">在设备上执行具体算子</text>
+        </g>
+
+        <g id="node-return" data-node-id="return" data-node-label="Detokenizer" tabindex="0" role="button" aria-label="聚焦Detokenizer，将 token IDs 转为文本, 架构组件" aria-pressed="false" data-node-kind="backend" data-node-sublabel="将 token IDs 转为文本" data-node-context="架构组件">
+          <title>Detokenizer · 将 token IDs 转为文本 · 架构组件</title>
+          <rect x="40" y="180" width="141" height="60" rx="8" class="c-mask"/>
+          <rect x="40" y="180" width="141" height="60" rx="8" class="c-backend" data-animate="node" style="--step:7" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(46 186) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="110.5" y="208" class="t-primary" font-size="14" font-weight="600" text-anchor="middle">Detokenizer</text>
+        <text data-detail="context" x="110.5" y="224" class="t-muted" font-size="10.5" text-anchor="middle">将 token IDs 转为文本</text>
+        </g>
+
+        <!-- Connection labels -->
+        <g data-detail="context" data-edge-from="input" data-edge-to="scheduler" data-edge-label="内部请求" data-edge-key="0" data-edge-id="input-plan">
+          <rect x="227.8" y="50" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="252" y="60" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">内部请求</text>
+        </g>
+        <g data-detail="context" data-edge-from="scheduler" data-edge-to="worker" data-edge-label="批次" data-edge-key="1" data-edge-id="schedule-call">
+          <rect x="380" y="133" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="395" y="143" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">批次</text>
+        </g>
+        <g data-detail="context" data-edge-from="worker" data-edge-to="runner" data-edge-label="调用" data-edge-key="2" data-edge-id="worker-runner">
+          <rect x="335" y="273" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="350" y="283" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">调用</text>
+        </g>
+        <g data-detail="context" data-edge-from="runner" data-edge-to="model" data-edge-label="前向" data-edge-key="3" data-edge-id="runner-model">
+          <rect x="328" y="413" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="343" y="423" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">前向</text>
+        </g>
+        <g data-detail="context" data-edge-from="model" data-edge-to="attention" data-edge-label="子层" data-edge-key="4" data-edge-id="model-attention">
+          <rect x="325" y="553" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="340" y="563" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">子层</text>
+        </g>
+        <g data-detail="context" data-edge-from="attention" data-edge-to="kernel" data-edge-label="后端算子" data-edge-key="5" data-edge-id="attention-kernel">
+          <rect x="212.8" y="610" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="237" y="620" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">后端算子</text>
+        </g>
+        <g data-detail="context" data-edge-from="scheduler" data-edge-to="return" data-edge-label="采样 IDs" data-edge-key="6" data-edge-id="output-token">
+          <rect x="214.55" y="104" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="238.75" y="114" class="t-edge-default" font-size="9.6" font-weight="500" text-anchor="middle">采样 IDs</text>
+        </g>
+        <g data-detail="context" data-edge-from="return" data-edge-to="input" data-edge-label="文本片段" data-edge-key="7" data-edge-id="output-text">
+          <rect x="49.099999999999994" y="133" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="73.3" y="143" class="t-edge-default" font-size="10" font-weight="500" text-anchor="middle">文本片段</text>
+        </g>
+
+        <!-- Boundary labels (foreground masks keep routes out of titles) -->
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="0" data-composition-frame-kind="region" data-composition-frame-label="调度与本 rank 执行对象">
+          <rect data-graph-role="structural-frame-label-mask" x="274" y="20" width="128.8" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="278" y="33" class="t-cloud" font-size="9" font-weight="600">调度与本 rank 执行对象</text>
+        </g>
+
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="1" data-composition-frame-kind="region" data-composition-frame-label="模型计算结构与算子实现">
+          <rect data-graph-role="structural-frame-label-mask" x="14" y="440" width="128.8" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="18" y="453" class="t-cloud" font-size="9" font-weight="600">模型计算结构与算子实现</text>
+        </g>
+
+        <!-- Legend -->
+        <g data-legend="" data-legend-bridge="">
+          <text x="40" y="712" class="t-primary" font-size="12" font-weight="650">图例</text>
+          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="模型服务组件" data-legend-x="40" data-legend-baseline="732" data-legend-width="118">
+            <rect x="40" y="723" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
+            <text x="62" y="732" class="t-muted" font-size="10" font-weight="500">模型服务组件</text>
+          </g>
+        </g>
+      </svg>

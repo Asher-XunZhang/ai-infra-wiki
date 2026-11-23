@@ -1,0 +1,162 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "每轮选择一条图执行路径",
+    "locale": "zh-CN",
+    "output": "graph-sg.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "判断与执行"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "control",
+      "label": "本轮判断与处理"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "shape",
+      "type": "backend",
+      "label": "本批条件?",
+      "sublabel": "形状 / 模式 / 后端",
+      "sources": [
+        {
+          "path": "python/sglang/srt/model_executor/model_runner.py",
+          "line": 1980,
+          "end_line": 2035
+        }
+      ],
+      "lane": "control",
+      "col": 0,
+      "width": 160,
+      "height": 66
+    },
+    {
+      "id": "decode",
+      "type": "backend",
+      "label": "Decode graph",
+      "sublabel": "满足 Decode 图条件",
+      "sources": [
+        {
+          "path": "python/sglang/srt/model_executor/model_runner.py",
+          "line": 1980,
+          "end_line": 2035
+        }
+      ],
+      "lane": "control",
+      "col": 1,
+      "yOffset": -100,
+      "width": 160,
+      "height": 66
+    },
+    {
+      "id": "piece",
+      "type": "backend",
+      "label": "Prefill graph",
+      "sublabel": "满足 Extend 图条件",
+      "sources": [
+        {
+          "path": "python/sglang/srt/model_executor/model_runner.py",
+          "line": 1980,
+          "end_line": 2035
+        }
+      ],
+      "lane": "control",
+      "col": 1,
+      "yOffset": 0,
+      "width": 160,
+      "height": 66
+    },
+    {
+      "id": "eager",
+      "type": "backend",
+      "label": "Eager",
+      "sublabel": "普通执行回退",
+      "sources": [
+        {
+          "path": "python/sglang/srt/model_executor/model_runner.py",
+          "line": 1980,
+          "end_line": 2035
+        }
+      ],
+      "lane": "control",
+      "col": 1,
+      "yOffset": 100,
+      "width": 160,
+      "height": 66
+    },
+    {
+      "id": "output",
+      "type": "backend",
+      "label": "本轮输出",
+      "sublabel": "仍计算当前输入",
+      "sources": [
+        {
+          "path": "python/sglang/srt/model_executor/runner/eager_runner.py",
+          "line": 252,
+          "end_line": 273
+        }
+      ],
+      "lane": "control",
+      "col": 2,
+      "width": 160,
+      "height": 66
+    }
+  ],
+  "edges": [
+    {
+      "id": "choose-decode",
+      "from": "shape",
+      "to": "decode",
+      "label": "Decode graph"
+    },
+    {
+      "id": "choose-piece",
+      "from": "shape",
+      "to": "piece",
+      "label": "Prefill graph"
+    },
+    {
+      "id": "choose-eager",
+      "from": "shape",
+      "to": "eager",
+      "label": "Eager"
+    },
+    {
+      "id": "decode-output",
+      "from": "decode",
+      "to": "output"
+    },
+    {
+      "id": "piece-output",
+      "from": "piece",
+      "to": "output"
+    },
+    {
+      "id": "eager-output",
+      "from": "eager",
+      "to": "output"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "条件与结果",
+      "items": [
+        "捕获属于提前准备；每轮更新输入，并且只执行一条匹配路径。",
+        "SGLang 的 BCG 是可选后端能力；不作为额外串行阶段。"
+      ]
+    }
+  ]
+}

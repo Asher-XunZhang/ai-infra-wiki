@@ -1,0 +1,139 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "本轮能接纳这个请求吗？",
+    "locale": "zh-CN",
+    "output": "admission-sg.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "判断与执行"
+        }
+      }
+    }
+  },
+  "lanes": [
+    {
+      "id": "control",
+      "label": "本轮判断与处理"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "candidate",
+      "type": "backend",
+      "label": "候选请求",
+      "sublabel": "waiting / running",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/schedule_policy.py",
+          "line": 814,
+          "end_line": 850
+        },
+        {
+          "path": "python/sglang/srt/managers/schedule_policy.py",
+          "line": 1617,
+          "end_line": 1633
+        }
+      ],
+      "lane": "control",
+      "col": 0,
+      "width": 160,
+      "height": 66
+    },
+    {
+      "id": "budget",
+      "type": "backend",
+      "label": "预算与 KV 允许?",
+      "sublabel": "token 工作量 + 空间",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/schedule_policy.py",
+          "line": 814,
+          "end_line": 850
+        },
+        {
+          "path": "python/sglang/srt/managers/schedule_policy.py",
+          "line": 1617,
+          "end_line": 1633
+        }
+      ],
+      "lane": "control",
+      "col": 1,
+      "width": 160,
+      "height": 66
+    },
+    {
+      "id": "batch",
+      "type": "backend",
+      "label": "进入本轮计划",
+      "sublabel": "ScheduleBatch",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 4685,
+          "end_line": 4712
+        }
+      ],
+      "lane": "control",
+      "col": 2,
+      "yOffset": -70,
+      "width": 160,
+      "height": 66
+    },
+    {
+      "id": "wait",
+      "type": "backend",
+      "label": "继续等待",
+      "sublabel": "本轮不交给 GPU",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 4685,
+          "end_line": 4712
+        }
+      ],
+      "lane": "control",
+      "col": 2,
+      "yOffset": 70,
+      "width": 160,
+      "height": 66
+    }
+  ],
+  "edges": [
+    {
+      "id": "check",
+      "from": "candidate",
+      "to": "budget",
+      "label": "检查"
+    },
+    {
+      "id": "accept",
+      "from": "budget",
+      "to": "batch",
+      "label": "是"
+    },
+    {
+      "id": "defer",
+      "from": "budget",
+      "to": "wait",
+      "label": "否"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "条件与结果",
+      "items": [
+        "这是本课准入约束的简化，不替代源码中的完整分支顺序。",
+        "预算表仍保留具体工作量；流程图不编造 GPU 耗时。"
+      ]
+    }
+  ]
+}

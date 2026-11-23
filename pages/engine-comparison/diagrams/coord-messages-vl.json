@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "可选 DP 扩展：负载与 request-wave",
+    "locale": "zh-CN",
+    "output": "coord-messages-vl.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/vllm-project/vllm",
+      "revision": "4ba787ec9959e566d3b587a796dff07673324da5"
+    },
+    "legend": {
+      "entries": {
+        "default": {
+          "label": "交接 / 条件"
+        },
+        "emphasis": {
+          "label": "当前主线"
+        }
+      }
+    }
+  },
+  "participants": [
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "EngineCore",
+      "sublabel": "各 DP 引擎",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/core.py",
+          "line": 667,
+          "end_line": 697
+        }
+      ]
+    },
+    {
+      "id": "rpc",
+      "type": "backend",
+      "label": "DPCoordinator",
+      "sublabel": "仅 DP > 1",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/coordinator.py",
+          "line": 20,
+          "end_line": 50
+        }
+      ]
+    },
+    {
+      "id": "input",
+      "type": "backend",
+      "label": "AsyncLLM",
+      "sublabel": "前端路由参考",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/async_llm.py",
+          "line": 879,
+          "end_line": 910
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "id": "load-report",
+      "from": "core",
+      "to": "rpc",
+      "label": "负载 / 运行状态",
+      "y": 160
+    },
+    {
+      "id": "load",
+      "from": "rpc",
+      "to": "input",
+      "label": "负载 / request-wave",
+      "y": 234
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "依赖与边界",
+      "items": [
+        "本章默认 DP=1；此处单独展示 DP>1 的可选扩展。",
+        "状态发布不是 KV 载荷的传输路径。"
+      ]
+    }
+  ]
+}

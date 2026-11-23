@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 995 480" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="">
+        <title id="archify-diagram-title">每轮选择一条图执行路径</title>
+        <desc id="archify-diagram-description">由 Archify 生成的工作流图。</desc>
+        <style>.c-mask { fill:var(--ac-surface,#101720); }
+.c-grid { fill:none; stroke:var(--ac-grid,#1c2834); }
+.c-region,.c-security-group { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); stroke-width:1; }
+.c-lane { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); }
+.c-backend,.c-frontend,.c-cloud,.c-database,.c-messagebus,.c-security,.c-external,
+.c-start,.c-active,.c-waiting,.c-decision,.c-success,.c-failure,.c-neutral {
+ fill:var(--ac-node,#172433); stroke:var(--ac-accent,#94a8ff); }
+.a-default,.a-emphasis,.a-dashed,.a-return,.a-security { fill:none; stroke:var(--ac-line,#91a0b4); }
+.a-dashed { stroke-dasharray:4 4; }
+.a-return { stroke-dasharray:3 4; }
+.a-emphasis { stroke-width:2; }
+.m-default,.m-emphasis,.m-dashed,.m-return,.m-security { fill:var(--ac-line,#91a0b4); }
+.t-primary { fill:var(--ac-text,#edf2f7); }
+.t-muted,.t-label,.t-small { fill:var(--ac-muted,#a8b7c8); }
+text { fill:var(--ac-text,#edf2f7); font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+[data-semantic-sigil] { display:none; }
+[data-graph-role="structural-frame-label-mask"],.phase-chip { fill:var(--ac-surface,#101720); stroke:var(--ac-frame,#60738a); }
+</style><!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-default" />
+          </marker>
+          <marker id="arrowhead-emphasis" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-emphasis" />
+          </marker>
+          <marker id="arrowhead-security" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-security" />
+          </marker>
+          <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-dashed" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" class="c-grid" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Swimlanes -->
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="939" height="304" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="74" class="t-muted" font-size="10" font-weight="600">01 / 本轮判断与处理</text>
+
+        <!-- Phase headers -->
+
+
+        <!-- Workflow groups -->
+
+
+        <!-- Edge paths -->
+        <path data-edge-from="shape" data-edge-to="decode" data-edge-label="Decode graph" data-edge-key="0" data-edge-id="choose-decode" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="128,186;128,119;288.4,119" d="M 128 186 L 128 127 Q 128 119 136 119 L 288.4 119" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="shape" data-edge-to="eager" data-edge-label="Eager" data-edge-key="1" data-edge-id="choose-eager" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="128,252;128,319;288.4,319" d="M 128 252 L 128 311 Q 128 319 136 319 L 288.4 319" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="shape" data-edge-to="piece" data-edge-label="Prefill graph" data-edge-key="2" data-edge-id="choose-piece" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="208,219;288.4,219" d="M 208 219 L 288.4 219" class="a-default" data-animate="edge" style="--step:2" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="decode" data-edge-to="output" data-edge-key="3" data-edge-id="decode-output" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="448.4,119;560.4,119;560.4,186" d="M 448.4 119 L 552.4 119 Q 560.4 119 560.4 127 L 560.4 186" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="eager" data-edge-to="output" data-edge-key="4" data-edge-id="eager-output" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="448.4,319;560.4,319;560.4,252" d="M 448.4 319 L 552.4 319 Q 560.4 319 560.4 311 L 560.4 252" class="a-default" data-animate="edge" style="--step:4" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="piece" data-edge-to="output" data-edge-key="5" data-edge-id="piece-output" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="448.4,219;480.4,219" d="M 448.4 219 L 480.4 219" class="a-default" data-animate="edge" style="--step:5" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+
+        <!-- Nodes -->
+        <g id="node-shape" data-node-id="shape" data-node-label="本批条件?" tabindex="0" role="button" aria-label="聚焦本批条件?，形状 / 模式 / 后端, 本轮判断与处理" aria-pressed="false" data-node-kind="backend" data-node-sublabel="形状 / 模式 / 后端" data-node-context="本轮判断与处理">
+          <title>本批条件? · 形状 / 模式 / 后端 · 本轮判断与处理</title>
+          <rect x="48" y="186" width="160" height="66" rx="8" class="c-mask"/>
+          <rect x="48" y="186" width="160" height="66" rx="8" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(54 192) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="128" y="207" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">本批条件?</text>
+          <text data-detail="context" x="128" y="224" class="t-muted" font-size="8" text-anchor="middle">形状 / 模式 / 后端</text>
+        </g>
+
+        <g id="node-decode" data-node-id="decode" data-node-label="Decode graph" tabindex="0" role="button" aria-label="聚焦Decode graph，满足 Decode 图条件, 本轮判断与处理" aria-pressed="false" data-node-kind="backend" data-node-sublabel="满足 Decode 图条件" data-node-context="本轮判断与处理">
+          <title>Decode graph · 满足 Decode 图条件 · 本轮判断与处理</title>
+          <rect x="288.4" y="86" width="160" height="66" rx="8" class="c-mask"/>
+          <rect x="288.4" y="86" width="160" height="66" rx="8" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(294.4 92) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="366.79999999999995" y="107" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Decode graph</text>
+          <text data-detail="context" x="368.4" y="124" class="t-muted" font-size="8" text-anchor="middle">满足 Decode 图条件</text>
+        </g>
+
+        <g id="node-eager" data-node-id="eager" data-node-label="Eager" tabindex="0" role="button" aria-label="聚焦Eager，普通执行回退, 本轮判断与处理" aria-pressed="false" data-node-kind="backend" data-node-sublabel="普通执行回退" data-node-context="本轮判断与处理">
+          <title>Eager · 普通执行回退 · 本轮判断与处理</title>
+          <rect x="288.4" y="286" width="160" height="66" rx="8" class="c-mask"/>
+          <rect x="288.4" y="286" width="160" height="66" rx="8" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(294.4 292) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="368.4" y="307" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Eager</text>
+          <text data-detail="context" x="368.4" y="324" class="t-muted" font-size="8" text-anchor="middle">普通执行回退</text>
+        </g>
+
+        <g id="node-piece" data-node-id="piece" data-node-label="Prefill graph" tabindex="0" role="button" aria-label="聚焦Prefill graph，满足 Extend 图条件, 本轮判断与处理" aria-pressed="false" data-node-kind="backend" data-node-sublabel="满足 Extend 图条件" data-node-context="本轮判断与处理">
+          <title>Prefill graph · 满足 Extend 图条件 · 本轮判断与处理</title>
+          <rect x="288.4" y="186" width="160" height="66" rx="8" class="c-mask"/>
+          <rect x="288.4" y="186" width="160" height="66" rx="8" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(294.4 192) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="363.5" y="207" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Prefill graph</text>
+          <text data-detail="context" x="368.4" y="224" class="t-muted" font-size="8" text-anchor="middle">满足 Extend 图条件</text>
+        </g>
+
+        <g id="node-output" data-node-id="output" data-node-label="本轮输出" tabindex="0" role="button" aria-label="聚焦本轮输出，仍计算当前输入, 本轮判断与处理" aria-pressed="false" data-node-kind="backend" data-node-sublabel="仍计算当前输入" data-node-context="本轮判断与处理">
+          <title>本轮输出 · 仍计算当前输入 · 本轮判断与处理</title>
+          <rect x="480.4" y="186" width="160" height="66" rx="8" class="c-mask"/>
+          <rect x="480.4" y="186" width="160" height="66" rx="8" class="c-backend" data-animate="node" style="--step:4" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(486.4 192) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="560.4" y="207" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">本轮输出</text>
+          <text data-detail="context" x="560.4" y="224" class="t-muted" font-size="8" text-anchor="middle">仍计算当前输入</text>
+        </g>
+
+        <!-- Edge labels -->
+        <g data-detail="context" data-edge-from="shape" data-edge-to="decode" data-edge-label="Decode graph" data-edge-key="0" data-edge-id="choose-decode">
+          <rect x="174.39999999999998" y="99" width="67.6" height="14" rx="3" class="c-mask"/>
+          <text x="208.2" y="109" class="t-muted" font-size="8" text-anchor="middle">Decode graph</text>
+        </g>
+        <g data-detail="context" data-edge-from="shape" data-edge-to="eager" data-edge-label="Eager" data-edge-key="1" data-edge-id="choose-eager">
+          <rect x="191.2" y="299" width="34" height="14" rx="3" class="c-mask"/>
+          <text x="208.2" y="309" class="t-muted" font-size="8" text-anchor="middle">Eager</text>
+        </g>
+        <g data-detail="context" data-edge-from="shape" data-edge-to="piece" data-edge-label="Prefill graph" data-edge-key="2" data-edge-id="choose-piece">
+          <rect x="212" y="199" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="248.2" y="209" class="t-muted" font-size="8" text-anchor="middle">Prefill graph</text>
+        </g>
+
+
+
+
+        <!-- Legend -->
+        <g data-legend="" data-legend-bridge="">
+          <text x="20" y="380" class="t-primary" font-size="12" font-weight="650">图例</text>
+          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="判断与执行" data-legend-x="20" data-legend-baseline="400" data-legend-width="90">
+            <rect x="20" y="392" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+            <text x="42" y="400" class="t-muted" font-size="7.5" font-weight="500">判断与执行</text>
+          </g>
+        </g>
+      </svg>

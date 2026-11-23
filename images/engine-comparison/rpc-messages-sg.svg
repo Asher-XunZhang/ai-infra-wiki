@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 338" data-sequence-column-fit="spread" data-reader-fit="width-first" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-motion-choreography="sequence">
+        <title id="archify-diagram-title">独立管理通道的往返</title>
+        <desc id="archify-diagram-description">由 Archify 生成的时序图。</desc>
+        <style>.c-mask { fill:var(--ac-surface,#101720); }
+.c-grid { fill:none; stroke:var(--ac-grid,#1c2834); }
+.c-region,.c-security-group { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); stroke-width:1; }
+.c-lane { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); }
+.c-backend,.c-frontend,.c-cloud,.c-database,.c-messagebus,.c-security,.c-external,
+.c-start,.c-active,.c-waiting,.c-decision,.c-success,.c-failure,.c-neutral {
+ fill:var(--ac-node,#172433); stroke:var(--ac-accent,#94a8ff); }
+.a-default,.a-emphasis,.a-dashed,.a-return,.a-security { fill:none; stroke:var(--ac-line,#91a0b4); }
+.a-dashed { stroke-dasharray:4 4; }
+.a-return { stroke-dasharray:3 4; }
+.a-emphasis { stroke-width:2; }
+.m-default,.m-emphasis,.m-dashed,.m-return,.m-security { fill:var(--ac-line,#91a0b4); }
+.t-primary { fill:var(--ac-text,#edf2f7); }
+.t-muted,.t-label,.t-small { fill:var(--ac-muted,#a8b7c8); }
+text { fill:var(--ac-text,#edf2f7); font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+[data-semantic-sigil] { display:none; }
+[data-graph-role="structural-frame-label-mask"],.phase-chip { fill:var(--ac-surface,#101720); stroke:var(--ac-frame,#60738a); }
+</style><!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-default" />
+          </marker>
+          <marker id="arrowhead-emphasis" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-emphasis" />
+          </marker>
+          <marker id="arrowhead-security" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-security" />
+          </marker>
+          <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-dashed" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" class="c-grid" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Time Segments -->
+
+
+        <!-- Lifelines -->
+        <path d="M 157 142 L 157 242" class="a-default" stroke-width="0.8" stroke-dasharray="3,7"/>
+        <path d="M 425 142 L 425 242" class="a-default" stroke-width="0.8" stroke-dasharray="3,7"/>
+
+        <!-- Activations -->
+
+
+        <!-- Messages -->
+        <g data-edge-from="rpc" data-edge-to="scheduler" data-edge-label="RpcReqInput · DEALER" data-edge-key="0" data-edge-id="rpc-request">
+          <path data-composition-edge-from="rpc" data-composition-edge-to="scheduler" data-composition-edge-id="rpc-request" data-composition-points="164,160;418,160" d="M 164 160 L 418 160" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <g data-detail="context">
+          <rect x="219" y="140" width="144" height="18" rx="3" class="c-mask"/>
+          <text x="291" y="150" class="t-muted" font-size="11" text-anchor="middle">RpcReqInput · DEALER</text>
+        </g>
+        </g>
+
+        <g data-edge-from="scheduler" data-edge-to="rpc" data-edge-label="RpcReqOutput · 状态" data-edge-key="1" data-edge-id="rpc-result">
+          <path data-composition-edge-from="scheduler" data-composition-edge-to="rpc" data-composition-edge-id="rpc-result" data-composition-points="418,234;164,234" d="M 418 234 L 164 234" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <g data-detail="context">
+          <rect x="222.3" y="214" width="137.39999999999998" height="18" rx="3" class="c-mask"/>
+          <text x="291" y="224" class="t-muted" font-size="11" text-anchor="middle">RpcReqOutput · 状态</text>
+        </g>
+        </g>
+
+        <!-- Segment Labels -->
+
+
+        <!-- Participants -->
+        <g id="node-rpc" data-node-id="rpc" data-node-label="Engine RPC" tabindex="0" role="button" aria-label="聚焦Engine RPC，管理调用, 时序参与者" aria-pressed="false" data-node-kind="backend" data-node-sublabel="管理调用" data-node-context="时序参与者">
+          <title>Engine RPC · 管理调用 · 时序参与者</title>
+          <rect x="62" y="72" width="190" height="60" rx="6" class="c-mask"/>
+          <rect x="62" y="72" width="190" height="60" rx="6" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(68 78) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="157" y="101" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Engine RPC</text>
+          <text data-detail="context" x="157" y="115" class="t-muted" font-size="7" text-anchor="middle">管理调用</text>
+        </g>
+
+        <g id="node-scheduler" data-node-id="scheduler" data-node-label="Scheduler" tabindex="0" role="button" aria-label="聚焦Scheduler，执行管理方法, 时序参与者" aria-pressed="false" data-node-kind="backend" data-node-sublabel="执行管理方法" data-node-context="时序参与者">
+          <title>Scheduler · 执行管理方法 · 时序参与者</title>
+          <rect x="330" y="72" width="190" height="60" rx="6" class="c-mask"/>
+          <rect x="330" y="72" width="190" height="60" rx="6" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(336 78) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="425" y="101" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Scheduler</text>
+          <text data-detail="context" x="425" y="115" class="t-muted" font-size="7" text-anchor="middle">执行管理方法</text>
+        </g>
+
+        <!-- Legend -->
+        <g data-legend="">
+          <text x="40" y="264" class="t-primary" font-size="12" font-weight="650">图例</text>
+          <g data-legend-semantic-kind="default" data-legend-x="40" data-legend-baseline="284" data-legend-width="112">
+            <path d="M 40 281 L 74 281" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+            <text x="83" y="284" class="t-muted" font-size="10" font-weight="500">交接 / 条件</text>
+          </g>
+        </g>
+      </svg>

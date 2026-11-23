@@ -15,17 +15,19 @@ from pathlib import Path
 from urllib.parse import parse_qsl, quote, unquote, urlencode, urlsplit, urlunsplit
 from build_learning_navigation import build as check_learning_navigation
 from build_foundations import build as check_foundations
+from build_engine_archify import build as check_engine_archify
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "pages"
 OUTPUT = ROOT / ".pages-dist"
 PUBLIC_IMAGES = ROOT / "images"
-PUBLIC_IMAGE_TOPICS = ("attention-variants",)
+PUBLIC_IMAGE_TOPICS = ("attention-variants", "engine-comparison")
 REFERENCE = re.compile(r"(?P<prefix>\b(?:src|href)\s*=\s*)(?P<quote>[\"'])(?P<url>[^\"']+)(?P=quote)")
 PUBLIC_ROOT = re.compile(r'data-public-root="[^"]*"')
 
 
 def build():
+    check_engine_archify(check=True)
     check_learning_navigation(check=True)
     check_foundations(check=True)
     # This directory is reserved for generated deployment output.

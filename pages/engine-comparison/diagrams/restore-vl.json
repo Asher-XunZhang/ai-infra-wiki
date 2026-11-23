@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "分层恢复：控制与 KV 驻留",
+    "locale": "zh-CN",
+    "output": "restore-vl.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/vllm-project/vllm",
+      "revision": "4ba787ec9959e566d3b587a796dff07673324da5"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "职责组件"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "auto"
+  },
+  "components": [
+    {
+      "id": "storage",
+      "type": "backend",
+      "label": "后端存储",
+      "sublabel": "可选持久层",
+      "sources": [
+        {
+          "path": "vllm/distributed/kv_transfer/kv_connector/v1/base.py",
+          "line": 333,
+          "end_line": 360
+        }
+      ]
+    },
+    {
+      "id": "host",
+      "type": "backend",
+      "label": "Worker Connector",
+      "sublabel": "绑定 metadata / 发起加载",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/kv_connector.py",
+          "line": 75,
+          "end_line": 96
+        }
+      ]
+    },
+    {
+      "id": "gpu",
+      "type": "backend",
+      "label": "GPU KV cache",
+      "sublabel": "恢复的目标地址",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/kv_connector.py",
+          "line": 118,
+          "end_line": 153
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "load-control",
+      "from": "host",
+      "to": "storage",
+      "label": "加载控制"
+    },
+    {
+      "id": "restore-gpu",
+      "from": "storage",
+      "to": "gpu",
+      "label": "KV 载荷"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "阅读条件",
+      "items": [
+        "分层能力取决于后端；Connector 发起控制，KV 载荷写入 GPU。",
+        "这是独立的可选缓存场景，不是每条 P/D 请求的必经步骤。"
+      ]
+    }
+  ]
+}

@@ -1,1 +1,4 @@
 /.pages-dist/
+
+# Archify authoring viewers and local validation receipts
+.archify/

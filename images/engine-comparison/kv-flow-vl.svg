@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 638 404" data-reader-fit="intrinsic-height" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-motion-choreography="stream">
+        <title id="archify-diagram-title">KV 载荷、控制与可用条件</title>
+        <desc id="archify-diagram-description">由 Archify 生成的数据流图。</desc>
+        <style>.c-mask { fill:var(--ac-surface,#101720); }
+.c-grid { fill:none; stroke:var(--ac-grid,#1c2834); }
+.c-region,.c-security-group { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); stroke-width:1; }
+.c-lane { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); }
+.c-backend,.c-frontend,.c-cloud,.c-database,.c-messagebus,.c-security,.c-external,
+.c-start,.c-active,.c-waiting,.c-decision,.c-success,.c-failure,.c-neutral {
+ fill:var(--ac-node,#172433); stroke:var(--ac-accent,#94a8ff); }
+.a-default,.a-emphasis,.a-dashed,.a-return,.a-security { fill:none; stroke:var(--ac-line,#91a0b4); }
+.a-dashed { stroke-dasharray:4 4; }
+.a-return { stroke-dasharray:3 4; }
+.a-emphasis { stroke-width:2; }
+.m-default,.m-emphasis,.m-dashed,.m-return,.m-security { fill:var(--ac-line,#91a0b4); }
+.t-primary { fill:var(--ac-text,#edf2f7); }
+.t-muted,.t-label,.t-small { fill:var(--ac-muted,#a8b7c8); }
+text { fill:var(--ac-text,#edf2f7); font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+[data-semantic-sigil] { display:none; }
+[data-graph-role="structural-frame-label-mask"],.phase-chip { fill:var(--ac-surface,#101720); stroke:var(--ac-frame,#60738a); }
+</style><!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-default" />
+          </marker>
+          <marker id="arrowhead-emphasis" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-emphasis" />
+          </marker>
+          <marker id="arrowhead-security" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-security" />
+          </marker>
+          <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-dashed" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" class="c-grid" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Data Stages -->
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="stage" data-composition-frame-id="0" x="16" y="46" width="168" height="284" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="100" y="68" class="t-dim" font-size="9" font-weight="600" text-anchor="middle">01 / 来源 / 控制</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="stage" data-composition-frame-id="1" x="231" y="46" width="168" height="284" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="315" y="68" class="t-dim" font-size="9" font-weight="600" text-anchor="middle">02 / 接收与驻留</text>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="stage" data-composition-frame-id="2" x="446" y="46" width="168" height="284" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="530" y="68" class="t-dim" font-size="9" font-weight="600" text-anchor="middle">03 / 准入后执行</text>
+
+        <!-- Flow paths -->
+        <path data-edge-from="producer" data-edge-to="gpu" data-edge-label="KV 载荷" data-edge-key="0" data-edge-id="payload" data-composition-points="156,157;259,157" d="M 156 157 L 259 157" class="a-emphasis" data-animate="edge" style="--step:0" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="metadata" data-edge-to="receiver" data-edge-label="本地绑定 / 引用" data-edge-key="1" data-edge-id="bind" data-composition-points="156,271;259,271" d="M 156 271 L 259 271" class="a-dashed" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="receiver" data-edge-to="gate" data-edge-label="接收完成状态" data-edge-key="2" data-edge-id="received" data-composition-points="371,280;474,280" d="M 371 280 L 474 280" class="a-default" data-animate="edge" style="--step:2" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="gpu" data-edge-to="gate" data-edge-label="所需 KV 可读" data-edge-key="3" data-edge-id="readable" data-composition-points="371,157;422.5,157;422.5,262;474,262" d="M 371 157 L 422.5 157 L 422.5 262 L 474 262" class="a-dashed" data-animate="edge" style="--step:3" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="gate" data-edge-to="forward" data-edge-label="本轮执行计划" data-edge-key="4" data-edge-id="admit" data-composition-points="530,242;530,186" d="M 530 242 L 530 186" class="a-default" data-animate="edge" style="--step:4" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+
+        <!-- Nodes -->
+        <g id="node-producer" data-node-id="producer" data-node-label="P 侧 GPU KV" tabindex="0" role="button" aria-label="聚焦P 侧 GPU KV，所选后端的 KV 来源, 01 / 来源 / 控制" aria-pressed="false" data-node-kind="backend" data-node-sublabel="所选后端的 KV 来源" data-node-context="01 / 来源 / 控制">
+          <title>P 侧 GPU KV · 所选后端的 KV 来源 · 01 / 来源 / 控制</title>
+          <rect x="44" y="128" width="112" height="58" rx="6" class="c-mask"/>
+          <rect x="44" y="128" width="112" height="58" rx="6" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(50 134) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="100" y="161" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">P 侧 GPU KV</text>
+          <text data-detail="context" x="100" y="174.4" class="t-muted" font-size="7" text-anchor="middle">所选后端的 KV 来源</text>
+        </g>
+
+        <g id="node-gpu" data-node-id="gpu" data-node-label="D 侧 GPU KV" tabindex="0" role="button" aria-label="聚焦D 侧 GPU KV，目标设备地址, 02 / 接收与驻留" aria-pressed="false" data-node-kind="backend" data-node-sublabel="目标设备地址" data-node-context="02 / 接收与驻留">
+          <title>D 侧 GPU KV · 目标设备地址 · 02 / 接收与驻留</title>
+          <rect x="259" y="128" width="112" height="58" rx="6" class="c-mask"/>
+          <rect x="259" y="128" width="112" height="58" rx="6" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(265 134) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="315" y="161" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">D 侧 GPU KV</text>
+          <text data-detail="context" x="315" y="174.4" class="t-muted" font-size="7" text-anchor="middle">目标设备地址</text>
+        </g>
+
+        <g id="node-forward" data-node-id="forward" data-node-label="模型执行" tabindex="0" role="button" aria-label="聚焦模型执行，本轮准入后继续 Decode, 03 / 准入后执行" aria-pressed="false" data-node-kind="backend" data-node-sublabel="本轮准入后继续 Decode" data-node-context="03 / 准入后执行">
+          <title>模型执行 · 本轮准入后继续 Decode · 03 / 准入后执行</title>
+          <rect x="474" y="128" width="112" height="58" rx="6" class="c-mask"/>
+          <rect x="474" y="128" width="112" height="58" rx="6" class="c-backend" data-animate="node" style="--step:5" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(480 134) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="520" y="149" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">模型执行</text>
+          <text data-detail="context" x="530" y="165" class="t-muted" font-size="7" text-anchor="middle">本轮准入后继续 Decode</text>
+        </g>
+
+        <g id="node-metadata" data-node-id="metadata" data-node-label="Scheduler metadata" tabindex="0" role="button" aria-label="聚焦Scheduler metadata，kv_connector_metadata, 01 / 来源 / 控制" aria-pressed="false" data-node-kind="backend" data-node-sublabel="kv_connector_metadata" data-node-context="01 / 来源 / 控制">
+          <title>Scheduler metadata · kv_connector_metadata · 01 / 来源 / 控制</title>
+          <rect x="44" y="242" width="112" height="58" rx="6" class="c-mask"/>
+          <rect x="44" y="242" width="112" height="58" rx="6" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(50 248) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="100" y="274.6" class="t-primary" font-size="9.6" font-weight="600" text-anchor="middle">Scheduler metadata</text>
+          <text data-detail="context" x="100" y="287.9" class="t-muted" font-size="7" text-anchor="middle">kv_connector_metadata</text>
+        </g>
+
+        <g id="node-receiver" data-node-id="receiver" data-node-label="Worker Connector" tabindex="0" role="button" aria-label="聚焦Worker Connector，启动加载 / 汇集结果, 02 / 接收与驻留" aria-pressed="false" data-node-kind="backend" data-node-sublabel="启动加载 / 汇集结果" data-node-context="02 / 接收与驻留">
+          <title>Worker Connector · 启动加载 / 汇集结果 · 02 / 接收与驻留</title>
+          <rect x="259" y="242" width="112" height="58" rx="6" class="c-mask"/>
+          <rect x="259" y="242" width="112" height="58" rx="6" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(265 248) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="315" y="275" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Worker Connector</text>
+          <text data-detail="context" x="315" y="288.4" class="t-muted" font-size="7" text-anchor="middle">启动加载 / 汇集结果</text>
+        </g>
+
+        <g id="node-gate" data-node-id="gate" data-node-label="Scheduler 准入" tabindex="0" role="button" aria-label="聚焦Scheduler 准入，接收 + 元数据 + 预算, 03 / 准入后执行" aria-pressed="false" data-node-kind="backend" data-node-sublabel="接收 + 元数据 + 预算" data-node-context="03 / 准入后执行">
+          <title>Scheduler 准入 · 接收 + 元数据 + 预算 · 03 / 准入后执行</title>
+          <rect x="474" y="242" width="112" height="58" rx="6" class="c-mask"/>
+          <rect x="474" y="242" width="112" height="58" rx="6" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(480 248) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="530" y="275" class="t-primary" font-size="10" font-weight="600" text-anchor="middle">Scheduler 准入</text>
+          <text data-detail="context" x="530" y="288.4" class="t-muted" font-size="7" text-anchor="middle">接收 + 元数据 + 预算</text>
+        </g>
+
+        <!-- Flow labels -->
+        <g data-detail="context" data-edge-from="producer" data-edge-to="gpu" data-edge-label="KV 载荷" data-edge-key="0" data-edge-id="payload">
+          <rect x="184.35" y="136" width="46.3" height="16" rx="4" class="c-mask"/>
+          <text x="207.5" y="147" class="t-edge-emphasis" font-size="8" text-anchor="middle">KV 载荷</text>
+        </g>
+        <g data-detail="context" data-edge-from="metadata" data-edge-to="receiver" data-edge-label="本地绑定 / 引用" data-edge-key="1" data-edge-id="bind">
+          <rect x="164.75" y="250" width="85.5" height="16" rx="4" class="c-mask"/>
+          <text x="207.5" y="261" class="t-edge-dashed" font-size="8" text-anchor="middle">本地绑定 / 引用</text>
+        </g>
+        <g data-detail="context" data-edge-from="receiver" data-edge-to="gate" data-edge-label="接收完成状态" data-edge-key="2" data-edge-id="received">
+          <rect x="387.1" y="290" width="70.8" height="16" rx="4" class="c-mask"/>
+          <text x="422.5" y="301" class="t-edge-default" font-size="8" text-anchor="middle">接收完成状态</text>
+        </g>
+        <g data-detail="context" data-edge-from="gpu" data-edge-to="gate" data-edge-label="所需 KV 可读" data-edge-key="3" data-edge-id="readable">
+          <rect x="387.1" y="188.5" width="70.8" height="16" rx="4" class="c-mask"/>
+          <text x="422.5" y="199.5" class="t-edge-dashed" font-size="8" text-anchor="middle">所需 KV 可读</text>
+        </g>
+        <g data-detail="context" data-edge-from="gate" data-edge-to="forward" data-edge-label="本轮执行计划" data-edge-key="4" data-edge-id="admit">
+          <rect x="494.6" y="193" width="70.8" height="16" rx="4" class="c-mask"/>
+          <text x="530" y="204" class="t-edge-default" font-size="8" text-anchor="middle">本轮执行计划</text>
+        </g>
+
+        <!-- Legend -->
+        <g data-legend="">
+          <text x="40" y="348" class="t-primary" font-size="12" font-weight="650">图例</text>
+          <g data-legend-semantic-kind="emphasis" data-legend-x="40" data-legend-baseline="368" data-legend-width="87">
+            <path d="M 40 365 L 74 365" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+            <text x="83" y="368" class="t-muted" font-size="10" font-weight="500">KV 载荷</text>
+          </g>
+          <g data-legend-semantic-kind="dashed" data-legend-x="149" data-legend-baseline="368" data-legend-width="186">
+            <path d="M 149 365 L 183 365" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
+            <text x="192" y="368" class="t-muted" font-size="10" font-weight="500">本地引用 / 依赖（静态）</text>
+          </g>
+          <g data-legend-semantic-kind="default" data-legend-x="357" data-legend-baseline="368" data-legend-width="136">
+            <path d="M 357 365 L 391 365" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+            <text x="400" y="368" class="t-muted" font-size="10" font-weight="500">控制 / 执行调用</text>
+          </g>
+        </g>
+      </svg>

@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "通信拓扑：SGLang",
+    "locale": "zh-CN",
+    "output": "wire-sg.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "职责组件"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "auto"
+  },
+  "components": [
+    {
+      "id": "input",
+      "type": "backend",
+      "label": "TokenizerManager",
+      "sublabel": "入口与输出",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/tokenizer_manager.py",
+          "line": 1096,
+          "end_line": 1126
+        }
+      ],
+      "pos": [
+        40,
+        40
+      ]
+    },
+    {
+      "id": "scheduler",
+      "type": "backend",
+      "label": "Scheduler",
+      "sublabel": "rank 0 接收请求",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 4685,
+          "end_line": 4712
+        }
+      ],
+      "pos": [
+        300,
+        40
+      ]
+    },
+    {
+      "id": "return",
+      "type": "backend",
+      "label": "Detokenizer",
+      "sublabel": "增量恢复文本",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/detokenizer_manager.py",
+          "line": 450,
+          "end_line": 472
+        }
+      ],
+      "pos": [
+        40,
+        200
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "TpModelWorker",
+      "sublabel": "同进程执行",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/tp_worker.py",
+          "line": 622,
+          "end_line": 678
+        }
+      ],
+      "pos": [
+        300,
+        200
+      ]
+    },
+    {
+      "id": "rpc",
+      "type": "backend",
+      "label": "Engine RPC",
+      "sublabel": "独立管理 socket",
+      "sources": [
+        {
+          "path": "python/sglang/srt/entrypoints/engine.py",
+          "line": 1862,
+          "end_line": 1867
+        }
+      ],
+      "pos": [
+        40,
+        360
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "request",
+      "from": "input",
+      "to": "scheduler",
+      "label": "请求 IDs / 参数"
+    },
+    {
+      "id": "tokens",
+      "from": "scheduler",
+      "to": "return",
+      "label": "采样 token IDs"
+    },
+    {
+      "id": "text",
+      "from": "return",
+      "to": "input",
+      "label": "文本片段"
+    },
+    {
+      "id": "execute",
+      "from": "scheduler",
+      "to": "worker",
+      "label": "进程内调用"
+    },
+    {
+      "id": "rpc-request",
+      "from": "rpc",
+      "to": "scheduler",
+      "label": "RpcReqInput"
+    },
+    {
+      "id": "rpc-result",
+      "from": "scheduler",
+      "to": "rpc",
+      "label": "RpcReqOutput"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "阅读条件",
+      "items": [
+        "节点是组件，不自动等于独立进程。",
+        "箭头区分请求、结果与管理消息；KV 载荷不经前端请求 MQ。"
+      ]
+    }
+  ]
+}

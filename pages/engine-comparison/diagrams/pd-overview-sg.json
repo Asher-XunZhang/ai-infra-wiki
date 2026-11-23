@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "P/D：先看三个角色",
+    "locale": "zh-CN",
+    "output": "pd-overview-sg.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "职责组件"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "auto"
+  },
+  "components": [
+    {
+      "id": "router",
+      "type": "backend",
+      "label": "sgl-router",
+      "sublabel": "选择实例 / 请求角色",
+      "sources": [
+        {
+          "path": "sgl-model-gateway/src/routers/http/pd_router.rs",
+          "line": 1074,
+          "end_line": 1086
+        }
+      ]
+    },
+    {
+      "id": "prefill",
+      "type": "backend",
+      "label": "Prefill 实例",
+      "sublabel": "计算输入并产生 KV",
+      "sources": [
+        {
+          "path": "python/sglang/srt/disaggregation/prefill.py",
+          "line": 1501,
+          "end_line": 1535
+        }
+      ]
+    },
+    {
+      "id": "decode",
+      "type": "backend",
+      "label": "Decode 实例",
+      "sublabel": "接收 KV 并继续生成",
+      "sources": [
+        {
+          "path": "python/sglang/srt/disaggregation/decode.py",
+          "line": 1,
+          "end_line": 18
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "select-p",
+      "from": "router",
+      "to": "prefill",
+      "label": "选择 P"
+    },
+    {
+      "id": "select-d",
+      "from": "router",
+      "to": "decode",
+      "label": "选择 D"
+    },
+    {
+      "id": "payload",
+      "from": "prefill",
+      "to": "decode",
+      "label": "KV 经后端交接"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "阅读条件",
+      "items": [
+        "这是角色级总览；模块过程区分后端载荷、请求元数据与准入条件。",
+        "不指定两实例是否同机；箭头不表示实测耗时。"
+      ]
+    }
+  ]
+}

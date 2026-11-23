@@ -1,0 +1,43 @@
+.ac-diagram{--ac-surface:#0b1016;--ac-node:#121c28;--ac-frame-fill:#101821;--ac-frame:#536172;--ac-grid:#17222f;--ac-accent:var(--board-accent,#91a8ff);--ac-line:#79899d;--ac-text:#edf2f7;--ac-muted:#aab9cb;max-width:100%;padding:14px 10px}
+.ac-scroll{max-width:100%;overflow:auto;overscroll-behavior-inline:contain;scrollbar-width:thin;border-radius:6px}
+.ac-native{display:block;width:100%;height:auto;min-width:510px;overflow:visible}
+.ac-native [data-node-id]{opacity:1;outline:none}
+.ac-native [data-node-id]>:is(rect,path,polygon):not(.c-mask){stroke-width:1.2;transition:fill .18s,stroke .18s}
+.ac-native [data-node-id]:is(.is-active,.is-selected,:focus-visible)>:is(rect,path,polygon):not(.c-mask){stroke:var(--ac-accent);fill:color-mix(in srgb,var(--ac-accent) 17%,var(--ac-node));stroke-width:2.2}
+.ac-native [data-node-id].is-selected>rect:not(.c-mask){stroke-dasharray:4 2}
+.ac-native [data-node-id]:hover>rect:not(.c-mask){stroke:var(--ac-text)}
+.ac-native .ac-edge{opacity:.56}
+.ac-native .ac-edge.is-active{opacity:1}
+.ac-native path.ac-edge.is-active,.ac-native .ac-edge.is-active>path{stroke:var(--ac-accent);stroke-width:1.8}
+.ac-native .ac-pulse{fill:none!important;stroke:var(--ac-accent)!important;stroke-width:3!important;stroke-dasharray:4 18!important;stroke-dashoffset:var(--ia-pulse-offset,0)!important;pointer-events:none;opacity:1}
+.ac-native [data-animate],.ac-native [style*="--step"]{animation:none!important;transform:none;opacity:1}
+.ac-native .t-primary{font-size:13px}
+.ac-native [data-detail="context"] text,.ac-native text[data-detail="context"]{font-size:11px}
+.ac-note{color:#a9b8ca;font-size:12px;line-height:1.8;margin:4px 16px 16px}
+.ac-reader,.ac-protocol,.ac-local-detail,.ac-execution-detail{margin:12px 14px;padding:10px 12px;border:1px solid #3c4b5e;border-radius:6px;color:#d7e1ee;font-size:13px;line-height:1.8;max-width:calc(100% - 28px)}
+.ac-reader summary,.ac-protocol summary,.ac-local-detail summary,.ac-execution-detail summary{cursor:pointer;color:#d7e1ee}
+.ac-reader .ir-role{color:#dbe5f0;background:#121c28;border-color:#344459;margin-top:8px}
+.ac-reader .ir-role span{color:#abb9ca}
+.ac-reader a,.ac-selection a{display:inline-block;color:var(--board-accent);font-size:12px}
+.ac-reader .ir-role{width:100%;text-align:left}
+.ac-selection{margin:12px 14px;padding:12px;border-left:3px solid var(--board-accent);background:#131e2a;color:#dbe5ef;font-size:13px;line-height:1.8}
+.ac-selection p{margin:6px 0}
+.ac-selection button{margin-left:12px;padding:4px 8px;color:#dbe5ef;border:1px solid #526078;border-radius:4px;background:#172433}
+.ac-process-status{display:flex;flex-direction:column;gap:7px;margin:12px 16px;padding:12px;border:1px solid #445269;border-radius:6px;color:#bac8d8;font-size:12px;line-height:1.8}
+.ac-ledger{margin:12px 16px;color:#bdc9d8;font-size:12px;line-height:1.8}
+.ac-ledger>div{display:grid;grid-template-columns:100px 1fr;gap:10px;padding:10px 0;border-top:1px solid #354355}
+.ac-ledger dt{font-weight:650;color:#e2e9f2}.ac-ledger dd{margin:0}
+.ac-config{padding:20px;color:#b8c5d5;font-size:13px;line-height:1.8}
+.ac-config h4{margin:0 0 18px;color:#e6edf5;font-size:17px}.ac-config>div{border-top:1px solid #344356;padding:14px 0}.ac-config b{color:#dfe7f1}.ac-config p{margin:6px 0}
+.ac-readiness{padding:8px 0;color:#b9c7d6}.ac-readiness li{margin:8px 0}
+.ia-board--roles .ac-scroll{min-width:0}.ia-board--roles .ac-native{min-width:0}
+.ia-board--roles .ac-diagram{padding-top:20px}.ia-board--roles .ac-reader{margin-top:16px}
+.ia-board:has(.ac-diagram) .ia-boardSvgWrap{min-width:0}
+.ia-board:has(.ac-diagram) .ia-boardStage{overflow:visible}
+.ia-board.is-zoomed .ac-native{width:max(100%,850px);min-width:850px}
+.ia-page[data-reduced-motion=true] .ac-pulse{display:none}
+@media(max-width:900px){.ia-board--roles .ac-native{min-width:490px}.ac-ledger>div{grid-template-columns:85px 1fr}.ac-reader .ir-role{display:block}.ac-reader .ir-role span{display:block;margin-top:6px}}
+.ac-roles{min-width:0;grid-template-columns:minmax(0,1fr)}
+.ac-roles>*{min-width:0}
+.ac-reader,.ac-selection{overflow-wrap:anywhere}
+@media(max-width:900px){.ac-roles .ac-reader{order:-1}}

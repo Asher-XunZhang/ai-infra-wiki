@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "SGLang：TP=2 的进程与数据归属",
+    "locale": "zh-CN",
+    "output": "process-sg-tp2.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "职责组件"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "auto"
+  },
+  "components": [
+    {
+      "id": "input",
+      "type": "backend",
+      "label": "TokenizerManager",
+      "sublabel": "输入与响应",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/tokenizer_manager.py",
+          "line": 1096,
+          "end_line": 1126
+        }
+      ],
+      "pos": [
+        40,
+        40
+      ]
+    },
+    {
+      "id": "scheduler",
+      "type": "backend",
+      "label": "Scheduler · r0",
+      "sublabel": "选择本轮任务",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 4685,
+          "end_line": 4712
+        }
+      ],
+      "pos": [
+        300,
+        180
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "TpModelWorker · r0",
+      "sublabel": "本 rank 执行环境",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/tp_worker.py",
+          "line": 622,
+          "end_line": 678
+        }
+      ],
+      "pos": [
+        300,
+        320
+      ]
+    },
+    {
+      "id": "runner",
+      "type": "backend",
+      "label": "ModelRunner · r0",
+      "sublabel": "准备输入与前向",
+      "sources": [
+        {
+          "path": "python/sglang/srt/model_executor/model_runner.py",
+          "line": 1813,
+          "end_line": 1845
+        }
+      ],
+      "pos": [
+        300,
+        460
+      ]
+    },
+    {
+      "id": "gpu",
+      "type": "backend",
+      "label": "GPU 0 K/V",
+      "sublabel": "本 rank 的设备驻留数据",
+      "sources": [
+        {
+          "path": "python/sglang/srt/layers/radix_attention.py",
+          "line": 114,
+          "end_line": 132
+        }
+      ],
+      "pos": [
+        300,
+        650
+      ]
+    },
+    {
+      "id": "scheduler-1",
+      "type": "backend",
+      "label": "Scheduler · r1",
+      "sublabel": "选择本轮任务",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 4685,
+          "end_line": 4712
+        }
+      ],
+      "pos": [
+        560,
+        180
+      ]
+    },
+    {
+      "id": "worker-1",
+      "type": "backend",
+      "label": "TpModelWorker · r1",
+      "sublabel": "本 rank 执行环境",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/tp_worker.py",
+          "line": 622,
+          "end_line": 678
+        }
+      ],
+      "pos": [
+        560,
+        320
+      ]
+    },
+    {
+      "id": "runner-1",
+      "type": "backend",
+      "label": "ModelRunner · r1",
+      "sublabel": "准备输入与前向",
+      "sources": [
+        {
+          "path": "python/sglang/srt/model_executor/model_runner.py",
+          "line": 1813,
+          "end_line": 1845
+        }
+      ],
+      "pos": [
+        560,
+        460
+      ]
+    },
+    {
+      "id": "gpu-1",
+      "type": "backend",
+      "label": "GPU 1 K/V",
+      "sublabel": "本 rank 的设备驻留数据",
+      "sources": [
+        {
+          "path": "python/sglang/srt/layers/radix_attention.py",
+          "line": 114,
+          "end_line": 132
+        }
+      ],
+      "pos": [
+        560,
+        650
+      ]
+    },
+    {
+      "id": "return",
+      "type": "backend",
+      "label": "Detokenizer",
+      "sublabel": "token IDs → 文本",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/detokenizer_manager.py",
+          "line": 450,
+          "end_line": 472
+        }
+      ],
+      "pos": [
+        40,
+        180
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "input-scheduler",
+      "from": "input",
+      "to": "scheduler",
+      "label": "请求 · ZMQ"
+    },
+    {
+      "id": "scheduler-worker",
+      "from": "scheduler",
+      "to": "worker",
+      "label": "本地调用"
+    },
+    {
+      "id": "worker-runner",
+      "from": "worker",
+      "to": "runner",
+      "label": "调用"
+    },
+    {
+      "id": "write-kv",
+      "from": "runner",
+      "to": "gpu",
+      "label": "前向写入 K/V"
+    },
+    {
+      "id": "rank-input",
+      "from": "scheduler",
+      "to": "scheduler-1",
+      "label": "同步输入"
+    },
+    {
+      "id": "scheduler-worker-1",
+      "from": "scheduler-1",
+      "to": "worker-1",
+      "label": "本地调用"
+    },
+    {
+      "id": "worker-runner-1",
+      "from": "worker-1",
+      "to": "runner-1",
+      "label": "调用"
+    },
+    {
+      "id": "write-kv-1",
+      "from": "runner-1",
+      "to": "gpu-1",
+      "label": "前向写入 K/V"
+    },
+    {
+      "id": "output-token",
+      "from": "scheduler",
+      "to": "return",
+      "label": "采样 IDs"
+    },
+    {
+      "id": "output-text",
+      "from": "return",
+      "to": "input",
+      "label": "文本片段"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "API / 主进程",
+      "wraps": [
+        "input"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Scheduler 进程 · rank 0",
+      "wraps": [
+        "scheduler",
+        "worker",
+        "runner"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "设备内存 · GPU 0",
+      "wraps": [
+        "gpu"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Scheduler 进程 · rank 1",
+      "wraps": [
+        "scheduler-1",
+        "worker-1",
+        "runner-1"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "设备内存 · GPU 1",
+      "wraps": [
+        "gpu-1"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Detokenizer 进程",
+      "wraps": [
+        "return"
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "阅读条件",
+      "items": [
+        "单节点、单 API、PP=DP=1；只计图中的服务进程。",
+        "rank 是并行组成员；GPU K/V 驻留与 CPU 地址账本分开，不假设所有模型均匀切分 KV。"
+      ]
+    }
+  ]
+}

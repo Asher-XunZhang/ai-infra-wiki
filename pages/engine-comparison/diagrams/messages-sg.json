@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "一次请求的消息交接：SGLang",
+    "locale": "zh-CN",
+    "output": "messages-sg.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "entries": {
+        "default": {
+          "label": "交接 / 条件"
+        },
+        "emphasis": {
+          "label": "当前主线"
+        }
+      }
+    }
+  },
+  "participants": [
+    {
+      "id": "input",
+      "type": "backend",
+      "label": "TokenizerManager",
+      "sublabel": "输入与流式响应",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/tokenizer_manager.py",
+          "line": 1096,
+          "end_line": 1126
+        }
+      ]
+    },
+    {
+      "id": "scheduler",
+      "type": "backend",
+      "label": "Scheduler",
+      "sublabel": "rank 0 入口",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 4685,
+          "end_line": 4712
+        }
+      ]
+    },
+    {
+      "id": "return",
+      "type": "backend",
+      "label": "Detokenizer",
+      "sublabel": "文本回程",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/detokenizer_manager.py",
+          "line": 450,
+          "end_line": 472
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "id": "request",
+      "from": "input",
+      "to": "scheduler",
+      "label": "token IDs / 参数",
+      "y": 160
+    },
+    {
+      "id": "tokens",
+      "from": "scheduler",
+      "to": "return",
+      "label": "采样 token IDs",
+      "y": 234
+    },
+    {
+      "id": "text",
+      "from": "return",
+      "to": "input",
+      "label": "文本片段",
+      "y": 308
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "依赖与边界",
+      "items": [
+        "只表达消息先后，不表达耗时；设备计算及其他批次可继续推进。",
+        "SGLang 的 TP 同步、管理 RPC，vLLM 的 DP 扩展由通道拓扑展开。"
+      ]
+    }
+  ]
+}

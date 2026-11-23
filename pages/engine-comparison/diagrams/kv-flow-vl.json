@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "KV 载荷、控制与可用条件",
+    "locale": "zh-CN",
+    "output": "kv-flow-vl.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/vllm-project/vllm",
+      "revision": "4ba787ec9959e566d3b587a796dff07673324da5"
+    },
+    "legend": {
+      "entries": {
+        "emphasis": {
+          "label": "KV 载荷"
+        },
+        "default": {
+          "label": "控制 / 执行调用"
+        },
+        "dashed": {
+          "label": "本地引用 / 依赖（静态）"
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "label": "来源 / 控制"
+    },
+    {
+      "label": "接收与驻留"
+    },
+    {
+      "label": "准入后执行"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "producer",
+      "type": "backend",
+      "label": "P 侧 GPU KV",
+      "sublabel": "所选后端的 KV 来源",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/kv_connector.py",
+          "line": 118,
+          "end_line": 153
+        }
+      ],
+      "stage": 0,
+      "row": 0
+    },
+    {
+      "id": "gpu",
+      "type": "backend",
+      "label": "D 侧 GPU KV",
+      "sublabel": "目标设备地址",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/kv_connector.py",
+          "line": 118,
+          "end_line": 153
+        }
+      ],
+      "stage": 1,
+      "row": 0
+    },
+    {
+      "id": "forward",
+      "type": "backend",
+      "label": "模型执行",
+      "sublabel": "本轮准入后继续 Decode",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/model_runner.py",
+          "line": 1764,
+          "end_line": 1804
+        }
+      ],
+      "stage": 2,
+      "row": 0
+    },
+    {
+      "id": "metadata",
+      "type": "backend",
+      "label": "Scheduler metadata",
+      "sublabel": "kv_connector_metadata",
+      "sources": [
+        {
+          "path": "vllm/v1/core/sched/scheduler.py",
+          "line": 1752,
+          "end_line": 1758
+        }
+      ],
+      "stage": 0,
+      "row": 1
+    },
+    {
+      "id": "receiver",
+      "type": "backend",
+      "label": "Worker Connector",
+      "sublabel": "启动加载 / 汇集结果",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/kv_connector.py",
+          "line": 118,
+          "end_line": 153
+        }
+      ],
+      "stage": 1,
+      "row": 1
+    },
+    {
+      "id": "gate",
+      "type": "backend",
+      "label": "Scheduler 准入",
+      "sublabel": "接收 + 元数据 + 预算",
+      "sources": [
+        {
+          "path": "vllm/v1/core/sched/scheduler.py",
+          "line": 3520,
+          "end_line": 3552
+        }
+      ],
+      "stage": 2,
+      "row": 1
+    }
+  ],
+  "flows": [
+    {
+      "id": "payload",
+      "from": "producer",
+      "to": "gpu",
+      "label": "KV 载荷",
+      "variant": "emphasis"
+    },
+    {
+      "id": "bind",
+      "from": "metadata",
+      "to": "receiver",
+      "label": "本地绑定 / 引用",
+      "variant": "dashed"
+    },
+    {
+      "id": "received",
+      "from": "receiver",
+      "to": "gate",
+      "label": "接收完成状态"
+    },
+    {
+      "id": "readable",
+      "from": "gpu",
+      "to": "gate",
+      "label": "所需 KV 可读",
+      "variant": "dashed"
+    },
+    {
+      "id": "admit",
+      "from": "gate",
+      "to": "forward",
+      "label": "本轮执行计划"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "载荷与依赖",
+      "items": [
+        "强调线是 KV 载荷；普通线是控制 / 执行调用；虚线是本地引用或依赖，不播放传输脉冲。",
+        "这里不把接收完成、所需 KV 可读、请求元数据就绪与本轮准入合并。",
+        "vLLM 本图采用异步接收示例；同步启动路径在接收条件中另行展开。"
+      ]
+    }
+  ]
+}

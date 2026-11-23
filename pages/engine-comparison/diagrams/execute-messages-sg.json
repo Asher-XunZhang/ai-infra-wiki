@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "本 rank 内的执行调用",
+    "locale": "zh-CN",
+    "output": "execute-messages-sg.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "entries": {
+        "default": {
+          "label": "交接 / 条件"
+        },
+        "emphasis": {
+          "label": "当前主线"
+        }
+      }
+    }
+  },
+  "participants": [
+    {
+      "id": "scheduler",
+      "type": "backend",
+      "label": "Scheduler",
+      "sublabel": "本轮批次",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 4685,
+          "end_line": 4712
+        }
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "TpModelWorker",
+      "sublabel": "同进程调用",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/tp_worker.py",
+          "line": 622,
+          "end_line": 678
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "id": "execute",
+      "from": "scheduler",
+      "to": "worker",
+      "label": "ScheduleBatch → 执行",
+      "y": 160
+    },
+    {
+      "id": "result",
+      "from": "worker",
+      "to": "scheduler",
+      "label": "前向与采样结果",
+      "y": 234
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "依赖与边界",
+      "items": [
+        "同进程调用不等于通过 IPC 搬运请求。",
+        "这里省略 TP collective；其他 rank 仍需协同推进。"
+      ]
+    }
+  ]
+}

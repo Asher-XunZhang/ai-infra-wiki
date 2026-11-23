@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 776 280" data-reader-fit="intrinsic-height" data-reader-fit-cards="" data-lifecycle-layout="main-path-v3" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-motion-choreography="walk">
+        <title id="archify-diagram-title">请求状态与资源收尾</title>
+        <desc id="archify-diagram-description">由 Archify 生成的生命周期图。</desc>
+        <style>.c-mask { fill:var(--ac-surface,#101720); }
+.c-grid { fill:none; stroke:var(--ac-grid,#1c2834); }
+.c-region,.c-security-group { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); stroke-width:1; }
+.c-lane { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); }
+.c-backend,.c-frontend,.c-cloud,.c-database,.c-messagebus,.c-security,.c-external,
+.c-start,.c-active,.c-waiting,.c-decision,.c-success,.c-failure,.c-neutral {
+ fill:var(--ac-node,#172433); stroke:var(--ac-accent,#94a8ff); }
+.a-default,.a-emphasis,.a-dashed,.a-return,.a-security { fill:none; stroke:var(--ac-line,#91a0b4); }
+.a-dashed { stroke-dasharray:4 4; }
+.a-return { stroke-dasharray:3 4; }
+.a-emphasis { stroke-width:2; }
+.m-default,.m-emphasis,.m-dashed,.m-return,.m-security { fill:var(--ac-line,#91a0b4); }
+.t-primary { fill:var(--ac-text,#edf2f7); }
+.t-muted,.t-label,.t-small { fill:var(--ac-muted,#a8b7c8); }
+text { fill:var(--ac-text,#edf2f7); font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+[data-semantic-sigil] { display:none; }
+[data-graph-role="structural-frame-label-mask"],.phase-chip { fill:var(--ac-surface,#101720); stroke:var(--ac-frame,#60738a); }
+</style><!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-default" />
+          </marker>
+          <marker id="arrowhead-emphasis" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-emphasis" />
+          </marker>
+          <marker id="arrowhead-security" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-security" />
+          </marker>
+          <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-dashed" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" class="c-grid" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Composite phases -->
+
+
+        <!-- Transition paths -->
+        <g data-graph-role="automatic-crossover" style="--step:0">
+          <path data-graph-role="automatic-crossover-underlay" d="M 196 60 L 318 60" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="waiting" data-edge-to="running" data-edge-label="预算与 KV 允许" data-edge-key="0" data-edge-id="admit" data-composition-points="196,60;318,60" data-composition-crossover="halo" data-composition-independent="true" d="M 196 60 L 318 60" class="a-emphasis" data-animate="edge" style="--step:0" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:1">
+          <path data-graph-role="automatic-crossover-underlay" d="M 458 60 L 580 60" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="running" data-edge-to="finished" data-edge-label="EOS / 长度终止" data-edge-key="1" data-edge-id="complete" data-composition-points="458,60;580,60" data-composition-crossover="halo" data-composition-independent="true" d="M 458 60 L 580 60" class="a-emphasis" data-animate="edge" style="--step:1" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:2">
+          <path data-graph-role="automatic-crossover-underlay" d="M 388 92 L 388 184" fill="none" stroke="var(--mask)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="running" data-edge-to="retracted" data-edge-label="显存压力" data-edge-key="2" data-edge-id="preempt" data-composition-points="388,92;388,184" data-composition-crossover="halo" data-composition-independent="true" d="M 388 92 L 388 184" class="a-default" data-animate="edge" style="--step:2" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:3">
+          <path data-graph-role="automatic-crossover-underlay" d="M 414 184 L 414 92" fill="none" stroke="var(--mask)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="retracted" data-edge-to="running" data-edge-label="重新准入" data-edge-key="3" data-edge-id="readmit" data-composition-points="414,184;414,92" data-composition-crossover="halo" data-composition-independent="true" d="M 414 184 L 414 92" class="a-default" data-animate="edge" style="--step:3" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:4">
+          <path data-graph-role="automatic-crossover-underlay" d="M 126 92 L 126 114 Q 126 126 138 126 L 216.5 126 Q 228.5 126 228.5 138 L 228.5 184" fill="none" stroke="var(--mask)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="waiting" data-edge-to="aborted" data-edge-label="取消等待请求" data-edge-key="4" data-edge-id="abort-wait" data-composition-points="126,92;126,126;228.5,126;228.5,184" data-composition-crossover="halo" data-composition-independent="true" d="M 126 92 L 126 114 Q 126 126 138 126 L 216.5 126 Q 228.5 126 228.5 138 L 228.5 184" class="a-default" data-animate="edge" style="--step:4" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+        </g>
+        <g data-graph-role="automatic-crossover" style="--step:5">
+          <path data-graph-role="automatic-crossover-underlay" d="M 362 92 L 362 114 Q 362 126 350 126 L 266.5 126 Q 254.5 126 254.5 138 L 254.5 184" fill="none" stroke="var(--mask)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="running" data-edge-to="aborted" data-edge-label="取消执行中请求" data-edge-key="5" data-edge-id="abort-run" data-composition-points="362,92;362,126;254.5,126;254.5,184" data-composition-crossover="halo" data-composition-independent="true" d="M 362 92 L 362 114 Q 362 126 350 126 L 266.5 126 Q 254.5 126 254.5 138 L 254.5 184" class="a-default" data-animate="edge" style="--step:5" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+        </g>
+
+
+        <!-- States -->
+        <g id="node-waiting" data-node-id="waiting" data-node-label="等待调度" tabindex="0" role="button" aria-label="聚焦等待调度，尚未执行, 生命周期状态" aria-pressed="false" data-node-kind="waiting" data-node-sublabel="尚未执行" data-node-context="生命周期状态">
+          <title>等待调度 · 尚未执行 · 生命周期状态</title>
+          <rect x="56" y="28" width="140" height="64" rx="8" class="c-mask"/>
+          <rect x="56" y="28" width="140" height="64" rx="8" class="c-cloud" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-lifecycle-initial-marker=""><circle cx="30" cy="60" r="4.5" style="fill: var(--arrow-emphasis)"/><path d="M 34.5 60 L 49 60" class="a-emphasis" stroke-width="1.4"/><path d="M 48 56.5 L 55 60 L 48 63.5 Z" style="fill: var(--arrow-emphasis)"/></g>
+          <g aria-hidden="true" data-semantic-sigil="waiting" class="semantic-sigil s-cloud" transform="translate(62 34) scale(0.6875)">
+            <path d="M4 2.5h8M4 13.5h8M5 3c0 2.8 2 3.2 3 5-1 1.8-3 2.2-3 5M11 3c0 2.8-2 3.2-3 5 1 1.8 3 2.2 3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="125.2" y="55" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">等待调度</text>
+          <text data-detail="context" x="126" y="73" class="t-muted" font-size="9" text-anchor="middle">尚未执行</text>
+        </g>
+
+        <g id="node-running" data-node-id="running" data-node-label="执行中" tabindex="0" role="button" aria-label="聚焦执行中，本轮选中, 生命周期状态" aria-pressed="false" data-node-kind="active" data-node-sublabel="本轮选中" data-node-context="生命周期状态">
+          <title>执行中 · 本轮选中 · 生命周期状态</title>
+          <rect x="318" y="28" width="140" height="64" rx="8" class="c-mask"/>
+          <rect x="318" y="28" width="140" height="64" rx="8" class="c-frontend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+
+          <text data-node-label="" data-detail-anchor="" x="388" y="55" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">执行中</text>
+          <text data-detail="context" x="388" y="73" class="t-muted" font-size="9" text-anchor="middle">本轮选中</text>
+        </g>
+
+        <g id="node-finished" data-node-id="finished" data-node-label="请求完成" tabindex="0" role="button" aria-label="聚焦请求完成，记录终态, 生命周期状态" aria-pressed="false" data-node-kind="success" data-node-sublabel="记录终态" data-node-context="生命周期状态">
+          <title>请求完成 · 记录终态 · 生命周期状态</title>
+          <rect x="580" y="28" width="140" height="64" rx="8" class="c-mask"/>
+          <rect x="580" y="28" width="140" height="64" rx="8" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <rect x="583" y="31" width="134" height="58" rx="5" class="c-backend" style="fill: none" stroke-width="1"/>
+          <g aria-hidden="true" data-semantic-sigil="success" class="semantic-sigil s-backend" transform="translate(586 34) scale(0.6875)">
+            <circle cx="8" cy="8" r="5.3"/>
+            <path d="m5.2 8 1.8 1.8 3.8-4"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="649.2" y="55" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">请求完成</text>
+          <text data-detail="context" x="650" y="73" class="t-muted" font-size="9" text-anchor="middle">记录终态</text>
+        </g>
+
+        <g id="node-retracted" data-node-id="retracted" data-node-label="回到等待" tabindex="0" role="button" aria-label="聚焦回到等待，回撤 / 抢占后重建, 生命周期状态" aria-pressed="false" data-node-kind="waiting" data-node-sublabel="回撤 / 抢占后重建" data-node-context="生命周期状态">
+          <title>回到等待 · 回撤 / 抢占后重建 · 生命周期状态</title>
+          <rect x="355.5" y="184" width="140" height="64" rx="8" class="c-mask"/>
+          <rect x="355.5" y="184" width="140" height="64" rx="8" class="c-cloud" data-animate="node" style="--step:3" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="waiting" class="semantic-sigil s-cloud" transform="translate(361.5 190) scale(0.6875)">
+            <path d="M4 2.5h8M4 13.5h8M5 3c0 2.8 2 3.2 3 5-1 1.8-3 2.2-3 5M11 3c0 2.8-2 3.2-3 5 1 1.8 3 2.2 3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="424.7" y="211" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">回到等待</text>
+          <text data-detail="context" x="425.5" y="229" class="t-muted" font-size="9" text-anchor="middle">回撤 / 抢占后重建</text>
+        </g>
+
+        <g id="node-aborted" data-node-id="aborted" data-node-label="请求取消" tabindex="0" role="button" aria-label="聚焦请求取消，按状态分别收尾, 生命周期状态" aria-pressed="false" data-node-kind="neutral" data-node-sublabel="按状态分别收尾" data-node-context="生命周期状态">
+          <title>请求取消 · 按状态分别收尾 · 生命周期状态</title>
+          <rect x="171.5" y="184" width="140" height="64" rx="8" class="c-mask"/>
+          <rect x="171.5" y="184" width="140" height="64" rx="8" class="c-external" data-animate="node" style="--step:5" stroke-width="1.5"/>
+          <rect x="174.5" y="187" width="134" height="58" rx="5" class="c-external" style="fill: none" stroke-width="1"/>
+          <g aria-hidden="true" data-semantic-sigil="stop" class="semantic-sigil s-external" transform="translate(177.5 190) scale(0.6875)">
+            <circle cx="8" cy="8" r="5.3"/>
+            <rect x="6.1" y="6.1" width="3.8" height="3.8" rx=".5" class="sigil-fill"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="240.7" y="211" class="t-primary" font-size="12" font-weight="600" text-anchor="middle">请求取消</text>
+          <text data-detail="context" x="241.5" y="229" class="t-muted" font-size="9" text-anchor="middle">按状态分别收尾</text>
+        </g>
+
+        <!-- Transition labels -->
+        <g data-detail="context" data-edge-from="waiting" data-edge-to="running" data-edge-label="预算与 KV 允许" data-edge-key="0" data-edge-id="admit">
+          <rect x="209" y="38" width="96" height="16" rx="4" class="c-mask"/>
+          <text x="257" y="49.5" class="t-edge-emphasis" font-size="10" text-anchor="middle">预算与 KV 允许</text>
+        </g>
+        <g data-detail="context" data-edge-from="running" data-edge-to="finished" data-edge-label="EOS / 长度终止" data-edge-key="1" data-edge-id="complete">
+          <rect x="471" y="38" width="96" height="16" rx="4" class="c-mask"/>
+          <text x="519" y="49.5" class="t-edge-emphasis" font-size="10" text-anchor="middle">EOS / 长度终止</text>
+        </g>
+        <g data-detail="context" data-edge-from="running" data-edge-to="retracted" data-edge-label="显存压力" data-edge-key="2" data-edge-id="preempt">
+          <rect x="322" y="140" width="60" height="16" rx="4" class="c-mask"/>
+          <text x="352" y="151.5" class="t-muted" font-size="10" text-anchor="middle">显存压力</text>
+        </g>
+        <g data-detail="context" data-edge-from="retracted" data-edge-to="running" data-edge-label="重新准入" data-edge-key="3" data-edge-id="readmit">
+          <rect x="420" y="130" width="60" height="16" rx="4" class="c-mask"/>
+          <text x="450" y="141.5" class="t-muted" font-size="10" text-anchor="middle">重新准入</text>
+        </g>
+        <g data-detail="context" data-edge-from="waiting" data-edge-to="aborted" data-edge-label="取消等待请求" data-edge-key="4" data-edge-id="abort-wait">
+          <rect x="138.5" y="147" width="84" height="16" rx="4" class="c-mask"/>
+          <text x="180.5" y="158.5" class="t-muted" font-size="10" text-anchor="middle">取消等待请求</text>
+        </g>
+        <g data-detail="context" data-edge-from="running" data-edge-to="aborted" data-edge-label="取消执行中请求" data-edge-key="5" data-edge-id="abort-run">
+          <rect x="260" y="101" width="96" height="16" rx="4" class="c-mask"/>
+          <text x="308" y="112.5" class="t-muted" font-size="10" text-anchor="middle">取消执行中请求</text>
+        </g>
+
+        <!-- Legend -->
+
+      </svg>

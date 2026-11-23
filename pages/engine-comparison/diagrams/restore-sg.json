@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "分层恢复：控制与 KV 驻留",
+    "locale": "zh-CN",
+    "output": "restore-sg.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "职责组件"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "auto"
+  },
+  "components": [
+    {
+      "id": "storage",
+      "type": "backend",
+      "label": "L3 存储",
+      "sublabel": "可选持久层",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/cache_controller.py",
+          "line": 1104,
+          "end_line": 1147
+        }
+      ]
+    },
+    {
+      "id": "host",
+      "type": "backend",
+      "label": "L2 CPU",
+      "sublabel": "主机恢复",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/cache_controller.py",
+          "line": 928,
+          "end_line": 943
+        }
+      ]
+    },
+    {
+      "id": "gpu",
+      "type": "backend",
+      "label": "L1 GPU KV",
+      "sublabel": "恢复的目标地址",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/cache_controller.py",
+          "line": 1028,
+          "end_line": 1059
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "restore-host",
+      "from": "storage",
+      "to": "host",
+      "label": "恢复"
+    },
+    {
+      "id": "restore-gpu",
+      "from": "host",
+      "to": "gpu",
+      "label": "恢复 KV"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "阅读条件",
+      "items": [
+        "SGLang 本例只展示 L3 → L2 → L1 恢复，不同时播放回写。",
+        "这是独立的可选缓存场景，不是每条 P/D 请求的必经步骤。"
+      ]
+    }
+  ]
+}

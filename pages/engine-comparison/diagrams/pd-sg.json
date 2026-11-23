@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "P/D：实例、KV 载荷与准入",
+    "locale": "zh-CN",
+    "output": "pd-sg.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "职责组件"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "auto"
+  },
+  "components": [
+    {
+      "id": "router",
+      "type": "backend",
+      "label": "sgl-router",
+      "sublabel": "选择实例 / 请求角色",
+      "sources": [
+        {
+          "path": "sgl-model-gateway/src/routers/http/pd_router.rs",
+          "line": 1074,
+          "end_line": 1086
+        }
+      ]
+    },
+    {
+      "id": "prefill",
+      "type": "backend",
+      "label": "Prefill 实例",
+      "sublabel": "计算输入并产生 KV",
+      "sources": [
+        {
+          "path": "python/sglang/srt/disaggregation/prefill.py",
+          "line": 1501,
+          "end_line": 1535
+        }
+      ]
+    },
+    {
+      "id": "decode",
+      "type": "backend",
+      "label": "Decode 实例",
+      "sublabel": "接收 KV 并继续生成",
+      "sources": [
+        {
+          "path": "python/sglang/srt/disaggregation/decode.py",
+          "line": 1,
+          "end_line": 18
+        }
+      ]
+    },
+    {
+      "id": "sender",
+      "type": "backend",
+      "label": "P 侧传输接口",
+      "sublabel": "按所选后端发送",
+      "sources": [
+        {
+          "path": "python/sglang/srt/disaggregation/prefill.py",
+          "line": 1501,
+          "end_line": 1535
+        }
+      ]
+    },
+    {
+      "id": "receiver",
+      "type": "backend",
+      "label": "D 侧传输接口",
+      "sublabel": "写入目标 GPU KV",
+      "sources": [
+        {
+          "path": "python/sglang/srt/disaggregation/decode.py",
+          "line": 1,
+          "end_line": 18
+        }
+      ]
+    },
+    {
+      "id": "ready",
+      "type": "backend",
+      "label": "Decode 准入",
+      "sublabel": "接收完成 + 元数据 + 预算",
+      "sources": [
+        {
+          "path": "python/sglang/srt/disaggregation/decode.py",
+          "line": 1,
+          "end_line": 18
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "select-p",
+      "from": "router",
+      "to": "prefill",
+      "label": "选择 P"
+    },
+    {
+      "id": "select-d",
+      "from": "router",
+      "to": "decode",
+      "label": "选择 D"
+    },
+    {
+      "id": "produce",
+      "from": "prefill",
+      "to": "sender",
+      "label": "本地 KV"
+    },
+    {
+      "id": "payload",
+      "from": "sender",
+      "to": "receiver",
+      "label": "KV 载荷"
+    },
+    {
+      "id": "received",
+      "from": "receiver",
+      "to": "ready",
+      "label": "接收状态"
+    },
+    {
+      "id": "admit",
+      "from": "ready",
+      "to": "decode",
+      "label": "条件齐备"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Prefill 角色",
+      "wraps": [
+        "prefill",
+        "sender"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Decode 角色",
+      "wraps": [
+        "decode",
+        "receiver",
+        "ready"
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "阅读条件",
+      "items": [
+        "这是逻辑部署拓扑，不指定两实例是否同机。传输协议由后端和配置决定。",
+        "Router 的实例选择、KV 接收完成、Scheduler 本轮准入是不同职责。"
+      ]
+    }
+  ]
+}

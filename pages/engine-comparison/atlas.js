@@ -32,6 +32,7 @@ const chapterFromHash = () => {
       return {
         depth: depth === 'modules' || depth === 'source' ? 'modules' : 'overview',
         sourceOpen: depth === 'source' || params.get('source') === '1',
+        wire: params.get('wire') === 'topology' ? 'topology' : 'sequence',
       };
     }
 
@@ -2050,66 +2051,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       vl: { name: 'vLLM', mark: 'VL', version: RELEASES.vl.version },
     };
 
-    const PROCESS_LAYOUT = {
-      sg: {
-        zones: [
-          { x: 22, y: 30, w: 184, h: 178, labelKey: 'scenes.process.zone.sgMain', labelX: 34, labelY: 47 },
-          { x: 226, y: 30, w: 272, h: 284, labelKey: 'scenes.process.zone.sgSched', labelX: 238, labelY: 47 },
-          { x: 22, y: 224, w: 184, h: 80, labelKey: 'scenes.process.zone.sgDetok', labelX: 34, labelY: 241 },
-        ],
-        nodes: [
-          { id: 'http', x: 36, y: 54, w: 156, h: 56, label: 'HTTP / OpenAI', tag: 'FastAPI', detailKey: 'nodes.process.sg_http' },
-          { id: 'tokenizer', x: 36, y: 142, w: 156, h: 56, label: 'TokenizerManager', tag: 'tokenize + stream', detailKey: 'nodes.process.sg_tokenizer' },
-          { id: 'scheduler', x: 244, y: 64, w: 236, h: 66, label: 'Scheduler', tag: 'prefix cache · PrefillAdder', detailKey: 'nodes.process.sg_scheduler' },
-          { id: 'workers', x: 244, y: 190, w: 236, h: 56, label: 'TpModelWorker', tag: 'per rank · local forward', detailKey: 'nodes.process.sg_workers' },
-          { id: 'detok', x: 36, y: 254, w: 156, h: 48, label: 'Detokenizer', tag: 'incremental text', detailKey: 'nodes.process.sg_detok' },
-        ],
-        edges: [
-          { id: 'http-tokenizer', d: 'M114 110V142' },
-          { id: 'tokenizer-scheduler', d: 'M192 170H218V97H244', label: 'ZMQ', lx: 226, ly: 157 },
-          { id: 'scheduler-workers', d: 'M362 130V190', label: 'local call', lx: 371, ly: 166 },
-          { id: 'scheduler-detok', d: 'M244 97H214V274H192', label: 'token ids', lx: 222, ly: 266 },
-          { id: 'detok-tokenizer', d: 'M114 254V198', label: 'text', lx: 123, ly: 228 },
-        ],
-        active: [
-          { nodes: ['http', 'tokenizer'], edges: ['http-tokenizer'] },
-          { nodes: ['tokenizer', 'scheduler'], edges: ['tokenizer-scheduler'] },
-          { nodes: ['scheduler', 'workers'], edges: ['scheduler-workers'] },
-          { nodes: ['scheduler', 'detok', 'tokenizer'], edges: ['scheduler-detok', 'detok-tokenizer'] },
-        ],
-        noteKey: 'scenes.process.note.sg',
-      },
-      vl: {
-        zones: [
-          { x: 22, y: 30, w: 184, h: 178, labelKey: 'scenes.process.zone.vlFront', labelX: 34, labelY: 47 },
-          { x: 226, y: 30, w: 272, h: 124, labelKey: 'scenes.process.zone.vlCore', labelX: 238, labelY: 47 },
-          { x: 226, y: 166, w: 272, h: 148, labelKey: 'scenes.process.zone.vlWorkers', labelX: 238, labelY: 183 },
-          { x: 22, y: 224, w: 184, h: 80, labelKey: 'scenes.process.zone.vlOut', labelX: 34, labelY: 241 },
-        ],
-        nodes: [
-          { id: 'frontend', x: 36, y: 54, w: 156, h: 56, label: 'OpenAI / Python', tag: 'HTTP · Rust optional', detailKey: 'nodes.process.vl_frontend' },
-          { id: 'async', x: 36, y: 142, w: 156, h: 56, label: 'AsyncLLM', tag: 'input + output', detailKey: 'nodes.process.vl_async' },
-          { id: 'engine', x: 244, y: 64, w: 236, h: 66, label: 'EngineCore', tag: 'busy loop · scheduler', detailKey: 'nodes.process.vl_engine' },
-          { id: 'workers', x: 244, y: 202, w: 236, h: 56, label: 'Workers ×2', tag: 'GPUModelRunner V2 · per rank', detailKey: 'nodes.process.vl_workers' },
-          { id: 'stream', x: 36, y: 254, w: 156, h: 48, label: 'SSE stream', tag: 'async response', detailKey: 'nodes.process.vl_stream' },
-        ],
-        edges: [
-          { id: 'frontend-async', d: 'M114 110V142' },
-          { id: 'async-engine', d: 'M192 170H218V97H244', label: 'ZMQ', lx: 226, ly: 157 },
-          { id: 'engine-workers', d: 'M362 130V202', label: 'dispatch', lx: 371, ly: 166 },
-          { id: 'engine-async', d: 'M244 90H210V180H192', label: 'outputs', lx: 226, ly: 139 },
-          { id: 'async-stream', d: 'M114 198V254', label: 'SSE', lx: 123, ly: 228 },
-        ],
-        active: [
-          { nodes: ['frontend', 'async'], edges: ['frontend-async'] },
-          { nodes: ['async', 'engine'], edges: ['async-engine'] },
-          { nodes: ['engine', 'workers'], edges: ['engine-workers'] },
-          { nodes: ['engine', 'async', 'stream'], edges: ['engine-async', 'async-stream'] },
-        ],
-        noteKey: 'scenes.process.note.vl',
-      },
-    };
-
     const PREFIX_LAYOUT = {
       sg: {
         nodes: [
@@ -2203,281 +2144,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           { nodes: ['workers', 'output', 'async'], edges: ['workers-output'] },
         ],
         noteKey: 'scenes.batch.note.vl',
-      },
-    };
-
-    const DISAGG_LAYOUT = {
-      sg: {
-        nodes: [
-          { id: 'router', x: 30, y: 48, w: 138, h: 56, label: 'sgl-router', tag: 'cache-aware', detailKey: 'nodes.disagg.sg_router' },
-          { id: 'prefill', x: 190, y: 48, w: 134, h: 56, label: 'Prefill pool', tag: 'PD / EPD', detailKey: 'nodes.disagg.sg_prefill' },
-          { id: 'decode', x: 354, y: 48, w: 136, h: 56, label: 'Decode pool', tag: 'KV consumer', detailKey: 'nodes.disagg.sg_decode' },
-          { id: 'kv', x: 190, y: 128, w: 134, h: 52, label: 'KV transfer', tag: 'Mooncake / NIXL', detailKey: 'nodes.disagg.sg_kv' },
-          { id: 'l1', x: 30, y: 212, w: 138, h: 52, label: 'L1 GPU', tag: 'hot KV', detailKey: 'nodes.disagg.sg_hicache' },
-          { id: 'l2', x: 190, y: 212, w: 134, h: 52, label: 'L2 CPU', tag: 'HiCache', detailKey: 'nodes.disagg.sg_hicache' },
-          { id: 'l3', x: 354, y: 212, w: 136, h: 52, label: 'L3 storage', tag: 'file tier', detailKey: 'nodes.disagg.sg_hicache' },
-          { id: 'scale', x: 30, y: 298, w: 460, h: 52, label: 'Cluster controls', tag: 'DP attention · EP / EPLB', detailKey: 'nodes.disagg.sg_scale' },
-        ],
-        edges: [
-          { id: 'router-prefill', d: 'M168 76H190' },
-          { id: 'prefill-kv', d: 'M257 104V128', label: 'KV', lx: 266, ly: 119 },
-          { id: 'kv-decode', d: 'M324 154H422V104', label: 'KV', lx: 338, ly: 144 },
-          { id: 'l1-l2', d: 'M190 238H168' },
-          { id: 'l2-l3', d: 'M354 238H324' },
-        ],
-        active: [
-          { nodes: ['router', 'prefill'], edges: ['router-prefill'] },
-          { nodes: ['prefill', 'kv', 'decode'], edges: ['prefill-kv', 'kv-decode'] },
-          { nodes: ['l1', 'l2', 'l3'], edges: ['l1-l2', 'l2-l3'] },
-          { nodes: ['scale'], edges: [] },
-        ],
-        noteKey: 'scenes.disagg.note.sg',
-      },
-      vl: {
-        nodes: [
-          { id: 'router', x: 30, y: 48, w: 138, h: 56, label: 'External router', tag: 'select P/D instances', detailKey: 'nodes.disagg.vl_router' },
-          { id: 'prefill', x: 190, y: 48, w: 134, h: 56, label: 'Prefill pool', tag: 'KV producer', detailKey: 'nodes.disagg.vl_prefill' },
-          { id: 'decode', x: 354, y: 48, w: 136, h: 56, label: 'Decode pool', tag: 'KV consumer', detailKey: 'nodes.disagg.vl_decode' },
-          { id: 'connector', x: 190, y: 128, w: 134, h: 52, label: 'KVConnectorV1', tag: 'V2 hooks', detailKey: 'nodes.disagg.vl_connector' },
-          { id: 'meta', x: 30, y: 212, w: 138, h: 52, label: 'Scheduler meta', tag: 'per step', detailKey: 'nodes.disagg.vl_meta' },
-          { id: 'remote', x: 190, y: 212, w: 134, h: 52, label: 'Worker connector', tag: 'bind metadata', detailKey: 'nodes.disagg.vl_connector' },
-          { id: 'offload', x: 354, y: 212, w: 136, h: 52, label: 'Backend store', tag: 'backend-specific', detailKey: 'nodes.disagg.vl_offload' },
-          { id: 'gpu', x: 190, y: 286, w: 134, h: 52, label: 'GPU KV cache', tag: 'load destination', detailKey: 'nodes.disagg.vl_offload' },
-          { id: 'scale', x: 30, y: 298, w: 460, h: 52, label: 'Parallel controls', tag: 'TP · PP · DP · EP · elastic', detailKey: 'nodes.disagg.vl_scale' },
-        ],
-        edges: [
-          { id: 'router-prefill', d: 'M168 76H190' },
-          { id: 'prefill-connector', d: 'M257 104V128', label: 'KV', lx: 266, ly: 119 },
-          { id: 'connector-decode', d: 'M324 154H422V104', label: 'KV', lx: 338, ly: 144 },
-          { id: 'meta-remote', d: 'M168 238H190' },
-          { id: 'remote-offload', d: 'M324 238H354' },
-          { id: 'offload-gpu', d: 'M422 264V312H324', label: 'KV load', lx: 380, ly: 301, solid: true },
-        ],
-        active: [
-          { nodes: ['router', 'prefill'], edges: ['router-prefill'] },
-          { nodes: ['prefill', 'connector', 'decode'], edges: ['prefill-connector', 'connector-decode'] },
-          { nodes: ['meta', 'remote', 'offload', 'gpu'], edges: ['meta-remote', 'remote-offload', 'offload-gpu'] },
-          { nodes: ['scale'], edges: [] },
-        ],
-        noteKey: 'scenes.disagg.note.vl',
-      },
-    };
-
-    const WIRE_LAYOUT = {
-      sg: {
-        nodes: [
-          { id: 'tok', x: 26, y: 48, w: 140, h: 58, label: 'TokenizerManager', tag: 'main · PUSH / PULL', detailKey: 'nodes.wire.sg_tok' },
-          { id: 'sched', x: 214, y: 48, w: 132, h: 58, label: 'Scheduler', tag: 'rank 0 · PULL', detailKey: 'nodes.wire.sg_sched' },
-          { id: 'detok', x: 376, y: 48, w: 118, h: 58, label: 'Detokenizer', tag: 'PULL · text', detailKey: 'nodes.wire.sg_detok' },
-          { id: 'rpc', x: 26, y: 142, w: 140, h: 50, label: 'Engine RPC', tag: 'DEALER', detailKey: 'nodes.wire.sg_rpc' },
-          { id: 'workers', x: 214, y: 142, w: 132, h: 50, label: 'TpModelWorker', tag: 'same process', detailKey: 'nodes.wire.sg_workers' },
-          { id: 'protocol', x: 26, y: 226, w: 468, h: 118, label: 'sockets & payloads', tag: 'ZMQ · recv_pyobj · IPC', detailKey: 'nodes.wire.sg_protocol', card: true },
-        ],
-        edges: [
-          { id: 'tok-sched', d: 'M166 77H214', label: 'PUSH → PULL', lx: 190, ly: 68, anchor: 'middle' },
-          { id: 'sched-detok', d: 'M346 77H376', label: 'PUSH', lx: 361, ly: 68, anchor: 'middle' },
-          { id: 'detok-tok', d: 'M435 106V124H96V106', label: 'text · PUSH → PULL', lx: 432, ly: 136, anchor: 'end' },
-          { id: 'rpc-sched', d: 'M96 192V210H190V91H214', label: 'DEALER', lx: 143, ly: 203, anchor: 'middle' },
-          { id: 'workers-sched', d: 'M280 106V142', label: 'in-process', lx: 287, ly: 127 },
-        ],
-        active: [
-          { nodes: ['tok', 'sched'], edges: ['tok-sched'] },
-          { nodes: ['sched', 'detok', 'tok'], edges: ['sched-detok', 'detok-tok'] },
-          { nodes: ['sched', 'workers'], edges: ['workers-sched'] },
-          { nodes: ['protocol', 'rpc', 'sched'], edges: ['rpc-sched'] },
-        ],
-        protocolRows: [
-          ['PUSH / PULL', 'pyobj · ipc:// or tcp://'],
-          ['token ids', 'scheduler → detok'],
-          ['text', 'detok → tokenizer'],
-          ['DEALER RPC', 'control · separate socket'],
-        ],
-        noteKey: 'scenes.wire.note.sg',
-      },
-      vl: {
-        nodes: [
-          { id: 'frontend', x: 26, y: 48, w: 164, h: 58, label: 'AsyncLLM', tag: 'ROUTER + PULL', detailKey: 'nodes.wire.vl_frontend' },
-          { id: 'core', x: 240, y: 48, w: 164, h: 58, label: 'EngineCore', tag: 'DEALER + PUSH', detailKey: 'nodes.wire.vl_core' },
-          { id: 'dp', x: 26, y: 142, w: 164, h: 50, label: 'DP coordinator', tag: 'ZMQ control', detailKey: 'nodes.wire.vl_dp' },
-          { id: 'workers', x: 240, y: 142, w: 164, h: 50, label: 'Workers', tag: 'response MQ', detailKey: 'nodes.wire.vl_workers' },
-          { id: 'protocol', x: 26, y: 226, w: 468, h: 118, label: 'ZMQ envelope + shm MQ', tag: 'msgpack · zero-copy buffers', detailKey: 'nodes.wire.vl_protocol', card: true },
-        ],
-        edges: [
-          { id: 'request', d: 'M190 67H240', label: 'REQ', lx: 215, ly: 59, anchor: 'middle' },
-          { id: 'output', d: 'M240 89H190', label: 'OUT', lx: 215, ly: 102, anchor: 'middle' },
-          { id: 'core-workers', d: 'M300 106V142', label: 'shm MQ', lx: 307, ly: 127 },
-          { id: 'workers-core', d: 'M344 142V106', label: 'response', lx: 351, ly: 127 },
-          { id: 'frontend-dp', d: 'M108 142V106', label: 'load / wave', lx: 115, ly: 126 },
-        ],
-        active: [
-          { nodes: ['frontend', 'core'], edges: ['request'] },
-          { nodes: ['core', 'frontend'], edges: ['output'] },
-          { nodes: ['core', 'workers'], edges: ['core-workers', 'workers-core'] },
-          { nodes: ['frontend', 'dp', 'protocol'], edges: ['frontend-dp'] },
-        ],
-        protocolRows: [
-          ['FRONTEND', 'ROUTER in · PULL out'],
-          ['ENGINECORE', 'DEALER in · PUSH out'],
-          ['EXECUTOR', 'shm ring · ZMQ fallback'],
-          ['DP coord', 'DP > 1 · load / request-wave'],
-        ],
-        noteKey: 'scenes.wire.note.vl',
-      },
-    };
-
-    const CROSSCUT_LAYOUT = {
-      0: {
-        sg: {
-          nodes: [
-            { id: 'req', x: 30, y: 48, w: 124, h: 56, label: 'Finished req', tag: 'usage relation', detailKey: 'nodes.crosscut.sg_finish' },
-            { id: 'radix', x: 180, y: 48, w: 150, h: 56, label: 'tree_cache', tag: 'checkpoint', detailKey: 'nodes.crosscut.sg_radix' },
-            { id: 'pool', x: 356, y: 48, w: 134, h: 56, label: 'KV pool', tag: 'unprotected return', detailKey: 'nodes.crosscut.sg_pool' },
-            { id: 'reuse', x: 30, y: 150, w: 124, h: 52, label: 'Next request', tag: 'longest prefix', detailKey: 'nodes.crosscut.sg_reuse' },
-            { id: 'evict', x: 180, y: 150, w: 150, h: 52, label: 'Evictable leaf', tag: 'no lock', detailKey: 'nodes.crosscut.sg_evict' },
-            { id: 'keep', x: 356, y: 150, w: 134, h: 52, label: 'Cached path', tag: 'retained', detailKey: 'nodes.crosscut.sg_radix' },
-          ],
-          edges: [
-            { id: 'req-radix', d: 'M154 76H180', label: 'checkpoint', lx: 167, ly: 67, anchor: 'middle' },
-            { id: 'radix-keep', d: 'M330 76H344V176H356' },
-            { id: 'radix-evict', d: 'M255 104V150', label: 'unlock', lx: 262, ly: 130 },
-            { id: 'reuse-radix', d: 'M154 176H168V104H180', label: 'match', lx: 154, ly: 145 },
-            { id: 'evict-pool', d: 'M330 166H336V118H423V104', label: 'on eviction', lx: 392, ly: 129, anchor: 'middle' },
-          ],
-          activeNodes: ['req', 'radix', 'keep', 'evict'],
-          activeEdges: ['req-radix', 'radix-keep', 'radix-evict'],
-        },
-        vl: {
-          nodes: [
-            { id: 'req', x: 30, y: 48, w: 124, h: 56, label: 'Finished req', tag: 'release()', detailKey: 'nodes.crosscut.vl_finish' },
-            { id: 'table', x: 180, y: 48, w: 150, h: 56, label: 'block table', tag: 'ref count', detailKey: 'nodes.crosscut.vl_table' },
-            { id: 'pool', x: 356, y: 48, w: 134, h: 56, label: 'BlockPool', tag: 'free queue', detailKey: 'nodes.crosscut.vl_pool' },
-            { id: 'reuse', x: 30, y: 150, w: 124, h: 52, label: 'Next request', tag: 'hash lookup', detailKey: 'nodes.crosscut.vl_reuse' },
-            { id: 'hash', x: 180, y: 150, w: 150, h: 52, label: 'hash → block', tag: 'kept until evict', detailKey: 'nodes.crosscut.vl_hash' },
-            { id: 'evict', x: 356, y: 150, w: 134, h: 52, label: 'eviction', tag: 'hash cleared', detailKey: 'nodes.crosscut.vl_evict' },
-          ],
-          edges: [
-            { id: 'req-table', d: 'M154 76H180', label: 'release', lx: 167, ly: 67, anchor: 'middle' },
-            { id: 'table-pool', d: 'M330 76H356', label: 'ref 0', lx: 343, ly: 67, anchor: 'middle' },
-            { id: 'reuse-hash', d: 'M154 176H180', label: 'lookup', lx: 167, ly: 167, anchor: 'middle' },
-            { id: 'hash-evict', d: 'M330 176H356', label: 'evict', lx: 343, ly: 167, anchor: 'middle' },
-            { id: 'hash-pool', d: 'M255 150V126H423V104', label: 'hash', lx: 260, ly: 140 },
-          ],
-          activeNodes: ['table', 'pool', 'hash'],
-        },
-      },
-      1: {
-        sg: {
-          nodes: [
-            { id: 'pressure', x: 30, y: 48, w: 132, h: 58, label: 'KV pool low', tag: 'decode check', detailKey: 'nodes.crosscut.sg_pressure' },
-            { id: 'running', x: 180, y: 48, w: 150, h: 58, label: 'running decode', tag: 'A · B · C', detailKey: 'nodes.crosscut.sg_retract' },
-            { id: 'retract', x: 356, y: 48, w: 134, h: 58, label: 'retract_decode', tag: 'victim batch', detailKey: 'nodes.crosscut.sg_retract' },
-            { id: 'waiting', x: 30, y: 150, w: 132, h: 52, label: 'waiting queue', tag: 're-admit', detailKey: 'nodes.crosscut.sg_release' },
-            { id: 'release', x: 180, y: 150, w: 150, h: 52, label: 'release KV', tag: 'reset request', detailKey: 'nodes.crosscut.sg_release' },
-            { id: 'ratio', x: 356, y: 150, w: 134, h: 52, label: 'new_token_ratio', tag: 're-estimate ≤1', detailKey: 'nodes.crosscut.sg_ratio' },
-          ],
-          edges: [
-            { id: 'pressure-running', d: 'M162 77H180', label: 'check', lx: 171, ly: 67, anchor: 'middle' },
-            { id: 'running-retract', d: 'M330 77H356', label: 'select', lx: 343, ly: 67, anchor: 'middle' },
-            { id: 'retract-release', d: 'M423 106V128H255V150', label: 'free', lx: 380, ly: 120 },
-            { id: 'release-waiting', d: 'M180 176H162', label: 'requeue', lx: 171, ly: 168, anchor: 'middle' },
-            { id: 'retract-ratio', d: 'M455 106V150', label: 'ratio', lx: 462, ly: 128 },
-          ],
-          activeNodes: ['pressure', 'running', 'retract', 'release', 'waiting', 'ratio'],
-        },
-        vl: {
-          nodes: [
-            { id: 'pressure', x: 30, y: 48, w: 132, h: 58, label: 'blocks low', tag: 'watermark', detailKey: 'nodes.crosscut.vl_pressure' },
-            { id: 'running', x: 180, y: 48, w: 150, h: 58, label: 'running queue', tag: 'pick victim', detailKey: 'nodes.crosscut.vl_preempt' },
-            { id: 'preempt', x: 356, y: 48, w: 134, h: 58, label: '_preempt_request', tag: 'free blocks', detailKey: 'nodes.crosscut.vl_preempt' },
-            { id: 'waiting', x: 30, y: 150, w: 132, h: 52, label: 'waiting (front)', tag: 'recompute', detailKey: 'nodes.crosscut.vl_reset' },
-            { id: 'reset', x: 180, y: 150, w: 150, h: 52, label: 'num_computed=0', tag: 'PREEMPTED', detailKey: 'nodes.crosscut.vl_reset' },
-            { id: 'recompute', x: 356, y: 150, w: 134, h: 52, label: 'next prefill', tag: 'rebuild KV', detailKey: 'nodes.crosscut.vl_recompute' },
-          ],
-          edges: [
-            { id: 'pressure-running', d: 'M162 77H180', label: 'blocks', lx: 171, ly: 67, anchor: 'middle' },
-            { id: 'running-preempt', d: 'M330 77H356', label: 'victim', lx: 343, ly: 67, anchor: 'middle' },
-            { id: 'preempt-reset', d: 'M423 106V128H255V150', label: 'free', lx: 380, ly: 120 },
-            { id: 'reset-waiting', d: 'M180 176H162', label: 'prepend', lx: 171, ly: 168, anchor: 'middle' },
-            { id: 'reset-recompute', d: 'M330 176H356', label: 'recompute', lx: 343, ly: 168, anchor: 'middle' },
-          ],
-          activeNodes: ['preempt', 'reset', 'waiting'],
-        },
-      },
-      2: {
-        sg: {
-          nodes: [
-            { id: 'abort', x: 30, y: 48, w: 132, h: 56, label: 'Abort / disconnect', tag: 'AbortReq', detailKey: 'nodes.crosscut.sg_abort' },
-            { id: 'scheduler', x: 180, y: 48, w: 150, h: 56, label: 'Scheduler', tag: 'waiting / running', detailKey: 'nodes.crosscut.sg_sched' },
-            { id: 'queues', x: 356, y: 48, w: 134, h: 56, label: 'waiting queue', tag: 'not admitted · pop', detailKey: 'nodes.crosscut.sg_queues' },
-            { id: 'reply', x: 180, y: 150, w: 150, h: 52, label: 'TokenizerManager', tag: 'abort reply', detailKey: 'nodes.crosscut.sg_reply' },
-            { id: 'stream', x: 356, y: 150, w: 134, h: 52, label: 'stream end', tag: 'SSE close', detailKey: 'nodes.crosscut.sg_reply' },
-          ],
-          edges: [
-            { id: 'abort-scheduler', d: 'M162 76H180', label: 'AbortReq', lx: 171, ly: 67, anchor: 'middle' },
-            { id: 'scheduler-queues', d: 'M330 76H356', label: 'pop/filter', lx: 343, ly: 67, anchor: 'middle' },
-            { id: 'queues-reply', d: 'M423 104V128H255V150', label: 'abort reply', lx: 350, ly: 122, anchor: 'middle' },
-            { id: 'reply-stream', d: 'M330 176H356', label: 'close', lx: 343, ly: 167, anchor: 'middle' },
-          ],
-          activeNodes: ['abort', 'scheduler', 'queues', 'reply', 'stream'],
-        },
-        vl: {
-          nodes: [
-            { id: 'abort', x: 30, y: 48, w: 132, h: 56, label: 'Abort / disconnect', tag: 'frontend', detailKey: 'nodes.crosscut.vl_abort' },
-            { id: 'core', x: 180, y: 48, w: 150, h: 56, label: 'EngineCore', tag: 'ABORT frame', detailKey: 'nodes.crosscut.vl_core' },
-            { id: 'scheduler', x: 356, y: 48, w: 134, h: 56, label: 'Scheduler', tag: 'finish_requests', detailKey: 'nodes.crosscut.vl_sched' },
-            { id: 'blocks', x: 30, y: 150, w: 132, h: 52, label: 'blocks / connector', tag: 'free', detailKey: 'nodes.crosscut.vl_blocks' },
-            { id: 'out', x: 180, y: 150, w: 150, h: 52, label: 'EngineCoreOutputs', tag: 'FINISHED_ABORTED', detailKey: 'nodes.crosscut.vl_out' },
-            { id: 'front', x: 356, y: 150, w: 134, h: 52, label: 'frontend cleanup', tag: 'stream end', detailKey: 'nodes.crosscut.vl_out' },
-          ],
-          edges: [
-            { id: 'abort-core', d: 'M162 76H180', label: 'ZMQ', lx: 171, ly: 67, anchor: 'middle' },
-            { id: 'core-scheduler', d: 'M330 76H356', label: 'ABORT', lx: 343, ly: 67, anchor: 'middle' },
-            { id: 'scheduler-blocks', d: 'M423 104V128H96V150', label: 'free', lx: 260, ly: 140 },
-            { id: 'scheduler-out', d: 'M455 104V138H255V150', label: 'outputs', lx: 398, ly: 132 },
-            { id: 'out-front', d: 'M330 176H356', label: 'cleanup', lx: 343, ly: 167, anchor: 'middle' },
-          ],
-          activeNodes: ['core', 'scheduler', 'blocks'],
-        },
-      },
-      3: {
-        sg: {
-          nodes: [
-            { id: 'graph', x: 150, y: 40, w: 220, h: 56, label: 'ModelRunner.forward', tag: 'mode + graph eligibility', detailKey: 'nodes.crosscut.sg_graph' },
-            { id: 'decode', x: 24, y: 178, w: 145, h: 58, label: 'Decode graph', tag: 'CudaGraphRunner', detailKey: 'nodes.crosscut.sg_decode' },
-            { id: 'piece', x: 188, y: 178, w: 145, h: 58, label: 'Prefill graph', tag: 'piecewise / BCG', detailKey: 'nodes.crosscut.sg_piece' },
-            { id: 'eager', x: 352, y: 178, w: 144, h: 58, label: 'EagerRunner', tag: 'ordinary forward', detailKey: 'nodes.crosscut.sg_graph' },
-            { id: 'result', x: 100, y: 320, w: 320, h: 56, label: 'ModelRunnerOutput', tag: 'logits_output + flags', detailKey: 'nodes.crosscut.sg_graph_output' },
-          ],
-          edges: [
-            { id: 'graph-fork', d: 'M260 96V130' },
-            { id: 'graph-decode', d: 'M260 130H96V178' },
-            { id: 'graph-piece', d: 'M260 130V178' },
-            { id: 'graph-eager', d: 'M260 130H424V178' },
-            { id: 'decode-result', d: 'M96 236V292H180V320' },
-            { id: 'piece-result', d: 'M260 236V320' },
-            { id: 'eager-result', d: 'M424 236V292H340V320' },
-          ],
-          activeNodes: ['graph', 'decode', 'result'],
-        },
-        vl: {
-          nodes: [
-            { id: 'compile', x: 30, y: 48, w: 132, h: 56, label: 'CompilationConfig', tag: 'graph mode', detailKey: 'nodes.crosscut.vl_compile' },
-            { id: 'full', x: 180, y: 48, w: 150, h: 56, label: 'FULL', tag: 'decode graph · optional', detailKey: 'nodes.crosscut.vl_full' },
-            { id: 'piece', x: 356, y: 48, w: 134, h: 56, label: 'PIECEWISE', tag: 'own compile conditions', detailKey: 'nodes.crosscut.vl_piece' },
-            { id: 'none', x: 30, y: 150, w: 132, h: 52, label: 'NONE', tag: 'eager fallback', detailKey: 'nodes.crosscut.vl_compile' },
-            { id: 'mix', x: 180, y: 150, w: 150, h: 52, label: 'FULL_AND_PIECEWISE', tag: 'one allowed combo', detailKey: 'nodes.crosscut.vl_mix' },
-            { id: 'mrv2', x: 356, y: 150, w: 134, h: 52, label: 'MRV2 execute', tag: 'dispatch', detailKey: 'nodes.crosscut.vl_mrv2' },
-          ],
-          edges: [
-            { id: 'compile-full', d: 'M162 76H180', label: 'mode', lx: 171, ly: 67, anchor: 'middle' },
-            { id: 'compile-piece', d: 'M96 104V122H423V104', label: 'mode', lx: 260, ly: 116 },
-            { id: 'compile-none', d: 'M66 104V150', label: 'off', lx: 72, ly: 128 },
-            { id: 'full-mix', d: 'M255 104V150', label: 'FULL', lx: 262, ly: 128 },
-            { id: 'piece-mix', d: 'M423 104V134H330V150', label: 'PIECEWISE', lx: 356, ly: 128 },
-            { id: 'mix-mrv2', d: 'M330 176H356', label: 'dispatch', lx: 343, ly: 167, anchor: 'middle' },
-          ],
-          activeNodes: ['full', 'piece', 'mix'],
-        },
       },
     };
 
@@ -2752,58 +2418,6 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
 
     function isNodeSelected(selected, side, node) {
       return !!selected && selected.side === side && selected.id === node.id;
-    }
-
-    function ProcessScene({ step, t, selected, onSelect }) {
-      const renderBoard = (side) => {
-        const layout = PROCESS_LAYOUT[side];
-        const state = layout.active[step] || { nodes: [], edges: [] };
-        const activeNodes = new Set(state.nodes);
-        const activeEdges = new Set(state.edges);
-        const uid = `process-${side}`;
-        return h(
-          EngineBoard,
-          {
-            key: side,
-            side,
-            chapter: 'process',
-            step,
-            stepCount: 4,
-            t,
-          },
-          h(
-            'svg',
-            {
-              viewBox: '0 0 520 366',
-              className: 'ia-svg',
-              role: 'group',
-              'aria-label': `${ENGINE[side].name} process architecture`,
-            },
-            h(SvgDefs, { uid }),
-            h(CanvasGrid, { uid }),
-            layout.zones.map((zone, index) => h(Zone, { key: index, zone, t })),
-            layout.edges.map((edge) =>
-              h(Edge, {
-                key: edge.id,
-                edge,
-              nodes: layout.nodes,
-                active: activeEdges.has(edge.id),
-                uid,
-              }),
-            ),
-            layout.nodes.map((node) =>
-              h(NodeBox, {
-                key: node.id,
-                node,
-                active: activeNodes.has(node.id),
-                selected: isNodeSelected(selected, side, node),
-                onSelect: (picked) => onSelect({ side, id: picked.id, label: picked.label, tag: picked.tag, detailKey: picked.detailKey }),
-              }),
-            ),
-          ),
-        );
-      };
-      return h(React.Fragment, null, renderBoard('sg'), renderBoard('vl'));
     }
 
     function PrefixTokenRail({ side, step }) {
@@ -3123,6 +2737,9 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
     }
 
     function BatchBoard({ side, step, t, selected, onSelect }) {
+      if(step<2)return h(EngineBoard,{side,chapter:'batch',step,stepCount:4,t,v2Detail:false},
+        h('svg',{viewBox:'0 0 520 100',className:'ia-svg',role:'group','aria-label':'Token and KV admission budget'},h(BudgetMeters,{side,step})),
+        h(window.AtlasArchify.Admission,{side,step,en:atlasLocale.lang==='en',selected,onSelect}));
       const layout = BATCH_LAYOUT[side];
       const state = layout.active[step] || { nodes: [], edges: [] };
       const activeNodes = new Set(state.nodes);
@@ -3225,422 +2842,22 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
       );
     }
 
-    function DisaggBoard({ side, step, t, selected, onSelect }) {
-      const layout = DISAGG_LAYOUT[side];
-      const state = layout.active[step] || { nodes: [], edges: [] };
-      const activeNodes = new Set(state.nodes);
-      const activeEdges = new Set(state.edges);
-      const uid = `disagg-${side}`;
-      const shownNodes=layout.nodes.filter(n=>side!=='vl'||(n.id==='gpu'?step===2:n.id==='scale'?step!==2:true));
-      const shownEdges=layout.edges.filter(e=>e.id!=='offload-gpu'||step===2);
-      return h(
-        EngineBoard,
-        { side, chapter: 'disagg', step, stepCount: 4, t },
-        h(
-          'svg',
-          {
-            viewBox: '0 0 520 366',
-            className: 'ia-svg',
-            role: 'group',
-            'aria-label': `${ENGINE[side].name} disaggregation and scaling mechanism`,
-          },
-          h(SvgDefs, { uid }),
-          h(CanvasGrid, { uid }),
-          h('text', { x: 30, y: 32, className: 'ia-sceneKicker' },
-            side === 'sg' ? 'prefix-aware route · PD roles' : 'connector-owned transport · DP coordination'),
-          h('text', { x: 38, y: 202, className: 'ia-sceneKicker is-inside' },
-            side === 'sg' ? 'restore: L3 → L2 → L1' : 'control metadata ≠ KV payload'),
-          shownEdges.map((edge) =>
-            h(Edge, {
-              key: edge.id,
-              edge,
-              nodes: layout.nodes,
-              active: activeEdges.has(edge.id),
-              uid,
-            }),
-          ),
-          shownNodes.map((node) =>
-            h(NodeBox, {
-              key: node.id,
-              node,
-              active: activeNodes.has(node.id),
-              selected: isNodeSelected(selected, side, node),
-              onSelect: (picked) => onSelect({ side, id: picked.id, label: picked.label, tag: picked.tag, detailKey: picked.detailKey }),
-            }),
-          ),
-        ),
-      );
+    function ArchifyPair({chapter,step,t,selected,onSelect,ownership,tp=2,roleOverview,showSources,onLocate,wireView='sequence',depth='modules'}) {
+      const en=atlasLocale.lang==='en',A=window.AtlasArchify;
+      return h(React.Fragment,null,['sg','vl'].map(side=>h(EngineBoard,{key:side,side,chapter:ownership?'ownership':chapter,step,stepCount:4,t,roleOverview,v2Detail:false,footKey:chapter==='crosscut'?`scenes.crosscut.foot.${step}.${side}`:undefined},
+        chapter==='process'?(roleOverview?h(A.Roles,{side,en,selected,onSelect,showSources,onLocate}):h(A.Process,{side,en,tp,step,ownership,selected,onSelect})):
+        chapter==='wire'?h(A.Wire,{side,en,step,wireView,selected,onSelect,sourceOpen:showSources}):
+        chapter==='disagg'?h(A.Disagg,{side,en,step,selected,onSelect,depth}):
+        step===3?h(A.Graph,{side,en,selected,onSelect}):h(A.Lifecycle,{side,en,step,selected,onSelect}))));
     }
-
-    function DisaggScene({ step, t, selected, onSelect }) {
-      return h(
-        React.Fragment,
-        null,
-        h(DisaggBoard, { side: 'sg', step, t, selected, onSelect }),
-        h(DisaggBoard, { side: 'vl', step, t, selected, onSelect }),
-      );
-    }
-
-    function WireBoard({ side, step, t, selected, onSelect }) {
-      const layout = WIRE_LAYOUT[side];
-      const state = layout.active[step] || { nodes: [], edges: [] };
-      const activeNodes = new Set(state.nodes);
-      const activeEdges = new Set(state.edges);
-      const uid = `wire-${side}`;
-      const liveRows =
-        side === 'sg'
-          ? step === 0
-            ? [0]
-            : step === 1
-              ? [1, 2]
-              : step === 2
-                ? []
-                : [3]
-          : [Math.min(step, 3)];
-
-      const protocolChildren = h(
-        'g',
-        { className: 'ia-cardBody' },
-        layout.protocolRows.map((row, index) =>
-          h(
-            'g',
-            {
-              key: `protocol-${index}`,
-              className: `ia-protocolRow${liveRows.includes(index) ? ' is-live' : ''}`,
-            },
-            h('rect', {
-              x: 38,
-              y: 278 + index * 16,
-              width: 444,
-              height: 15,
-              rx: 2,
-              className: 'ia-protocolRowBox',
-            }),
-            h(
-              'text',
-              { x: 46, y: 289 + index * 16, className: 'ia-protocolKey' },
-              row[0],
-            ),
-            h(
-              'text',
-              { x: 160, y: 289 + index * 16, className: 'ia-protocolValue' },
-              row[1],
-            ),
-          ),
-        ),
-      );
-
-      return h(
-        EngineBoard,
-        { side, chapter: 'wire', step, stepCount: 4, t },
-        h(
-          'svg',
-          {
-            viewBox: '0 0 520 366',
-            className: 'ia-svg',
-            role: 'group',
-            'aria-label': `${ENGINE[side].name} communication topology`,
-          },
-          h(SvgDefs, { uid }),
-          h(CanvasGrid, { uid }),
-          layout.edges.map((edge) =>
-            h(Edge, {
-              key: edge.id,
-              edge,
-              nodes: layout.nodes,
-              active: activeEdges.has(edge.id),
-              uid,
-            }),
-          ),
-          layout.nodes.map((node) =>
-            h(
-              NodeBox,
-              {
-                key: node.id,
-                node,
-                active: activeNodes.has(node.id),
-                selected: isNodeSelected(selected, side, node),
-                onSelect: (picked) => onSelect({ side, id: picked.id, label: picked.label, tag: picked.tag, detailKey: picked.detailKey }),
-              },
-              node.id === 'protocol' ? protocolChildren : null,
-            ),
-          ),
-        ),
-      );
-    }
-
-    function WireScene({ step, t, selected, onSelect }) {
-      return h(
-        React.Fragment,
-        null,
-        h(WireBoard, { side: 'sg', step, t, selected, onSelect }),
-        h(WireBoard, { side: 'vl', step, t, selected, onSelect }),
-      );
-    }
-
-    function CrosscutDecor({ step, side, t }) {
-      const isSg = side === 'sg';
-      const panel = h('rect', {
-        x: 30,
-        y: 226,
-        width: 460,
-        height: 94,
-        rx: 7,
-        className: 'ia-scenePanel',
-      });
-      const header = h(
-        'text',
-        { x: 42, y: 244, className: 'ia-decorHeader' },
-        t(`scenes.crosscut.decor.header.${step}`),
-      );
-
-      const chip = (x, y, width, label, accent, key) =>
-        h(
-          'g',
-          {
-            key,
-            className: `ia-decorChipGroup${accent ? ' is-accent' : ''}`,
-          },
-          h('rect', {
-            x,
-            y,
-            width,
-            height: 24,
-            rx: 3,
-            className: 'ia-decorChip',
-          }),
-          h(
-            'text',
-            {
-              x: x + width / 2,
-              y: y + 16,
-              textAnchor: 'middle',
-              className: 'ia-decorChipLabel',
-            },
-            label,
-          ),
-        );
-
-      const arrow = (x, y, key) =>
-        h(
-          'text',
-          {
-            key,
-            x,
-            y,
-            textAnchor: 'middle',
-            className: 'ia-decorArrow',
-          },
-          '→',
-        );
-
-      if (step === 0) {
-        const labels = isSg
-          ? ['lock_ref 1', 'finish', 'lock_ref 0', 'radix kept']
-          : ['ref_cnt 1', 'finish', 'ref_cnt 0', 'hash kept'];
-        return h(
-          'g',
-          { className: 'ia-crosscutDecor', 'aria-hidden': 'true' },
-          panel,
-          header,
-          labels.map((label, index) =>
-            chip(42 + index * 106, 258, 96, label, index === labels.length - 1, `chip-${index}`),
-          ),
-          arrow(143, 275, 'arrow-0'),
-          arrow(249, 275, 'arrow-1'),
-          arrow(355, 275, 'arrow-2'),
-          h(
-            'text',
-            { x: 42, y: 306, className: 'ia-decorCaption' },
-            t(`scenes.crosscut.decor.caption.0.${side}`),
-          ),
-        );
-      }
-
-      if (step === 1) {
-        const labels = isSg
-          ? ['retract', 'release KV', 're-admit']
-          : ['preempt', 'free blocks', 'recompute'];
-        return h(
-          'g',
-          { className: 'ia-crosscutDecor', 'aria-hidden': 'true' },
-          panel,
-          header,
-          h('rect', {
-            x: 42,
-            y: 252,
-            width: 436,
-            height: 12,
-            rx: 6,
-            className: 'ia-gaugeTrack',
-          }),
-          h('rect', {
-            x: 42,
-            y: 252,
-            width: 401,
-            height: 12,
-            rx: 6,
-            className: 'ia-gaugeFill',
-          }),
-          h('text', { x: 478, y: 249, textAnchor: 'end', className: 'ia-gaugeLabel' }, 'example ≈92%'),
-          labels.map((label, index) =>
-            chip(42 + index * 148, 282, 132, label, index === 1, `chip-${index}`),
-          ),
-          h(
-            'text',
-            { x: 42, y: 313, className: 'ia-decorCaption' },
-            t(`scenes.crosscut.decor.caption.1.${side}`),
-          ),
-        );
-      }
-
-      if (step === 2) {
-        const labels = isSg
-          ? ['AbortReq', 'pop waiting', 'notify TM']
-          : ['ABORT frame', 'finish_requests', 'blocks + outputs'];
-        return h(
-          'g',
-          { className: 'ia-crosscutDecor', 'aria-hidden': 'true' },
-          panel,
-          header,
-          labels.map((label, index) =>
-            chip(42 + index * 148, 260, 132, label, index === 1, `chip-${index}`),
-          ),
-          arrow(181, 277, 'arrow-0'),
-          arrow(329, 277, 'arrow-1'),
-          h(
-            'text',
-            { x: 42, y: 308, className: 'ia-decorCaption' },
-            t(`scenes.crosscut.decor.caption.2.${side}`),
-          ),
-        );
-      }
-
-      return h(
-        'g',
-        { className: 'ia-crosscutDecor', 'aria-hidden': 'true' },
-        panel,
-        header,
-        [1, 2, 4, 8].map((value, index) =>
-          h('rect', {
-            key: `bar-${value}`,
-            x: 42 + index * 62,
-            y: 300 - 12 - index * 10,
-            width: 46,
-            height: 12 + index * 10,
-            rx: 2,
-            className: `ia-graphBar${index === 3 ? ' is-alt' : ''}`,
-          }),
-        ),
-        [1, 2, 4, 8].map((value, index) =>
-          h(
-            'text',
-            {
-              key: `bar-label-${value}`,
-              x: 65 + index * 62,
-              y: 316,
-              textAnchor: 'middle',
-              className: 'ia-graphLabel',
-            },
-            String(value),
-          ),
-        ),
-        isSg
-          ? h(React.Fragment, null,
-              h('path', {
-                d: 'M348 248V310',
-                className: 'ia-breakLine',
-              }),
-              h('text', { x: 356, y: 268, className: 'ia-breakLabel' }, 'break'),
-              h('text', { x: 356, y: 288, className: 'ia-decorCaption' }, 'host work'),
-              h('text', { x: 356, y: 304, className: 'ia-decorCaption' }, 'resume replay'),
-            )
-          : h(React.Fragment, null,
-              h('text', { x: 348, y: 266, className: 'ia-decorCaption' }, 'FULL'),
-              h('text', { x: 348, y: 284, className: 'ia-decorCaption' }, '+ PIECEWISE'),
-              h('text', { x: 348, y: 304, className: 'ia-breakLabel' }, 'allowed combo'),
-            ),
-      );
-    }
-
-    function CrosscutBoard({ step, side, t, selected, onSelect }) {
-      const layout = CROSSCUT_LAYOUT[step][side];
-      const [graphPath,setGraphPath]=React.useState('decode');
-      React.useEffect(()=>setGraphPath('decode'),[step]);
-      const graphChoice=side==='sg'&&step===3;
-      const activeNodes = new Set(graphChoice?['graph',graphPath,'result']:layout.activeNodes || []);
-      const activeEdges = new Set(graphChoice?['graph-fork',`graph-${graphPath}`,`${graphPath}-result`]:layout.activeEdges || layout.edges.map((edge) => edge.id));
-      const uid = `crosscut-${step}-${side}`;
-      return h(
-        EngineBoard,
-        {
-          side,
-          chapter: 'crosscut',
-          step,
-          stepCount: 4,
-          t,
-          footKey: `scenes.crosscut.foot.${step}.${side}`,
-        },
-        graphChoice?h('fieldset',{className:'rv-graph-controls',style:{'--ia-graph-accent':'var(--ia-sgScene)'}},
-          h('legend',null,t('control.sgGraphChoice')),
-          h('div',{className:'rv-graph-choices'},[['decode','Decode graph'],['piece','Prefill graph'],['eager','Eager']].map(([value,title])=>h('button',{
-            key:value,type:'button','data-sg-graph-choice':value,'aria-pressed':graphPath===value,onClick:()=>setGraphPath(value),
-          },title)))):null,
-        h(
-          'svg',
-          {
-            viewBox: graphChoice?'0 0 520 410':'0 0 520 366',
-            className: 'ia-svg',
-            role: 'group',
-            'aria-label': `${ENGINE[side].name} crosscut module ${step + 1}`,
-          },
-          h(SvgDefs, { uid }),
-          h(CanvasGrid, { uid }),
-          graphChoice?h('text',{x:24,y:402,className:'ia-decorCaption'},t('control.sgGraphBackend')):h(CrosscutDecor, { step, side, t }),
-          layout.edges.map((edge) =>
-            h(Edge, {
-              key: edge.id,
-              edge,
-              nodes: layout.nodes,
-              active: activeEdges.has(edge.id),
-              uid,
-            }),
-          ),
-          layout.nodes.map((node) =>
-            h(NodeBox, {
-              key: node.id,
-              node,
-              active: activeNodes.has(node.id),
-              selected: isNodeSelected(selected, side, node),
-              onSelect: (picked) => onSelect({ side, id: picked.id, label: picked.label, tag: picked.tag, detailKey: picked.detailKey }),
-            }),
-          ),
-        ),
-      );
-    }
-
-    function CrosscutScene({ step, t, selected, onSelect }) {
-      return h(
-        React.Fragment,
-        null,
-        h(CrosscutBoard, { step, side: 'sg', t, selected, onSelect }),
-        h(CrosscutBoard, { step, side: 'vl', t, selected, onSelect }),
-      );
-    }
-
-    function Scene({ chapter, step, t, selected, onSelect, ownership, tp, tokens, roleOverview, showSources, onLocate }) {
-      if(chapter==='process'&&roleOverview)return h(React.Fragment,null,['sg','vl'].map(side=>h(EngineBoard,{key:side,side,chapter,step,stepCount:4,t,roleOverview:true,v2Detail:false},
-        h(window.AtlasRoles.Body,{side,en:atlasLocale.lang==='en',selected,onSelect,onLocate,showSources}))));
-      if (chapter === 'metrics' || (chapter === 'process' && ownership)) return h(React.Fragment, null,
-        ['sg','vl'].map(side => h(EngineBoard, {key:side,side,chapter:chapter==='process'?'ownership':chapter,step,stepCount:4,t},
-          h(chapter === 'metrics' ? window.AtlasBoundaries.Metrics : window.AtlasBoundaries.Ownership,
-            {side,step,en:atlasLocale.lang==='en',tp,tokens}))));
-      if (chapter === 'wire') return h(WireScene, { step, t, selected, onSelect });
-      if (chapter === 'prefix') return h(PrefixScene, { step, t, selected, onSelect });
-      if (chapter === 'batch') return h(BatchScene, { step, t, selected, onSelect });
-      if (chapter === 'disagg') return h(DisaggScene, { step, t, selected, onSelect });
-      if (chapter === 'crosscut') return h(CrosscutScene, { step, t, selected, onSelect });
-      return h(ProcessScene, { step, t, selected, onSelect });
+    function Scene({ chapter, step, t, selected, onSelect, ownership, tp, tokens, roleOverview, showSources, onLocate,wireView,depth }) {
+      if(['process','wire','disagg','crosscut'].includes(chapter))return h(ArchifyPair,{chapter,step,t,selected,onSelect,ownership,tp,roleOverview,showSources,onLocate,wireView,depth});
+      if (chapter === 'metrics') return h(React.Fragment, null,
+        ['sg','vl'].map(side => h(EngineBoard,{key:side,side,chapter,step,stepCount:4,t},
+          h(window.AtlasBoundaries.Metrics,{side,step,en:atlasLocale.lang==='en',tp,tokens}))));
+      if (chapter === 'prefix') return h(PrefixScene,{step,t,selected,onSelect});
+      if (chapter === 'batch') return h(BatchScene,{step,t,selected,onSelect});
+      return null;
     }
 
     const SOURCE_LINKS = [
@@ -4304,13 +3521,15 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
     const updateResume = window.SiteUpdate?.take('engine-comparison');
     const resumeChapter = CHAPTERS.findIndex(chapter => chapter.id === updateResume?.chapter);
 
-    function DepthOverview({chapter,step,t,selected,onSelect}) {
+    function DepthOverview({chapter,step,t,selected,onSelect,showSources,wireView}) {
+      if(['wire','disagg'].includes(chapter))return h(ArchifyPair,{chapter,step,t,selected,onSelect,showSources,wireView,depth:'overview'});
+      if(chapter==='batch'&&step<2)return h(BatchScene,{step,t,selected,onSelect});
       const notes={wire:['请求输入：接收方创建本地对象','回程传递输出 IDs / 文本','执行交接与管理调用分开','协议与管理通道按配置存在'],prefix:['共同前缀 10 个位置；查询尚未确认命中','按本例粒度可复用 8 个位置','其余 4 个位置需要补算','索引命中返回地址；分配与持有归属另看模块过程'],batch:['候选请求仍未通过准入','本轮预算决定接纳，排序不保证入选','本轮交给执行；局部 CPU / GPU 重叠见模块过程','输出推进请求状态；下一轮另作调度'],disagg:['为请求选择角色 / 实例','控制信息与 KV 数据分别交接','可选缓存层次；不是每次请求必经','可选集群扩展；不是请求流水线的下一站']};
       return h(React.Fragment,null,['sg','vl'].map(side=>{
         let content;
         if(chapter==='prefix')content=h('svg',{viewBox:'0 0 520 170',className:'ia-svg',role:'img','aria-label':notes.prefix[step]},h(PrefixTokenRail,{side,step}),h('text',{x:30,y:131,className:'ia-sceneKicker'},step>=1?'复用 01–08；09–12 补算':'相同教学输入，等待各自索引查询'));
         else {
-          const layout=({wire:WIRE_LAYOUT,batch:BATCH_LAYOUT,disagg:DISAGG_LAYOUT})[chapter][side],active=layout.active[step],uid='overview-'+side;
+          const layout=BATCH_LAYOUT[side],active=layout.active[step],uid='overview-'+side;
           const edges=layout.edges.filter(e=>active.edges.includes(e.id));
           // Keep original ports and ownership. Only remove secondary protocols and
           // inactive regions; no invented one-to-one mapping between the engines.
@@ -4366,15 +3585,19 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
         const t = useMemo(() => locale.bind(NS), [locale, localeRevision]);
         const chapter = CHAPTERS[chapterIndex];
         useEffect(() => { window.dispatchEvent(new Event('learning:navigation')); }, [chapter.id]);
-        const hasOverview = ['wire','prefix','batch','disagg'].includes(chapter.id);
+        const hasOverview = chapter.id==='prefix'||chapter.id==='batch'&&step>=2||chapter.id==='disagg'&&step<2;
         const shownDepth = hasOverview ? readerView.depth : 'modules';
         const roleOverview=chapter.id==='process'&&processView==='roles';
         const staticReason=roleOverview?['这是模块职责与逻辑关系总览；调用关系不表示独立进程或串行耗时。','This is a responsibility map; call relationships do not imply separate processes or serial durations.']:chapter.id==='metrics'
           ? ['本步标记计时端点与统计样本；事件间距不表示耗时。','This step marks measurement endpoints and samples; spacing does not represent elapsed time.']
+          : chapter.id==='crosscut'&&step<3
+            ? ['本步高亮请求状态与资源账目；状态转换不表示数据正在传输。','This view highlights request state and resource accounting; transitions are not data transfers.']
+          : chapter.id==='process'&&step===0
+            ? ['本步整理入口输入；跨组件交接从进入调度开始。','This step prepares frontend inputs; cross-component handoff starts at scheduling.']
           : chapter.id==='prefix'&&(shownDepth==='overview'||step===0)
             ? ['本视图比较前缀输入与复用结果；地址访问见模块过程。','This view compares prefix inputs and reuse; see module process for address access.']
-            : chapter.id==='batch'&&step===0
-              ? ['候选请求仍在等待，尚未交给执行。','Candidate requests are waiting; no work has been dispatched.']
+            : chapter.id==='batch'&&step<2
+              ? ['本步检查候选与准入额度；尚未把工作交给 GPU。','This step checks candidates and admission budgets; work has not reached the GPU.']
               : chapter.id==='disagg'&&step===3
                 ? ['本步展示可选配置范围，没有模拟请求流。','This step shows optional configuration scope, without simulated request flow.']
                 : chapter.id==='process'&&ownership&&step!==2
@@ -4387,6 +3610,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
           url.searchParams.set('depth', next.depth);
           if (next.sourceOpen) url.searchParams.set('source', '1');
           else url.searchParams.delete('source');
+          url.searchParams.set('wire',next.wire||'sequence');
           url.searchParams.set('step', step);
           url.searchParams.set('pulse', pulseClock.current.toFixed(3));
           history.replaceState(null, '', url);
@@ -4564,7 +3788,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
             h(StepRail, { chapter, step, t, onStep: goToStep }),
             chapter.id==='process'?h('div',{className:'ib-controls',role:'group','aria-label':label('进程观察方式','Process view')},
               [['roles',label('01 先认职责','01 Responsibilities')],['ownership',label('02 看进程与 KV 归属','02 Processes & KV')],['request',label('03 追踪请求路径','03 Request path')]].map(([view,title])=>h('button',{key:view,type:'button','data-process-view':view,'aria-pressed':processView===view,onClick:()=>setProcessView(view)},title)),
-              ownership?h('label',null,'TP ',h('select',{'aria-label':label('张量并行规模','Tensor parallel size'),value:tp,onChange:e=>setTp(Number(e.target.value))},h('option',{value:1},'1'),h('option',{value:2},'2'))):null):null,
+              !roleOverview?h('label',null,'TP ',h('select',{'aria-label':label('张量并行规模','Tensor parallel size'),value:tp,onChange:e=>setTp(Number(e.target.value))},h('option',{value:1},'1'),h('option',{value:2},'2'))):null):null,
             chapter.id==='process'&&ownership?h('p',{className:'ia-controlHint'},label('L1–L5 是职责，不是五个进程。此图限定单机 Python 文本服务、单 API / 单 Detokenizer、PP=DP=1，普通 Full Attention 缓存且无外部后端；vLLM 采用 TP1 uni / TP2 mp，不计 launcher、监控和辅助进程。','L1–L5 are roles, not five processes. Single-node Python text service, one API / one Detokenizer, PP=DP=1, ordinary full-attention cache without an external backend; vLLM uses TP1 uni / TP2 mp. Launcher, monitoring, and helper processes are excluded.')):null,
             chapter.id==='metrics'?h('p',{className:'ia-controlHint'},label('范围：普通 Python 文本流式服务，开启指标；非 PD、无投机/重试/取消、无 stop 字符串，按 EOS 或长度终止。四步是四个观察问题，不是四段串行执行。','Scope: ordinary Python text streaming with metrics; no PD, speculation, retries, cancellation, or stop strings; EOS/length termination. These are four observation questions, not four serial execution phases.')):null,
             chapter.id==='metrics'&&step===3?h('label',{className:'ib-controls'},label('SGLang 每次合并几个 token？（vLLM 保持单 token 核心输出）','SGLang tokens per return? (vLLM keeps single-token core outputs)'),h('select',{'aria-label':label('SGLang 合并 token 数','SGLang tokens per return'),value:tokens,onChange:e=>setTokens(Number(e.target.value))},[1,2,4].map(n=>h('option',{key:n,value:n},n)))):null,
@@ -4574,6 +3798,8 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                   key: mode, type: 'button', 'data-depth-choice': mode, 'aria-pressed': shownDepth === mode,
                   onClick: () => updateReaderView({ ...readerView, depth: mode }),
                 }, mode === 'overview' ? label('总览', 'Overview') : label('模块过程', 'Module process')))) : null,
+              chapter.id==='wire'?h('div',{className:'ia-mode-controls',role:'group','aria-label':label('通信图视角','Communication view')},
+                [['sequence',label('消息时序','Message sequence')],['topology',label('通道拓扑','Channel topology')]].map(([view,title])=>h('button',{key:view,type:'button','data-wire-view':view,'aria-pressed':readerView.wire===view,onClick:()=>updateReaderView({...readerView,wire:view})},title))):null,
               h('button', { type: 'button', onClick: () => setPulsePlaying(playing => !playing),
                 disabled:!!staticReason||reduceMotion,'aria-pressed': !staticReason&&!reduceMotion&&pulsePlaying, 'data-pulse-toggle': true },
                 staticReason?label('静态示意','Static view'):reduceMotion?label('已减少动态效果','Reduced motion'):pulsePlaying ? label('暂停脉冲', 'Pause pulses') : label('播放脉冲', 'Play pulses'))),
@@ -4617,7 +3843,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                   ),
                 ),
               ),
-              roleOverview?h('p',{className:'ir-view-intro'},label('分组与缩进表示对象组织关系，箭头表示调用或结果交接；rank 是并行组的成员编号。先认清下列分工，再切换视图查看进程、通信与 KV 位置。点击条目可看细分职责并在原请求图定位。','Grouping/indentation shows object organization; arrows show calls or returned results. A rank is a member’s index in a parallel group. Start with these roles, then switch views for processes, communication and KV placement. Select a role for details or locate it in the request diagram.')):h(window.AtlasLessonNotes.StepNote, { topic: chapter.id, step, en, depth: shownDepth }),
+              roleOverview?h('p',{className:'ir-view-intro'},label('先沿图中短句区分各模块的职责。边框表示对象分组，点击模块可展开细分职责；进程与 GPU 归属在下一视图中展开。rank 是并行组的成员编号。','Use the short descriptions to distinguish each role. Frames group objects; select a module for details. The next view shows process and GPU placement. A rank is a parallel-group member index.')):h(window.AtlasLessonNotes.StepNote, { topic: chapter.id, step, en, depth: shownDepth }),
               h('div', { className: 'ia-comparison' },
                 !roleOverview?h('p', { className: 'ia-comparisonHint', id: 'ia-comparison-hint' }, t('board.comparisonScroll')):null,
                 h('div', {
@@ -4625,7 +3851,7 @@ atlasLocale.dictionaries = { zh: DICT_ZH, en: DICT_EN };
                   'aria-label': t('board.comparison'), 'aria-describedby': roleOverview?undefined:'ia-comparison-hint',
                 }, h(StepSourceContext.Provider, { value: sourceOpen ? { chapter: chapter.id, step, en, ownership, tp, tokens } : null },
                   h(shownDepth === 'overview' ? DepthOverview : Scene, {
-                    chapter: chapter.id, step, t, selected, onSelect: handleSelectNode, ownership, tp, tokens,roleOverview,showSources:sourceOpen,onLocate:()=>setProcessView('request'),
+                    chapter: chapter.id, step, t, selected, onSelect: handleSelectNode, ownership, tp, tokens,roleOverview,showSources:sourceOpen,onLocate:()=>setProcessView('request'),wireView:readerView.wire,depth:shownDepth,
                   }))),
               ),
               h(

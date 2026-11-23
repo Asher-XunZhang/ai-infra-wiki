@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "独立管理通道的往返",
+    "locale": "zh-CN",
+    "output": "rpc-messages-sg.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "entries": {
+        "default": {
+          "label": "交接 / 条件"
+        },
+        "emphasis": {
+          "label": "当前主线"
+        }
+      }
+    }
+  },
+  "participants": [
+    {
+      "id": "rpc",
+      "type": "backend",
+      "label": "Engine RPC",
+      "sublabel": "管理调用",
+      "sources": [
+        {
+          "path": "python/sglang/srt/entrypoints/engine.py",
+          "line": 1862,
+          "end_line": 1867
+        }
+      ]
+    },
+    {
+      "id": "scheduler",
+      "type": "backend",
+      "label": "Scheduler",
+      "sublabel": "执行管理方法",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 4685,
+          "end_line": 4712
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "id": "rpc-request",
+      "from": "rpc",
+      "to": "scheduler",
+      "label": "RpcReqInput · DEALER",
+      "y": 160
+    },
+    {
+      "id": "rpc-result",
+      "from": "scheduler",
+      "to": "rpc",
+      "label": "RpcReqOutput · 状态",
+      "y": 234
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "依赖与边界",
+      "items": [
+        "管理消息与普通请求输入使用不同通道，不承担 GPU KV 搬运。"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "一次请求的消息交接：vLLM",
+    "locale": "zh-CN",
+    "output": "messages-vl.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/vllm-project/vllm",
+      "revision": "4ba787ec9959e566d3b587a796dff07673324da5"
+    },
+    "legend": {
+      "entries": {
+        "default": {
+          "label": "交接 / 条件"
+        },
+        "emphasis": {
+          "label": "当前主线"
+        }
+      }
+    }
+  },
+  "participants": [
+    {
+      "id": "input",
+      "type": "backend",
+      "label": "AsyncLLM",
+      "sublabel": "Python 前端",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/async_llm.py",
+          "line": 879,
+          "end_line": 910
+        }
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "EngineCore",
+      "sublabel": "调度与更新",
+      "sources": [
+        {
+          "path": "vllm/v1/engine/core.py",
+          "line": 667,
+          "end_line": 697
+        }
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "Worker",
+      "sublabel": "mp / Runner V2",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu_worker.py",
+          "line": 449,
+          "end_line": 490
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "id": "request",
+      "from": "input",
+      "to": "core",
+      "label": "请求帧 · ROUTER/DEALER",
+      "y": 160
+    },
+    {
+      "id": "execute",
+      "from": "core",
+      "to": "worker",
+      "label": "执行计划 · Executor MQ",
+      "y": 234
+    },
+    {
+      "id": "result",
+      "from": "worker",
+      "to": "core",
+      "label": "CPU 可读结果 · response MQ",
+      "y": 308
+    },
+    {
+      "id": "output",
+      "from": "core",
+      "to": "input",
+      "label": "EngineCoreOutputs · PUSH/PULL",
+      "y": 382
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "依赖与边界",
+      "items": [
+        "只表达消息先后，不表达耗时；设备计算及其他批次可继续推进。",
+        "SGLang 的 TP 同步、管理 RPC，vLLM 的 DP 扩展由通道拓扑展开。"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 338" data-sequence-column-fit="spread" data-reader-fit="width-first" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-motion-choreography="sequence">
+        <title id="archify-diagram-title">可选 DP 扩展：负载与 request-wave</title>
+        <desc id="archify-diagram-description">由 Archify 生成的时序图。</desc>
+        <style>.c-mask { fill:var(--ac-surface,#101720); }
+.c-grid { fill:none; stroke:var(--ac-grid,#1c2834); }
+.c-region,.c-security-group { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); stroke-width:1; }
+.c-lane { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); }
+.c-backend,.c-frontend,.c-cloud,.c-database,.c-messagebus,.c-security,.c-external,
+.c-start,.c-active,.c-waiting,.c-decision,.c-success,.c-failure,.c-neutral {
+ fill:var(--ac-node,#172433); stroke:var(--ac-accent,#94a8ff); }
+.a-default,.a-emphasis,.a-dashed,.a-return,.a-security { fill:none; stroke:var(--ac-line,#91a0b4); }
+.a-dashed { stroke-dasharray:4 4; }
+.a-return { stroke-dasharray:3 4; }
+.a-emphasis { stroke-width:2; }
+.m-default,.m-emphasis,.m-dashed,.m-return,.m-security { fill:var(--ac-line,#91a0b4); }
+.t-primary { fill:var(--ac-text,#edf2f7); }
+.t-muted,.t-label,.t-small { fill:var(--ac-muted,#a8b7c8); }
+text { fill:var(--ac-text,#edf2f7); font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+[data-semantic-sigil] { display:none; }
+[data-graph-role="structural-frame-label-mask"],.phase-chip { fill:var(--ac-surface,#101720); stroke:var(--ac-frame,#60738a); }
+</style><!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-default" />
+          </marker>
+          <marker id="arrowhead-emphasis" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-emphasis" />
+          </marker>
+          <marker id="arrowhead-security" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-security" />
+          </marker>
+          <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-dashed" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" class="c-grid" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Time Segments -->
+
+
+        <!-- Lifelines -->
+        <path d="M 122.5 142 L 122.5 242" class="a-default" stroke-width="0.8" stroke-dasharray="3,7"/>
+        <path d="M 291 142 L 291 242" class="a-default" stroke-width="0.8" stroke-dasharray="3,7"/>
+        <path d="M 459.5 142 L 459.5 242" class="a-default" stroke-width="0.8" stroke-dasharray="3,7"/>
+
+        <!-- Activations -->
+
+
+        <!-- Messages -->
+        <g data-edge-from="core" data-edge-to="rpc" data-edge-label="负载 / 运行状态" data-edge-key="0" data-edge-id="load-report">
+          <path data-composition-edge-from="core" data-composition-edge-to="rpc" data-composition-edge-id="load-report" data-composition-points="129.5,160;284,160" d="M 129.5 160 L 284 160" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <g data-detail="context">
+          <rect x="151.25" y="140" width="111" height="18" rx="3" class="c-mask"/>
+          <text x="206.75" y="150" class="t-muted" font-size="11" text-anchor="middle">负载 / 运行状态</text>
+        </g>
+        </g>
+
+        <g data-edge-from="rpc" data-edge-to="input" data-edge-label="负载 / request-wave" data-edge-key="1" data-edge-id="load">
+          <path data-composition-edge-from="rpc" data-composition-edge-to="input" data-composition-edge-id="load" data-composition-points="298,234;452.5,234" d="M 298 234 L 452.5 234" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <g data-detail="context">
+          <rect x="306.55" y="214" width="137.39999999999998" height="18" rx="3" class="c-mask"/>
+          <text x="375.25" y="224" class="t-muted" font-size="11" text-anchor="middle">负载 / request-wave</text>
+        </g>
+        </g>
+
+        <!-- Segment Labels -->
+
+
+        <!-- Participants -->
+        <g id="node-core" data-node-id="core" data-node-label="EngineCore" tabindex="0" role="button" aria-label="聚焦EngineCore，各 DP 引擎, 时序参与者" aria-pressed="false" data-node-kind="backend" data-node-sublabel="各 DP 引擎" data-node-context="时序参与者">
+          <title>EngineCore · 各 DP 引擎 · 时序参与者</title>
+          <rect x="62" y="72" width="121" height="60" rx="6" class="c-mask"/>
+          <rect x="62" y="72" width="121" height="60" rx="6" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(68 78) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="122.5" y="101" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">EngineCore</text>
+          <text data-detail="context" x="122.5" y="115" class="t-muted" font-size="7" text-anchor="middle">各 DP 引擎</text>
+        </g>
+
+        <g id="node-rpc" data-node-id="rpc" data-node-label="DPCoordinator" tabindex="0" role="button" aria-label="聚焦DPCoordinator，仅 DP &gt; 1, 时序参与者" aria-pressed="false" data-node-kind="backend" data-node-sublabel="仅 DP &gt; 1" data-node-context="时序参与者">
+          <title>DPCoordinator · 仅 DP &gt; 1 · 时序参与者</title>
+          <rect x="230.5" y="72" width="121" height="60" rx="6" class="c-mask"/>
+          <rect x="230.5" y="72" width="121" height="60" rx="6" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(236.5 78) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="291" y="101" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">DPCoordinator</text>
+          <text data-detail="context" x="291" y="115" class="t-muted" font-size="7" text-anchor="middle">仅 DP &gt; 1</text>
+        </g>
+
+        <g id="node-input" data-node-id="input" data-node-label="AsyncLLM" tabindex="0" role="button" aria-label="聚焦AsyncLLM，前端路由参考, 时序参与者" aria-pressed="false" data-node-kind="backend" data-node-sublabel="前端路由参考" data-node-context="时序参与者">
+          <title>AsyncLLM · 前端路由参考 · 时序参与者</title>
+          <rect x="399" y="72" width="121" height="60" rx="6" class="c-mask"/>
+          <rect x="399" y="72" width="121" height="60" rx="6" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(405 78) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="459.5" y="101" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">AsyncLLM</text>
+          <text data-detail="context" x="459.5" y="115" class="t-muted" font-size="7" text-anchor="middle">前端路由参考</text>
+        </g>
+
+        <!-- Legend -->
+        <g data-legend="">
+          <text x="40" y="264" class="t-primary" font-size="12" font-weight="650">图例</text>
+          <g data-legend-semantic-kind="default" data-legend-x="40" data-legend-baseline="284" data-legend-width="112">
+            <path d="M 40 281 L 74 281" class="a-default" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+            <text x="83" y="284" class="t-muted" font-size="10" font-weight="500">交接 / 条件</text>
+          </g>
+        </g>
+      </svg>

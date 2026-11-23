@@ -1,8 +1,7 @@
-/* A static responsibility map, sharing selection with the existing request
- * diagram. Groups represent objects and responsibilities, not processes. */
+/* Pinned, bilingual module responsibilities reused by the Archify map,
+ * sequential reader, node inspector and source links. */
 window.AtlasRoles = (() => {
   'use strict';
-  const h=React.createElement;
   const SG='https://github.com/sgl-project/sglang/blob/297e54fd105e974cdf401e5b4d20253a22c16f90/python/sglang/srt/';
   const VL='https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/';
   const role=(id,name,summary,detail,path,node,primary=false)=>({id,name,summary,detail,path,node,primary});
@@ -30,26 +29,5 @@ window.AtlasRoles = (() => {
       ...common('vl'),
     ],
   };
-  function Body({side,en,selected,onSelect,onLocate,showSources}){
-    const tr=p=>p[en?1:0],items=data[side],find=id=>items.find(x=>x.id===id);
-    const render=id=>{
-      const item=find(id),chosen=selected?.side===side&&(selected.roleId?selected.roleId===id:item.primary&&selected.id===item.node);
-      const panel=`role-${side}-${id}`;
-      return h('div',{className:'ir-item'+(chosen?' is-selected':''),key:id,'data-module-role':id},
-        h('button',{type:'button',className:'ir-role','aria-expanded':!!chosen,'aria-controls':chosen?panel:undefined,onClick:()=>onSelect({side,id:item.node,roleId:id,label:item.name,role:item.summary,description:item.detail,source:item.path})},
-          h('strong',null,item.name),h('span',null,tr(item.summary))),
-        chosen?h('div',{className:'ir-detail',id:panel},h('p',null,tr(item.detail)),
-          h('div',{className:'ir-detail-links'},h('a',{href:item.path,target:'_blank',rel:'noreferrer'},tr(['固定源码 ↗','Pinned source ↗'])),h('button',{type:'button','data-locate-role':id,onClick:()=>onLocate()},tr(['在请求图定位','Locate in request diagram'])))):showSources?h('a',{className:'ir-source',href:item.path,target:'_blank',rel:'noreferrer'},tr(['固定源码 ↗','Pinned source ↗'])):null);
-    };
-    const group=(label,ids)=>h('section',{className:'ir-group','aria-label':label},render(ids[0]),h('div',{className:'ir-subgroup'},ids.slice(1).map(render)));
-    const handoff=label=>h('p',{className:'ir-handoff'},h('span',{'aria-hidden':true},'↓'),label);
-    return h('div',{className:'ir-map',id:'ia-module-roles-'+side},
-      render('input'),handoff(tr(['提交内部请求','Submit the internal request'])),
-      side==='sg'?h('section',{className:'ir-group','aria-label':tr(['调度与本 rank 执行','Scheduling and rank-local execution'])},render('scheduler'),h('div',{className:'ir-subgroup'},render('worker'),h('div',{className:'ir-subgroup'},render('runner')))):h(React.Fragment,null,
-        group(tr(['EngineCore 组织本轮工作','EngineCore organizes each step']),['core','scheduler','executor']),handoff(tr(['经所选执行器调用 Worker','Invoke workers through the selected executor'])),group(tr(['每个 rank 的执行侧','Execution within each rank']),['worker','runner'])),
-      handoff(tr(['调用模型与设备算子','Invoke the model and device operators'])),
-      group(tr(['模型计算结构与实现','Model structure and operator implementation']),['model','attention','kernel']),
-      side==='sg'?h(React.Fragment,null,handoff(tr(['采样 token IDs 回程','Return sampled token IDs'])),render('return')):h('p',{className:'ir-return'},tr(['结果回程：Core 更新请求 → AsyncLLM 输出处理与反分词 → 流式响应。','Return: Core updates requests → AsyncLLM output processing/detokenization → streamed response.'])));
-  }
-  return {Body};
+  return {items:data};
 })();

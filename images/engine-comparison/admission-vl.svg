@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 952 420" data-reader-fit="width-first" data-layout-contract="readable-v2" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="">
+        <title id="archify-diagram-title">本轮能接纳这个请求吗？</title>
+        <desc id="archify-diagram-description">由 Archify 生成的工作流图。</desc>
+        <style>.c-mask { fill:var(--ac-surface,#101720); }
+.c-grid { fill:none; stroke:var(--ac-grid,#1c2834); }
+.c-region,.c-security-group { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); stroke-width:1; }
+.c-lane { fill:var(--ac-frame-fill,#111b26); stroke:var(--ac-frame,#60738a); }
+.c-backend,.c-frontend,.c-cloud,.c-database,.c-messagebus,.c-security,.c-external,
+.c-start,.c-active,.c-waiting,.c-decision,.c-success,.c-failure,.c-neutral {
+ fill:var(--ac-node,#172433); stroke:var(--ac-accent,#94a8ff); }
+.a-default,.a-emphasis,.a-dashed,.a-return,.a-security { fill:none; stroke:var(--ac-line,#91a0b4); }
+.a-dashed { stroke-dasharray:4 4; }
+.a-return { stroke-dasharray:3 4; }
+.a-emphasis { stroke-width:2; }
+.m-default,.m-emphasis,.m-dashed,.m-return,.m-security { fill:var(--ac-line,#91a0b4); }
+.t-primary { fill:var(--ac-text,#edf2f7); }
+.t-muted,.t-label,.t-small { fill:var(--ac-muted,#a8b7c8); }
+text { fill:var(--ac-text,#edf2f7); font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+[data-semantic-sigil] { display:none; }
+[data-graph-role="structural-frame-label-mask"],.phase-chip { fill:var(--ac-surface,#101720); stroke:var(--ac-frame,#60738a); }
+</style><!-- Definitions -->
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-default" />
+          </marker>
+          <marker id="arrowhead-emphasis" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-emphasis" />
+          </marker>
+          <marker id="arrowhead-security" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-security" />
+          </marker>
+          <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" class="m-dashed" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" class="c-grid" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Swimlanes -->
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="lane" data-composition-frame-id="lane-0" x="40" y="52" width="896" height="244" rx="10" class="c-lane" stroke-width="1"/>
+        <text x="54" y="74" class="t-muted" font-size="10" font-weight="600">01 / 本轮判断与处理</text>
+
+        <!-- Phase headers -->
+
+
+        <!-- Workflow groups -->
+
+
+        <!-- Edge paths -->
+        <path data-edge-from="budget" data-edge-to="batch" data-edge-label="是" data-edge-key="0" data-edge-id="accept" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="406,189;518,189;518,152" d="M 406 189 L 510 189 Q 518 189 518 181 L 518 152" class="a-default" data-animate="edge" style="--step:0" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="candidate" data-edge-to="budget" data-edge-label="检查" data-edge-key="1" data-edge-id="check" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="208,189;246,189" d="M 208 189 L 246 189" class="a-default" data-animate="edge" style="--step:1" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="budget" data-edge-to="wait" data-edge-label="否" data-edge-key="2" data-edge-id="defer" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="326,222;326,259;438,259" d="M 326 222 L 326 251 Q 326 259 334 259 L 438 259" class="a-default" data-animate="edge" style="--step:2" stroke-width="1.4" marker-end="url(#arrowhead)"/>
+
+        <!-- Nodes -->
+        <g id="node-candidate" data-node-id="candidate" data-node-label="候选请求" tabindex="0" role="button" aria-label="聚焦候选请求，waiting / running, 本轮判断与处理" aria-pressed="false" data-node-kind="backend" data-node-sublabel="waiting / running" data-node-context="本轮判断与处理">
+          <title>候选请求 · waiting / running · 本轮判断与处理</title>
+          <rect x="48" y="156" width="160" height="66" rx="8" class="c-mask"/>
+          <rect x="48" y="156" width="160" height="66" rx="8" class="c-backend" data-animate="node" style="--step:0" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(54 162) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="128" y="177" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">候选请求</text>
+          <text data-detail="context" x="128" y="194" class="t-muted" font-size="8" text-anchor="middle">waiting / running</text>
+        </g>
+
+        <g id="node-budget" data-node-id="budget" data-node-label="预算与 KV 允许?" tabindex="0" role="button" aria-label="聚焦预算与 KV 允许?，token 工作量 + 空间, 本轮判断与处理" aria-pressed="false" data-node-kind="backend" data-node-sublabel="token 工作量 + 空间" data-node-context="本轮判断与处理">
+          <title>预算与 KV 允许? · token 工作量 + 空间 · 本轮判断与处理</title>
+          <rect x="246" y="156" width="160" height="66" rx="8" class="c-mask"/>
+          <rect x="246" y="156" width="160" height="66" rx="8" class="c-backend" data-animate="node" style="--step:1" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(252 162) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="314.5" y="177" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">预算与 KV 允许?</text>
+          <text data-detail="context" x="326" y="194" class="t-muted" font-size="8" text-anchor="middle">token 工作量 + 空间</text>
+        </g>
+
+        <g id="node-batch" data-node-id="batch" data-node-label="进入本轮计划" tabindex="0" role="button" aria-label="聚焦进入本轮计划，SchedulerOutput, 本轮判断与处理" aria-pressed="false" data-node-kind="backend" data-node-sublabel="SchedulerOutput" data-node-context="本轮判断与处理">
+          <title>进入本轮计划 · SchedulerOutput · 本轮判断与处理</title>
+          <rect x="438" y="86" width="160" height="66" rx="8" class="c-mask"/>
+          <rect x="438" y="86" width="160" height="66" rx="8" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(444 92) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="516.4" y="107" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">进入本轮计划</text>
+          <text data-detail="context" x="518" y="124" class="t-muted" font-size="8" text-anchor="middle">SchedulerOutput</text>
+        </g>
+
+        <g id="node-wait" data-node-id="wait" data-node-label="继续等待" tabindex="0" role="button" aria-label="聚焦继续等待，本轮不交给 GPU, 本轮判断与处理" aria-pressed="false" data-node-kind="backend" data-node-sublabel="本轮不交给 GPU" data-node-context="本轮判断与处理">
+          <title>继续等待 · 本轮不交给 GPU · 本轮判断与处理</title>
+          <rect x="438" y="226" width="160" height="66" rx="8" class="c-mask"/>
+          <rect x="438" y="226" width="160" height="66" rx="8" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(444 232) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="518" y="247" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">继续等待</text>
+          <text data-detail="context" x="518" y="264" class="t-muted" font-size="8" text-anchor="middle">本轮不交给 GPU</text>
+        </g>
+
+        <!-- Edge labels -->
+        <g data-detail="context" data-edge-from="budget" data-edge-to="batch" data-edge-label="是" data-edge-key="0" data-edge-id="accept">
+          <rect x="447" y="169" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="462" y="179" class="t-muted" font-size="8" text-anchor="middle">是</text>
+        </g>
+        <g data-detail="context" data-edge-from="candidate" data-edge-to="budget" data-edge-label="检查" data-edge-key="1" data-edge-id="check">
+          <rect x="212" y="169" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="227" y="179" class="t-muted" font-size="8" text-anchor="middle">检查</text>
+        </g>
+        <g data-detail="context" data-edge-from="budget" data-edge-to="wait" data-edge-label="否" data-edge-key="2" data-edge-id="defer">
+          <rect x="367" y="239" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="382" y="249" class="t-muted" font-size="8" text-anchor="middle">否</text>
+        </g>
+
+        <!-- Legend -->
+        <g data-legend="" data-legend-bridge="">
+          <text x="20" y="320" class="t-primary" font-size="12" font-weight="650">图例</text>
+          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="判断与执行" data-legend-x="20" data-legend-baseline="340" data-legend-width="90">
+            <rect x="20" y="332" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+            <text x="42" y="340" class="t-muted" font-size="7.5" font-weight="500">判断与执行</text>
+          </g>
+        </g>
+      </svg>

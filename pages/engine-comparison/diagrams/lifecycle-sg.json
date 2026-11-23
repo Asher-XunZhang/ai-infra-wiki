@@ -1,0 +1,137 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "请求状态与资源收尾",
+    "locale": "zh-CN",
+    "output": "lifecycle-sg.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "mode": "hidden"
+    }
+  },
+  "mainPath": [
+    "waiting",
+    "running",
+    "finished"
+  ],
+  "states": [
+    {
+      "id": "waiting",
+      "type": "waiting",
+      "label": "等待调度",
+      "sublabel": "尚未执行",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 4052,
+          "end_line": 4082
+        }
+      ]
+    },
+    {
+      "id": "running",
+      "type": "active",
+      "label": "执行中",
+      "sublabel": "本轮选中",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 4614,
+          "end_line": 4635
+        }
+      ]
+    },
+    {
+      "id": "finished",
+      "type": "success",
+      "label": "请求完成",
+      "sublabel": "记录终态",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 5074,
+          "end_line": 5105
+        }
+      ]
+    },
+    {
+      "id": "retracted",
+      "type": "waiting",
+      "label": "回到等待",
+      "sublabel": "回撤 / 抢占后重建",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/schedule_batch.py",
+          "line": 3451,
+          "end_line": 3483
+        }
+      ]
+    },
+    {
+      "id": "aborted",
+      "type": "neutral",
+      "label": "请求取消",
+      "sublabel": "按状态分别收尾",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 5675,
+          "end_line": 5700
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "id": "admit",
+      "from": "waiting",
+      "to": "running",
+      "label": "预算与 KV 允许"
+    },
+    {
+      "id": "complete",
+      "from": "running",
+      "to": "finished",
+      "label": "EOS / 长度终止"
+    },
+    {
+      "id": "preempt",
+      "from": "running",
+      "to": "retracted",
+      "label": "显存压力"
+    },
+    {
+      "id": "readmit",
+      "from": "retracted",
+      "to": "running",
+      "label": "重新准入"
+    },
+    {
+      "id": "abort-wait",
+      "from": "waiting",
+      "to": "aborted",
+      "label": "取消等待请求"
+    },
+    {
+      "id": "abort-run",
+      "from": "running",
+      "to": "aborted",
+      "label": "取消执行中请求"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "资源边界",
+      "items": [
+        "请求终态不等于 KV 已擦除，也不代表已发出的 GPU kernel 被抢占。",
+        "KV 引用 / block 回收与 ModelRunner 请求槽位清理需要分别确认。"
+      ]
+    }
+  ]
+}

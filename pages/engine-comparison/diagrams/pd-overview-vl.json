@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "P/D：先看三个角色",
+    "locale": "zh-CN",
+    "output": "pd-overview-vl.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/vllm-project/vllm",
+      "revision": "4ba787ec9959e566d3b587a796dff07673324da5"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "职责组件"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "auto"
+  },
+  "components": [
+    {
+      "id": "router",
+      "type": "backend",
+      "label": "外部 Router",
+      "sublabel": "选择实例 / 请求角色",
+      "sources": [
+        {
+          "path": "examples/disaggregated/disaggregated_serving/disagg_proxy_demo.py",
+          "line": 249,
+          "end_line": 277
+        }
+      ]
+    },
+    {
+      "id": "prefill",
+      "type": "backend",
+      "label": "Prefill 实例",
+      "sublabel": "计算输入并产生 KV",
+      "sources": [
+        {
+          "path": "vllm/v1/worker/gpu/kv_connector.py",
+          "line": 118,
+          "end_line": 153
+        }
+      ]
+    },
+    {
+      "id": "decode",
+      "type": "backend",
+      "label": "Decode 实例",
+      "sublabel": "接收 KV 并继续生成",
+      "sources": [
+        {
+          "path": "vllm/v1/core/sched/scheduler.py",
+          "line": 3520,
+          "end_line": 3552
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "select-p",
+      "from": "router",
+      "to": "prefill",
+      "label": "选择 P"
+    },
+    {
+      "id": "select-d",
+      "from": "router",
+      "to": "decode",
+      "label": "选择 D"
+    },
+    {
+      "id": "payload",
+      "from": "prefill",
+      "to": "decode",
+      "label": "KV 经后端交接"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "阅读条件",
+      "items": [
+        "这是角色级总览；模块过程区分后端载荷、请求元数据与准入条件。",
+        "不指定两实例是否同机；箭头不表示实测耗时。"
+      ]
+    }
+  ]
+}

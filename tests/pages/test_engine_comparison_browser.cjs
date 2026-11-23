@@ -176,11 +176,11 @@ const diagramGeometry=async(page,label)=>{
   assert.equal(await page.locator('.ia-inspector').count(),0);
 
   // Core components explain their role before implementation details.
-  await page.locator('.ia-board--vl .ia-node[data-node-id=engine]').click();
-  assert.match(await page.locator('.ia-inspectorRole').innerText(),/调度中枢/);
-  assert.match(await page.locator('.ia-inspectorBody').innerText(),/Worker/);
+  await page.locator('.ia-board--vl .ia-node[data-node-id=core]').click();
+  assert.match(await page.locator('.ia-inspectorRole').innerText(),/组织调度循环/);
+  assert.match(await page.locator('.ia-inspectorBody').innerText(),/Scheduler.*Executor/s);
   await page.locator('#lang-toggle').click();
-  assert.match(await page.locator('.ia-inspectorRole').innerText(),/scheduling hub/);
+  assert.match(await page.locator('.ia-inspectorRole').innerText(),/scheduling loop/);
   await page.locator('#lang-toggle').click();
   if(process.env.ENGINE_TEST_SCREENSHOTS){
    fs.mkdirSync(process.env.ENGINE_TEST_SCREENSHOTS,{recursive:true});
@@ -195,7 +195,7 @@ const diagramGeometry=async(page,label)=>{
   assert.match(await page.locator('.ia-inspectorBody').innerText(),/EngineCoreOutputs/);
   await page.locator('.ia-chapterTab').nth(CHAPTERS.indexOf('disagg')).click();
   await page.locator('.ia-stepItem').nth(1).click(); // Both roles participate in the KV handoff.
-  for(const side of ['sg','vl'])for(const [node,role] of [['prefill',/输入计算者/],['decode',/续写执行者/]]){
+  for(const side of ['sg','vl'])for(const [node,role] of [['prefill',/计算输入/],['decode',/接收 KV/]]){
    await page.locator(`.ia-board--${side} .ia-node[data-node-id=${node}]`).click();
    assert.match(await page.locator('.ia-inspectorRole').innerText(),role);
   }
@@ -211,13 +211,14 @@ const diagramGeometry=async(page,label)=>{
   await next.click();assert.equal(await stepAt(page),3);assert.equal(await next.isDisabled(),true);
   await prev.focus();await page.keyboard.press('Space');assert.equal(await stepAt(page),2);
   await prev.click();await prev.click();assert.equal(await stepAt(page),0);assert.equal(await prev.isDisabled(),true);
-  const effects=()=>page.locator('.ia-edge.is-active,.ia-nodePulse,.ia-splitMarker.is-active').evaluateAll(nodes=>nodes.map(el=>({
+  const effects=()=>page.locator('.ia-edge.is-active,.ia-nodePulse,.ia-splitMarker.is-active,.ac-pulse').evaluateAll(nodes=>nodes.map(el=>({
    style:getComputedStyle(el).animationPlayState,
    name:getComputedStyle(el).animationName,
    offset:getComputedStyle(el).strokeDashoffset,
    opacity:getComputedStyle(el).opacity,
    time:el.getAnimations()[0]?.currentTime,
   })));
+  await next.click(); // Input preparation is static; scheduling has an actual handoff.
   const before=await effects();assert.ok(before.length>0);
   assert.ok(before.every(e=>e.style==='running'));
   await page.waitForTimeout(350);
@@ -226,7 +227,7 @@ const diagramGeometry=async(page,label)=>{
   await page.locator('.ia-board--sg .ia-node[data-node-id=scheduler]').click();
   await page.locator('.ia-readingDetails>summary').click();
   assert.ok((await effects()).every(e=>e.style==='running'),'reading and inspecting must not freeze stage effects');
-  await page.waitForTimeout(6000);assert.equal(await stepAt(page),0,'idle reader must never be advanced by a timer');
+  await page.waitForTimeout(6000);assert.equal(await stepAt(page),1,'idle reader must never be advanced by a timer');
   await page.locator('.ia-closeButton').click();
   await page.locator('.ia-readingDetails>summary').click();
   if(process.env.ENGINE_TEST_SCREENSHOTS){

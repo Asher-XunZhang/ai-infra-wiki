@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "SGLang：模块职责与调用关系",
+    "locale": "zh-CN",
+    "output": "roles-sg.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/sgl-project/sglang",
+      "revision": "297e54fd105e974cdf401e5b4d20253a22c16f90"
+    },
+    "legend": {
+      "entries": {
+        "backend": {
+          "label": "模型服务组件"
+        }
+      }
+    }
+  },
+  "layout": {
+    "mode": "auto"
+  },
+  "components": [
+    {
+      "id": "input",
+      "type": "backend",
+      "label": "TokenizerManager",
+      "sublabel": "整理输入与响应",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/tokenizer_manager.py",
+          "line": 1096,
+          "end_line": 1126
+        }
+      ],
+      "pos": [
+        40,
+        40
+      ]
+    },
+    {
+      "id": "scheduler",
+      "type": "backend",
+      "label": "Scheduler",
+      "sublabel": "选择本轮请求与 token",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/scheduler.py",
+          "line": 4685,
+          "end_line": 4712
+        }
+      ],
+      "pos": [
+        300,
+        40
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "TpModelWorker",
+      "sublabel": "衔接本 rank 的执行",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/tp_worker.py",
+          "line": 622,
+          "end_line": 657
+        }
+      ],
+      "pos": [
+        300,
+        180
+      ]
+    },
+    {
+      "id": "runner",
+      "type": "backend",
+      "label": "ModelRunner",
+      "sublabel": "准备输入并组织前向",
+      "sources": [
+        {
+          "path": "python/sglang/srt/model_executor/model_runner.py",
+          "line": 1815,
+          "end_line": 1845
+        }
+      ],
+      "pos": [
+        300,
+        320
+      ]
+    },
+    {
+      "id": "model",
+      "type": "backend",
+      "label": "Model",
+      "sublabel": "定义模型各层的计算",
+      "sources": [
+        {
+          "path": "python/sglang/srt/model_executor/runner/eager_runner.py",
+          "line": 268,
+          "end_line": 282
+        }
+      ],
+      "pos": [
+        300,
+        460
+      ]
+    },
+    {
+      "id": "attention",
+      "type": "backend",
+      "label": "Attention",
+      "sublabel": "结合当前输入与历史 KV",
+      "sources": [
+        {
+          "path": "python/sglang/srt/layers/radix_attention.py",
+          "line": 114,
+          "end_line": 132
+        }
+      ],
+      "pos": [
+        300,
+        600
+      ]
+    },
+    {
+      "id": "kernel",
+      "type": "backend",
+      "label": "Kernel",
+      "sublabel": "在设备上执行具体算子",
+      "sources": [
+        {
+          "path": "python/sglang/srt/layers/attention/flashinfer_backend.py",
+          "line": 1412,
+          "end_line": 1420
+        }
+      ],
+      "pos": [
+        40,
+        600
+      ]
+    },
+    {
+      "id": "return",
+      "type": "backend",
+      "label": "Detokenizer",
+      "sublabel": "将 token IDs 转为文本",
+      "sources": [
+        {
+          "path": "python/sglang/srt/managers/detokenizer_manager.py",
+          "line": 450,
+          "end_line": 472
+        }
+      ],
+      "pos": [
+        40,
+        180
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "调度与本 rank 执行对象",
+      "wraps": [
+        "scheduler",
+        "worker",
+        "runner"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "模型计算结构与算子实现",
+      "wraps": [
+        "model",
+        "attention",
+        "kernel"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "input-plan",
+      "from": "input",
+      "to": "scheduler",
+      "label": "内部请求"
+    },
+    {
+      "id": "schedule-call",
+      "from": "scheduler",
+      "to": "worker",
+      "label": "批次"
+    },
+    {
+      "id": "worker-runner",
+      "from": "worker",
+      "to": "runner",
+      "label": "调用"
+    },
+    {
+      "id": "runner-model",
+      "from": "runner",
+      "to": "model",
+      "label": "前向"
+    },
+    {
+      "id": "model-attention",
+      "from": "model",
+      "to": "attention",
+      "label": "子层"
+    },
+    {
+      "id": "attention-kernel",
+      "from": "attention",
+      "to": "kernel",
+      "label": "后端算子"
+    },
+    {
+      "id": "output-token",
+      "from": "scheduler",
+      "to": "return",
+      "label": "采样 IDs"
+    },
+    {
+      "id": "output-text",
+      "from": "return",
+      "to": "input",
+      "label": "文本片段"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "怎样读这张图",
+      "items": [
+        "这是逻辑职责图。分组不代表独立进程，箭头不代表串行耗时。",
+        "Scheduler 与本 rank 的 TpModelWorker、ModelRunner 同进程；Detokenizer 独立。"
+      ]
+    }
+  ]
+}
