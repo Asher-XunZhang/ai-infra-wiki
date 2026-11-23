@@ -1,0 +1,36 @@
+.sl-memory-overview{font-size:15px;line-height:1.8;min-width:0}
+.sl-memory-overview p{margin:8px 0}
+.ml-key{padding:12px 16px;background:var(--soft);border-left:3px solid var(--accent)}
+.ml-step{padding:17px 18px;margin:14px 0;border:1px solid var(--border);border-left:3px solid var(--border);border-radius:5px;background:var(--surface)}
+.ml-step.ml-current{border-left-color:var(--accent)}
+.ml-step h3{font-size:17px;margin:0 0 10px}
+.ml-equation{font-variant-numeric:tabular-nums;line-height:1.9}
+.ml-equation strong{color:var(--accent);font-weight:650}
+.ml-help,.ml-boundary,.ml-cap-note,.ml-budget-key{font-size:14px;color:var(--muted)}
+.ml-cap-note{border-left:2px solid var(--sl-gold);padding-left:12px}
+.ml-budget-bar{height:25px;display:flex;overflow:hidden;border-radius:4px;margin:14px 0 10px}
+.ml-budget-bar span{display:block;min-width:0}
+.ml-resident,.ml-old{background:var(--sl-blue)}
+.ml-slack{background:var(--sl-gold)}
+.ml-pool,.ml-future{background:var(--accent)}
+.ml-unused{background:var(--muted);opacity:.4}
+.ml-shortage{background:var(--sl-red)}
+.ml-budget-key{display:flex;gap:5px 18px;flex-wrap:wrap}
+.ml-budget-key i,.ml-page-key i{display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:middle;border-radius:2px}
+.ml-page-cells{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:12px 0 8px}
+.ml-page{display:flex;width:25px;height:19px;border:1px solid var(--muted);border-radius:3px;overflow:hidden;background:repeating-linear-gradient(135deg,transparent 0 3px,var(--border) 3px 4px)}
+.ml-page i{display:block;height:100%;flex-shrink:0}
+.ml-page-gap{font-size:12px;color:var(--muted)}
+.ml-empty{border:1px solid var(--border);background:repeating-linear-gradient(135deg,transparent 0 3px,var(--border) 3px 4px)}
+.ml-compare{display:grid;gap:10px;margin:16px 0;font-variant-numeric:tabular-nums}
+.ml-meter{height:16px;background:var(--soft);border:1px solid var(--border);border-radius:3px;overflow:hidden}
+.ml-meter i{height:100%;display:block}
+.ml-verdict{font-weight:600}
+.ml-failed{color:var(--sl-red)}
+.ml-experiments{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.ml-experiments button{font-size:14px;min-height:40px}
+.sl-lab[data-serving-lab=memory] .sl-transport{margin-top:12px}
+.sl-lab[data-serving-lab=memory] [data-clock]{font-variant-numeric:tabular-nums}
+.sl-memory-math{max-width:100%;overflow-x:auto;margin:15px 0;padding:10px 12px;border-left:2px solid var(--border)}
+.sl-memory-math math{font-size:17px;max-width:100%}
+@media(max-width:600px){.ml-step{padding:13px 12px}.ml-step h3{font-size:16px}.ml-unit{white-space:normal}.ml-experiments{gap:6px}.ml-experiments button{padding:8px 10px}.sl-memory-math math{font-size:15px}}

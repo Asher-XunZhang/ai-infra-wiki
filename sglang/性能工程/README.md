@@ -50,3 +50,7 @@
 收录 SGLang 的 Profiler、benchmark、性能诊断、调参方法和优化案例。文章带版本或模型名时，仍按性能问题归档。
 
 后续文章先加入阅读表，标明先修、定位和学习重点。当形成多篇相互关联且需要独立导航的子主题时，再建立子目录；跨主题内容保留一份正文，由相关 README 交叉引用。
+
+## 压测与 Trace 实验
+
+先做[标准压测实验](../../pages/sglang/benchmark-lab/index.html)，再进入 [Trace 定位](../../pages/sglang/trace-lab/index.html)。前者保留负载、许可等待和成功样本，后者附带明确来源的历史 ResNet-50 实测片段并支持导入自己的记录；两者不构成 SGLang GPU 跑分。

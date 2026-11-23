@@ -8,6 +8,7 @@ import ast
 import json
 import re
 import subprocess
+import sys
 from html import unescape
 from pathlib import Path
 
@@ -15,6 +16,8 @@ from build_pp_quick_data import EmbeddedModel, PAGE
 from pp_source_baseline import SOURCE_ANCHORS, SOURCE_COMMIT, SOURCE_FILES, SOURCE_SHORT, STEP_GUIDE_ANCHORS
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'tests/pages'))
+from source_baselines import source_revision
 
 
 def check_artifacts():
@@ -42,6 +45,7 @@ def check_artifacts():
     # Both visible badges and source hyperlinks must identify the reviewed SHA.
     links = set()
     dataflow_links = set()
+    independent_links = 0
     dataflow_page = ROOT / 'pages/sglang/pd-dataflow/index.html'
     for path in [*(ROOT / 'pages').rglob('*.html'), ROOT / 'sglang/分离部署/PD Prefill PP loop 步骤详解.md']:
         text = unescape(path.read_text(encoding='utf-8'))
@@ -49,7 +53,11 @@ def check_artifacts():
             r'https://github.com/sgl-project/sglang/blob/([0-9a-f]{40})/'
             r'(python/[^\s"<>\)]+?)#L(\d+)(?:-L(\d+))?', text
         ):
-            assert commit == SOURCE_COMMIT, (path, commit)
+            expected = source_revision(path, SOURCE_COMMIT)
+            assert commit == expected, (path, commit, expected)
+            if expected != SOURCE_COMMIT:
+                independent_links += 1
+                continue  # Audited against their own frozen Git objects by test_serving_labs_source.py.
             # Dataflow function anchors are additionally audited by test_pd_queues.cjs.
             target = dataflow_links if path == dataflow_page else links
             target.add((source, int(first), int(last or first)))
@@ -57,6 +65,7 @@ def check_artifacts():
         assert SOURCE_SHORT in (PAGE / name).read_text(encoding='utf-8'), name
     assert '${data.sourceCommit}' in outer.srcdoc, 'Detail links must use the loaded model baseline'
     print(f'Checked {len(models)} models, {len(refs)} graph anchors, {len(links)} PP page source links and {len(dataflow_links)} separate dataflow links.')
+    print(f'Checked {independent_links} separately pinned serving-lab links without changing the PP baseline.')
     return links
 
 

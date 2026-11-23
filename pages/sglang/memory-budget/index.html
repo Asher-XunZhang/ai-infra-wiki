@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>推理显存账本：从字节预算到请求容量 · AI Infra Wiki</title><meta name="description" content="把权重之外的空间、KV 槽位和请求增长放到同一份可核对的账本中。">
+<link rel="stylesheet" href="../../site.css"><link rel="stylesheet" href="../serving-labs/labs.css">
+<script src="../../motion/integration.js" defer></script><script src="../../site.js" defer></script><script src="../serving-labs/model.js" defer></script><script src="../serving-labs/evidence.js" defer></script><link rel="stylesheet" href="../../learning-depth.css"><script src="../../learning-depth.js" defer></script><script src="../serving-labs/views.js" defer></script><link rel="stylesheet" href="memory.css"><script src="memory.js" defer></script><script src="../serving-labs/labs.js" defer></script>
+<link rel="stylesheet" href="../../foundations/foundations.css"></head><body class="sl-lesson"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header><div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
+<a class="route-index-link" href="../../#reading-routes">推荐路线与跨章索引</a>
+<details class="chapter-nav" data-chapter="foundations"><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="../../foundations/tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="../../foundations/components.html">02 Transformer 前向总览：从输入向量到下一 token</a>
+<a href="../../foundations/attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="../../foundations/generation.html">04 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="../../foundations/cache.html">05 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="../../foundations/batching.html">06 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="../../foundations/hardware.html">07 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="../../foundations/parallel.html">08 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="../../foundations/communication.html">09 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
+<a href="../../foundations/deployment.html">10 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="../../foundations/speculation.html">11 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="../../foundations/serving.html">12 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="../../foundations/metrics.html">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="engine-comparison"><summary>第二章 · SGLang 与 vLLM 架构对照</summary><div class="module-lessons-nav engine-topic-nav">
+<a class="lesson-link" data-engine-topic="process" href="../../engine-comparison/index.html#process"><span class="engine-topic-number" aria-hidden="true">01</span><span class="engine-topic-zh" lang="zh-CN">进程与请求路径</span><span class="engine-topic-en" lang="en">Processes &amp; request path</span></a>
+<a class="lesson-link" data-engine-topic="wire" href="../../engine-comparison/index.html#wire"><span class="engine-topic-number" aria-hidden="true">02</span><span class="engine-topic-zh" lang="zh-CN">进程间通信</span><span class="engine-topic-en" lang="en">Communication</span></a>
+<a class="lesson-link" data-engine-topic="prefix" href="../../engine-comparison/index.html#prefix"><span class="engine-topic-number" aria-hidden="true">03</span><span class="engine-topic-zh" lang="zh-CN">前缀缓存</span><span class="engine-topic-en" lang="en">Prefix cache</span></a>
+<a class="lesson-link" data-engine-topic="batch" href="../../engine-comparison/index.html#batch"><span class="engine-topic-number" aria-hidden="true">04</span><span class="engine-topic-zh" lang="zh-CN">调度与批处理</span><span class="engine-topic-en" lang="en">Scheduling &amp; batching</span></a>
+<a class="lesson-link" data-engine-topic="crosscut" href="../../engine-comparison/index.html#crosscut"><span class="engine-topic-number" aria-hidden="true">05</span><span class="engine-topic-zh" lang="zh-CN">生命周期与执行</span><span class="engine-topic-en" lang="en">Lifecycle &amp; execution</span></a>
+<a class="lesson-link" data-engine-topic="disagg" href="../../engine-comparison/index.html#disagg"><span class="engine-topic-number" aria-hidden="true">06</span><span class="engine-topic-zh" lang="zh-CN">P/D 分离与扩展</span><span class="engine-topic-en" lang="en">P/D disaggregation</span></a>
+<a class="lesson-link" data-engine-topic="metrics" href="../../engine-comparison/index.html#metrics"><span class="engine-topic-number" aria-hidden="true">07</span><span class="engine-topic-zh" lang="zh-CN">延迟口径</span><span class="engine-topic-en" lang="en">Metric boundaries</span></a>
+</div></details>
+<details class="chapter-nav" data-chapter="sglang" open><summary>第三章 · SGLang 实现剖析</summary>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../system-overview/index.html">SGLang 代码架构：模块划分与协作全景</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance" open>
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">循环、执行、缓存与策略</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="loop-journey">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>调度循环与批次执行旅程</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#loop-journey">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../request-state/index.html">Req 状态与队列流转：请求为什么还没继续？<small class="lesson-kind">状态与引用</small></a>
+<a class="lesson-link" href="../loop-journey/index.html">调度循环：Normal、Overlap 与 PP 的完整旅程<small class="lesson-kind">时间与依赖</small></a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新<small class="lesson-kind">源码导读</small></a>
+</div></details>
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>模型执行与设备协作</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？<small class="lesson-kind">执行机制</small></a>
+<a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头<small class="lesson-kind">源码导读</small></a>
+</div></details>
+<details class="module-nav" data-module="kv-memory" open>
+<summary class="module-heading" aria-current="location"><span class="course-number">05</span><span><strong>KV Cache 与资源生命周期</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收<small class="lesson-kind">缓存机制</small></a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="index.html" aria-current="page">推理显存账本：从字节预算到请求容量<small class="lesson-kind">容量规划</small></a>
+<a class="lesson-link" href="../hicache-loadback/index.html">HiCache 完整回载：从 L3 命中到当前层可读<small class="lesson-kind">分层缓存</small></a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">06</span><span><strong>调度策略、批处理与资源约束</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<details class="module-nav" data-module="parallelism">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#parallelism">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
+</div></details>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
+</div></details>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">09</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pp-consensus/index.html">PP 共识：Bootstrap、Release 与 HiCache ACK<small class="lesson-kind">状态协调</small></a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<details class="module-nav" data-module="advanced-generation">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#advanced-generation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
+</div></details>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation<small class="lesson-kind">服务治理</small></a>
+<a class="lesson-link" href="../deployment-lab/index.html">最小部署实验：启动、请求与完整结束<small class="lesson-kind">部署实验</small></a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测<small class="lesson-kind">性能分析</small></a>
+<a class="lesson-link" href="../benchmark-lab/index.html">标准压测实验：负载、样本与达标吞吐<small class="lesson-kind">压测实验</small></a>
+<a class="lesson-link" href="../trace-lab/index.html">Trace 定位实验：从设备活动追到等待原因<small class="lesson-kind">Trace 实验</small></a>
+</div></details>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">13</span><span><strong>PD＋PP 综合实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾<small class="lesson-kind">综合实践</small></a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">Prefill 流水线的等待与依赖：空档从哪里来<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">Prefill PP 主循环源码：槽位复用与异步收尾<small class="lesson-kind">PD＋PP 案例</small></a>
+</div></details>
+</nav></details>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章对照固定 release，第三章沿固定版本源码核对实现。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content"><!-- learning-context:start -->
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第三章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-instance">第二层 · 理解单实例</a><span aria-hidden="true">/</span><a href="../../#kv-memory">05 KV Cache 与资源生命周期</a><span aria-hidden="true">/</span><span aria-current="page">推理显存账本：从字节预算到请求容量</span></nav>
+<!-- learning-context:end -->
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#kv-memory">模块 05 / KV Cache 与资源生命周期</a><span class="lesson-count">SGLang · 容量规划</span></div><h1>推理显存账本：从字节预算到请求容量</h1><p>把权重之外的空间、KV 槽位和请求增长放到同一份可核对的账本中。</p>
+<div class="meta-tags"><span>源码 72d5c5bb73</span><span>可操作教学模型</span><span>实验步骤与验证边界分别记录</span></div></header><!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="先修与跨章回看"><strong>先修与跨章回看</strong><nav><a href="../../foundations/cache.html">原理：KV Cache 与前缀复用</a><a href="../../foundations/hardware.html">原理：GPU 计算与访存</a><a href="../../engine-comparison/index.html#prefix">引擎对照：前缀缓存（独立版本）</a></nav></section><!-- foundation-bridge:end --><nav class="article-toc" aria-label="本课入口"><a href="#lab">操作图解</a><a href="#check">预测与自测</a><a href="#evidence">源码与证据</a></nav><section class="overview-section" id="motivation"><h2>为什么有空闲显存，仍然可能放不下请求？</h2>
+<p>KV Cache（键值缓存）保存注意力计算中的历史 K/V。本课先把设备可用字节换成 KV 池中的槽位，再按页与请求需求比较。分配器（allocator）管理的空闲页，是这个池里当前还能取走的部分。启动时先为执行留出空间，再把剩余预算换成 KV 槽位；运行时还要检查已持有的缓存、页边界和未来增长。</p>
+<p>本课沿普通文本、单实例、一个 rank（本例的一张 GPU 执行分片）、未量化多头注意力（Multi-Head Attention，MHA）静态分页池建立账本。MLA、混合状态、量化元数据、多模态与投机预留需要单独计算，不直接套用本页公式。</p>
+</section>
+<section class="sl-lab" id="lab" data-serving-lab="memory"><h2>从设备字节，算到一批请求的页需求</h2><p>先沿默认数字算清供给和需求，再试两个变化：取消用户上限，或让每条已有 KV 多一个位置。每次改变条件都会回到起点并暂停。</p>
+<div class="sl-controls"><label>建 KV 池前当前可用（GiB）<select name="available"><option value="8">8</option><option value="12">12</option><option value="20" selected>20</option><option value="28">28</option></select></label>
+<label>静态分配比例 mem_fraction_static<select name="fraction"><option value="0.75">0.750</option><option value="0.875" selected>0.875</option><option value="0.95">0.950</option></select></label>
+<label>待规划请求数（条）<select name="requests"><option value="12" selected>12</option><option value="32">32</option><option value="64">64</option></select></label>
+<label>每请求已有 KV（位置）<select name="context"><option value="2048" selected>2,048 位置</option><option value="2049">2,049 位置（观察页边界）</option><option value="8192">8,192 位置</option><option value="32768">32,768 位置</option></select></label>
+</div><details class="sl-reading"><summary>调整每页大小、后续长度和载荷成本</summary><div class="sl-controls"><label>本 rank 的 KV heads<select name="heads"><option value="4" selected>4</option><option value="8">8</option></select></label>
+<label>每元素载荷<select name="bytes"><option value="2" selected>2 bytes</option><option value="1">1 byte（仅成本假设）</option></select></label>
+<label>每页槽位数 page_size<select name="page"><option value="16">16 槽位</option><option value="128" selected>128 槽位</option><option value="256">256 槽位</option></select></label>
+<label>用户池容量上限（槽位）<select name="tokenLimit"><option value="100000" selected>100,000</option><option value="50000">50,000</option><option value="0">不额外限制</option></select></label>
+<label>每请求后续规划（位置）<select name="reserve"><option value="512" selected>512 位置</option><option value="2048">2,048 位置</option></select></label>
+</div><p>下面是预算采样之后才新增、并假设同时出现的执行峰值。已经反映在当前可用量中的权重或已捕获 Graph 不再重复计入；它只是保守规划，不是实测峰值。</p><div class="sl-controls">
+<label>新增激活峰值<select name="activationPeak"><option value="1">1 GiB</option><option value="2" selected>2 GiB</option><option value="4">4 GiB</option></select></label>
+<label>之后捕获的 Graph<select name="graphFuture"><option value="0">0 GiB</option><option value="1" selected>1 GiB</option><option value="2">2 GiB</option></select></label>
+<label>新增其他临时空间<select name="temporaryPeak"><option value="1" selected>1 GiB</option><option value="2">2 GiB</option><option value="4">4 GiB</option></select></label></div>
+<p>固定加载前可用基线 40 GiB（不是显卡铭牌容量）、32 层、K/V 每个头的向量维度各 128。1 byte 只改变本页的载荷换算，不代表某个量化后端已支持，也未计 scale、dummy page 和其他 buffers。</p>
+</details><div class="ml-experiments" role="group" aria-label="账本对照"><button type="button" data-memory-preset="default">恢复默认账本</button><button type="button" data-memory-preset="boundary">默认对照：每条多 1 个位置</button><button type="button" data-memory-preset="uncap">保持其他条件，取消用户上限</button></div><div class="sl-equation" id="sl-equation"></div><p class="sl-scroll-note">总览可在窄屏直接阅读；模块图可在图内横向查看。播放定位讲解步骤，不改变计算结果。</p><div class="sl-canvas" tabindex="0" role="region" aria-label="可横向滚动的机制图"><svg id="sl-svg" role="img" aria-labelledby="sl-svg-title sl-svg-desc"></svg></div><div class="sl-stage" id="sl-stage" aria-live="polite"><h3>准备观察</h3><p>启用 JavaScript 可操作图解；下方保留完整机制说明。</p></div><div class="sl-transport"><button type="button" data-action="prev">上一步</button><button type="button" data-action="play" aria-pressed="false">播放</button><button type="button" data-action="next">下一步</button><button type="button" data-action="reset">重置</button><label class="sl-speed animation-speed">讲解速度 <input name="speed" aria-label="讲解速度" type="range" min="0.5" max="2" step="0.25" value="1"><output data-speed>1×</output></label></div><div class="sl-seek"><label for="sl-seek">讲解进度</label><input id="sl-seek" name="seek" type="range" min="0" max="1" step="0.001" value="0"><output data-clock></output></div><div id="sl-results"></div><p class="sl-note" id="sl-lab-boundary">0–8 u 是四段算账的讲解进度；播放只定位正在解释的换算，不模拟内存分配、请求执行或实测耗时。</p><p><a id="sl-event-source" class="sl-source-link" href="#evidence">查看当前事件的固定源码</a></p><div id="sl-error" class="sl-error" role="alert"></div><noscript><p>互动需要 JavaScript。以下正文、算例、命令和源码入口可独立阅读。</p></noscript></section>
+<section class="overview-section" id="ledger"><h2>五本账，各自回答一个问题</h2>
+<div class="sl-table-wrap"><table class="sl-table"><thead><tr><th scope="col">账本</th><th scope="col">单位与含义</th><th scope="col">不能据此推断</th></tr></thead><tbody><tr><td>加载前基线与当前可用量</td><td>GiB；分别在对应采样位置获得</td><td>加载前基线不一定等于显卡标称容量</td></tr><tr><td>运行预留与 KV 预算</td><td>GiB；给执行和 KV 分别留空间</td><td>预留降低不保证下一批的临时需求安全</td></tr><tr><td>物理 KV 池</td><td>token / page；按模型布局和页粒度换算</td><td>token 容量不等于请求数或输出长度</td></tr><tr><td>请求与前缀持有</td><td>页引用、锁、有效长度</td><td>请求结束不等于缓存立即被驱逐</td></tr><tr><td>设备实际占用</td><td>权重、buffers、图与分配器占用</td><td>池内 free 增加不等于设备监控占用下降</td></tr></tbody></table></div>
+<p>权重、执行 buffers 和 CUDA Graph 占用要按采样时刻记账：当前可用量已经反映的驻留对象，不能再扣一次；之后才发生的捕获或峰值则需另外验证。<code>mem_fraction_static</code> 不是 KV 专用比例。</p>
+</section>
+<section class="overview-section" id="formula"><h2>用同一组数，走完换算</h2>
+<p>下面固定为交互的默认参数。1 GiB = 2³⁰ bytes，1 KiB = 2¹⁰ bytes；同一个 token 位置在本 rank 的 32 层都要保存 K 和 V，所以一个槽位的成本要把这些层相加。</p>
+<ol>
+<li><strong>先算字节预算。</strong>加载前可用基线为 40 GiB；建池前当前可用 20 GiB。运行预留为 40 × (1 − 0.875) = 5 GiB，KV 预算为 20 − 5 = 15 GiB。当前已驻留的 20 GiB 已经反映在当前可用量里。</li>
+<li><strong>每槽位成本。</strong>4 个 KV heads × (128 个 K 元素 + 128 个 V 元素) × 32 层 × 2 bytes/元素 = 65,536 bytes/槽位，即 64 KiB/槽位。这里的 4 是本 rank 的 KV 头数，不是 query 头数。</li>
+<li><strong>换成容量，再受上限约束。</strong>15 GiB 可支持 245,760 槽位、1,920 页。用户上限 100,000 槽位仅允许 781 个完整页；不足一页的 32 槽位不纳入池，最终容量为 99,968 槽位。</li>
+<li><strong>请求需求按相反方向取整。</strong>每条已有 2,048 个 KV 位置，按后续 512 个位置规划，共 2,560 个位置。每页 128 槽位，因此每条需要 20 页；12 条共 240 页，和池的 781 页比较。</li>
+</ol>
+<div class="sl-memory-math"><math display="block" aria-label="15 GiB 除以每槽位 65536 bytes 等于245760槽位"><mrow><mfrac><mrow><mn>15</mn><mo>×</mo><msup><mn>2</mn><mn>30</mn></msup><mtext> bytes</mtext></mrow><mrow><mn>65,536</mn><mtext> bytes/槽位</mtext></mrow></mfrac><mo>=</mo><mn>245,760</mn><mtext> 槽位</mtext></mrow></math></div>
+<p>容量向下取整，是为了让完整页放得进预算与用户上限；需求向上取整，是为了让每条请求所需的位置都有页可放。下面两条公式里的 P 是每页槽位数，L 是一条请求的已有 KV 与后续规划位置之和，R 是请求条数。</p>
+<div class="sl-memory-math"><math display="block" aria-label="池页数等于字节容量与用户上限较小值除以P向下取整"><mrow><mtext>池页数</mtext><mo>=</mo><mo>⌊</mo><mfrac><mrow><mi>min</mi><mo>(</mo><mtext>字节换算槽位数</mtext><mo>,</mo><mtext>用户上限</mtext><mo>)</mo></mrow><mi>P</mi></mfrac><mo>⌋</mo></mrow></math></div>
+<div class="sl-memory-math"><math display="block" aria-label="整批需求页数等于R乘以L除以P向上取整"><mrow><mtext>整批需求页数</mtext><mo>=</mo><mi>R</mi><mo>×</mo><mo>⌈</mo><mfrac><mi>L</mi><mi>P</mi></mfrac><mo>⌉</mo></mrow></math></div>
+<p><strong>为什么每条多一个位置，会多出一整页？</strong>默认对照把已有 KV 改为 2,049，其他条件不变。每条共 2,561 个位置，20 页只有 2,560 槽位，因此必须取 21 页。每条尾页空 127 槽位；12 条共需 252 页，其中尾页空位共 1,524 槽位。不同请求的尾页不能合并后统一取整。</p>
+<p>默认池的载荷近似是 99,968 × 64 KiB = 6.102 GiB。15 GiB 预算中其余约 8.898 GiB 没有纳入本页的 KV 池容量；它不是已经分给其他用途的内存，也不自动扩大这里列出的运行预留。这张图是预算账本，不是实际张量分配快照。</p>
+<p>这些参数是教学值，不对应某个模型或硬件实测。规划假设各请求长度相同、无共享前缀、整个 KV 池可用于这批需求；未模拟当前池内其他占用、逐轮准入、请求行上限或提前停止。引擎运行时会逐步申请页，不会因为这份保守规划就立刻为每条占满未来长度。</p>
+</section>
+<section class="overview-section" id="pages"><h2>运行时增量：新增三个 token，为何只需要一页？</h2><p>这是独立的 P=4 小例子，不使用上面 P=128 的默认池。已有 KV 已经占有页时，本轮只从空闲页集合中取得<strong>新增页</strong>；不能再把整条请求的规划页数当作新增申请量。</p>
+<div class="sl-table-wrap"><table class="sl-table"><thead><tr><th scope="col">请求</th><th scope="col">已有有效 KV</th><th scope="col">P=4 时再算一个位置</th><th scope="col">新增页</th></tr></thead><tbody><tr><td>R1</td><td>7</td><td>使用已有尾页第 8 格</td><td>0</td></tr><tr><td>R2</td><td>8</td><td>跨到下一页</td><td>1</td></tr><tr><td>R3</td><td>3</td><td>使用已有尾页第 4 格</td><td>0</td></tr></tbody></table></div>
+<p>下一轮再增长时，R1 和 R3 都跨页，需求又会变化。尾页空位仍属于持有该页的请求；普通分页池允许非连续空闲页，不能把页号零散直接判定成无法分配。共享、Beam、投机和分配 helper 的保守准备量需沿各自路径核对。</p>
+</section>
+<section class="overview-section" id="diagnosis"><h2>看到 OOM，先问发生在哪本账</h2>
+<p>启动预算不足：检查加载前基线、权重和已驻留对象、运行预留及特殊状态。已有池但准入失败：检查真正可分配页、受保护前缀和本轮需求。执行时 OOM：再检查 activation、采样、Graph 或后端临时分配；扩大 KV 池可能反而挤压这一部分空间。</p>
+<p>把实际启动日志、模型配置、池容量和失败批次一起保存。仅凭显卡监控的一项百分比，无法区分池内缓存保留与设备层泄漏。</p>
+</section>
+<section class="overview-section" id="check"><h2>先预测，再解释</h2>
+<details class="self-check"><summary>static fraction 从 0.875 调到 0.95，为什么不保证运行更安全？</summary><p>它在此公式中缩小执行预留并扩大 KV 预算，但实际 activation、Graph 和临时需求并没有因此消失。</p>
+</details>
+<details class="self-check"><summary>用户把 token 上限设得比 profiling 结果更大，会强行扩大池吗？</summary><p>不会。本页先取 profiling 容量与用户上限的较小值，再按页取整；真实池还受模型与实现的其他约束。</p>
+</details>
+<details class="self-check"><summary>2 条请求各需 1 个位置，每页 128 槽位，是否只需要 1 页？</summary><p>本课无共享前缀，每条都要各自的一整页，因此共 2 页、256 槽位。不能把两条先合成 2 个位置，再只向上取整一次。</p></details>
+<details class="self-check"><summary>调大字节预算后，为什么最终池仍是 99,968 槽位？</summary><p>默认的用户上限 100,000 槽位比字节预算能支持的容量更小。只要这个上限仍然生效，最终仍是 781 个完整页。使用“保持其他条件，取消用户上限”观察字节预算的作用。</p></details>
+<details class="self-check"><summary>能不能把 Host 空闲槽位加到 GPU 空闲槽位上，立即接纳请求？</summary><p>不能。Host 副本要先经过设备分配、回载和读取依赖。继续阅读 HiCache 课。</p>
+</details>
+</section>
+<section class="overview-section" id="evidence"><h2>固定源码、来源与验证边界</h2>
+<p>本课是源码分析型交互课程。公开上游 <a href="https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a">sgl-project/sglang</a>，基于 <code>main</code> 的固定快照 <code>72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a</code>，读取于 <time>2026-11-19</time>。读取时外部源码检出目录干净；本课只读取指定 Git 对象，未修改外部源码。</p>
+<p>验证范围：静态源码核对、教学模型、采集工具的本地测试和浏览器检查。没有运行 SGLang 模型、GPU、RDMA 或推理性能实验。课程中的待执行命令与实际采集记录分别标明。</p>
+<div class="sl-table-wrap"><table class="sl-table"><thead><tr><th scope="col">行为入口</th><th scope="col">固定源码</th></tr></thead><tbody><tr><td>_profile_available_bytes</td><td><a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/kv_cache_configurator.py#L2130">python/sglang/srt/mem_cache/kv_cache_configurator.py#L2130</a></td></tr><tr><td>DefaultPoolConfigurator</td><td><a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/model_executor/pool_configurator.py#L195">python/sglang/srt/model_executor/pool_configurator.py#L195</a></td></tr></tbody></table></div>
+<p>仓内深入阅读：<a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/04-kv-cache/06-容量规划碎片与显存回收.md">容量规划、碎片与显存回收</a>。</p>
+<p>概念与画法复核（2026-11-19）：<a href="https://docs.sglang.io/docs/advanced_features/hyperparameter_tuning">SGLang 官方调优说明</a>区分静态内存与执行空间；此处预算仍按上述固定源码，不套用当前文档的默认值或经验阈值。<a href="https://vllm.ai/blog/2023-06-20-vllm">PagedAttention 作者图解</a>及原论文的完整块与尾块表示用于核对页内空位的讲法；SGLang 分配行为沿本课固定源码核对。</p><p>概念依据：<a href="https://arxiv.org/abs/2309.06180">PagedAttention 原论文</a>解释按块管理与共享的问题；本页预算公式由上述固定源码核对，未采用论文性能数字。</p>
+</section>
+<!-- reading-pagers:start -->
+<nav class="reading-route-pager" data-reading-route="labs" data-route-topic="" data-route-title="从容量走到实验验证" data-route-hint="把设备字节换成 KV 与请求容量。" data-route-position="1 / 5" data-route-home="../../#reading-routes" aria-label="从容量走到实验验证 · 继续学习" hidden><a href="../../#reading-routes"><small>选择学习起点</small><strong>返回路线</strong></a><a class="next" href="../hicache-loadback/index.html?learn=labs"><small>这条路线 · 下一节</small><strong>HiCache 完整回载：从 L3 命中到当前层可读 →</strong></a></nav>
+<!-- reading-pagers:end -->
+<nav class="lesson-pager" aria-label="框架内继续学习"><a href="../inference-overview/kv-cache.html"><small>本模块 · 上一节</small><strong>← RadixCache 与 Attention：前缀索引怎样连接 KV？</strong></a><a class="next" href="../hicache-loadback/index.html"><small>本模块 · 下一节</small><strong>HiCache 完整回载：从 L3 命中到当前层可读 →</strong></a></nav></main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

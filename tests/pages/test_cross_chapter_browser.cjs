@@ -18,7 +18,7 @@ const alive=pid=>{try{process.kill(pid,0);return true}catch{return false}};
  await go('');assert.equal(await page.locator('[data-beginner-start]').count(),1);await shot('home-1440');
  await page.locator('#topic-paths>summary').click();
  assert.equal(await page.locator('#topic-paths tbody tr').count(),9);
- const deepLinks=await page.locator('#topic-paths td:nth-child(4) a').evaluateAll(nodes=>nodes.map(a=>a.pathname));assert.equal(new Set(deepLinks).size,23);assert.equal(deepLinks.length,23);
+ const deepLinks=await page.locator('#topic-paths td:nth-child(4) a').evaluateAll(nodes=>nodes.map(a=>a.pathname));assert.equal(new Set(deepLinks).size,28);assert.equal(deepLinks.length,28);
  await page.locator('#topic-paths>summary').click();await page.locator('[data-beginner-start]').click();
  for(let i=0;i<catalog.beginner.steps.length;i++){
   await assertStep(i);

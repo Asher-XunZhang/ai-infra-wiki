@@ -61,6 +61,8 @@ jobs:
           node tests/pages/test_generation_execution.cjs
           node tests/pages/test_serving.cjs
           node tests/pages/test_performance.cjs
+          node tests/pages/test_serving_labs.cjs
+          python3 -B tests/test_serving_labs_collector.py
           node tests/pages/test_execution.cjs
           node tests/pages/test_kv_memory.cjs
           node tests/pages/test_radix_lifecycle.cjs

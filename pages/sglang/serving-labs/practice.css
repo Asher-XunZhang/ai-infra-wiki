@@ -1,0 +1,14 @@
+.pl-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px 14px;margin:12px 0}
+.pl-facts>div{padding:8px 10px;background:var(--soft);border-left:2px solid var(--border);min-width:0}
+.pl-facts dt{font-size:13px;color:var(--muted)}
+.pl-facts dd{font-size:14px;margin:4px 0 0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.pl-reading{padding:14px 16px;border-left:3px solid var(--accent);background:var(--soft);margin:15px 0;font-size:14px;line-height:1.85;min-width:0}
+.pl-reading h3{font-size:17px;margin:0 0 10px}.pl-reading p{margin:7px 0;overflow-wrap:anywhere}
+.pl-actions{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}.pl-actions button{font-size:14px;min-height:40px}
+.sl-lab[data-serving-lab=deployment] :is(.sl-canvas,.sl-overview-canvas)>svg{min-width:1000px}
+.sl-lab[data-serving-lab=benchmark] :is(.sl-canvas,.sl-overview-canvas)>svg{min-width:1000px}
+.sl-lab[data-serving-lab=trace] :is(.sl-canvas,.sl-overview-canvas)>svg{min-width:1000px}
+.sl-lab[data-serving-lab=trace] .sl-inspector{font-size:14px}
+@media(max-width:600px){.pl-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.pl-reading{padding:12px}.pl-actions button{padding:8px 10px}}
+
+.sl-lab[data-serving-lab=trace] .sl-tops button{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.8;max-height:3.6em;width:100%}

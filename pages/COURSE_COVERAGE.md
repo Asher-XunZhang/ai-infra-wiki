@@ -1,6 +1,6 @@
 # Pages 学习课程覆盖与维护
 
-Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实现剖析”三章。第一章用十三课建立通用机制；第二章按固定 release 对照七个主题、二十八步，并提供第三章深入入口；第三章保留五层十三模块、二十三节课程与固定的源码依据。本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
+Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实现剖析”三章。第一章用十三课建立通用机制；第二章按固定 release 对照七个主题、二十八步，并提供第三章深入入口；第三章保留五层十三模块、二十八节课程与固定的源码依据。本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
 
 ## 三章之间怎样衔接
 
@@ -25,7 +25,7 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 
 - `node tests/pages/test_foundations.cjs`：真实分词固定样例、因果权重、KV 所属与释放、批次成员守恒、通信与 PP 依赖、统计样本边界。
 - `node tests/pages/test_foundations_browser.cjs`：全部场景与步骤、320 / 390 / 1440 宽度、深浅主题、自测反馈、键盘、播放暂停、减少动态效果、链接恢复与无 JavaScript 正文。
-- `node tests/pages/test_topic_navigation_browser.cjs`：三章目录、第二章七个主题入口、二十三节实现课导航、旧路线 URL、跨模块翻页与移动端侧栏。
+- `node tests/pages/test_topic_navigation_browser.cjs`：三章目录、第二章七个主题入口、二十八节实现课导航、旧路线 URL、跨模块翻页与移动端侧栏。
 
 发布状态以对应提交的 Pages 工作流和线上验证为准。浏览器中的教学模型不代表运行过 GPU 推理。
 
@@ -246,3 +246,22 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 ## PP 共识专题的验证
 
 [独立专题](sglang/pp-consensus/index.html) 归模块 09 第四篇，模块 07/08/13 提供关联入口。三种机制分别评估并加入同一时钟轨道；11 个条件覆盖名单过滤、跨轮采样、失败终态、本地复查、ACK 前缀与后级并行。`test_pp_consensus.cjs` 检查依赖与状态，`test_pp_consensus_source.py` 从固定 Git 对象执行 CPU 替身检查，`test_pp_consensus_browser.cjs` 检查播放、回拖、状态恢复、主题与窄屏；不是 GPU 或 RDMA 实验。
+
+## 容量、回载与实验课程（2026-11-19）
+
+[显存账本](sglang/memory-budget/index.html)、[HiCache 完整回载](sglang/hicache-loadback/index.html)、[最小部署](sglang/deployment-lab/index.html)、[标准压测](sglang/benchmark-lab/index.html)与 [Trace 定位](sglang/trace-lab/index.html)归入原 KV、服务治理和性能模块。共享导航提供 learn=labs 路线，模块分类保持十三项。五课单独固定 SGLang 72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a，不升级旧课的独立源码基线。
+
+- 显存课按普通未量化 MHA、单 rank 换算预算与页，没有把理论载荷当作实际 tensor 分配量。
+- 回载课采用 FULL-only、Python TreeCore、cache 主机模式，区分 L3 exists/get、L2 采用、L3 结果/最终 ACK、H2D 逐层 event 与 H2D 整批 ACK；覆盖无命中、L1 不足和 IO 中取消，取消后最终 ACK 与释放队列实际归还分开。
+- 部署课提供 stdlib HTTP 采集器，保存身份、原始响应、SSE、取消通知与结束证据；网页本身不启动服务。
+- 压测课区分合成教学排程和导入记录，保留计划到达、许可、adapter 起止与失败；独立计算已声明 SLO 的 goodput，不补造官方摘要缺少的时刻。
+- Trace 课包含上游 BSD 许可的 Kineto 历史 ResNet-50 训练片段，记录原始与片段 SHA-256 和裁剪范围；支持 JSON/gzip、X/B/E、窗口、相关 ID 候选与 GPU 区间并集。它不是 SGLang 推理或当前硬件的性能结果。
+
+维护入口为各课 HTML、sglang/serving-labs/ 中的共享教学模型与控制器，以及 scripts/serving_labs.py。模型、来源和采集协议检查不代替 GPU/RDMA、模型质量或真实服务压测。
+
+验证入口见 tests/README.md 的 Serving labs 说明，另运行共享导航、文档与构建检查。
+
+五课按 [交互图复核记录](VISUALIZATION_LEVELS_REVIEW.md#容量回载与实验课复核2026-11-19本地预览) 接入总览、模块过程和当前事件源码注解。回载与部署的完整箭头按同一教学时钟持续脉冲；容量换算、逐请求观测与真实 Trace 保留适合自身证据的表达。新版三章路线和问题索引均覆盖五课，发布状态以对应提交的 Pages 工作流和线上校验为准。
+
+
+2026-11-23 完成后三课的初学者复核：部署补齐不同结束门槛，压测补齐固定请求的计时与统计推导，Trace 补齐候选聚焦、完整空档及缺失证据处理。分层与同一时钟的选择见 [三课复核记录](VISUALIZATION_LEVELS_REVIEW.md#部署压测与-trace-的初学者复核2026-11-23本地预览)；专项检查见 `tests/pages/test_serving_practice_browser.cjs`。发布前基于远端 `60238f7` 合并第二章与首页更新，检查生成导航、课程、采集工具和线上部署内容的一致性。

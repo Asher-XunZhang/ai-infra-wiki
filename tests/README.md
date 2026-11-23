@@ -71,3 +71,12 @@ CI 保留原有模型、PP 生成与源码基线检查，并增加通用文档�
 `node tests/pages/test_pp_journey.cjs` 从十个已生成场景核对激活可用、前驱门槛、KV 结束与本地清理分界，以及并行区间和逆向状态重建。`node tests/pages/test_pp_journey_browser.cjs` 验证连续播放、暂停／回拖、脉冲活动区间、观察对象与完整图同步、跨三篇及刷新恢复、场景切换、响应式与减少动态效果。支持 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL` 和可选的 `PP_JOURNEY_QA_DIR`；自动清理独立浏览器及 profile。
 
 原有 `tests/pp/test_pp_timing_model.py`、`test_pp_custom_timing.py`、`test_pp_dependency_view.py`、`test_pp_step_guide.py` 和 `check_pp_source.py` 继续检查生成模型、参数求解、完整图几何、步骤说明及固定源码锚点。修改依赖模型或步骤说明后，用 `python3 -B tests/pp/build_pp_scenarios.py --refresh-baseline` 同步场景与嵌入数据，再核对生成 diff；只有明确审查过模型变化后才使用此选项。
+
+Serving labs 使用 node tests/pages/test_serving_labs.cjs 检查容量、HiCache 保护与层依赖、失败样本和 Trace 并集；python3 -B tests/test_serving_labs_collector.py 只对本地 mock HTTP 验证采集协议，不运行模型。固定源码检查为 SGLANG_SOURCE_DIR=<checkout> python3 -B tests/pages/test_serving_labs_source.py。浏览器检查使用 tests/pages/test_serving_labs_browser.cjs，支持 PLAYWRIGHT_MODULE、CHROMIUM_EXECUTABLE、OVERVIEW_TEST_URL 和 SERVING_LABS_QA_DIR；记录并清理自有浏览器和 profile。
+
+显存账本专项：`node tests/pages/test_memory_budget_browser.cjs`，沿用 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE` 和 `OVERVIEW_TEST_URL`。可用 `MEMORY_BUDGET_QA_DIR` 保存检查画面。覆盖字节预算与用户上限、逐请求页取整、尾页空位、对照按钮、进度恢复、唯一有效速度控件、四种宽度、原生 MathML、主题和无脚本正文；浏览器及临时 profile 在退出时清理。
+
+HiCache 回载专项：`node tests/pages/test_hicache_loadback_browser.cjs`，沿用 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL`，可用 `HICACHE_QA_DIR` 留存画面。检查命中/读入/采用/逐层就绪/两类 ACK、IO 与传输保护、取消后的释放队列、每层端口、同一时钟和持续脉冲、恢复链接及四种宽度；退出时清理本批浏览器、辅助进程和 profile。
+
+
+部署、压测与 Trace 初学者专项：`node tests/pages/test_serving_practice_browser.cjs`，使用与 Serving labs 相同的 `PLAYWRIGHT_MODULE`、`CHROMIUM_EXECUTABLE`、`OVERVIEW_TEST_URL` 和 `SERVING_LABS_QA_DIR`。检查首字／流尾／取消通知／后台收尾的不同门槛、固定请求与 SLO 的计时边界、失败样本和窗口、Trace 候选共同聚焦与完整空档、CPU-only／空窗口／无效导入、播放期间保留折叠与焦点，以及桌面和窄屏；自动清理自有浏览器、辅助进程与 profile。测试中的自造记录只验证查看器行为，随课 Kineto 样本仍为历史训练记录。

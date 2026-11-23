@@ -7,6 +7,11 @@ const courses=[
  ['sglang/system-overview/index.html','system-overview','foundations'],
  ['sglang/scheduling/index.html','scheduling','instance'],
  ['sglang/kv-memory/index.html','kv-memory','instance'],
+ ['sglang/memory-budget/index.html','kv-memory','instance'],
+ ['sglang/hicache-loadback/index.html','kv-memory','instance'],
+ ['sglang/deployment-lab/index.html','serving-operations','serving'],
+ ['sglang/benchmark-lab/index.html','performance','practice'],
+ ['sglang/trace-lab/index.html','performance','practice'],
  ['sglang/model-execution/index.html','model-execution','instance'],
  ['sglang/performance-engineering/index.html','performance','practice'],
  ['sglang/serving-operations/index.html','serving-operations','serving'],
@@ -160,6 +165,10 @@ async function checkHome(page,label){
   // The framework pager follows the module sequence, not the old five-page topic order.
   await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
   assert.match(page.url(),/kv-cache.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 KV Cache/);
+  await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
+  assert.match(page.url(),/memory-budget\/index.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 KV Cache/);
+  await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
+  assert.match(page.url(),/hicache-loadback\/index.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/05 KV Cache/);
   await page.locator('.lesson-pager .next').click();await page.waitForLoadState('load');
   assert.match(page.url(),/scheduling\/index.html/);assert.match(await page.locator('.learning-breadcrumb').innerText(),/06 调度/);
   for(const [route,module,stage] of courses){

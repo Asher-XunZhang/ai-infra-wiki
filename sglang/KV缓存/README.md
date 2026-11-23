@@ -56,3 +56,7 @@
 收录 SGLang 的缓存索引、分配器、物理池、复用、分层存储和混合状态缓存；跨服务角色的请求与 KV 交接归 disaggregation。
 
 后续文章先加入阅读表，标明先修、定位和学习重点。当形成多篇相互关联且需要独立导航的子主题时，再建立子目录；跨主题内容保留一份正文，由相关 README 交叉引用。
+
+## 容量与回载交互
+
+先操作[显存账本](../../pages/sglang/memory-budget/index.html)，再按需进入 [HiCache 完整回载](../../pages/sglang/hicache-loadback/index.html)。两课固定 72d5c5bb，与普通分页机制课的 279339f113 分别保留基线；教学预算、执行依赖与实际验证范围单独说明。

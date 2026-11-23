@@ -53,7 +53,9 @@ MODULES = [
         ('sglang/inference-overview/transformer.html', 'DeepSeek-V3：Embedding、Decoder Layer 与输出头', 'SGLang · 源码导读')]),
     ('kv-memory', 'KV Cache 与资源生命周期', 'instance', False, [
         ('sglang/kv-memory/index.html', 'KV Memory Pool：地址映射、分页与缓存回收', 'SGLang · 缓存机制'),
-        ('sglang/inference-overview/kv-cache.html', 'RadixCache 与 Attention：前缀索引怎样连接 KV？', 'SGLang · 源码导读')]),
+        ('sglang/inference-overview/kv-cache.html', 'RadixCache 与 Attention：前缀索引怎样连接 KV？', 'SGLang · 源码导读'),
+        ('sglang/memory-budget/index.html', '推理显存账本：从字节预算到请求容量', 'SGLang · 容量规划'),
+        ('sglang/hicache-loadback/index.html', 'HiCache 完整回载：从 L3 命中到当前层可读', 'SGLang · 分层缓存')]),
     ('scheduling', '调度策略、批处理与资源约束', 'instance', False, [
         ('sglang/scheduling/index.html', 'Batch 调度：准入预算、Chunked Prefill 与 Retract', 'SGLang · 调度机制')]),
     ('parallelism', '并行与执行拓扑', 'distributed', False, [
@@ -65,8 +67,13 @@ MODULES = [
         ('sglang/pd-dataflow/index.html', 'PD 数据流：激活、KV Transfer 与 Req 队列引用', 'SGLang · PD＋PP 案例'),
         ('sglang/pp-consensus/index.html', 'PP 共识：Bootstrap、Release 与 HiCache ACK', 'SGLang · 状态协调')]),
     ('advanced-generation', '模型结构与高级生成', 'serving', False, [('sglang/advanced-generation/index.html', 'Speculative Decoding 与约束生成：状态怎样提交？', 'SGLang · 高级生成')]),
-    ('serving-operations', '服务部署与运行治理', 'serving', False, [('sglang/serving-operations/index.html', '服务治理：Health Check、Timeout 与 Cancellation', 'SGLang · 服务治理')]),
-    ('performance', '性能分析与优化方法', 'practice', False, [('sglang/performance-engineering/index.html', 'TTFT、ITL、TPOT 与 P95：SGLang 性能观测', 'SGLang · 性能分析')]),
+    ('serving-operations', '服务部署与运行治理', 'serving', False, [
+        ('sglang/serving-operations/index.html', '服务治理：Health Check、Timeout 与 Cancellation', 'SGLang · 服务治理'),
+        ('sglang/deployment-lab/index.html', '最小部署实验：启动、请求与完整结束', 'SGLang · 部署实验')]),
+    ('performance', '性能分析与优化方法', 'practice', False, [
+        ('sglang/performance-engineering/index.html', 'TTFT、ITL、TPOT 与 P95：SGLang 性能观测', 'SGLang · 性能分析'),
+        ('sglang/benchmark-lab/index.html', '标准压测实验：负载、样本与达标吞吐', 'SGLang · 压测实验'),
+        ('sglang/trace-lab/index.html', 'Trace 定位实验：从设备活动追到等待原因', 'SGLang · Trace 实验')]),
     ('case-studies', 'PD＋PP 综合实践', 'practice', False, [
         ('sglang/pd-prefill-pp-loop/quick.html', 'Prefill Batch 的执行旅程：跨级计算与异步收尾', 'SGLang · 综合实践'),
         ('sglang/pd-prefill-pp-loop/index.html', 'Prefill 流水线的等待与依赖：空档从哪里来', 'SGLang · PD＋PP 案例'),
@@ -76,6 +83,12 @@ MODULES = [
 # Reading order is independent of the stable module taxonomy. Links are rendered
 # into HTML so the Pages build can version them and no-JS readers can use them.
 READING_ROUTES = [
+    ('labs', '从容量走到实验验证', '先列资源账本，再理解回载，沿最小部署、标准负载与 Trace 建立可复查证据。', [
+        ('sglang/memory-budget/index.html', '显存账本', '把设备字节换成 KV 与请求容量。'),
+        ('sglang/hicache-loadback/index.html', 'HiCache 完整回载', '追踪存在、分配、逐层可读与传输收尾。'),
+        ('sglang/deployment-lab/index.html', '最小部署', '保存环境、请求、响应与实际结束证据。'),
+        ('sglang/benchmark-lab/index.html', '标准压测', '固定负载、窗口和成功样本，计算达标吞吐。'),
+        ('sglang/trace-lab/index.html', 'Trace 定位', '沿实测事件核对实体、提交与等待。')]),
     ('first', '从请求走到一轮计算', '先认识对象和本轮输入，再读执行与资源约束。', [
         ('sglang/system-overview/index.html', '系统与进程地图', '先沿单实例的请求和返回闭环认模块。'),
         ('sglang/request-runtime/index.html', '同一请求的不同对象', '从前端状态追到调度请求。'),
@@ -160,7 +173,7 @@ def learning_start(page):
     parts = ['<!-- learning-start:start -->', '<section id="reading-routes" aria-label="三章学习入口">',
         beginner_entry(page), '<div class="chapter-choice"><a href="#chapter-foundations"><span>第一章</span><strong>推理基础</strong><p>从一句话怎样变成数字开始，逐步认识生成、缓存、调度与多卡协作。</p><span>先建立直觉，再进入实现</span></a>',
         '<a href="#chapter-engine"><span>第二章</span><strong>SGLang 与 vLLM 架构对照</strong><p>按固定 release 对照两套引擎的单实例请求路径、P/D 交接和延迟口径。</p><span>七个主题 · 保留各自版本边界</span></a>',
-        '<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十三模块 · 二十三节实现课程</span></a></div></section>',
+        f'<a href="#chapter-sglang"><span>第三章</span><strong>SGLang 实现剖析</strong><p>沿请求追踪对象、队列、资源与源码，保留各课固定版本和验证边界。</p><span>十三模块 · {sum(len(m[4]) for m in MODULES)} 节实现课程</span></a></div></section>',
         '<section id="chapter-foundations" class="foundation-directory" aria-labelledby="foundation-directory-title"><h2 id="foundation-directory-title">第一章 · 推理基础</h2>',
         '<p>先把文字变成向量，再沿一次 Transformer 前向追到下一 token。接着拆开 Attention，看看生成怎样一轮轮接续，最后理解历史状态为什么值得缓存。</p><ol class="foundation-lessons">']
     for i, c in enumerate(FOUNDATIONS, 1):
@@ -183,6 +196,11 @@ def foundation_bridge(page, module):
         'sglang/inference-overview/scheduling.html': ['batching', 'cache'],
         'sglang/scheduling/index.html': ['batching', 'cache'],
         'sglang/serving-operations/index.html': ['serving', 'deployment'],
+        'sglang/memory-budget/index.html': ['cache', 'hardware'],
+        'sglang/hicache-loadback/index.html': ['cache', 'communication'],
+        'sglang/deployment-lab/index.html': ['serving'],
+        'sglang/benchmark-lab/index.html': ['metrics', 'batching'],
+        'sglang/trace-lab/index.html': ['metrics', 'hardware'],
     }
     slugs = overrides.get(relative, topic['foundations'])
     links = ''.join(f'<a href="{href(page, "foundations/"+slug+".html")}">原理：{escape(FOUNDATION_BY_SLUG[slug]["title"].split("：")[0])}</a>' for slug in slugs)
@@ -312,7 +330,13 @@ def pager(page, module, lesson):
 
 
 def implementation_design(page):
-    entry = DESIGN_NOTES[str(page.relative_to(PAGES))]
+    entry = DESIGN_NOTES.get(str(page.relative_to(PAGES)))
+    if entry is None:
+        # These lab pages author their motivation, examples and evidence beside
+        # the specialized controls rather than duplicating a generated preface.
+        if 'data-serving-lab=' in page.read_text(encoding='utf-8'):
+            return ''
+        raise ValueError(f'{page}: missing implementation design')
     revision = entry.get('revision', DESIGN_REVISION)
     body = []
     background = entry['background']

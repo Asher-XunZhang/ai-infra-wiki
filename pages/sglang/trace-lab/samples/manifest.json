@@ -1,0 +1,21 @@
+{
+  "url": "https://raw.githubusercontent.com/pytorch/kineto/486c083b84a53c60aec0d2c522c1fc5b99ce5284/tb_plugin/samples/resnet50_num_workers_0/worker0.1623143089861.pt.trace.json.gz",
+  "commit": "486c083b84a53c60aec0d2c522c1fc5b99ce5284",
+  "source_sha256": "a91798b500ce9d6e21c416ce32dcd8ecf4788489df86f59ba2f944906c90b853",
+  "path": "tb_plugin/samples/resnet50_num_workers_0/worker0.1623143089861.pt.trace.json.gz",
+  "title": "PyTorch/Kineto ResNet-50 实测训练 Trace：ProfilerStep#6",
+  "evidence": "measured-third-party",
+  "read_date": "2026-11-19",
+  "sample": "resnet50-step6.json",
+  "sample_sha256": "a96ae531672fc856da23240693e40b6cc6848309b5eb847e80f33f0ea5579323",
+  "window": {
+    "start_us": 1623142623636318,
+    "end_us": 1623142623810310
+  },
+  "events": 7444,
+  "processing": "只保留完整落在 ProfilerStep#6 内的 X 事件和进程/线程元数据；时间戳与时长不改写；args 只保留相关 ID、设备、stream、形状及 kernel 配置。未保留的外部事件不能据此视为不存在。",
+  "scope": "历史 ResNet-50 训练记录，用于学习真实 CPU/CUDA 时间线；不是 SGLang、LLM 推理或当前硬件的性能结果。",
+  "license": "BSD-3-Clause",
+  "license_url": "https://github.com/pytorch/kineto/blob/486c083b84a53c60aec0d2c522c1fc5b99ce5284/LICENSE",
+  "reference": "https://pytorch.org/blog/introducing-pytorch-profiler-the-new-and-improved-performance-debugging-tool/"
+}

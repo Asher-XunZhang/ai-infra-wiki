@@ -119,7 +119,9 @@
       ],
       "implementation": [
         "sglang/kv-memory/index.html",
-        "sglang/inference-overview/kv-cache.html"
+        "sglang/inference-overview/kv-cache.html",
+        "sglang/memory-budget/index.html",
+        "sglang/hicache-loadback/index.html"
       ],
       "delta": "复用原理只在第一章展开；后两章分别比较索引／地址组织和固定实现的分配、保护、驱逐。"
     },
@@ -201,7 +203,8 @@
         "crosscut"
       ],
       "implementation": [
-        "sglang/serving-operations/index.html"
+        "sglang/serving-operations/index.html",
+        "sglang/deployment-lab/index.html"
       ],
       "delta": "从用户停止等待，接到引擎资源生命周期，再核对 P/D 网关与后端的取消和排空。"
     },
@@ -216,7 +219,9 @@
         "metrics"
       ],
       "implementation": [
-        "sglang/performance-engineering/index.html"
+        "sglang/performance-engineering/index.html",
+        "sglang/benchmark-lab/index.html",
+        "sglang/trace-lab/index.html"
       ],
       "delta": "先固定通用计时与样本口径，再看非 PD 的两引擎打点，最后读 P/D 多方计时；各课算例独立。"
     }

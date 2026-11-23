@@ -1,0 +1,16 @@
+.hc-gates{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px 14px;margin:14px 0;font-variant-numeric:tabular-nums}
+.hc-gates>div{padding:8px 10px;border-left:2px solid var(--border);background:var(--soft);min-width:0}
+.hc-gates dt{font-size:13px;color:var(--muted)}
+.hc-gates dd{font-size:14px;margin:4px 0 0;overflow-wrap:anywhere}
+.hc-checkpoints{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}
+.hc-checkpoints button{font-size:14px;min-height:40px}
+.hc-checkpoints button:disabled{opacity:.5;cursor:not-allowed}
+.hc-terms{font-size:14px;border-left:3px solid var(--accent);padding:8px 12px;background:var(--soft)}
+.hc-reading-map{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px 22px}
+.hc-reading-map h3{font-size:17px}
+.sl-lab[data-serving-lab=hicache] #sl-activity{font-size:14px}
+@media(max-width:600px){.hc-gates{grid-template-columns:repeat(2,minmax(0,1fr))}.hc-checkpoints{gap:6px}.hc-checkpoints button{padding:8px 10px}}
+
+.sl-lab[data-serving-lab=hicache] :is(.sl-canvas,.sl-overview-canvas)>svg{min-width:1000px}
+.hc-gates>div{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 7px;padding:6px 8px}
+.hc-gates dd{margin:0}

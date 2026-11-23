@@ -1,0 +1,4 @@
+{"text":"Explain what a KV cache stores in one sentence.","max_new_tokens":32}
+{"text":"What is the difference between prefill and decode?","max_new_tokens":32}
+{"text":"Explain what a KV cache stores in one sentence.","max_new_tokens":32}
+{"text":"Name one reason that a request can wait before GPU execution.","max_new_tokens":32}
