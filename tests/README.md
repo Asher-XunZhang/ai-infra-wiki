@@ -30,6 +30,14 @@ done
 
 场景生成器会同步页面数据与步骤文档，生成后检查 Git diff；源码核对器的 `--source-root` 和模型测试的源码环境变量保持原接口。固定版本与验证边界见各专题正文。
 
+## 采样、量化与实现专题
+
+`node tests/pages/test_priority_lessons.cjs` 核对候选概率、top-p 边界、量化元数据、MoE 任务与副本守恒、E/P/D 放行、缓存驻留与恢复条件、缺失证据、LoRA 隔离和 V1 位置账本。`python3 -B scripts/build_priority_lessons.py --check` 检查七个独立页面；三处基础实验由 `build_foundations.py --check` 验证。
+
+`python3 -B tests/pages/test_priority_sources.py` 检查固定源码声明；附加 `--sglang-source <checkout> --vllm-cache <immutable-source-directory>` 后，按声明的提交、相对路径和 SHA-256 核对文件，并用 AST 核对函数与行号。它不导入引擎或运行 GPU；CI 只执行不依赖外部检出的声明检查。
+
+`node tests/pages/test_priority_browser.cjs` 覆盖十个实验的参数、共享时钟、层级与源码展开、暂停/拖动/回放、持续脉冲、四档宽度和主题、无脚本阅读及减少动态效果。复用下方浏览器环境变量；可用 `PRIORITY_QA_DIR` 保存截图和自有浏览器进程/profile 记录，结束时自动清理。
+
 ## 浏览器检查
 
 先构建，再在独立终端启动预览服务：

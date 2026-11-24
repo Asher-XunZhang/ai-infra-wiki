@@ -86,7 +86,8 @@
       ],
       "implementation": [
         "sglang/model-execution/index.html",
-        "sglang/inference-overview/transformer.html"
+        "sglang/inference-overview/transformer.html",
+        "sglang/quantization/index.html"
       ],
       "delta": "第一章讲计算本身；第二章定位执行者；第三章核对 Runner 与具体模型调用。"
     },
@@ -156,7 +157,8 @@
       ],
       "implementation": [
         "sglang/parallelism/index.html",
-        "sglang/communication/index.html"
+        "sglang/communication/index.html",
+        "sglang/moe-execution/index.html"
       ],
       "delta": "通用通信的输入输出约定留在第一章；对照章看通道归属，实现章看进程组、接口与就绪条件。"
     },
@@ -189,7 +191,9 @@
       ],
       "comparison": [],
       "implementation": [
-        "sglang/advanced-generation/index.html"
+        "sglang/advanced-generation/index.html",
+        "sglang/multimodal-input/index.html",
+        "sglang/multi-lora/index.html"
       ],
       "delta": "第二章没有独立的候选验证课。学完基础可直接进入第三章的 EAGLE／Grammar，不必绕回引擎对照。"
     },
@@ -204,7 +208,8 @@
       ],
       "implementation": [
         "sglang/serving-operations/index.html",
-        "sglang/deployment-lab/index.html"
+        "sglang/deployment-lab/index.html",
+        "sglang/cache-routing/index.html"
       ],
       "delta": "从用户停止等待，接到引擎资源生命周期，再核对 P/D 网关与后端的取消和排空。"
     },
@@ -221,7 +226,8 @@
       "implementation": [
         "sglang/performance-engineering/index.html",
         "sglang/benchmark-lab/index.html",
-        "sglang/trace-lab/index.html"
+        "sglang/trace-lab/index.html",
+        "sglang/distributed-diagnostics/index.html"
       ],
       "delta": "先固定通用计时与样本口径，再看非 PD 的两引擎打点，最后读 P/D 多方计时；各课算例独立。"
     }
@@ -310,5 +316,17 @@
     "speculation": null,
     "serving": "crosscut",
     "metrics": "metrics"
-  }
+  },
+  "engine_reading": [
+    {
+      "path": "vllm/v1-lifecycle/index.html",
+      "scope": [
+        "InputProcessor",
+        "Scheduler",
+        "KVCacheManager",
+        "GPUModelRunner"
+      ],
+      "commit": "4ba787ec9959e566d3b587a796dff07673324da5"
+    }
+  ]
 }

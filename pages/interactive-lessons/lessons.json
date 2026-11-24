@@ -1,0 +1,1354 @@
+{
+  "sampling": {
+    "title": "采样参数：从分数到候选，再到输出控制",
+    "kind": "sampling",
+    "unit": "step",
+    "anchor": "sampling-params",
+    "fragment": "generation",
+    "lead": "固定一张分数表和抽样数，分别改变温度、候选集合与重复惩罚，解释为何同一轮会选择不同 token。",
+    "sources": "sampling",
+    "controls": [
+      {
+        "name": "scores",
+        "label": "给定分数",
+        "values": [
+          [
+            "positive",
+            "ln25、ln9、ln4、0"
+          ],
+          [
+            "signed",
+            "2、1、−1、0"
+          ]
+        ],
+        "value": "positive",
+        "numeric": false
+      },
+      {
+        "name": "temperature",
+        "label": "temperature",
+        "values": [
+          [
+            0,
+            "0：贪心"
+          ],
+          [
+            0.5,
+            "0.5"
+          ],
+          [
+            1,
+            "1"
+          ],
+          [
+            2,
+            "2"
+          ]
+        ],
+        "value": 2,
+        "numeric": true
+      },
+      {
+        "name": "topK",
+        "label": "top-k",
+        "values": [
+          [
+            1,
+            "1 个"
+          ],
+          [
+            2,
+            "2 个"
+          ],
+          [
+            3,
+            "3 个"
+          ],
+          [
+            4,
+            "全 4 个"
+          ]
+        ],
+        "value": 3,
+        "numeric": true
+      },
+      {
+        "name": "topP",
+        "label": "top-p",
+        "values": [
+          [
+            0.6,
+            "0.6"
+          ],
+          [
+            0.85,
+            "0.85"
+          ],
+          [
+            0.95,
+            "0.95"
+          ],
+          [
+            1,
+            "1"
+          ]
+        ],
+        "value": 0.6,
+        "numeric": true
+      },
+      {
+        "name": "repetition",
+        "label": "repetition penalty",
+        "values": [
+          [
+            1,
+            "1"
+          ],
+          [
+            1.2,
+            "1.2"
+          ],
+          [
+            2,
+            "2"
+          ]
+        ],
+        "value": 1,
+        "numeric": true
+      },
+      {
+        "name": "u",
+        "label": "固定抽样数 u",
+        "values": [
+          [
+            0.25,
+            "0.25"
+          ],
+          [
+            0.75,
+            "0.75"
+          ],
+          [
+            0.95,
+            "0.95"
+          ]
+        ],
+        "value": 0.75,
+        "numeric": true
+      }
+    ],
+    "intro": [
+      "模型已经给出本轮 logits。采样参数通过改变分数、候选集合和选择分布，控制从这些候选中怎样取一个；选定的 ID 才会进入下一轮上下文。这里不重新模拟模型前向，也不把教学词当作真实词表。",
+      "先保持默认值，预期两个候选仍可被选中。把温度从 2 改为 1，观察 top-p=0.6 为什么只剩最高分候选；再切换含负分的例子，核对重复惩罚对正负分数的不同处理。"
+    ],
+    "sections": [
+      {
+        "id": "sampling-terms",
+        "title": "先分清五个操作",
+        "paragraphs": [
+          "温度 T>0 时将分数除以 T，再做 softmax。T 较小时分数差更明显；较大时分布通常更平。T=0 在所选路径进入贪心处理，不执行除以零。",
+          "top-k 限定排序后的候选个数；top-p 按概率质量限定前缀集合。二者结合时，最终可选集合受到两项约束，剩余权重还要归一化。",
+          "重复惩罚使用本例已生成历史 “学习”两次、“。”一次；本例 r=2 时，正分 2 变 1，负分 −1 变 −2。它不同于按次数线性减分的 frequency penalty，也不等于把整个 prompt 做一遍词频统计。"
+        ]
+      },
+      {
+        "id": "sampling-example",
+        "title": "用同一组数字走完整个转换",
+        "paragraphs": [
+          "默认 z=[ln25,ln9,ln4,0]。T=2 后指数权重为 [5,3,2,1]，概率为 [5/11,3/11,2/11,1/11]。top-k=3 去掉最后一项，top-p=0.6 再去掉第三项，保留质量为 8/11。",
+          "归一化后 q=[5/8,3/8,0,0]；固定 u=0.75 落在第二项区间。固定 u 让两个条件可以复查，不是一次真实随机采样或模型复现性实验。不同条件下 q 改变，同一个 u 的落点也可能改变。",
+          "常见 top-p 概念图保留累计达到门槛的最小前缀。本实验核对固定 SGLang PyTorch 代表路径，其删除条件是“该候选之前的累计概率 > top_p”；等号保留。动画值避开默认等号边界，源码注解保留这项差异。同分在本例按 ID 排序，实际后端的同分与随机实现另核对。"
+        ]
+      },
+      {
+        "id": "sampling-output",
+        "title": "选择概率、返回概率与停止原因分别看",
+        "paragraphs": [
+          "过滤前 p 与过滤后 q 通常不同。展示 top_logprobs 的数量只决定返回多少列，不等于采样的 top-k。不能拿一个概率字段就推断实际可选集合。",
+          "选出一个 token 之后，先判断 EOS、长度、字符串匹配及取消等条件，再核对可见文本和收尾。下面的固定输出实验独立说明停止条件；完整的设备与客户端交接继续看最小部署课。"
+        ]
+      }
+    ],
+    "checks": [
+      [
+        "增大温度是否一定得到更长、更正确的回答？",
+        "不能。温度改变本轮分布；输出长度还由后续候选与停止条件决定，质量需要独立验证。"
+      ],
+      [
+        "top-k=1 时，原始 softmax 概率一定为 1 吗？",
+        "只有过滤后的选择分布成为单候选。原始或截断前概率仍可能小于 1。"
+      ]
+    ],
+    "related": [
+      [
+        "第三章：最小部署与完整结束",
+        "sglang/deployment-lab/index.html"
+      ],
+      [
+        "源码阅读：Logits 采样与输出概率",
+        "doc:sglang/source-study/05-model-execution/04-Logits采样与输出概率.md"
+      ]
+    ],
+    "refs": [
+      [
+        "Hugging Face：GenerationConfig v4.57.1",
+        "https://huggingface.co/docs/transformers/v4.57.1/en/main_classes/text_generation"
+      ],
+      [
+        "Hugging Face：解码策略与 top-p 图示",
+        "https://huggingface.co/blog/how-to-generate"
+      ]
+    ]
+  },
+  "stopping": {
+    "title": "输出控制：EOS、长度、停止串与取消",
+    "kind": "stopping",
+    "unit": "step",
+    "anchor": "output-controls",
+    "fragment": "generation",
+    "sources": "stopping",
+    "lead": "用给定的输出事件核对停止条件；文本分片、token 计数、结束原因和资源退役分别记账。",
+    "controls": [
+      {
+        "name": "scenario",
+        "label": "停止场景",
+        "values": [
+          [
+            "eos",
+            "EOS 结束"
+          ],
+          [
+            "length",
+            "达到输出长度"
+          ],
+          [
+            "min",
+            "最低长度屏蔽 EOS"
+          ],
+          [
+            "string",
+            "停止串跨两个分片"
+          ],
+          [
+            "cancel",
+            "取消后仍在途"
+          ]
+        ],
+        "value": "eos",
+        "numeric": false
+      }
+    ],
+    "intro": [
+      "先选“停止串跨两个分片”，逐步读入“回答：”“EN”“D尾部”。单看第二片还没有 END，累计缓冲才会在第三片发现匹配。片段数不能替代输出 token 数。"
+    ],
+    "sections": [
+      {
+        "id": "stop-boundaries",
+        "title": "给定输入、实际输出与展示文字",
+        "paragraphs": [
+          "max_new_tokens 约束新增 token，不含 prompt 长度。达到上限可以以 length 结束，不需要模型先输出 EOS，也不保证句子语义完整。",
+          "min_new_tokens 在达到最低输出数量前限制结束候选；达到最低数量只恢复其选择机会，不强制当场结束。",
+          "停止字符串可能跨文本片段匹配。是否保留停止串、是否已经缓存部分文本、原始 token 如何计数，应结合所用协议和版本查看。取消通知的响应更不能代替后台资源退役证据。"
+        ]
+      }
+    ],
+    "checks": [
+      [
+        "取消通知返回时设备仍在计算，是否必然是故障？",
+        "不一定。在途工作与引用清理有自己的依赖；需要继续核对流尾与后台完成证据。"
+      ]
+    ],
+    "related": [
+      [
+        "完整取消证据与服务收尾",
+        "sglang/deployment-lab/index.html#cancel"
+      ]
+    ],
+    "refs": []
+  },
+  "quantization-intuition": {
+    "title": "量化直觉：用更少刻度记录数值",
+    "kind": "quantization",
+    "unit": "step",
+    "anchor": "quantization-intuition",
+    "fragment": "hardware",
+    "sources": "quantization",
+    "lead": "把原值、scale、整数编码与还原误差对上，再把载荷和元数据分别计入空间。",
+    "controls": [
+      {
+        "name": "bits",
+        "label": "整数位宽",
+        "values": [
+          [
+            4,
+            "4 bit"
+          ],
+          [
+            8,
+            "8 bit"
+          ]
+        ],
+        "value": 4,
+        "numeric": true
+      },
+      {
+        "name": "group",
+        "label": "每组数值个数",
+        "values": [
+          [
+            1,
+            "1"
+          ],
+          [
+            2,
+            "2"
+          ],
+          [
+            5,
+            "5"
+          ]
+        ],
+        "value": 5,
+        "numeric": true
+      },
+      {
+        "name": "scale",
+        "label": "刻度来源",
+        "values": [
+          [
+            "auto",
+            "每组绝对最大值"
+          ],
+          [
+            "small",
+            "固定 scale=0.1，观察截断"
+          ]
+        ],
+        "value": "auto",
+        "numeric": false
+      },
+      {
+        "name": "object",
+        "label": "核算对象",
+        "values": [
+          [
+            "weight",
+            "权重 W"
+          ],
+          [
+            "activation",
+            "本轮激活 A"
+          ],
+          [
+            "kv",
+            "历史 K/V"
+          ]
+        ],
+        "value": "weight",
+        "numeric": false
+      }
+    ],
+    "intro": [
+      "搬运量是硬件课的一个下界。降低数值表示的位宽可以减少载荷，同时引入 scale、布局转换与误差；能否加速还要看实际 kernel 和当前瓶颈。",
+      "先比较 4 bit 与 8 bit，再把每组数值个数改为 1。这个很小的数组会让 scale 元数据明显增加，帮助看清“位宽更低”与“总空间更小”之间还差一次完整核算。"
+    ],
+    "sections": [
+      {
+        "id": "quantization-objects",
+        "title": "W、A 与 KV 有不同生命周期",
+        "paragraphs": [
+          "权重 W 随模型装载并跨请求复用；激活 A 由当前计算产生；KV 保存已经处理位置的注意力状态。W4A16 描述权重与激活的一种组合，并未说明 KV 使用什么格式。",
+          "均匀整数例子使用 q=clip(round(x/s))，还原值 x̂=q×s。scale 是刻度大小，分组决定哪些数共用一个刻度。FP8、FP4 的浮点编码和具体缩放体系还要按各自格式核对。",
+          "调小固定 scale 会让某些值超出整数范围而截断。误差图显示单个数值的变化，不能直接证明生成文本质量、业务精度或模型兼容性。",
+          "空间例子按每组 2 bytes 估算 scale 元数据，数值计算没有模拟 scale 自身的 FP16 舍入、打包对齐和实际 buffers。最终模型质量需要独立测量。"
+        ]
+      }
+    ],
+    "checks": [
+      [
+        "将权重改成 4 bit，KV 和总显存是否也缩小到四分之一？",
+        "不能。KV、激活、scale、布局与其他驻留对象独立核算，实际节省还要核对分配。"
+      ]
+    ],
+    "related": [
+      [
+        "第三章：量化配置怎样落到执行路径",
+        "sglang/quantization/index.html"
+      ],
+      [
+        "显存账本的字节、槽位与请求页",
+        "sglang/memory-budget/index.html"
+      ]
+    ],
+    "refs": [
+      [
+        "AWQ 原论文",
+        "https://arxiv.org/abs/2306.00978"
+      ],
+      [
+        "SmoothQuant 原论文",
+        "https://arxiv.org/abs/2211.10438"
+      ]
+    ]
+  },
+  "quantization": {
+    "title": "量化实现：编码、scale、kernel 与质量验证",
+    "kind": "quantizationPath",
+    "unit": "step",
+    "path": "sglang/quantization/index.html",
+    "module": "model-execution",
+    "sources": "quantization",
+    "lead": "从实际量化配置追到模型层方法，分开核对存储格式、激活转换、KV 格式和真正执行的 kernel。",
+    "controls": [
+      {
+        "name": "format",
+        "label": "实现路径",
+        "values": [
+          [
+            "fp8",
+            "已量化 FP8 checkpoint"
+          ],
+          [
+            "awq",
+            "普通 AWQ W4A16"
+          ],
+          [
+            "kv",
+            "独立 KV dtype"
+          ]
+        ],
+        "value": "fp8",
+        "numeric": false
+      },
+      {
+        "name": "supported",
+        "label": "给定的兼容性前提",
+        "values": [
+          [
+            "yes",
+            "所选条件成立"
+          ],
+          [
+            "no",
+            "缺少匹配 kernel"
+          ]
+        ],
+        "value": "yes",
+        "numeric": false
+      }
+    ],
+    "intro": [
+      "更小的 checkpoint 只有在编码、scale、布局和执行方法配套时才能用于计算。先从硬件课理解数值误差，再沿本课确认“参数名最终选中了谁”。",
+      "默认阅读普通文本线性层、已序列化 FP8 权重、动态激活与满足条件的 CUDA backend；教学检查点不代表已在设备上执行。AWQ 与 KV 是独立对照，不把各方案合成一个通用 kernel。"
+    ],
+    "sections": [
+      {
+        "id": "quant-contract",
+        "title": "配置名不是一条完整执行路径",
+        "paragraphs": [
+          "先查模型配置怎样得到 quant_config，再看每层的 get_quant_method 选择哪种方法。被排除的层可能继续使用原精度；模型名称或文件后缀不能代替最终配置与层方法。",
+          "所选 FP8 路径加载 weight 与权重 scale，后处理还会调整布局或尺度。本轮 apply 另处理当前激活，并按后端条件进入对应 GEMM。权重 scale、激活 scale、K/V scale 的对象和方向分别核对。"
+        ]
+      },
+      {
+        "id": "quant-formats",
+        "title": "三种容易混写的“低精度”",
+        "table": [
+          [
+            "对象",
+            "至少核对",
+            "不能直接推出"
+          ],
+          [
+            "FP8 权重与激活",
+            "checkpoint、动态/静态 scale、后处理、shape、backend",
+            "任意 FP8 文件都能调用同一个 kernel"
+          ],
+          [
+            "AWQ W4A16",
+            "打包容器、qzeros/scales、所选方法及 shape 分支",
+            "存成 INT4 就是全链路 INT4 计算"
+          ],
+          [
+            "量化 KV",
+            "kv_cache_dtype、K/V scale、pool 与 Attention backend",
+            "权重量化自动决定 KV 量化"
+          ]
+        ]
+      },
+      {
+        "id": "quant-quality",
+        "title": "容量、运行兼容与质量是三份验证",
+        "paragraphs": [
+          "容量报告记录真实权重、scale、KV、临时空间和执行预留，而不只按参数个数乘位宽。先用显存账本解释理论载荷，再对照启动和运行观测。",
+          "兼容性记录固定 commit、模型与 tokenizer revision、权重格式、设备、dtype、shape 和实际 backend。配置对象可创建、加载可完成、一次 kernel 可执行分别检查。",
+          "质量对照固定输入、模板、停止条件与评价方法，按任务保存逐样本结果和误差容限；性能另固定工作量与 SLO。上方数值还原误差只用于入门理解。本课没有运行真实模型、kernel、精度或性能实验。"
+        ],
+        "code": "# 实验记录模板（待执行，不是成功报告）\nsource_commit: <固定值>\nmodel_revision: <固定值>\nweight_format_and_scales: <实际记录>\nactivation_dtype_and_kernel: <实际记录>\nkv_dtype_and_backend: <实际记录>\nquality_workload_and_tolerance: <先定义>\nvalidation: NOT_EXECUTED"
+      }
+    ],
+    "checks": [
+      [
+        "scale 都等于 1，能否说明这份模型没有量化误差？",
+        "不能。scale 是编码解释和计算契约的一部分，默认值不是质量证明。"
+      ],
+      [
+        "加载通过后，能否跳过目标 shape 的执行验收？",
+        "不能。设备、布局与 shape 还要满足实际 kernel 的要求。"
+      ]
+    ],
+    "related": [
+      [
+        "先读：量化数值直觉",
+        "foundations/hardware.html#quantization-intuition"
+      ],
+      [
+        "源码：量化格式与计算路径",
+        "doc:sglang/source-study/09-model-specialization/02-量化格式与计算路径.md"
+      ],
+      [
+        "运行空间：显存账本",
+        "sglang/memory-budget/index.html"
+      ]
+    ],
+    "refs": [
+      [
+        "AWQ 原论文",
+        "https://arxiv.org/abs/2306.00978"
+      ],
+      [
+        "SmoothQuant 原论文",
+        "https://arxiv.org/abs/2211.10438"
+      ]
+    ]
+  },
+  "moe": {
+    "title": "MoE：从逻辑路由到专家执行与合并",
+    "kind": "moe",
+    "unit": "u",
+    "path": "sglang/moe-execution/index.html",
+    "module": "parallelism",
+    "sources": "moe",
+    "lead": "同一 token 选择哪些逻辑专家，任务发往哪份权重，结果怎样回到原 token 行？再改变热点与物理副本，看清负载均衡的对象。",
+    "controls": [
+      {
+        "name": "distribution",
+        "label": "给定路由任务",
+        "values": [
+          [
+            "hot",
+            "E0 / E1 热点"
+          ],
+          [
+            "spread",
+            "四个专家较均匀"
+          ]
+        ],
+        "value": "hot",
+        "numeric": false
+      },
+      {
+        "name": "replica",
+        "label": "物理放置",
+        "values": [
+          [
+            "off",
+            "每个逻辑专家一份"
+          ],
+          [
+            "on",
+            "Rank 1 增加 E0 副本"
+          ]
+        ],
+        "value": "off",
+        "numeric": false
+      }
+    ],
+    "intro": [
+      "MoE（Mixture of Experts，混合专家）为一条 token 行选择少数专家处理；EP（Expert Parallelism，专家并行）把专家权重分布到 rank。选择谁、权重放哪、数据怎样过去，是三个问题。",
+      "本例有 R1/R2 两条请求、T0…T3 四个 token 行、E0…E3 四个逻辑专家和两个 GPU rank。每行选择两个专家，权重为 0.75/0.25。只做小型算术和假设排程，不将其称为 DeepSeek-V3 的完整拓扑或性能模拟。"
+    ],
+    "sections": [
+      {
+        "id": "moe-routing",
+        "title": "选专家的分数与合并权重先分开",
+        "paragraphs": [
+          "Gate 产生专家分数，路由规则决定候选与 top-k；最终混合权重用于合并输出。不同 MoE 模型可能用 softmax、sigmoid、分组、偏置或缩放，不能把它们统一成普通 softmax。",
+          "DeepSeek-V3 的训练期负载均衡偏置用于调整选择，其混合系数的取值另有定义。运行时 EPLB 的物理副本放置与训练期路由目标也不同。本实验直接给定逻辑专家与权重，保留这条边界。"
+        ]
+      },
+      {
+        "id": "moe-dispatch",
+        "title": "Dispatch 与 Combine 保护的是行对应关系",
+        "paragraphs": [
+          "本例用一维替身 fE(x)=(专家号+1)×x 方便手算；T0 的输入 x=1，E0/E1 分别得到 1 和 2。真实专家是各自的前馈网络，不由这条线性式代替。",
+          "Dispatch 按目标专家组织 token 行及其身份；跨 rank 的任务需要通信，同 rank 的任务可以本地重排。EP rank 编号不是专家号，请求来源 rank 也不一定是目标 rank。",
+          "专家处理各自收到的行。Combine 把结果送回原 token，再按该 token 的权重相加。若 T0 的两个专家结果为 1 和 2，输出为 0.75×1+0.25×2=1.25；不能把另一行的专家结果拼过来。",
+          "图中输入、任务表和返回结果保持 T0…T3 身份。代表源码还存在无 A2A 的 StandardDispatcher 和不同 DeepEP 模式；本例跨 rank 轨道表达分发关系，不替代这些路径的具体约束。",
+          "本例选择整批 A2A：各 rank 的专家计算可以并行，较早完成的一方等待本轮其他分支，再共同进入 Combine。通信分块与多微批流水重叠不在本例中展开。",
+          "选路和按权重合并发生在持有原行的来源 GPU。模块图把这类活动单列一条轨道，仍是本例的 Rank 0/1，不代表额外增加一张设备。"
+        ]
+      },
+      {
+        "id": "moe-balance",
+        "title": "热点、冗余副本与负载均衡",
+        "paragraphs": [
+          "热点场景仍有 8 份任务，但全落在 Rank 0 的两个专家上。增加 E0 副本后，一部分 E0 任务可交给 Rank 1；逻辑 E0 和 top-k 不变，合并结果也应保持。",
+          "冗余副本消耗额外权重空间，并需要统计、放置与迁移。实际 EPLB 的采样窗口、更新策略、rank 间一致性和权重搬运分别核对，不能理解为每次自动找到当前最空闲的一张卡。",
+          "图中每任务 1 u 和整批交接区间是教学假设。峰值任务数说明负载不均；它不是设备利用率、真实带宽或可承诺的加速比。共享专家、通信开销与其他算子还会影响整层执行。",
+          "本例按 token 行号的奇偶分配 E0 的两个副本，只为让任务落点可复查；实际副本一致性与映射按固定 EPLB 路径核对。"
+        ]
+      }
+    ],
+    "checks": [
+      [
+        "增加一个 E0 副本后，T0 是否要多算一个专家？",
+        "不需要。副本改变物理落点，不增加逻辑选择的 top-k。"
+      ],
+      [
+        "所有 rank 任务数相同，是否一定没有 MoE 瓶颈？",
+        "不能。通信、任务形状、kernel、共享专家与同步依赖仍可能主导。"
+      ]
+    ],
+    "related": [
+      [
+        "先读：EP 分工",
+        "foundations/parallel.html"
+      ],
+      [
+        "先读：AllToAll 与通信语义",
+        "foundations/communication.html"
+      ],
+      [
+        "源码：MoE 专家并行与负载均衡",
+        "doc:sglang/source-study/06-parallelism/05-MoE专家并行与负载均衡.md"
+      ]
+    ],
+    "refs": [
+      [
+        "DeepSeek-V3 Technical Report v2",
+        "https://arxiv.org/html/2412.19437v2"
+      ],
+      [
+        "SGLang Team：大规模 EP 部署图",
+        "https://www.lmsys.org/blog/2025-05-05-large-scale-ep/"
+      ]
+    ]
+  },
+  "multimodal": {
+    "title": "多模态输入：位置展开与 Encode／Prefill／Decode 交接",
+    "kind": "multimodal",
+    "unit": "u",
+    "path": "sglang/multimodal-input/index.html",
+    "module": "advanced-generation",
+    "sources": "multimodal",
+    "lead": "把媒体预处理、占位展开、编码特征和语言模型 KV 串成可核对的链路，分别观察 E/PD 与 E/P/D 的交接。",
+    "controls": [
+      {
+        "name": "roles",
+        "label": "部署边界",
+        "values": [
+          [
+            "single",
+            "E、P、D 共实例"
+          ],
+          [
+            "e-pd",
+            "E / PD"
+          ],
+          [
+            "e-p-d",
+            "E / P / D"
+          ]
+        ],
+        "value": "e-p-d",
+        "numeric": false
+      },
+      {
+        "name": "media",
+        "label": "本次媒体身份",
+        "values": [
+          [
+            "same",
+            "img-A：与缓存相同"
+          ],
+          [
+            "changed",
+            "img-B：占位符相同但媒体变化"
+          ]
+        ],
+        "value": "same",
+        "numeric": false
+      },
+      {
+        "name": "cache",
+        "label": "特征缓存候选",
+        "values": [
+          [
+            "miss",
+            "未命中"
+          ],
+          [
+            "hit",
+            "查到旧 img-A 特征"
+          ]
+        ],
+        "value": "miss",
+        "numeric": false
+      },
+      {
+        "name": "readCost",
+        "label": "给定特征读入成本",
+        "values": [
+          [
+            1,
+            "1 u"
+          ],
+          [
+            3,
+            "3 u"
+          ],
+          [
+            5,
+            "5 u"
+          ]
+        ],
+        "value": 3,
+        "numeric": true
+      }
+    ],
+    "intro": [
+      "文本 token、媒体原件、预处理张量、编码特征和 LM KV 不是同一个对象。拆开 Encode 是为了让编码阶段可以独立组织资源与复用，但会增加传输、排队、身份和生命周期管理。",
+      "本例将一幅 2×2 图块的示意媒体编码成 4×4 特征，再与两个文本位置组成 6 个 LM 输入位置。图块数、特征维度和位置数都是教学形状，不对应某个下载模型。"
+    ],
+    "sections": [
+      {
+        "id": "mm-input",
+        "title": "媒体占位位置为什么不能按一个 token 计算",
+        "paragraphs": [
+          "Processor 先解码与整理媒体，并根据模型规则确定特征及位置布局。一个 <image> 占位符可能展开成多个位置；图片大小、裁剪、视频帧或音频切分还可能改变数量。",
+          "LM 接收的输入需要让文本位置与相应特征对齐。本例 p1…p4 对应四行图像特征，p0/p5 为文本。位置标签不冒充真实 tokenizer ID，真实 shape 和占位规则回到模型 processor 核对。"
+        ]
+      },
+      {
+        "id": "mm-roles",
+        "title": "E、P、D 各自产生什么",
+        "table": [
+          [
+            "角色",
+            "本例输入",
+            "本例输出"
+          ],
+          [
+            "E：Encode",
+            "媒体与预处理身份",
+            "已适配 LM 输入维度的编码特征及元数据"
+          ],
+          [
+            "P：Prefill",
+            "文本位置与编码特征",
+            "语言模型各层的 K/V，以及继续生成所需状态"
+          ],
+          [
+            "D：Decode",
+            "可消费的 LM KV 与当前 token",
+            "后续计算、输出 ID 与更新的 KV"
+          ]
+        ],
+        "paragraphs": [
+          "E/PD 只把编码拆开；E/P/D 还要单独交接 P 生成的 LM KV。E 中具体包含哪些投影由模型与接口契约决定，本例将其并入编码特征适配。",
+          "接收到特征不代表 LM Prefill 已完成，分配到 KV 目标也不代表可读。跨实例还需核对传输就绪、兼容布局、必要元数据与引用收尾；本地引用不画成网络脉冲。"
+        ]
+      },
+      {
+        "id": "mm-cache",
+        "title": "同一个占位符不保证同一份可复用状态",
+        "paragraphs": [
+          "特征复用至少要核对媒体内容、预处理与编码模型身份。切换到 img-B 时，旧 img-A 的候选作废，即使文本占位符完全相同也不能沿用。LM 前缀缓存还要核对自己的模型、位置与状态键。",
+          "将特征读入成本调为 5 u，比较本例 3 u 编码假设：缓存命中仍可能增加等待。收益依赖载荷、路径和资源条件，不从“拆开”或“命中”这两个词直接推出。"
+        ]
+      }
+    ],
+    "checks": [
+      [
+        "E 返回了编码特征，D 能否立即据此续写？",
+        "还需要模型 Prefill 建立可消费的 LM KV，以及相应的状态与就绪条件。"
+      ],
+      [
+        "替换图片但保留相同 <image> 文本，能否直接命中旧 KV？",
+        "不能据此决定；媒体和预处理身份、输入位置以及模型缓存键都要匹配。"
+      ]
+    ],
+    "related": [
+      [
+        "完整状态交接：HiCache 回载",
+        "sglang/hicache-loadback/index.html"
+      ],
+      [
+        "P/D 交接边界",
+        "sglang/pd-dataflow/index.html"
+      ],
+      [
+        "已有资料：多模态 Encode 分离",
+        "doc:大模型推理/分布式服务/多模态 Encode 分离与 EPD 状态交接学习文档.md"
+      ]
+    ],
+    "refs": [
+      [
+        "SGLang 编码分离的公开路线与实现讨论",
+        "https://github.com/sgl-project/sglang/issues/15118"
+      ]
+    ]
+  },
+  "routing": {
+    "title": "缓存感知路由与 Agent 恢复：提示、驻留和状态所有权",
+    "kind": "routing",
+    "unit": "u",
+    "path": "sglang/cache-routing/index.html",
+    "module": "serving-operations",
+    "sources": "routing",
+    "lead": "用两个 Worker 比较前缀局部性与负载，再让路由提示过期或恢复状态缺失，确认谁能决定实际复用。",
+    "controls": [
+      {
+        "name": "policy",
+        "label": "教学选点规则",
+        "values": [
+          [
+            "cache",
+            "优先前缀提示"
+          ],
+          [
+            "balanced",
+            "先检查明显失衡"
+          ]
+        ],
+        "value": "balanced",
+        "numeric": false
+      },
+      {
+        "name": "backlog",
+        "label": "W0 给定排队工作量（u）",
+        "values": [
+          [
+            1,
+            "1"
+          ],
+          [
+            8,
+            "8"
+          ],
+          [
+            12,
+            "12"
+          ]
+        ],
+        "value": 8,
+        "numeric": true
+      },
+      {
+        "name": "residency",
+        "label": "W0 实际前缀",
+        "values": [
+          [
+            "resident",
+            "仍有 8 个位置"
+          ],
+          [
+            "evicted",
+            "已驱逐，提示尚未更新"
+          ]
+        ],
+        "value": "resident",
+        "numeric": false
+      },
+      {
+        "name": "checkpoint",
+        "label": "Agent 恢复材料",
+        "values": [
+          [
+            "complete",
+            "消息与工具结果齐全"
+          ],
+          [
+            "missing",
+            "缺少工具结果"
+          ]
+        ],
+        "value": "complete",
+        "numeric": false
+      }
+    ],
+    "intro": [
+      "Worker 内的前缀缓存决定本实例能少算什么；Router 根据提示与负载选择实例；Agent 还要保存消息、工具结果和外部引用。这三层状态分别有自己的所有者和失效方式。",
+      "本例请求有 12 个输入位置，W0 的路由提示为 8，W1 为 0。排队时长直接给定为教学 u，并用差大于 4 的教学规则选点；它不是网关实际 load 的单位或生产阈值。剩余输入按每 4 个位置 1 u 推演，未测真实等待与计算。",
+      "本例把前缀提示抽象成教学位置数量，便于对照实际缺口；固定网关路径使用字符比例等信息，不能把它直接当作 Worker 的 token KV 数量。"
+    ],
+    "sections": [
+      {
+        "id": "route-index",
+        "title": "Router 记录与 Worker KV 为什么会分离",
+        "paragraphs": [
+          "固定源码的网关 cache-aware 路径维护路由历史树；其字符前缀、tenant 与 worker URL 不是 Worker 内的 token KV 页。历史更新也不等于一次请求已成功生成并保留了 KV。",
+          "Worker 驱逐、重启、失败请求和输入归一化差异都可能让提示过期。切换“已驱逐”后，选点提示仍为 8，实际可复用为 0，目标 Worker 必须重新检查。"
+        ]
+      },
+      {
+        "id": "route-tradeoff",
+        "title": "选点、转发、匹配与搬运分别看",
+        "paragraphs": [
+          "缓存亲和可能减少 Prefill，但热点 Worker 的排队又可能抵消这项收益。先平衡还是先看前缀，取决于策略与有效配置。固定源码的失衡分支还同时检查绝对差和相对门槛，不能把本例单阈值作为实际实现。",
+          "选中另一个 Worker 并不自动搬迁旧 KV。本图只传请求；目标 Worker 要么命中自己的状态，要么通过明确支持的恢复路径加载，或从更短前缀重算。传输与恢复的完成条件必须另有证据。"
+        ]
+      },
+      {
+        "id": "agent-restore",
+        "title": "KV 保留只覆盖恢复材料的一部分",
+        "paragraphs": [
+          "恢复前核对最终 token 输入、模型与 tokenizer revision、adapter、媒体和命名空间；还要知道各状态组能恢复到哪个共同边界，必要载荷是否已可读，以及本轮引用由谁持有。",
+          "Agent 的消息、工具结果、文件或任务引用并不包含在一份 KV 中。若工具结果缺失，缓存命中也不能替应用补出正确上下文。本例将这种情况保留为恢复材料未齐。",
+          "缓存 miss 时，完整上下文仍可支持重新 Prefill；能重建模型上下文又不等于应直接重做外部工具操作。会话保留、客户端重试和有副作用任务的执行身份由应用契约处理。"
+        ]
+      }
+    ],
+    "checks": [
+      [
+        "Router 提示命中 8 个位置，Worker 是否必须接受这 8 个位置？",
+        "不必须。Worker 仍要核对身份、驻留、各状态组与可读条件。"
+      ],
+      [
+        "Agent 有完整消息与工具结果但 KV 丢失，是否一定无法恢复？",
+        "不一定。可以按支持路径恢复更短状态或重新 Prefill，代价与时延需另测。"
+      ]
+    ],
+    "related": [
+      [
+        "服务状态与取消",
+        "sglang/serving-operations/index.html"
+      ],
+      [
+        "源码：Model Gateway 与缓存亲和",
+        "doc:sglang/source-study/10-serving-operations/01-ModelGateway注册路由与缓存亲和.md"
+      ],
+      [
+        "已有资料：Agent KV 保留与所有权",
+        "doc:大模型推理/KV缓存/Agent 暂停与恢复时的 KV 保留与状态所有权学习文档.md"
+      ]
+    ],
+    "refs": [
+      [
+        "SGLang Model Gateway 参考入口",
+        "https://github.com/sgl-project/sglang/tree/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/sgl-model-gateway"
+      ]
+    ]
+  },
+  "faults": {
+    "title": "分布式故障定位：从首错、栈与状态快照追等待",
+    "kind": "faults",
+    "unit": "u",
+    "path": "sglang/distributed-diagnostics/index.html",
+    "module": "case-studies",
+    "sources": "faults",
+    "lead": "对齐同一请求、microbatch 或 collective 序号，在 OOM、通信次序不一致、PP 上游等待与取消收尾中区分起因和传播结果。",
+    "controls": [
+      {
+        "name": "scenario",
+        "label": "教学案例",
+        "values": [
+          [
+            "oom",
+            "OOM 后其他 rank 等待"
+          ],
+          [
+            "collective",
+            "collective 次序不一致"
+          ],
+          [
+            "pp",
+            "PP 上游尚未产出"
+          ],
+          [
+            "cancel",
+            "取消后仍待安全退役"
+          ]
+        ],
+        "value": "oom",
+        "numeric": false
+      },
+      {
+        "name": "evidence",
+        "label": "证据覆盖",
+        "values": [
+          [
+            "complete",
+            "本例关键参与者齐全"
+          ],
+          [
+            "missing",
+            "缺少 rank0 日志和状态"
+          ]
+        ],
+        "value": "complete",
+        "numeric": false
+      }
+    ],
+    "intro": [
+      "一次超时通常告诉你哪里还在等待，未必告诉你谁最先失败。先固定运行身份与时间窗口，再收集同一事件在各参与者上的日志、栈和状态。",
+      "本课全部记录为 synthetic 教学样本，u 是给定的共同时间。没有连接集群、执行故障注入、采集真实栈或据此宣称修复过分布式服务。",
+      "证据表展示完整的给定样本，回放游标只定位同一时刻的处理与等待；不会在时间推进时编造新的日志。"
+    ],
+    "sections": [
+      {
+        "id": "fault-evidence",
+        "title": "先建立一份能对齐的证据包",
+        "table": [
+          [
+            "证据",
+            "至少保存",
+            "用来回答"
+          ],
+          [
+            "运行身份",
+            "源码 commit、模型、配置、镜像、节点/进程/rank",
+            "是否在看同一次运行"
+          ],
+          [
+            "相关标识",
+            "请求 ID、microbatch、step、group、collective seq",
+            "各方是否在讨论同一份工作"
+          ],
+          [
+            "日志",
+            "最早异常、前后文与所有必要参与者",
+            "谁先失败，谁后来开始等待"
+          ],
+          [
+            "栈与状态",
+            "同时间窗口的 CPU 栈、设备事件、队列/引用、通信动作",
+            "是在计算、等待输入、等待完成还是清理"
+          ]
+        ],
+        "paragraphs": [
+          "跨机器的 monotonic 时钟不能直接相减；先依据消息、序号与相关标识建立对应，必要时再校准全局时间。缺少关键参与者时保留证据缺口，不能用剩余一条栈补造完整根因。"
+        ]
+      },
+      {
+        "id": "fault-walk",
+        "title": "四种案例分别反查什么",
+        "paragraphs": [
+          "OOM：区分初始化分配和运行峰值，核对最早报错 rank 的显存账本、KV、激活、通信与临时 buffers。其他 rank 随后的 recv 或 collective timeout 可能只是传播结果。",
+          "Collective：对齐同组的 seq、操作类型、元素数量、dtype 和参与者，再检查是否有 rank 提前异常或走了不同分支。等待超时不足以单独认定网络坏了。",
+          "PP：从等待接收的 microbatch 往上游追，确认生产计算、就绪条件和 send 是否已经发生。栈停在 recv 可以是正常等待，也可能受更早的 KV、调度或设备错误阻塞。",
+          "取消：通知返回、流尾、设备完成和资源引用退役分别记账。仍被设备读取的对象有自己的安全完成点；复用或释放要回到该条件。"
+        ]
+      },
+      {
+        "id": "fault-next",
+        "title": "下一步应能验证一个具体假设",
+        "paragraphs": [
+          "把现象、已知事实、候选原因和补证动作写在同一张记录中。每次补证要能区分至少两个候选，而不是只继续收集更多相同 timeout。",
+          "真实排查先完成授权的只读取证；是否重启、改变配置或发送请求按任务边界处理。本课给出的判断针对完整的教学证据，不自动迁移到生产根因。"
+        ],
+        "code": "# 排障记录模板\nrun_identity: <commit/model/config/rank>\nfirst_error: <原始日志与时间口径>\nwaiting_party: <相关 ID / seq / 栈>\nconfirmed_facts: <已有证据>\nhypotheses: <尚未裁定>\nnext_read_only_evidence: <能区分哪些假设>\nvalidation: NOT_EXECUTED"
+      }
+    ],
+    "checks": [
+      [
+        "只有 rank1 的 recv timeout，可以认定 rank1 网络故障吗？",
+        "不能。还缺生产者是否产出、send 是否提交及是否有更早异常。"
+      ],
+      [
+        "相同 collective seq 的两个 rank 分别调用 all_reduce 和 all_gather，先查什么？",
+        "先查同组控制流与操作次序；这是本例已给出的不一致证据。"
+      ]
+    ],
+    "related": [
+      [
+        "资源：显存账本",
+        "sglang/memory-budget/index.html"
+      ],
+      [
+        "请求：取消与收尾",
+        "sglang/deployment-lab/index.html"
+      ],
+      [
+        "真实记录：Trace 定位",
+        "sglang/trace-lab/index.html"
+      ],
+      [
+        "源码课程：症状到源码索引",
+        "doc:sglang/source-study/appendices/04-症状到源码的排障索引.md"
+      ]
+    ],
+    "refs": [
+      [
+        "PyTorch Distributed：诊断与同步检查",
+        "https://docs.pytorch.org/docs/stable/distributed.html"
+      ],
+      [
+        "NCCL：故障排查",
+        "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting.html"
+      ]
+    ]
+  },
+  "lora": {
+    "title": "Multi-LoRA：身份、加载、混合组批与缓存隔离",
+    "kind": "lora",
+    "unit": "u",
+    "path": "sglang/multi-lora/index.html",
+    "module": "advanced-generation",
+    "sources": "lora",
+    "lead": "同一基础模型服务多个 adapter：先追名字与身份，再追 GPU 槽位和本轮 token 行，最后核对 KV 与卸载条件。",
+    "controls": [
+      {
+        "name": "capacity",
+        "label": "本轮 adapter 身份额度",
+        "values": [
+          [
+            2,
+            "2 种"
+          ],
+          [
+            3,
+            "3 种"
+          ]
+        ],
+        "value": 3,
+        "numeric": true
+      },
+      {
+        "name": "revision",
+        "label": "beta 适配器身份",
+        "values": [
+          [
+            "original",
+            "beta / uB"
+          ],
+          [
+            "reload",
+            "beta 重载为 uB2"
+          ]
+        ],
+        "value": "original",
+        "numeric": false
+      }
+    ],
+    "intro": [
+      "LoRA（Low-Rank Adaptation，低秩适配）用 A/B 矩阵表达权重增量。Multi-LoRA 让多种适配器共享基础权重；本轮仍要为每一条请求选择正确的增量，不能把某个 adapter 永久合进公共 W 后服务所有请求。",
+      "本例 R1 用 alpha，R2 用 beta，R3 用基础模型 None。W 是单位矩阵，X=[1,2]；GPU 槽号只是本轮映射示例，r 是低秩维度，不是设备 rank。"
+    ],
+    "sections": [
+      {
+        "id": "lora-identities",
+        "title": "五个标识分别负责什么",
+        "table": [
+          [
+            "标识",
+            "含义",
+            "为什么不能混用"
+          ],
+          [
+            "名字",
+            "用户选择的 alpha/beta",
+            "动态重载同名可产生新内部 ID"
+          ],
+          [
+            "内部 ID",
+            "一次 adapter 的身份",
+            "参与请求与缓存命名空间"
+          ],
+          [
+            "槽号",
+            "本轮 GPU A/B 存放位置",
+            "可驱逐并装入其他 adapter"
+          ],
+          [
+            "低秩 r",
+            "A/B 的中间维度",
+            "不是 GPU rank"
+          ],
+          [
+            "token 段",
+            "当前 batch 中属于请求的输入行",
+            "映射必须随筛选与组批一起更新"
+          ]
+        ]
+      },
+      {
+        "id": "lora-math",
+        "title": "同一个 X，三条请求得到各自的结果",
+        "paragraphs": [
+          "行向量约定下，Y=XWᵀ+(alpha/r)(XAᵀ)Bᵀ。本例 alpha adapter 用 A=[1,0]、B=[1,1]、scale=2，得到增量 [2,2]，输出 [3,4]。beta 用 A=[0,1]、B=[1,−1]、scale=1，输出 [3,0]。基础模型仍输出 [1,2]。",
+          "先有 CPU 配置与权重，再准备 GPU 驻留；本轮 metadata 才把请求身份、槽位、实际 r、scale 与 token 段交给 backend。装载返回或存在映射，都不能代替所用异步路径的就绪条件。"
+        ]
+      },
+      {
+        "id": "lora-budget",
+        "title": "身份额度与普通 token/KV 预算分别检查",
+        "paragraphs": [
+          "本例额度 3 可容纳 alpha、beta、None；降为 2 时，一条请求等待身份额度。这只是一道准入条件，之后仍需满足普通 token budget、KV 和执行约束。固定源码还考虑 pinned adapter 等额外容量条件。",
+          "GPU 权重驱逐、为公平性暂时 drain 运行请求、从名字登记表动态卸载，是三类不同动作。None 也是身份，EMPTY_SLOT 才表示空槽；实际槽号可改变。"
+        ]
+      },
+      {
+        "id": "lora-isolation",
+        "title": "名字相同、槽位相同，仍可能是新缓存身份",
+        "paragraphs": [
+          "切换 beta 重载为 uB2，演示它可复用相同物理槽，却不能直接命中 uB 的旧前缀。缓存键要带计算身份；adapter 权重池与 KV 池也分别管理。",
+          "旧 ID 不再接收新请求，不等于旧请求已经结束；新的命名空间隔离旧缓存，也不代表旧 KV 已物理释放。动态卸载仍要等待所需请求引用退役，再处理其拥有的资源。",
+          "重载场景另给定 beta 的 B=[2,−1]，相同 X 的增量变为 [4,−2]，输出为 [5,0]。名字仍为 beta，内部 ID 和计算身份已经变化。"
+        ]
+      }
+    ],
+    "checks": [
+      [
+        "同 batch 的三个请求只用两种 adapter 名字，是否一定只占两种身份？",
+        "还要计入基础模型 None，以及固定实现中的 pinned 等约束。"
+      ],
+      [
+        "把 beta 换到之前 alpha 的槽，能否继续使用 alpha 的前缀？",
+        "不能。槽位不是计算身份；模型、adapter ID 和输入/命名空间仍须匹配。"
+      ]
+    ],
+    "related": [
+      [
+        "先读：模型执行",
+        "sglang/model-execution/index.html"
+      ],
+      [
+        "缓存与恢复",
+        "sglang/cache-routing/index.html"
+      ],
+      [
+        "源码：MultiLoRA 加载调度与隔离",
+        "doc:sglang/source-study/09-model-specialization/03-MultiLoRA加载调度与隔离.md"
+      ]
+    ],
+    "refs": [
+      [
+        "LoRA 原论文 v2",
+        "https://arxiv.org/abs/2106.09685v2"
+      ]
+    ]
+  },
+  "vllm": {
+    "title": "vLLM V1 独立导读：请求、Scheduler、KV 与 ModelRunner",
+    "kind": "vllm",
+    "unit": "u",
+    "path": "vllm/v1-lifecycle/index.html",
+    "chapter": "engine-comparison",
+    "sources": "vllm",
+    "lead": "从一条 VR1 请求独立阅读 V1 主线，将 token 预算、已计算位置、KV block 和新采样 ID 逐轮对齐。",
+    "controls": [
+      {
+        "name": "budget",
+        "label": "每轮 token 预算",
+        "values": [
+          [
+            2,
+            "2 个"
+          ],
+          [
+            4,
+            "4 个"
+          ]
+        ],
+        "value": 2,
+        "numeric": true
+      },
+      {
+        "name": "prefix",
+        "label": "初始完整 block",
+        "values": [
+          [
+            "hit",
+            "匹配了前 4 个位置"
+          ],
+          [
+            "miss",
+            "没有可复用前缀"
+          ]
+        ],
+        "value": "hit",
+        "numeric": false
+      }
+    ],
+    "intro": [
+      "第二章比较两套引擎的职责，本页单独追踪 vLLM V1 普通文本、单 GPU、非投机的阅读路径。V1 指引擎架构，ModelRunner V2 指 Worker 内的执行实现。本课与第二章一样选择支持 V2 的普通自回归 GPU 路径；不支持特性、平台和显式配置的选择与回退，另查 VllmConfig.use_v2_model_runner。",
+      "VR1 有 6 个 prompt 位置，最多生成 2 个输出 ID；本例 block size=4，token budget 可选 2/4。这些大小与时长只为账本推演，不是设备配置建议或测量结果。",
+      "本例只展开普通单 KV 组与逐轮依赖，不模拟异构 KV 组、投机、跨批异步派发或所有图模式。教学轨道不代表 V2 的实测 stream 排程。"
+    ],
+    "sections": [
+      {
+        "id": "vllm-request",
+        "title": "第一步：输入处理到 EngineCore 请求",
+        "paragraphs": [
+          "先读 InputProcessor.process_inputs：请求输入、模型约束与采样配置如何被整理成 EngineCore 接口，再读 EngineCore.add_request/step。前端可见的请求与引擎内部的执行状态有不同职责。",
+          "建立请求身份和计数表：prompt 长度、已知 token ID、num_computed_tokens、采样上限。后续每轮都用同一身份更新它们。"
+        ]
+      },
+      {
+        "id": "vllm-scheduler",
+        "title": "第二步：Scheduler 决定本轮处理几个位置",
+        "paragraphs": [
+          "V1 把等待处理的位置纳入 token 预算，不要求先把全局任务硬分成一个完整 Prefill 阶段和一个完整 Decode 阶段。SchedulerOutput 交付本轮的请求、token 数与 block 等信息。",
+          "本例没有命中且预算为 2 时，6 个 prompt 位置分三轮处理。前两轮还未到预测端点；最后一轮才为第一个输出提供本例的采样行。命中一个完整 block 后，仍有末尾两个位置需要处理。"
+        ]
+      },
+      {
+        "id": "vllm-kv",
+        "title": "第三步：KV manager 处理 block 命中与分配",
+        "paragraphs": [
+          "读 get_computed_blocks 与 allocate_slots，分清内容匹配、持有引用、分配新块和填充位置。匹配了 4 个位置不等于整条请求都有 KV，分配了第二块也不表示其中四个位置都已经计算。",
+          "资源不足与抢占需要回到所选版本的 Scheduler/manager 规则。V1 的重新计算式处理不能按旧 V0 的 CPU swap 心智模型直接解释；重新入队、计数与缓存再匹配各自核对。",
+          "图中本请求已分配 block 与已计算记录分别计数。默认命中前 4 个位置，第一轮分配完第二块时，已计算仍是 4；本例设备处理完成并选出 y1 后，前端还要经过输出处理才能收到它。请求引用退役后，绿色边框消失，历史计算记录继续保留；这不表示其他缓存持有者也已经释放。"
+        ]
+      },
+      {
+        "id": "vllm-runner",
+        "title": "第四步：Runner 执行后，输出回到下一轮",
+        "paragraphs": [
+          "沿 vllm/v1/worker/gpu/model_runner.py 中的 V2 GPUModelRunner.execute_model 与 sample_tokens，核对本轮输入位置、block 映射、执行状态和采样行，再回到 Scheduler 的结果处理。execute_model 返回并不表示 CPU 已拿到输出；异步复制和结果消费还需等待相应完成条件。",
+          "本例最终已知 8 个 ID：6 个 prompt 加 y1/y2。实际只计算过 7 个位置，因为 y2 刚被选出，没有作为下一轮输入写 K/V。块有空位、ID 已知和 KV 已计算是三个不同计数。"
+        ]
+      }
+    ],
+    "checks": [
+      [
+        "VR1 已知 8 个 ID，是否必然已经写入 8 个位置的 KV？",
+        "不是。末个刚采样的 ID 还没有进入下一轮输入；本例只计算 7 个位置。"
+      ],
+      [
+        "V1 与 SGLang 的 token budget 同名，能否直接共用一张实现账本？",
+        "不能。对象、计数更新、准入和资源回收要按各自固定源码追踪。"
+      ]
+    ],
+    "related": [
+      [
+        "回到第二章：单实例请求对照",
+        "engine-comparison/index.html#process"
+      ],
+      [
+        "先读：自回归生成",
+        "foundations/generation.html"
+      ],
+      [
+        "先读：KV Cache",
+        "foundations/cache.html"
+      ],
+      [
+        "已有资料：V1 KV 全生命周期",
+        "doc:vllm/KV缓存/vLLM V1 KV Cache 管理全生命周期源码学习文档.md"
+      ]
+    ],
+    "refs": [
+      [
+        "vLLM：架构说明",
+        "https://docs.vllm.ai/en/stable/design/arch_overview/"
+      ],
+      [
+        "vLLM：V1 指南",
+        "https://docs.vllm.ai/en/stable/usage/v1_guide/"
+      ]
+    ]
+  }
+}

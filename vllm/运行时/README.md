@@ -26,6 +26,8 @@
 
 桥接选读：[SGLang 与 vLLM V1 架构差异](<../../大模型推理/推理基础/SGLang 与 vLLM V1 架构差异源码学习文档.md>)。读完工作流概念篇后，按固定 V1 源码追踪 EngineCore、Executor 和 Worker，并与 SGLang 的进程、序列化及控制协同对照。
 
+[V1 独立交互导读](../../pages/vllm/v1-lifecycle/index.html)按请求、Scheduler、KV manager 和 ModelRunner 展开：用一条请求核对每轮 token 预算、block 与已计算位置。固定 `4ba787ec`，与 Pages 第二章一样选择支持 ModelRunner V2 的普通单 GPU 路径；V1 引擎架构与 Runner 版本分别说明。先修生成和 KV 基础，时长与小尺寸只供教学核算。
+
 ## 自测与下一步
 
 能解释连续批处理如何补入和移出请求，以及计算 chunk 为什么不等于存储 block。

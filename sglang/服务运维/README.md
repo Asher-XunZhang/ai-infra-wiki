@@ -17,6 +17,8 @@
 
 - [HTTP、gRPC 与 Rust 边界](../source-study/10-serving-operations/02-HTTPgRPC与Rust服务边界.md)：不同入口不能套用同一健康或取消结论。
 - [权重更新、暂停恢复与 RL 接口](../source-study/10-serving-operations/05-权重更新暂停恢复与RL接口.md)：运行中的服务变更与状态协调。
+- [缓存感知路由与 Agent 恢复](../../pages/sglang/cache-routing/index.html)：区分历史提示、Worker 实际 KV 与应用恢复材料，再比较局部性和排队的取舍。
+- [分布式故障定位](../../pages/sglang/distributed-diagnostics/index.html)：用 synthetic 日志和共同教学时间区分首错、后续等待与证据缺口；没有连接真实集群。
 
 资料保留独立固定提交；阅读导航不表示已经验证所有部署组合。
 

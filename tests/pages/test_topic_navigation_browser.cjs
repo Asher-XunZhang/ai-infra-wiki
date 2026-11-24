@@ -13,6 +13,12 @@ const courses=[
  ['sglang/benchmark-lab/index.html','performance','practice'],
  ['sglang/trace-lab/index.html','performance','practice'],
  ['sglang/model-execution/index.html','model-execution','instance'],
+ ['sglang/quantization/index.html','model-execution','instance'],
+ ['sglang/moe-execution/index.html','parallelism','distributed'],
+ ['sglang/multimodal-input/index.html','advanced-generation','serving'],
+ ['sglang/cache-routing/index.html','serving-operations','serving'],
+ ['sglang/distributed-diagnostics/index.html','case-studies','practice'],
+ ['sglang/multi-lora/index.html','advanced-generation','serving'],
  ['sglang/performance-engineering/index.html','performance','practice'],
  ['sglang/serving-operations/index.html','serving-operations','serving'],
  ['sglang/advanced-generation/index.html','advanced-generation','serving'],
@@ -98,7 +104,7 @@ async function checkHome(page,label){
   await checkHome(page,'reloaded homepage');
   await engineChapter.locator('summary').click();
   assert.equal(await engineChapter.evaluate(e=>e.open),true);
-  const engineLinks=engineChapter.locator('.lesson-link');
+  const engineLinks=engineChapter.locator('.engine-topic-nav .lesson-link');
   assert.deepEqual(await engineLinks.evaluateAll(links=>links.map(link=>link.hash)),
     ['#process','#wire','#prefix','#batch','#crosscut','#disagg','#metrics']);
   assert.equal(await engineLinks.first().getAttribute('href').then(h=>h.endsWith('#process')),true);

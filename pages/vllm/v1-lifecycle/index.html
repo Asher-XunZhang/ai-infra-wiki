@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>vLLM V1 独立导读：请求、Scheduler、KV 与 ModelRunner · AI Infra Wiki</title><meta name="description" content="从一条 VR1 请求独立阅读 V1 主线，将 token 预算、已计算位置、KV block 和新采样 ID 逐轮对齐。"><link rel="stylesheet" href="../../site.css"><link rel="icon" href="data:,"><script src="../../motion/integration.js" defer></script><script src="../../site.js" defer></script><link rel="stylesheet" href="../../learning-depth.css"><link rel="stylesheet" href="../../interactive-lessons/lessons.css"><script src="../../learning-depth.js" defer></script><script src="../../interactive-lessons/models.js" defer></script><script src="../../interactive-lessons/views.js" defer></script><script src="../../interactive-lessons/controller.js" defer></script></head><body class="priority-lesson" data-page="vllm"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header><div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
+<a class="route-index-link" href="../../#reading-routes">推荐路线与跨章索引</a>
+<details class="chapter-nav" data-chapter="foundations"><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="../../foundations/tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="../../foundations/components.html">02 Transformer 前向总览：从输入向量到下一 token</a>
+<a href="../../foundations/attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="../../foundations/generation.html">04 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="../../foundations/cache.html">05 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="../../foundations/batching.html">06 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="../../foundations/hardware.html">07 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="../../foundations/parallel.html">08 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="../../foundations/communication.html">09 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
+<a href="../../foundations/deployment.html">10 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="../../foundations/speculation.html">11 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="../../foundations/serving.html">12 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="../../foundations/metrics.html">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="engine-comparison" open><summary>第二章 · SGLang 与 vLLM 架构对照</summary><div class="module-lessons-nav engine-topic-nav">
+<a class="lesson-link" data-engine-topic="process" href="../../engine-comparison/index.html#process"><span class="engine-topic-number" aria-hidden="true">01</span><span class="engine-topic-zh" lang="zh-CN">进程与请求路径</span><span class="engine-topic-en" lang="en">Processes &amp; request path</span></a>
+<a class="lesson-link" data-engine-topic="wire" href="../../engine-comparison/index.html#wire"><span class="engine-topic-number" aria-hidden="true">02</span><span class="engine-topic-zh" lang="zh-CN">进程间通信</span><span class="engine-topic-en" lang="en">Communication</span></a>
+<a class="lesson-link" data-engine-topic="prefix" href="../../engine-comparison/index.html#prefix"><span class="engine-topic-number" aria-hidden="true">03</span><span class="engine-topic-zh" lang="zh-CN">前缀缓存</span><span class="engine-topic-en" lang="en">Prefix cache</span></a>
+<a class="lesson-link" data-engine-topic="batch" href="../../engine-comparison/index.html#batch"><span class="engine-topic-number" aria-hidden="true">04</span><span class="engine-topic-zh" lang="zh-CN">调度与批处理</span><span class="engine-topic-en" lang="en">Scheduling &amp; batching</span></a>
+<a class="lesson-link" data-engine-topic="crosscut" href="../../engine-comparison/index.html#crosscut"><span class="engine-topic-number" aria-hidden="true">05</span><span class="engine-topic-zh" lang="zh-CN">生命周期与执行</span><span class="engine-topic-en" lang="en">Lifecycle &amp; execution</span></a>
+<a class="lesson-link" data-engine-topic="disagg" href="../../engine-comparison/index.html#disagg"><span class="engine-topic-number" aria-hidden="true">06</span><span class="engine-topic-zh" lang="zh-CN">P/D 分离与扩展</span><span class="engine-topic-en" lang="en">P/D disaggregation</span></a>
+<a class="lesson-link" data-engine-topic="metrics" href="../../engine-comparison/index.html#metrics"><span class="engine-topic-number" aria-hidden="true">07</span><span class="engine-topic-zh" lang="zh-CN">延迟口径</span><span class="engine-topic-en" lang="en">Metric boundaries</span></a>
+</div><div class="module-lessons-nav engine-deep-reading">
+<a href="index.html" aria-current="page">独立源码导读 · vLLM V1 独立导读：请求、Scheduler、KV 与 ModelRunner</a>
+</div></details>
+<details class="chapter-nav" data-chapter="sglang"><summary>第三章 · SGLang 实现剖析</summary>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/system-overview/index.html">SGLang 代码架构：模块划分与协作全景</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">循环、执行、缓存与策略</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="loop-journey">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>调度循环与批次执行旅程</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#loop-journey">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../../sglang/request-state/index.html">Req 状态与队列流转：请求为什么还没继续？<small class="lesson-kind">状态与引用</small></a>
+<a class="lesson-link" href="../../sglang/loop-journey/index.html">调度循环：Normal、Overlap 与 PP 的完整旅程<small class="lesson-kind">时间与依赖</small></a>
+<a class="lesson-link" href="../../sglang/inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新<small class="lesson-kind">源码导读</small></a>
+</div></details>
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>模型执行与设备协作</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？<small class="lesson-kind">执行机制</small></a>
+<a class="lesson-link" href="../../sglang/inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../../sglang/quantization/index.html">量化实现：编码、scale、kernel 与质量验证<small class="lesson-kind">源码专题</small></a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>KV Cache 与资源生命周期</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收<small class="lesson-kind">缓存机制</small></a>
+<a class="lesson-link" href="../../sglang/inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../../sglang/memory-budget/index.html">推理显存账本：从字节预算到请求容量<small class="lesson-kind">容量规划</small></a>
+<a class="lesson-link" href="../../sglang/hicache-loadback/index.html">HiCache 完整回载：从 L3 命中到当前层可读<small class="lesson-kind">分层缓存</small></a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">06</span><span><strong>调度策略、批处理与资源约束</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<details class="module-nav" data-module="parallelism">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#parallelism">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工<small class="lesson-kind">并行分工</small></a>
+<a class="lesson-link" href="../../sglang/moe-execution/index.html">MoE：从逻辑路由到专家执行与合并<small class="lesson-kind">源码专题</small></a>
+</div></details>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
+</div></details>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">09</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../../sglang/pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../../sglang/pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../../sglang/pp-consensus/index.html">PP 共识：Bootstrap、Release 与 HiCache ACK<small class="lesson-kind">状态协调</small></a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<details class="module-nav" data-module="advanced-generation">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#advanced-generation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？<small class="lesson-kind">高级生成</small></a>
+<a class="lesson-link" href="../../sglang/multimodal-input/index.html">多模态输入：位置展开与 Encode／Prefill／Decode 交接<small class="lesson-kind">源码专题</small></a>
+<a class="lesson-link" href="../../sglang/multi-lora/index.html">Multi-LoRA：身份、加载、混合组批与缓存隔离<small class="lesson-kind">源码专题</small></a>
+</div></details>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation<small class="lesson-kind">服务治理</small></a>
+<a class="lesson-link" href="../../sglang/deployment-lab/index.html">最小部署实验：启动、请求与完整结束<small class="lesson-kind">部署实验</small></a>
+<a class="lesson-link" href="../../sglang/cache-routing/index.html">缓存感知路由与 Agent 恢复：提示、驻留和状态所有权<small class="lesson-kind">源码专题</small></a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice">
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测<small class="lesson-kind">性能分析</small></a>
+<a class="lesson-link" href="../../sglang/benchmark-lab/index.html">标准压测实验：负载、样本与达标吞吐<small class="lesson-kind">压测实验</small></a>
+<a class="lesson-link" href="../../sglang/trace-lab/index.html">Trace 定位实验：从设备活动追到等待原因<small class="lesson-kind">Trace 实验</small></a>
+</div></details>
+<details class="module-nav" data-module="case-studies">
+<summary class="module-heading"><span class="course-number">13</span><span><strong>PD＋PP 综合实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../../sglang/pd-prefill-pp-loop/quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾<small class="lesson-kind">综合实践</small></a>
+<a class="lesson-link" href="../../sglang/pd-prefill-pp-loop/index.html">Prefill 流水线的等待与依赖：空档从哪里来<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../../sglang/pd-prefill-pp-loop/notes.html">Prefill PP 主循环源码：槽位复用与异步收尾<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../../sglang/distributed-diagnostics/index.html">分布式故障定位：从首错、栈与状态快照追等待<small class="lesson-kind">源码专题</small></a>
+</div></details>
+</nav></details>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章对照固定 release，第三章沿固定版本源码核对实现。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content"><nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#reading-routes">学习首页</a><span>/</span><span>第二章 · 引擎对照的独立源码导读</span></nav><header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#chapter-engine">第二章 · 引擎对照的独立源码导读</a><span class="lesson-count">原理、实现与验证边界分别说明</span></div><h1>vLLM V1 独立导读：请求、Scheduler、KV 与 ModelRunner</h1><p>从一条 VR1 请求独立阅读 V1 主线，将 token 预算、已计算位置、KV block 和新采样 ID 逐轮对齐。</p></header><nav class="article-toc" aria-label="本课入口"><a href="#vllm-request">第一步</a><a href="#vllm-scheduler">第二步</a><a href="#vllm-kv">第三步</a><a href="#vllm-runner">第四步</a><a href="#evidence">固定源码</a></nav><p>第二章比较两套引擎的职责，本页单独追踪 vLLM V1 普通文本、单 GPU、非投机的阅读路径。V1 指引擎架构，ModelRunner V2 指 Worker 内的执行实现。本课与第二章一样选择支持 V2 的普通自回归 GPU 路径；不支持特性、平台和显式配置的选择与回退，另查 VllmConfig.use_v2_model_runner。</p><p>VR1 有 6 个 prompt 位置，最多生成 2 个输出 ID；本例 block size=4，token budget 可选 2/4。这些大小与时长只为账本推演，不是设备配置建议或测量结果。</p><p>本例只展开普通单 KV 组与逐轮依赖，不模拟异构 KV 组、投机、跨批异步派发或所有图模式。教学轨道不代表 V2 的实测 stream 排程。</p><section class="plab" data-priority-lab="vllm" data-priority-key="vllm" data-priority-config="{&quot;unit&quot;: &quot;u&quot;, &quot;sources&quot;: [{&quot;repo&quot;: &quot;vllm-project/vllm&quot;, &quot;commit&quot;: &quot;4ba787ec9959e566d3b587a796dff07673324da5&quot;, &quot;path&quot;: &quot;vllm/v1/engine/input_processor.py&quot;, &quot;line&quot;: 373, &quot;symbol&quot;: &quot;InputProcessor.process_inputs&quot;, &quot;sha256&quot;: &quot;97f66659814177d3f7b72b959f09201cbdd1794de21ec1542fe8970f18a1a2b6&quot;, &quot;url&quot;: &quot;https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/engine/input_processor.py#L373&quot;, &quot;label&quot;: &quot;InputProcessor.process_inputs / 4ba787ec99&quot;}, {&quot;repo&quot;: &quot;vllm-project/vllm&quot;, &quot;commit&quot;: &quot;4ba787ec9959e566d3b587a796dff07673324da5&quot;, &quot;path&quot;: &quot;vllm/v1/core/sched/scheduler.py&quot;, &quot;line&quot;: 699, &quot;symbol&quot;: &quot;Scheduler.schedule&quot;, &quot;sha256&quot;: &quot;d76cc22257550972137df9c893505d0bd0f5d482374691e6eca4372772de501a&quot;, &quot;url&quot;: &quot;https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/core/sched/scheduler.py#L699&quot;, &quot;label&quot;: &quot;Scheduler.schedule / 4ba787ec99&quot;}, {&quot;repo&quot;: &quot;vllm-project/vllm&quot;, &quot;commit&quot;: &quot;4ba787ec9959e566d3b587a796dff07673324da5&quot;, &quot;path&quot;: &quot;vllm/v1/worker/gpu/model_runner.py&quot;, &quot;line&quot;: 1764, &quot;symbol&quot;: &quot;GPUModelRunner.execute_model&quot;, &quot;sha256&quot;: &quot;9145e2601f9e93db5e6c7e648c6741cff55f2a49f046800f79311e4977550121&quot;, &quot;url&quot;: &quot;https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L1764&quot;, &quot;label&quot;: &quot;GPUModelRunner.execute_model / 4ba787ec99&quot;}, {&quot;repo&quot;: &quot;vllm-project/vllm&quot;, &quot;commit&quot;: &quot;4ba787ec9959e566d3b587a796dff07673324da5&quot;, &quot;path&quot;: &quot;vllm/v1/core/kv_cache_manager.py&quot;, &quot;line&quot;: 380, &quot;symbol&quot;: &quot;KVCacheManager.allocate_slots&quot;, &quot;sha256&quot;: &quot;39ae1c1564a034fd59736a92d962bfab5a0af03529e01349b765422dbd5a355d&quot;, &quot;url&quot;: &quot;https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/core/kv_cache_manager.py#L380&quot;, &quot;label&quot;: &quot;KVCacheManager.allocate_slots / 4ba787ec99&quot;}, {&quot;repo&quot;: &quot;vllm-project/vllm&quot;, &quot;commit&quot;: &quot;4ba787ec9959e566d3b587a796dff07673324da5&quot;, &quot;path&quot;: &quot;vllm/v1/engine/core.py&quot;, &quot;line&quot;: 667, &quot;symbol&quot;: &quot;EngineCore.step&quot;, &quot;sha256&quot;: &quot;d02d32df5d15f0a8b8ffc731ed4bc6f7fcb68b8a9273ec5e4c5d1ab4bd7d7e01&quot;, &quot;url&quot;: &quot;https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/engine/core.py#L667&quot;, &quot;label&quot;: &quot;EngineCore.step / 4ba787ec99&quot;}, {&quot;repo&quot;: &quot;vllm-project/vllm&quot;, &quot;commit&quot;: &quot;4ba787ec9959e566d3b587a796dff07673324da5&quot;, &quot;path&quot;: &quot;vllm/v1/worker/gpu/model_runner.py&quot;, &quot;line&quot;: 2149, &quot;symbol&quot;: &quot;GPUModelRunner.sample_tokens&quot;, &quot;sha256&quot;: &quot;9145e2601f9e93db5e6c7e648c6741cff55f2a49f046800f79311e4977550121&quot;, &quot;url&quot;: &quot;https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L2149&quot;, &quot;label&quot;: &quot;GPUModelRunner.sample_tokens / 4ba787ec99&quot;}, {&quot;repo&quot;: &quot;vllm-project/vllm&quot;, &quot;commit&quot;: &quot;4ba787ec9959e566d3b587a796dff07673324da5&quot;, &quot;path&quot;: &quot;vllm/config/vllm.py&quot;, &quot;line&quot;: 731, &quot;symbol&quot;: &quot;VllmConfig.use_v2_model_runner&quot;, &quot;sha256&quot;: &quot;892088ef8dc5c7fa9d50cdf083dd776fd45e8d148d53b4a3279b2e79abeab0ca&quot;, &quot;url&quot;: &quot;https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/config/vllm.py#L731&quot;, &quot;label&quot;: &quot;VllmConfig.use_v2_model_runner / 4ba787ec99&quot;}]}"><h3>改变一个条件，再解释结果</h3><div class="plab-controls"><label>每轮 token 预算<select data-param="budget" data-type="number"><option value="2" selected>2 个</option><option value="4">4 个</option></select></label><label>初始完整 block<select data-param="prefix" data-type="string"><option value="hit" selected>匹配了前 4 个位置</option><option value="miss">没有可复用前缀</option></select></label></div><div class="plab-transport"><button type="button" data-priority-action="prev">上个检查点</button><button type="button" data-priority-action="play" aria-pressed="false">播放</button><button type="button" data-priority-action="next">下个检查点</button><button type="button" data-priority-action="reset">重置</button><label class="plab-speed animation-speed">回看速度 <select data-priority-speed aria-label="回看速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select><output data-priority-speed-label>1×</output></label></div><div class="plab-seek"><label>教学进度</label><input data-priority-seek type="range" min="0" max="1" step="0.001" value="0" aria-label="教学进度"><output data-priority-clock></output></div><p class="plab-note">u 是给定的教学时间单位；轨道与图共用时钟，不代表实测或速度预测。 窄屏可在图或表内横向查看，控件与说明留在图外。</p><ul class="plab-legend"><li>绿色：本地处理</li><li>蓝色：载荷传递</li><li>虚框：等待</li><li>黄色：控制完成点</li></ul><div class="plab-figure" tabindex="0" role="region" aria-label="可横向查看的机制过程"></div><div class="plab-panel plab-state" aria-live="polite"><h3>准备观察</h3><p>启用 JavaScript 后可操作；下方正文与算例可独立阅读。</p></div><p class="plab-note">条件切换回到起点并暂停；展开与收起保留当前参数、时刻和播放状态。完整箭头说明载荷；只有明确的传递区间使用持续脉冲，本地引用与等待分别表示。</p><noscript><p>互动需要 JavaScript；本课正文、算例、自测和固定源码仍可阅读。</p></noscript></section><section class="overview-section" id="vllm-request"><h2>第一步：输入处理到 EngineCore 请求</h2><p>先读 InputProcessor.process_inputs：请求输入、模型约束与采样配置如何被整理成 EngineCore 接口，再读 EngineCore.add_request/step。前端可见的请求与引擎内部的执行状态有不同职责。</p><p>建立请求身份和计数表：prompt 长度、已知 token ID、num_computed_tokens、采样上限。后续每轮都用同一身份更新它们。</p></section><section class="overview-section" id="vllm-scheduler"><h2>第二步：Scheduler 决定本轮处理几个位置</h2><p>V1 把等待处理的位置纳入 token 预算，不要求先把全局任务硬分成一个完整 Prefill 阶段和一个完整 Decode 阶段。SchedulerOutput 交付本轮的请求、token 数与 block 等信息。</p><p>本例没有命中且预算为 2 时，6 个 prompt 位置分三轮处理。前两轮还未到预测端点；最后一轮才为第一个输出提供本例的采样行。命中一个完整 block 后，仍有末尾两个位置需要处理。</p></section><section class="overview-section" id="vllm-kv"><h2>第三步：KV manager 处理 block 命中与分配</h2><p>读 get_computed_blocks 与 allocate_slots，分清内容匹配、持有引用、分配新块和填充位置。匹配了 4 个位置不等于整条请求都有 KV，分配了第二块也不表示其中四个位置都已经计算。</p><p>资源不足与抢占需要回到所选版本的 Scheduler/manager 规则。V1 的重新计算式处理不能按旧 V0 的 CPU swap 心智模型直接解释；重新入队、计数与缓存再匹配各自核对。</p><p>图中本请求已分配 block 与已计算记录分别计数。默认命中前 4 个位置，第一轮分配完第二块时，已计算仍是 4；本例设备处理完成并选出 y1 后，前端还要经过输出处理才能收到它。请求引用退役后，绿色边框消失，历史计算记录继续保留；这不表示其他缓存持有者也已经释放。</p></section><section class="overview-section" id="vllm-runner"><h2>第四步：Runner 执行后，输出回到下一轮</h2><p>沿 vllm/v1/worker/gpu/model_runner.py 中的 V2 GPUModelRunner.execute_model 与 sample_tokens，核对本轮输入位置、block 映射、执行状态和采样行，再回到 Scheduler 的结果处理。execute_model 返回并不表示 CPU 已拿到输出；异步复制和结果消费还需等待相应完成条件。</p><p>本例最终已知 8 个 ID：6 个 prompt 加 y1/y2。实际只计算过 7 个位置，因为 y2 刚被选出，没有作为下一轮输入写 K/V。块有空位、ID 已知和 KV 已计算是三个不同计数。</p></section><section class="overview-section" id="check-vllm"><h2>先预测，再解释</h2><details class="self-check"><summary>VR1 已知 8 个 ID，是否必然已经写入 8 个位置的 KV？</summary><p>不是。末个刚采样的 ID 还没有进入下一轮输入；本例只计算 7 个位置。</p></details><details class="self-check"><summary>V1 与 SGLang 的 token budget 同名，能否直接共用一张实现账本？</summary><p>不能。对象、计数更新、准入和资源回收要按各自固定源码追踪。</p></details></section><section class="overview-section"><h2>回看与下一步</h2><ul><li><a href="../../engine-comparison/index.html#process">回到第二章：单实例请求对照</a></li><li><a href="../../foundations/generation.html">先读：自回归生成</a></li><li><a href="../../foundations/cache.html">先读：KV Cache</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/vllm/KV缓存/vLLM V1 KV Cache 管理全生命周期源码学习文档.md">已有资料：V1 KV 全生命周期</a></li></ul></section><section class="overview-section" id="evidence"><h2>来源、固定实现与验证边界</h2><p>概念与图示复核日期：<time>2026-11-23</time>。源码仓库 <a href="https://github.com/vllm-project/vllm">vllm-project/vllm</a>，固定 tag v0.33.0rc3 提交 <code>4ba787ec9959e566d3b587a796dff07673324da5</code>。公开固定 Git 文件的只读核对；vLLM 未检出、导入或运行。</p><p>数值、候选、任务与时间轨道为教学模型；静态锚点、独立算术和浏览器验证不等于模型、GPU、网络、精度或性能实验。</p><ul><li><a href="https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/engine/input_processor.py#L373"><code>vllm/v1/engine/input_processor.py::InputProcessor.process_inputs</code></a></li><li><a href="https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/core/sched/scheduler.py#L699"><code>vllm/v1/core/sched/scheduler.py::Scheduler.schedule</code></a></li><li><a href="https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L1764"><code>vllm/v1/worker/gpu/model_runner.py::GPUModelRunner.execute_model</code></a></li><li><a href="https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/core/kv_cache_manager.py#L380"><code>vllm/v1/core/kv_cache_manager.py::KVCacheManager.allocate_slots</code></a></li><li><a href="https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/engine/core.py#L667"><code>vllm/v1/engine/core.py::EngineCore.step</code></a></li><li><a href="https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L2149"><code>vllm/v1/worker/gpu/model_runner.py::GPUModelRunner.sample_tokens</code></a></li><li><a href="https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/config/vllm.py#L731"><code>vllm/config/vllm.py::VllmConfig.use_v2_model_runner</code></a></li></ul><p>概念与成熟图示参考：<a href="https://docs.vllm.ai/en/stable/design/arch_overview/">vLLM：架构说明</a>；<a href="https://docs.vllm.ai/en/stable/usage/v1_guide/">vLLM：V1 指南</a>。工具文档只用于概念与读图，不替代所选提交的实现边界。</p></section><nav class="lesson-pager" aria-label="继续学习"><a href="../../engine-comparison/#process">返回第二章请求对照</a><a class="next" href="../../#reading-routes">按问题选择下一步</a></nav></main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

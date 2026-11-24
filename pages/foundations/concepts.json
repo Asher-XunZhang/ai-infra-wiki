@@ -259,7 +259,13 @@
             "greedy",
             "sampling"
           ]
-        }
+        },
+        "links": [
+          [
+            "逐项改变温度、候选集合与重复惩罚",
+            "generation.html#sampling-params"
+          ]
+        ]
       }
     ],
     "check": {
@@ -532,6 +538,12 @@
         "equations": [
           "arithmetic_intensity",
           "resource_bound"
+        ],
+        "links": [
+          [
+            "减少搬运载荷前，先看量化的数值与元数据",
+            "hardware.html#quantization-intuition"
+          ]
         ]
       },
       {

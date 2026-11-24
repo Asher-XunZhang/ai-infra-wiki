@@ -28,6 +28,8 @@
 <a class="lesson-link" data-engine-topic="crosscut" href="../../engine-comparison/index.html#crosscut"><span class="engine-topic-number" aria-hidden="true">05</span><span class="engine-topic-zh" lang="zh-CN">生命周期与执行</span><span class="engine-topic-en" lang="en">Lifecycle &amp; execution</span></a>
 <a class="lesson-link" data-engine-topic="disagg" href="../../engine-comparison/index.html#disagg"><span class="engine-topic-number" aria-hidden="true">06</span><span class="engine-topic-zh" lang="zh-CN">P/D 分离与扩展</span><span class="engine-topic-en" lang="en">P/D disaggregation</span></a>
 <a class="lesson-link" data-engine-topic="metrics" href="../../engine-comparison/index.html#metrics"><span class="engine-topic-number" aria-hidden="true">07</span><span class="engine-topic-zh" lang="zh-CN">延迟口径</span><span class="engine-topic-en" lang="en">Metric boundaries</span></a>
+</div><div class="module-lessons-nav engine-deep-reading">
+<a href="../../vllm/v1-lifecycle/index.html">独立源码导读 · vLLM V1 独立导读：请求、Scheduler、KV 与 ModelRunner</a>
 </div></details>
 <details class="chapter-nav" data-chapter="sglang" open><summary>第三章 · SGLang 实现剖析</summary>
 <details class="topic-group" data-topic="framework-foundations">
@@ -60,6 +62,7 @@
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？<small class="lesson-kind">执行机制</small></a>
 <a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../quantization/index.html">量化实现：编码、scale、kernel 与质量验证<small class="lesson-kind">源码专题</small></a>
 </div></details>
 <details class="module-nav" data-module="kv-memory">
 <summary class="module-heading"><span class="course-number">05</span><span><strong>KV Cache 与资源生命周期</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -81,7 +84,8 @@
 <details class="module-nav" data-module="parallelism">
 <summary class="module-heading"><span class="course-number">07</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#parallelism">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工</a>
+<a class="lesson-link" href="../parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工<small class="lesson-kind">并行分工</small></a>
+<a class="lesson-link" href="../moe-execution/index.html">MoE：从逻辑路由到专家执行与合并<small class="lesson-kind">源码专题</small></a>
 </div></details>
 <details class="module-nav" data-module="communication" open>
 <summary class="module-heading" aria-current="location"><span class="course-number">08</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
@@ -103,13 +107,16 @@
 <details class="module-nav" data-module="advanced-generation">
 <summary class="module-heading"><span class="course-number">10</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#advanced-generation">模块目标与学习路线 ↗</a>
-<a class="lesson-link" href="../advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？</a>
+<a class="lesson-link" href="../advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？<small class="lesson-kind">高级生成</small></a>
+<a class="lesson-link" href="../multimodal-input/index.html">多模态输入：位置展开与 Encode／Prefill／Decode 交接<small class="lesson-kind">源码专题</small></a>
+<a class="lesson-link" href="../multi-lora/index.html">Multi-LoRA：身份、加载、混合组批与缓存隔离<small class="lesson-kind">源码专题</small></a>
 </div></details>
 <details class="module-nav" data-module="serving-operations">
 <summary class="module-heading"><span class="course-number">11</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
 <div class="module-lessons-nav"><a class="module-overview-link" href="../../#serving-operations">模块目标与学习路线 ↗</a>
 <a class="lesson-link" href="../serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation<small class="lesson-kind">服务治理</small></a>
 <a class="lesson-link" href="../deployment-lab/index.html">最小部署实验：启动、请求与完整结束<small class="lesson-kind">部署实验</small></a>
+<a class="lesson-link" href="../cache-routing/index.html">缓存感知路由与 Agent 恢复：提示、驻留和状态所有权<small class="lesson-kind">源码专题</small></a>
 </div></details>
 </nav></details>
 <details class="topic-group" data-topic="framework-practice">
@@ -128,6 +135,7 @@
 <a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾<small class="lesson-kind">综合实践</small></a>
 <a class="lesson-link" href="../pd-prefill-pp-loop/index.html">Prefill 流水线的等待与依赖：空档从哪里来<small class="lesson-kind">PD＋PP 案例</small></a>
 <a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">Prefill PP 主循环源码：槽位复用与异步收尾<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../distributed-diagnostics/index.html">分布式故障定位：从首错、栈与状态快照追等待<small class="lesson-kind">源码专题</small></a>
 </div></details>
 </nav></details>
 </details>

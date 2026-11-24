@@ -659,6 +659,10 @@ def render(c, i):
 {examples}
 {motive_html}{attention_variants_html}
 <details class="concept-background foundation-reading" id="lesson-glossary"><summary>术语速查</summary>{terms_html}</details>'''
+    if c['slug'] in {'generation', 'hardware'}:
+        from build_priority_lessons import assets as priority_assets, foundation_fragment
+        mechanism_assets += priority_assets(PAGES / 'foundations' / (c['slug'] + '.html'))
+        lesson_body += foundation_fragment(c['slug'])
     return f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title} · 推理基础</title><meta name="description" content="{escape(c['lead'], quote=True)}"><link rel="icon" href="data:,"><link rel="stylesheet" href="../site.css"><link rel="stylesheet" href="foundations.css"><script src="../site.js" defer></script>{shared_motion_assets}{mechanism_assets}{extension_assets}</head>
 <body data-page="foundations" data-lesson="{c['slug']}"><a class="skip-link" href="#main-content">跳到正文</a>

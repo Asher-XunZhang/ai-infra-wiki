@@ -19,9 +19,11 @@
 
 ## 内容与来源
 
-三章路线和问题映射维护在 `../learning-paths.json`；共享导航生成器检查基础先修顺序和 13 / 7 / 23 项覆盖。`courses.json` 是课程正文、先修关系、自测和来源的编辑入口；`build_foundations.py` 生成十三个 HTML。`extensions.json` 保存从旧概览课归并而来的六幅选读机制图及原说明；第三章只保留对应实现导读，不再嵌入基础播放器。选读区按需初始化，收起时停止播放。`model.js` 提供独立教学状态，`player.js` 按机制绘制不同图形。数字与边界写在各课，不能把教学轮次、资源下界或手工分数当成 GPU 观测。
+三章路线和问题映射维护在 `../learning-paths.json`；共享导航生成器检查基础先修顺序和 13 / 7 / 34 项覆盖，第二章另有 vLLM 独立导读。`courses.json` 是课程正文、先修关系、自测和来源的编辑入口；`build_foundations.py` 生成十三个 HTML。`extensions.json` 保存从旧概览课归并而来的六幅选读机制图及原说明；第三章只保留对应实现导读，不再嵌入基础播放器。选读区按需初始化，收起时停止播放。`model.js` 提供独立教学状态，`player.js` 按机制绘制不同图形。数字与边界写在各课，不能把教学轮次、资源下界或手工分数当成 GPU 观测。
 
 第 02 课用 [Transformer 架构图](components.html#layer-atlas) 串起一次前向，维护入口为 `scripts/templates/layer-atlas-section.html.in` 与 `layer-atlas*.js`。同页 [单位置对照实验](components.html#output-chain) 由 `scripts/templates/output-chain-section.html.in` 与 `output-chain*.js` 维护，使用独立的二维单层模型。第 03 课聚焦可见范围、加权汇聚与多头，第 04 课跟踪选出的 token 怎样成为下一轮输入，并可选读各层 K/V 的写入时刻。
+
+[采样参数与输出控制](generation.html#sampling-params)沿固定分数核对概率、候选集合、重复惩罚和停止条件；[量化数值直觉](hardware.html#quantization-intuition)将 scale、还原误差与元数据计入账本。维护入口为 `../interactive-lessons/lessons.json` 与 `build_priority_lessons.py`，由基础课生成器嵌入，不另建基础章节。
 
 token 样例来自 Qwen/Qwen2.5-0.5B-Instruct 的 `7ae557604adf67be50417f59c2c2f167def9a775` 版本，使用 `tokenizers 0.23.3` 对原始文本执行 encode（不添加特殊 token）与 decode 核对。两组句子不应用聊天模板，也不运行模型。`tokenizer.json` SHA-256 为 `c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539`。固定文件的公开来源列在第一课。
 

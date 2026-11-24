@@ -62,6 +62,8 @@ jobs:
           node tests/pages/test_serving.cjs
           node tests/pages/test_performance.cjs
           node tests/pages/test_serving_labs.cjs
+          node tests/pages/test_priority_lessons.cjs
+          python3 -B tests/pages/test_priority_sources.py
           python3 -B tests/test_serving_labs_collector.py
           node tests/pages/test_execution.cjs
           node tests/pages/test_kv_memory.cjs

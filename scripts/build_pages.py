@@ -16,6 +16,7 @@ from urllib.parse import parse_qsl, quote, unquote, urlencode, urlsplit, urlunsp
 from build_learning_navigation import build as check_learning_navigation
 from build_foundations import build as check_foundations
 from build_engine_archify import build as check_engine_archify
+from build_priority_lessons import build as check_priority_lessons
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "pages"
@@ -28,6 +29,7 @@ PUBLIC_ROOT = re.compile(r'data-public-root="[^"]*"')
 
 def build():
     check_engine_archify(check=True)
+    check_priority_lessons(check=True)
     check_learning_navigation(check=True)
     check_foundations(check=True)
     # This directory is reserved for generated deployment output.

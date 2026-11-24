@@ -33,6 +33,7 @@
 
 - [并行部署与通信拓扑](<../source-study/architecture/07-并行部署与通信拓扑.md>)
 - [Rank 与进程组基础](<../source-study/06-parallelism/01-Rank进程组与通信基础.md>)
+- [MoE：从路由到专家执行](../../pages/sglang/moe-execution/index.html)：先修 EP 分工与 AllToAll，用同一 token 行核对 Dispatch、热点、副本和 Combine。课程采用独立固定提交，时间与专家函数均为教学假设。
 
 ## 自测与下一步
 

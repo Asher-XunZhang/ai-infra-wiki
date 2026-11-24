@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>分布式故障定位：从首错、栈与状态快照追等待 · AI Infra Wiki</title><meta name="description" content="对齐同一请求、microbatch 或 collective 序号，在 OOM、通信次序不一致、PP 上游等待与取消收尾中区分起因和传播结果。"><link rel="stylesheet" href="../../site.css"><link rel="icon" href="data:,"><script src="../../motion/integration.js" defer></script><script src="../../site.js" defer></script><link rel="stylesheet" href="../../learning-depth.css"><link rel="stylesheet" href="../../interactive-lessons/lessons.css"><script src="../../learning-depth.js" defer></script><script src="../../interactive-lessons/models.js" defer></script><script src="../../interactive-lessons/views.js" defer></script><script src="../../interactive-lessons/controller.js" defer></script><link rel="stylesheet" href="../../foundations/foundations.css"></head><body class="priority-lesson" data-page="faults"><a class="skip-link" href="#main-content">跳到正文</a><header class="site-header"><a class="site-brand" href="../../"><span class="brand-mark" aria-hidden="true">ai<span>·</span></span><span>AI Infra Wiki<small>推理系统学习手册</small></span></a><div class="site-actions"><a class="repo-link" href="https://github.com/Asher-XunZhang/ai-infra-wiki">GitHub <span aria-hidden="true">↗</span></a><button class="theme-toggle" type="button" aria-label="切换配色，当前跟随系统" title="切换配色">配色：系统</button></div></header><div class="site-layout"><aside class="site-sidebar" aria-label="学习导航">
+<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>
+<div class="sidebar-content">
+<a class="overview-link" href="../../">学习首页 <span aria-hidden="true">↗</span></a>
+<a class="route-index-link" href="../../#reading-routes">推荐路线与跨章索引</a>
+<details class="chapter-nav" data-chapter="foundations"><summary>第一章 · 推理基础</summary><nav class="foundation-nav" aria-label="推理基础课程">
+<a href="../../foundations/tokens.html">01 Tokenization 与 Embedding：文字怎样变成模型输入？</a>
+<a href="../../foundations/components.html">02 Transformer 前向总览：从输入向量到下一 token</a>
+<a href="../../foundations/attention.html">03 Attention 与 Q/K/V：模型怎样参考上下文？</a>
+<a href="../../foundations/generation.html">04 自回归生成：Prefill 与 Decode 怎样接续？</a>
+<a href="../../foundations/cache.html">05 KV Cache 与前缀复用：为什么保存历史 K/V？</a>
+<a href="../../foundations/batching.html">06 Batch 调度：动态组批、连续批处理与 Chunked Prefill</a>
+<a href="../../foundations/hardware.html">07 GPU 计算与访存：算力、带宽和 CUDA Graph</a>
+<a href="../../foundations/parallel.html">08 TP、PP、DP、EP、SP 与 PCP/DCP：多卡怎样分工？</a>
+<a href="../../foundations/communication.html">09 通信语义：Broadcast、Reduce、AllToAll、Send/Recv 与同步</a>
+<a href="../../foundations/deployment.html">10 PD Disaggregation：Prefill 与 Decode 为什么分离？</a>
+<a href="../../foundations/speculation.html">11 Speculative Decoding：草稿候选怎样验证和接受？</a>
+<a href="../../foundations/serving.html">12 请求路由与取消：服务在线为何还没收到回答？</a>
+<a href="../../foundations/metrics.html">13 TTFT、ITL、TPOT 与吞吐：怎样衡量推理性能？</a>
+</nav></details>
+<details class="chapter-nav" data-chapter="engine-comparison"><summary>第二章 · SGLang 与 vLLM 架构对照</summary><div class="module-lessons-nav engine-topic-nav">
+<a class="lesson-link" data-engine-topic="process" href="../../engine-comparison/index.html#process"><span class="engine-topic-number" aria-hidden="true">01</span><span class="engine-topic-zh" lang="zh-CN">进程与请求路径</span><span class="engine-topic-en" lang="en">Processes &amp; request path</span></a>
+<a class="lesson-link" data-engine-topic="wire" href="../../engine-comparison/index.html#wire"><span class="engine-topic-number" aria-hidden="true">02</span><span class="engine-topic-zh" lang="zh-CN">进程间通信</span><span class="engine-topic-en" lang="en">Communication</span></a>
+<a class="lesson-link" data-engine-topic="prefix" href="../../engine-comparison/index.html#prefix"><span class="engine-topic-number" aria-hidden="true">03</span><span class="engine-topic-zh" lang="zh-CN">前缀缓存</span><span class="engine-topic-en" lang="en">Prefix cache</span></a>
+<a class="lesson-link" data-engine-topic="batch" href="../../engine-comparison/index.html#batch"><span class="engine-topic-number" aria-hidden="true">04</span><span class="engine-topic-zh" lang="zh-CN">调度与批处理</span><span class="engine-topic-en" lang="en">Scheduling &amp; batching</span></a>
+<a class="lesson-link" data-engine-topic="crosscut" href="../../engine-comparison/index.html#crosscut"><span class="engine-topic-number" aria-hidden="true">05</span><span class="engine-topic-zh" lang="zh-CN">生命周期与执行</span><span class="engine-topic-en" lang="en">Lifecycle &amp; execution</span></a>
+<a class="lesson-link" data-engine-topic="disagg" href="../../engine-comparison/index.html#disagg"><span class="engine-topic-number" aria-hidden="true">06</span><span class="engine-topic-zh" lang="zh-CN">P/D 分离与扩展</span><span class="engine-topic-en" lang="en">P/D disaggregation</span></a>
+<a class="lesson-link" data-engine-topic="metrics" href="../../engine-comparison/index.html#metrics"><span class="engine-topic-number" aria-hidden="true">07</span><span class="engine-topic-zh" lang="zh-CN">延迟口径</span><span class="engine-topic-en" lang="en">Metric boundaries</span></a>
+</div><div class="module-lessons-nav engine-deep-reading">
+<a href="../../vllm/v1-lifecycle/index.html">独立源码导读 · vLLM V1 独立导读：请求、Scheduler、KV 与 ModelRunner</a>
+</div></details>
+<details class="chapter-nav" data-chapter="sglang" open><summary>第三章 · SGLang 实现剖析</summary>
+<details class="topic-group" data-topic="framework-foundations">
+<summary><span class="topic-heading"><span class="nav-label">第一层 · 建立全局</span><strong class="sidebar-title">从请求认识系统</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第一层 · 建立全局">
+<details class="module-nav" data-module="system-overview">
+<summary class="module-heading"><span class="course-number">01</span><span><strong>推理系统全景</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#system-overview">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../system-overview/index.html">SGLang 代码架构：模块划分与协作全景</a>
+</div></details>
+<details class="module-nav" data-module="request-runtime">
+<summary class="module-heading"><span class="course-number">02</span><span><strong>请求生命周期与运行时架构</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#request-runtime">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../request-runtime/index.html">请求生命周期：Req、TokenizerManager 与 Scheduler</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-instance">
+<summary><span class="topic-heading"><span class="nav-label">第二层 · 理解单实例</span><strong class="sidebar-title">循环、执行、缓存与策略</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第二层 · 理解单实例">
+<details class="module-nav" data-module="loop-journey">
+<summary class="module-heading"><span class="course-number">03</span><span><strong>调度循环与批次执行旅程</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#loop-journey">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/journey.html">ScheduleBatch：Extend 与 Decode 怎样准备输入？<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../request-state/index.html">Req 状态与队列流转：请求为什么还没继续？<small class="lesson-kind">状态与引用</small></a>
+<a class="lesson-link" href="../loop-journey/index.html">调度循环：Normal、Overlap 与 PP 的完整旅程<small class="lesson-kind">时间与依赖</small></a>
+<a class="lesson-link" href="../inference-overview/scheduling.html">Scheduler：选批、Chunked Prefill 与 Decode 更新<small class="lesson-kind">源码导读</small></a>
+</div></details>
+<details class="module-nav" data-module="model-execution">
+<summary class="module-heading"><span class="course-number">04</span><span><strong>模型执行与设备协作</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#model-execution">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../model-execution/index.html">ModelRunner 与 CUDA Graph：输入怎样交给 GPU？<small class="lesson-kind">执行机制</small></a>
+<a class="lesson-link" href="../inference-overview/transformer.html">DeepSeek-V3：Embedding、Decoder Layer 与输出头<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../quantization/index.html">量化实现：编码、scale、kernel 与质量验证<small class="lesson-kind">源码专题</small></a>
+</div></details>
+<details class="module-nav" data-module="kv-memory">
+<summary class="module-heading"><span class="course-number">05</span><span><strong>KV Cache 与资源生命周期</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#kv-memory">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../kv-memory/index.html">KV Memory Pool：地址映射、分页与缓存回收<small class="lesson-kind">缓存机制</small></a>
+<a class="lesson-link" href="../inference-overview/kv-cache.html">RadixCache 与 Attention：前缀索引怎样连接 KV？<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../memory-budget/index.html">推理显存账本：从字节预算到请求容量<small class="lesson-kind">容量规划</small></a>
+<a class="lesson-link" href="../hicache-loadback/index.html">HiCache 完整回载：从 L3 命中到当前层可读<small class="lesson-kind">分层缓存</small></a>
+</div></details>
+<details class="module-nav" data-module="scheduling">
+<summary class="module-heading"><span class="course-number">06</span><span><strong>调度策略、批处理与资源约束</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#scheduling">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../scheduling/index.html">Batch 调度：准入预算、Chunked Prefill 与 Retract</a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-distributed">
+<summary><span class="topic-heading"><span class="nav-label">第三层 · 扩展到多卡多机</span><strong class="sidebar-title">并行、通信与分离部署</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第三层 · 扩展到多卡多机">
+<details class="module-nav" data-module="parallelism">
+<summary class="module-heading"><span class="course-number">07</span><span><strong>并行与执行拓扑</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#parallelism">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../parallelism/index.html">TP / PP / DP / EP / CP：SGLang 并行分工<small class="lesson-kind">并行分工</small></a>
+<a class="lesson-link" href="../moe-execution/index.html">MoE：从逻辑路由到专家执行与合并<small class="lesson-kind">源码专题</small></a>
+</div></details>
+<details class="module-nav" data-module="communication">
+<summary class="module-heading"><span class="course-number">08</span><span><strong>通信与传输</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#communication">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../communication/index.html">IPC、Collective 与 KV Transfer：数据何时可用？</a>
+</div></details>
+<details class="module-nav" data-module="disaggregation">
+<summary class="module-heading"><span class="course-number">09</span><span><strong>分离部署与分布式状态交接</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#disaggregation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../inference-overview/deployment.html">PD Disaggregation：Bootstrap、KV 接收与准入<small class="lesson-kind">源码导读</small></a>
+<a class="lesson-link" href="../pd-prefill-lifecycle/index.html">PD + PP：Prefill 请求生命周期与 KV 释放<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pd-dataflow/index.html">PD 数据流：激活、KV Transfer 与 Req 队列引用<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pp-consensus/index.html">PP 共识：Bootstrap、Release 与 HiCache ACK<small class="lesson-kind">状态协调</small></a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-serving">
+<summary><span class="topic-heading"><span class="nav-label">第四层 · 理解功能与服务</span><strong class="sidebar-title">模型特性与服务运行</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第四层 · 理解功能与服务">
+<details class="module-nav" data-module="advanced-generation">
+<summary class="module-heading"><span class="course-number">10</span><span><strong>模型结构与高级生成</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#advanced-generation">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../advanced-generation/index.html">Speculative Decoding 与约束生成：状态怎样提交？<small class="lesson-kind">高级生成</small></a>
+<a class="lesson-link" href="../multimodal-input/index.html">多模态输入：位置展开与 Encode／Prefill／Decode 交接<small class="lesson-kind">源码专题</small></a>
+<a class="lesson-link" href="../multi-lora/index.html">Multi-LoRA：身份、加载、混合组批与缓存隔离<small class="lesson-kind">源码专题</small></a>
+</div></details>
+<details class="module-nav" data-module="serving-operations">
+<summary class="module-heading"><span class="course-number">11</span><span><strong>服务部署与运行治理</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#serving-operations">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../serving-operations/index.html">服务治理：Health Check、Timeout 与 Cancellation<small class="lesson-kind">服务治理</small></a>
+<a class="lesson-link" href="../deployment-lab/index.html">最小部署实验：启动、请求与完整结束<small class="lesson-kind">部署实验</small></a>
+<a class="lesson-link" href="../cache-routing/index.html">缓存感知路由与 Agent 恢复：提示、驻留和状态所有权<small class="lesson-kind">源码专题</small></a>
+</div></details>
+</nav></details>
+<details class="topic-group" data-topic="framework-practice" open>
+<summary><span class="topic-heading"><span class="nav-label">第五层 · 综合验证</span><strong class="sidebar-title">性能分析与源码实践</strong></span><span class="topic-chevron" aria-hidden="true">›</span></summary>
+<nav aria-label="第五层 · 综合验证">
+<details class="module-nav" data-module="performance">
+<summary class="module-heading"><span class="course-number">12</span><span><strong>性能分析与优化方法</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#performance">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../performance-engineering/index.html">TTFT、ITL、TPOT 与 P95：SGLang 性能观测<small class="lesson-kind">性能分析</small></a>
+<a class="lesson-link" href="../benchmark-lab/index.html">标准压测实验：负载、样本与达标吞吐<small class="lesson-kind">压测实验</small></a>
+<a class="lesson-link" href="../trace-lab/index.html">Trace 定位实验：从设备活动追到等待原因<small class="lesson-kind">Trace 实验</small></a>
+</div></details>
+<details class="module-nav" data-module="case-studies" open>
+<summary class="module-heading" aria-current="location"><span class="course-number">13</span><span><strong>PD＋PP 综合实践</strong></span><span class="module-chevron" aria-hidden="true">›</span></summary>
+<div class="module-lessons-nav"><a class="module-overview-link" href="../../#case-studies">模块目标与学习路线 ↗</a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/quick.html">Prefill Batch 的执行旅程：跨级计算与异步收尾<small class="lesson-kind">综合实践</small></a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/index.html">Prefill 流水线的等待与依赖：空档从哪里来<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="../pd-prefill-pp-loop/notes.html">Prefill PP 主循环源码：槽位复用与异步收尾<small class="lesson-kind">PD＋PP 案例</small></a>
+<a class="lesson-link" href="index.html" aria-current="page">分布式故障定位：从首错、栈与状态快照追等待<small class="lesson-kind">源码专题</small></a>
+</div></details>
+</nav></details>
+</details>
+<div class="sidebar-note"><span class="status-dot"></span> 从原理走向实现<p>第一章建立概念，第二章对照固定 release，第三章沿固定版本源码核对实现。</p></div>
+<a class="sidebar-repo" href="https://github.com/Asher-XunZhang/ai-infra-wiki">浏览完整资料库 ↗</a>
+</div></details></aside><div class="site-content"><main id="main-content"><!-- learning-context:start -->
+<nav class="learning-breadcrumb" aria-label="当前位置"><a href="../../#learning-path">第三章 · SGLang 实现剖析</a><span aria-hidden="true">/</span><a href="../../#stage-practice">第五层 · 综合验证</a><span aria-hidden="true">/</span><a href="../../#case-studies">13 PD＋PP 综合实践</a><span aria-hidden="true">/</span><span aria-current="page">分布式故障定位：从首错、栈与状态快照追等待</span></nav>
+<!-- learning-context:end -->
+<header class="lesson-header"><div class="lesson-kicker"><a class="eyebrow" href="../../#case-studies">模块 13 / PD＋PP 综合实践</a><span class="lesson-count">SGLang · 源码专题</span></div><h1>分布式故障定位：从首错、栈与状态快照追等待</h1><p>对齐同一请求、microbatch 或 collective 序号，在 OOM、通信次序不一致、PP 上游等待与取消收尾中区分起因和传播结果。</p></header><!-- foundation-bridge:start --><section class="implementation-bridge" aria-label="先修与跨章回看"><strong>先修与跨章回看</strong><nav><a href="../../foundations/metrics.html">原理：TTFT、ITL、TPOT 与吞吐</a><a href="../../foundations/parallel.html">原理：TP、PP、DP、EP、SP 与 PCP/DCP</a><a href="../../engine-comparison/index.html#metrics">引擎对照：延迟口径（独立版本）</a></nav></section><!-- foundation-bridge:end --><nav class="article-toc" aria-label="本课入口"><a href="#fault-evidence">先建立一份能对齐的证据包</a><a href="#fault-walk">四种案例分别反查什么</a><a href="#fault-next">下一步应能验证一个具体假设</a><a href="#evidence">固定源码</a></nav><p>一次超时通常告诉你哪里还在等待，未必告诉你谁最先失败。先固定运行身份与时间窗口，再收集同一事件在各参与者上的日志、栈和状态。</p><p>本课全部记录为 synthetic 教学样本，u 是给定的共同时间。没有连接集群、执行故障注入、采集真实栈或据此宣称修复过分布式服务。</p><p>证据表展示完整的给定样本，回放游标只定位同一时刻的处理与等待；不会在时间推进时编造新的日志。</p><section class="plab" data-priority-lab="faults" data-priority-key="faults" data-priority-config="{&quot;unit&quot;: &quot;u&quot;, &quot;sources&quot;: [{&quot;repo&quot;: &quot;sgl-project/sglang&quot;, &quot;commit&quot;: &quot;72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a&quot;, &quot;path&quot;: &quot;python/sglang/srt/mem_cache/kv_cache_configurator.py&quot;, &quot;line&quot;: 2130, &quot;symbol&quot;: &quot;KVCacheConfigurator._profile_available_bytes&quot;, &quot;sha256&quot;: &quot;28602e24a216b8b0b211718383af6beba342a3d2672cf5d954c50124ffcf73f7&quot;, &quot;url&quot;: &quot;https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/kv_cache_configurator.py#L2130&quot;, &quot;label&quot;: &quot;KVCacheConfigurator._profile_available_bytes / 72d5c5bb73&quot;}, {&quot;repo&quot;: &quot;sgl-project/sglang&quot;, &quot;commit&quot;: &quot;72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a&quot;, &quot;path&quot;: &quot;python/sglang/srt/managers/scheduler_pp_mixin.py&quot;, &quot;line&quot;: 170, &quot;symbol&quot;: &quot;SchedulerPPMixin.event_loop_pp_disagg_prefill&quot;, &quot;sha256&quot;: &quot;ad594c0091000f0c83868cf499fd45d4e30086cfdb49b2e0498738985bc06799&quot;, &quot;url&quot;: &quot;https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L170&quot;, &quot;label&quot;: &quot;SchedulerPPMixin.event_loop_pp_disagg_prefill / 72d5c5bb73&quot;}]}"><h3>改变一个条件，再解释结果</h3><div class="plab-controls"><label>教学案例<select data-param="scenario" data-type="string"><option value="oom" selected>OOM 后其他 rank 等待</option><option value="collective">collective 次序不一致</option><option value="pp">PP 上游尚未产出</option><option value="cancel">取消后仍待安全退役</option></select></label><label>证据覆盖<select data-param="evidence" data-type="string"><option value="complete" selected>本例关键参与者齐全</option><option value="missing">缺少 rank0 日志和状态</option></select></label></div><div class="plab-transport"><button type="button" data-priority-action="prev">上个检查点</button><button type="button" data-priority-action="play" aria-pressed="false">播放</button><button type="button" data-priority-action="next">下个检查点</button><button type="button" data-priority-action="reset">重置</button><label class="plab-speed animation-speed">回看速度 <select data-priority-speed aria-label="回看速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select><output data-priority-speed-label>1×</output></label></div><div class="plab-seek"><label>教学进度</label><input data-priority-seek type="range" min="0" max="1" step="0.001" value="0" aria-label="教学进度"><output data-priority-clock></output></div><p class="plab-note">u 是给定的教学时间单位；轨道与图共用时钟，不代表实测或速度预测。 窄屏可在图或表内横向查看，控件与说明留在图外。</p><ul class="plab-legend"><li>绿色：本地处理</li><li>蓝色：载荷传递</li><li>虚框：等待</li><li>黄色：控制完成点</li><li>红色：给定异常</li></ul><div class="plab-figure" tabindex="0" role="region" aria-label="可横向查看的机制过程"></div><div class="plab-panel plab-state" aria-live="polite"><h3>准备观察</h3><p>启用 JavaScript 后可操作；下方正文与算例可独立阅读。</p></div><p class="plab-note">条件切换回到起点并暂停；展开与收起保留当前参数、时刻和播放状态。完整箭头说明载荷；只有明确的传递区间使用持续脉冲，本地引用与等待分别表示。</p><noscript><p>互动需要 JavaScript；本课正文、算例、自测和固定源码仍可阅读。</p></noscript></section><section class="overview-section" id="fault-evidence"><h2>先建立一份能对齐的证据包</h2><p>跨机器的 monotonic 时钟不能直接相减；先依据消息、序号与相关标识建立对应，必要时再校准全局时间。缺少关键参与者时保留证据缺口，不能用剩余一条栈补造完整根因。</p><div class="plab-table"><table><thead><tr><th scope="col">证据</th><th scope="col">至少保存</th><th scope="col">用来回答</th></tr></thead><tbody><tr><td>运行身份</td><td>源码 commit、模型、配置、镜像、节点/进程/rank</td><td>是否在看同一次运行</td></tr><tr><td>相关标识</td><td>请求 ID、microbatch、step、group、collective seq</td><td>各方是否在讨论同一份工作</td></tr><tr><td>日志</td><td>最早异常、前后文与所有必要参与者</td><td>谁先失败，谁后来开始等待</td></tr><tr><td>栈与状态</td><td>同时间窗口的 CPU 栈、设备事件、队列/引用、通信动作</td><td>是在计算、等待输入、等待完成还是清理</td></tr></tbody></table></div></section><section class="overview-section" id="fault-walk"><h2>四种案例分别反查什么</h2><p>OOM：区分初始化分配和运行峰值，核对最早报错 rank 的显存账本、KV、激活、通信与临时 buffers。其他 rank 随后的 recv 或 collective timeout 可能只是传播结果。</p><p>Collective：对齐同组的 seq、操作类型、元素数量、dtype 和参与者，再检查是否有 rank 提前异常或走了不同分支。等待超时不足以单独认定网络坏了。</p><p>PP：从等待接收的 microbatch 往上游追，确认生产计算、就绪条件和 send 是否已经发生。栈停在 recv 可以是正常等待，也可能受更早的 KV、调度或设备错误阻塞。</p><p>取消：通知返回、流尾、设备完成和资源引用退役分别记账。仍被设备读取的对象有自己的安全完成点；复用或释放要回到该条件。</p></section><section class="overview-section" id="fault-next"><h2>下一步应能验证一个具体假设</h2><p>把现象、已知事实、候选原因和补证动作写在同一张记录中。每次补证要能区分至少两个候选，而不是只继续收集更多相同 timeout。</p><p>真实排查先完成授权的只读取证；是否重启、改变配置或发送请求按任务边界处理。本课给出的判断针对完整的教学证据，不自动迁移到生产根因。</p><pre><code># 排障记录模板
+run_identity: &lt;commit/model/config/rank&gt;
+first_error: &lt;原始日志与时间口径&gt;
+waiting_party: &lt;相关 ID / seq / 栈&gt;
+confirmed_facts: &lt;已有证据&gt;
+hypotheses: &lt;尚未裁定&gt;
+next_read_only_evidence: &lt;能区分哪些假设&gt;
+validation: NOT_EXECUTED</code></pre></section><section class="overview-section" id="check-faults"><h2>先预测，再解释</h2><details class="self-check"><summary>只有 rank1 的 recv timeout，可以认定 rank1 网络故障吗？</summary><p>不能。还缺生产者是否产出、send 是否提交及是否有更早异常。</p></details><details class="self-check"><summary>相同 collective seq 的两个 rank 分别调用 all_reduce 和 all_gather，先查什么？</summary><p>先查同组控制流与操作次序；这是本例已给出的不一致证据。</p></details></section><section class="overview-section"><h2>回看与下一步</h2><ul><li><a href="../memory-budget/index.html">资源：显存账本</a></li><li><a href="../deployment-lab/index.html">请求：取消与收尾</a></li><li><a href="../trace-lab/index.html">真实记录：Trace 定位</a></li><li><a href="https://github.com/Asher-XunZhang/ai-infra-wiki/blob/main/sglang/source-study/appendices/04-症状到源码的排障索引.md">源码课程：症状到源码索引</a></li></ul></section><section class="overview-section" id="evidence"><h2>来源、固定实现与验证边界</h2><p>概念与图示复核日期：<time>2026-11-23</time>。源码仓库 <a href="https://github.com/sgl-project/sglang">sgl-project/sglang</a>，固定 main 快照 <code>72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a</code>。读取干净检出目录中的固定 Git 对象，未修改外部源码。</p><p>数值、候选、任务与时间轨道为教学模型；静态锚点、独立算术和浏览器验证不等于模型、GPU、网络、精度或性能实验。</p><ul><li><a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/kv_cache_configurator.py#L2130"><code>python/sglang/srt/mem_cache/kv_cache_configurator.py::KVCacheConfigurator._profile_available_bytes</code></a></li><li><a href="https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L170"><code>python/sglang/srt/managers/scheduler_pp_mixin.py::SchedulerPPMixin.event_loop_pp_disagg_prefill</code></a></li></ul><p>概念与成熟图示参考：<a href="https://docs.pytorch.org/docs/stable/distributed.html">PyTorch Distributed：诊断与同步检查</a>；<a href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/troubleshooting.html">NCCL：故障排查</a>。工具文档只用于概念与读图，不替代所选提交的实现边界。</p></section><!-- reading-pagers:start -->
+<!-- reading-pagers:end -->
+<nav class="lesson-pager" aria-label="框架内继续学习"><a href="../pd-prefill-pp-loop/notes.html"><small>本模块 · 上一节</small><strong>← Prefill PP 主循环源码：槽位复用与异步收尾</strong></a><a class="next" href="../../#reading-routes"><small>选择下一条路线</small><strong>回到整体学习框架 →</strong></a></nav></main><footer class="site-footer"><span>AI Infra Wiki / 从机制到源码</span><a href="../../">学习首页</a><a href="#main-content">回到顶部 ↑</a></footer></div></div></body></html>

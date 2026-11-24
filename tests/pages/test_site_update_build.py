@@ -26,7 +26,7 @@ class ReleaseBuildTest(unittest.TestCase):
             (source / 'index.html').write_text('''<html><head><meta charset="utf-8"><link href="site.css" rel="stylesheet"><script src="app.js" defer></script></head><body>
 <a href="lesson.html?v=old&amp;step=4&amp;color=loop&amp;learn=first#pp">Read</a>
 <a href="https://example.com/guide?v=original#part">External</a></body></html>''')
-            with patch.multiple(build, ROOT=root, SOURCE=source, OUTPUT=output, PUBLIC_IMAGE_TOPICS=(), check_learning_navigation=lambda **_: None, check_foundations=lambda **_: None, check_engine_archify=lambda **_: None):
+            with patch.multiple(build, ROOT=root, SOURCE=source, OUTPUT=output, PUBLIC_IMAGE_TOPICS=(), check_learning_navigation=lambda **_: None, check_foundations=lambda **_: None, check_engine_archify=lambda **_: None, check_priority_lessons=lambda **_: None):
                 build.build()
                 first = (output / 'index.html').read_text()
                 manifest = json.loads((output / 'site-release.json').read_text())

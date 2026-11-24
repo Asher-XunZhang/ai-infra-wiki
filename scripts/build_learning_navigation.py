@@ -18,6 +18,9 @@ from system_architecture import render_architecture
 
 ENGINE_COMPARISON = 'engine-comparison/index.html'
 ENGINE_PAGE = PAGES / ENGINE_COMPARISON
+PRIORITY_DATA = json.loads((PAGES / 'interactive-lessons/lessons.json').read_text(encoding='utf-8'))
+ENGINE_DEEP_READS = {d['path']: d['title'] for d in PRIORITY_DATA.values()
+                     if d.get('path', '').startswith('vllm/')}
 ENGINE_TOPICS = [
     ('process', '进程与请求路径', 'Processes & request path', '从 API 入口追到调度、模型执行与文本回传。'),
     ('wire', '进程间通信', 'Communication', '沿进程边界辨认通道、载荷和控制消息。'),
@@ -79,6 +82,11 @@ MODULES = [
         ('sglang/pd-prefill-pp-loop/index.html', 'Prefill 流水线的等待与依赖：空档从哪里来', 'SGLang · PD＋PP 案例'),
         ('sglang/pd-prefill-pp-loop/notes.html', 'Prefill PP 主循环源码：槽位复用与异步收尾', 'SGLang · PD＋PP 案例')]),
 ]
+
+for entry in PRIORITY_DATA.values():
+    if entry.get('path', '').startswith('sglang/'):
+        next(module for module in MODULES if module[0] == entry['module'])[4].append(
+            (entry['path'], entry['title'], 'SGLang · 源码专题'))
 
 # Reading order is independent of the stable module taxonomy. Links are rendered
 # into HTML so the Pages build can version them and no-JS readers can use them.
@@ -202,6 +210,14 @@ def foundation_bridge(page, module):
         'sglang/benchmark-lab/index.html': ['metrics', 'batching'],
         'sglang/trace-lab/index.html': ['metrics', 'hardware'],
     }
+    overrides.update({
+        'sglang/quantization/index.html': ['hardware', 'components'],
+        'sglang/moe-execution/index.html': ['parallel', 'communication'],
+        'sglang/multimodal-input/index.html': ['tokens', 'deployment'],
+        'sglang/cache-routing/index.html': ['serving', 'cache'],
+        'sglang/distributed-diagnostics/index.html': ['metrics', 'parallel'],
+        'sglang/multi-lora/index.html': ['components', 'cache'],
+    })
     slugs = overrides.get(relative, topic['foundations'])
     links = ''.join(f'<a href="{href(page, "foundations/"+slug+".html")}">原理：{escape(FOUNDATION_BY_SLUG[slug]["title"].split("：")[0])}</a>' for slug in slugs)
     for key in topic['comparison']:
@@ -245,7 +261,7 @@ def href(page, target='index.html', anchor=''):
 
 def sidebar(page, active):
     home = page == PAGES / 'index.html'
-    engine = page == ENGINE_PAGE
+    engine = page == ENGINE_PAGE or str(page.relative_to(PAGES)) in ENGINE_DEEP_READS
     lines = ['<aside class="site-sidebar" aria-label="学习导航">',
              '<details class="sidebar-menu" open><summary>学习导航 <span aria-hidden="true">⌄</span></summary>',
              '<div class="sidebar-content">',
@@ -264,6 +280,9 @@ def sidebar(page, active):
                      f'<span class="engine-topic-number" aria-hidden="true">{number:02}</span>'
                      f'<span class="engine-topic-zh" lang="zh-CN">{escape(label)}</span>'
                      f'<span class="engine-topic-en" lang="en">{escape(english)}</span></a>')
+    lines.append('</div><div class="module-lessons-nav engine-deep-reading">')
+    for target, title in ENGINE_DEEP_READS.items():
+        lines.append(f'<a href="{href(page, target)}"' + (' aria-current="page"' if page == PAGES / target else '') + f'>独立源码导读 · {escape(title)}</a>')
     lines.append('</div></details>')
     lines.append('<details class="chapter-nav" data-chapter="sglang"' + (' open' if active else '') + '><summary>第三章 · SGLang 实现剖析</summary>')
     for stage, label, title in STAGES:
@@ -330,6 +349,8 @@ def pager(page, module, lesson):
 
 
 def implementation_design(page):
+    if str(page.relative_to(PAGES)) in {d.get('path') for d in PRIORITY_DATA.values()}:
+        return ''
     entry = DESIGN_NOTES.get(str(page.relative_to(PAGES)))
     if entry is None:
         # These lab pages author their motivation, examples and evidence beside
@@ -409,7 +430,7 @@ def home_module_courses(page, source):
     # These module cards expose their complete course list from the same catalog
     # as the sidebar and pagers, so added lessons cannot be orphaned on the home.
     for module in MODULES:
-        if module[0] not in {'kv-memory', 'serving-operations', 'performance'}:
+        if module[0] not in {'kv-memory', 'serving-operations', 'performance', 'model-execution', 'parallelism', 'advanced-generation'}:
             continue
         links = ''.join(
             f'<a href="{href(page, lesson[0])}">{"开始学习 · " if i == 0 else ""}{escape(lesson[1])} →</a>'
@@ -421,14 +442,16 @@ def home_module_courses(page, source):
     return source
 
 
-def rendered(page, module=None, lesson=None):
-    source = page.read_text(encoding='utf-8')
+def rendered(page, module=None, lesson=None, source=None):
+    source = page.read_text(encoding='utf-8') if source is None else source
     engine = page == ENGINE_PAGE
     if 'motion/integration.js' not in source and not engine:
         source = source.replace('<script ', f'<script src="{href(page, "motion/integration.js")}" defer></script><script ', 1)
     source, count = re.subn(r'<aside class="site-sidebar".*?</aside>', lambda _: sidebar(page, module), source, count=1, flags=re.S)
     if count != 1:
         raise ValueError(f'{page}: expected exactly one site sidebar')
+    if str(page.relative_to(PAGES)) in ENGINE_DEEP_READS:
+        return source
     if page.parent == PAGES / 'foundations':
         return source
     if engine:
@@ -437,6 +460,8 @@ def rendered(page, module=None, lesson=None):
         if count != 1:
             raise ValueError(f'{page}: missing cross-chapter pager')
         connections = engine_connections(page)
+        deep_links = ''.join(f'<a href="{href(page, path)}">{escape(title)}</a>' for path, title in ENGINE_DEEP_READS.items())
+        connections = connections.replace('<!-- chapter-connections:end -->', '<p class="engine-deep-entry">' + deep_links + '</p><!-- chapter-connections:end -->')
         source = re.sub(r'<!-- chapter-connections:start -->.*?<!-- chapter-connections:end -->', '', source, flags=re.S)
         source = source.replace('<div id="atlas-root">', connections + '<div id="atlas-root">', 1)
         source = re.sub(r'<!-- reading-pagers:start -->.*?<!-- reading-pagers:end -->\n?', '', source, flags=re.S)
@@ -522,6 +547,7 @@ def build(check=False):
             assert set(FOUNDATION_BY_SLUG[slug]['prerequisites']) <= completed, f'unmet prerequisite: {slug}'
             completed.add(slug)
     targets = [(PAGES / 'index.html', None, None), (ENGINE_PAGE, None, None)]
+    targets += [(PAGES / path, None, None) for path in ENGINE_DEEP_READS]
     targets += [(PAGES / ('foundations/' + c['slug'] + '.html'), None, None) for c in FOUNDATIONS]
     targets += [(PAGES / lesson[0], module, lesson) for module in MODULES for lesson in module[4]]
     assert len({p for p, _, _ in targets}) == len(targets), 'each course must have exactly one primary module'

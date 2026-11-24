@@ -1,6 +1,6 @@
 # Pages 学习课程覆盖与维护
 
-Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实现剖析”三章。第一章用十三课建立通用机制；第二章按固定 release 对照七个主题、二十八步，并提供第三章深入入口；第三章保留五层十三模块、二十八节课程与固定的源码依据。本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
+Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实现剖析”三章。第一章用十三课建立通用机制；第二章按固定 release 对照七个主题、二十八步，并提供 vLLM 独立导读及第三章深入入口；第三章保留五层十三模块，现有三十四节课程与各自固定的源码依据。本文件记录课程覆盖与验证方式。资料归档仍使用仓库的稳定技术领域，课程顺序由导航维护，不移动旧源码课程的阶段目录。
 
 ## 三章之间怎样衔接
 
@@ -25,7 +25,7 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 
 - `node tests/pages/test_foundations.cjs`：真实分词固定样例、因果权重、KV 所属与释放、批次成员守恒、通信与 PP 依赖、统计样本边界。
 - `node tests/pages/test_foundations_browser.cjs`：全部场景与步骤、320 / 390 / 1440 宽度、深浅主题、自测反馈、键盘、播放暂停、减少动态效果、链接恢复与无 JavaScript 正文。
-- `node tests/pages/test_topic_navigation_browser.cjs`：三章目录、第二章七个主题入口、二十八节实现课导航、旧路线 URL、跨模块翻页与移动端侧栏。
+- `node tests/pages/test_topic_navigation_browser.cjs`：三章目录、第二章七个主题入口、三十四节实现课导航、旧路线 URL、跨模块翻页与移动端侧栏。
 
 发布状态以对应提交的 Pages 工作流和线上验证为准。浏览器中的教学模型不代表运行过 GPU 推理。
 
@@ -268,3 +268,24 @@ Pages 分为“推理基础”“SGLang 与 vLLM 架构对照”和“SGLang 实
 
 
 首页课程入口按第三章模块归档：显存账本、HiCache 完整回载位于模块 05，最小部署位于模块 11，标准压测与 Trace 定位位于模块 12。原独立实验板块已移除；`#serving-practice` 旧锚点指向第三章入口，已有 `learn=labs` 串读链接继续有效。三个模块卡片的课程列表由导航目录统一生成。
+
+## 采样、量化与实现专题（2026-11-23，本地）
+
+八项学习问题落实为七个独立导读页面和三处基础实验。基础章仍为十三课，第二章仍为七个对照主题；vLLM 独立导读作为第二章深入入口，六个 SGLang 专题放进原有模块。17 步初读路线保留，专题按问题选读，不按补课批次另设目录。
+
+| 学习问题 | 落点与算例 | 保留的边界 |
+| --- | --- | --- |
+| 采样与输出控制 | [生成课](foundations/generation.html#sampling-params)：同分数、同 u 比较 penalty、温度与 top-k/p；独立检查 EOS、长度、停止串和取消 | p 与 q 分开；固定 PyTorch top-p 等号条件；文本片段数不替代 token 数 |
+| 量化 | [硬件课数值直觉](foundations/hardware.html#quantization-intuition)与[实现导读](sglang/quantization/index.html)：scale、整数刻度、误差、载荷/元数据，再查 FP8/AWQ/KV 路径 | 均匀整数算例不冒充 FP8 位布局；kernel 可用、容量、质量分别验证 |
+| MoE | [路由到执行](sglang/moe-execution/index.html)，模块 07：四行 top-2、热点、副本与原行合并 | 逻辑专家与物理权重分开；整批 A2A 教学排程不冒充分块通信重叠或性能预测 |
+| 多模态 | [输入与 Encode 分离](sglang/multimodal-input/index.html)，模块 10：占位展开、编码特征和 E/PD、E/P/D | 特征与 LM KV 分别产生和交接；本例形状、读入和编码时长均为假设 |
+| 缓存路由与恢复 | [局部性与恢复条件](sglang/cache-routing/index.html)，模块 11：过期提示、排队与材料缺失 | 字符前缀提示不等于 Worker 的 KV；选点不自动搬迁；KV 不含 Agent 全部状态 |
+| 分布式故障 | [日志、栈与状态](sglang/distributed-diagnostics/index.html)，模块 13：OOM、collective、PP、取消 | 全部 synthetic；缺失 rank0 时日志与轨道都隐藏相应证据，保留未知根因 |
+| Multi-LoRA | [身份、装载和隔离](sglang/multi-lora/index.html)，模块 10：三种身份、两种额度与 beta 重载 | 名字、内部 ID、物理槽号、低秩 r 分开；同槽不意味着旧 KV 可复用 |
+| vLLM V1 独立路线 | [请求到下一轮](vllm/v1-lifecycle/index.html)，第二章深入：预算 2/4、完整 block 命中、7 个已计算位置与 8 个已知 ID | V1 引擎架构 + ModelRunner V2；普通单 GPU、单 KV 组、非投机，不模拟跨批重叠 |
+
+SGLang 固定 `72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a`；vLLM 与第二章一致，固定 tag v0.33.0rc3 的 `4ba787ec9959e566d3b587a796dff07673324da5`。`interactive-lessons/sources.json` 保存相对路径、行号、函数和文件哈希；源文件核对不导入引擎。旧课程与文章的独立提交保留，没有整体迁移基线。
+
+复核了已有采样、量化、MoE、Multi-LoRA、Gateway 源码课程，以及多模态 EPD 与 Agent KV 状态所有权资料。Pages 负责操作算例和入门衔接，已有文章继续承担完整源码/证据说明；模型适配、并行、服务及 vLLM 导航补充互相入口。这批无需另写一份重复的整合文章；真实模型质量、分布式恢复及性能收益仍需有条件一致的运行证据。
+
+维护入口为 `interactive-lessons/lessons.json`、`sources.json`、`models.js`、`views.js`、`controller.js` 和 `scripts/build_priority_lessons.py`。基础实验经 `build_foundations.py` 嵌入；导航仍由同一课程表生成。验证命令与覆盖见 [测试说明](../tests/README.md#采样量化与实现专题)；本记录不表示已经部署或运行真实推理服务。

@@ -17,7 +17,7 @@ from pp_source_baseline import SOURCE_ANCHORS, SOURCE_COMMIT, SOURCE_FILES, SOUR
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tests/pages'))
-from source_baselines import source_revision
+from source_baselines import source_revisions
 
 
 def check_artifacts():
@@ -53,9 +53,9 @@ def check_artifacts():
             r'https://github.com/sgl-project/sglang/blob/([0-9a-f]{40})/'
             r'(python/[^\s"<>\)]+?)#L(\d+)(?:-L(\d+))?', text
         ):
-            expected = source_revision(path, SOURCE_COMMIT)
-            assert commit == expected, (path, commit, expected)
-            if expected != SOURCE_COMMIT:
+            expected = source_revisions(path, SOURCE_COMMIT)
+            assert commit in expected, (path, commit, expected)
+            if commit != SOURCE_COMMIT:
                 independent_links += 1
                 continue  # Audited against their own frozen Git objects by test_serving_labs_source.py.
             # Dataflow function anchors are additionally audited by test_pd_queues.cjs.

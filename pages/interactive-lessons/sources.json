@@ -1,0 +1,270 @@
+{
+  "sampling": [
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/sampling/penaltylib/repetition_penalty.py",
+      "line": 10,
+      "symbol": "apply_scaling_penalties",
+      "sha256": "4f5948005615eacae25ae3f606699d1322e376a3bd4d2f54dc422be6a73bf157",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/sampling/penaltylib/repetition_penalty.py#L10",
+      "label": "apply_scaling_penalties / 72d5c5bb73"
+    },
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/layers/sampler.py",
+      "line": 717,
+      "symbol": "top_k_top_p_min_p_sampling_from_probs_torch",
+      "sha256": "87e8c1bef75a8ad9c26a0b5dca827e8dd8724954b0edccf49bb9898d08cb70b4",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/layers/sampler.py#L717",
+      "label": "top_k_top_p_min_p_sampling_from_probs_torch / 72d5c5bb73"
+    }
+  ],
+  "stopping": [
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/sampling/sampling_params.py",
+      "line": 163,
+      "symbol": "SamplingParams.__post_init__",
+      "sha256": "86410d1596a221a788a96f97fc3514572c92cb2c2e03584f6b7e969e24bc6a91",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/sampling/sampling_params.py#L163",
+      "label": "SamplingParams.__post_init__ / 72d5c5bb73"
+    },
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/entrypoints/http_server.py",
+      "line": 911,
+      "symbol": "generate_request",
+      "sha256": "685843fae1a4545af1b7d4964db44f285cc3108737500d7506e2c5b28cc7bef6",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/entrypoints/http_server.py#L911",
+      "label": "generate_request / 72d5c5bb73"
+    },
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/entrypoints/http_server.py",
+      "line": 1627,
+      "symbol": "abort_request",
+      "sha256": "685843fae1a4545af1b7d4964db44f285cc3108737500d7506e2c5b28cc7bef6",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/entrypoints/http_server.py#L1627",
+      "label": "abort_request / 72d5c5bb73"
+    }
+  ],
+  "quantization": [
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/layers/quantization/fp8.py",
+      "line": 1013,
+      "symbol": "Fp8LinearMethod.apply",
+      "sha256": "fb6f7a209aa0c8f1a0b57e1e7bb9fd795565953ee27bd6cda7ed3c5e215c21c4",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/layers/quantization/fp8.py#L1013",
+      "label": "Fp8LinearMethod.apply / 72d5c5bb73"
+    },
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/layers/quantization/awq/awq.py",
+      "line": 461,
+      "symbol": "AWQLinearMethod.apply",
+      "sha256": "99f7d31d65c6a23935b93e9d736a936fcad1f8d77b08eafd50e0b7ab4675164d",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/layers/quantization/awq/awq.py#L461",
+      "label": "AWQLinearMethod.apply / 72d5c5bb73"
+    },
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/mem_cache/kv_cache_dtype.py",
+      "line": 23,
+      "symbol": "configure_kv_cache_dtype",
+      "sha256": "d833810b01b0c30614aa49abf323854975c41eee649e9f5ddff3eef862b1cd19",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/kv_cache_dtype.py#L23",
+      "label": "configure_kv_cache_dtype / 72d5c5bb73"
+    }
+  ],
+  "moe": [
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/models/deepseek_v2.py",
+      "line": 873,
+      "symbol": "DeepseekV2MoE.forward",
+      "sha256": "5481cd604a29eccdb62fc1983b5c4b3a8302c4e7507251c8cc93a7400512db09",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/models/deepseek_v2.py#L873",
+      "label": "DeepseekV2MoE.forward / 72d5c5bb73"
+    },
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/layers/moe/token_dispatcher/deepep.py",
+      "line": 1011,
+      "symbol": "DeepEPDispatcher.dispatch",
+      "sha256": "0c5346ebf9e8f0c4997162c269eb326b9d562842fe98e1c0af6a3ee57e0416f6",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/layers/moe/token_dispatcher/deepep.py#L1011",
+      "label": "DeepEPDispatcher.dispatch / 72d5c5bb73"
+    }
+  ],
+  "multimodal": [
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/multimodal/processors/base_processor.py",
+      "line": 823,
+      "symbol": "BaseMultimodalProcessor.process_mm_data",
+      "sha256": "82291e75760d3d8146c7f0fdf16a4e51bdbca6e3ceb3eb9b83227064242c53f5",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/multimodal/processors/base_processor.py#L823",
+      "label": "BaseMultimodalProcessor.process_mm_data / 72d5c5bb73"
+    },
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/disaggregation/encoder/receiver.py",
+      "line": 484,
+      "symbol": "EmbeddingData.get_embedding",
+      "sha256": "428877dad574441d8760fbe75b4ad9b0aca59b7dd9f028af92a50ece1f89b831",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/disaggregation/encoder/receiver.py#L484",
+      "label": "EmbeddingData.get_embedding / 72d5c5bb73"
+    }
+  ],
+  "routing": [
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "sgl-model-gateway/src/policies/cache_aware.rs",
+      "line": 387,
+      "symbol": "CacheAwarePolicy.select_worker",
+      "sha256": "ce4393bf099a8f7462380eede47356d072488ee42736f07772046cf0224e4b96",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/sgl-model-gateway/src/policies/cache_aware.rs#L387",
+      "label": "CacheAwarePolicy.select_worker / 72d5c5bb73"
+    },
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/mem_cache/radix_cache.py",
+      "line": 400,
+      "symbol": "RadixCache.match_prefix",
+      "sha256": "601f17d66fc380713324d0d578151341c403fc95cd6a897c5d7e9005f1302390",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/radix_cache.py#L400",
+      "label": "RadixCache.match_prefix / 72d5c5bb73"
+    }
+  ],
+  "faults": [
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/mem_cache/kv_cache_configurator.py",
+      "line": 2130,
+      "symbol": "KVCacheConfigurator._profile_available_bytes",
+      "sha256": "28602e24a216b8b0b211718383af6beba342a3d2672cf5d954c50124ffcf73f7",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/mem_cache/kv_cache_configurator.py#L2130",
+      "label": "KVCacheConfigurator._profile_available_bytes / 72d5c5bb73"
+    },
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/managers/scheduler_pp_mixin.py",
+      "line": 170,
+      "symbol": "SchedulerPPMixin.event_loop_pp_disagg_prefill",
+      "sha256": "ad594c0091000f0c83868cf499fd45d4e30086cfdb49b2e0498738985bc06799",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/managers/scheduler_pp_mixin.py#L170",
+      "label": "SchedulerPPMixin.event_loop_pp_disagg_prefill / 72d5c5bb73"
+    }
+  ],
+  "lora": [
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/lora/mem_pool.py",
+      "line": 740,
+      "symbol": "LoRAMemoryPool.prepare_lora_batch",
+      "sha256": "29f850be7f95c33e1048906c8cf88c849b7a4bcb7c2d7e11fe8ad96e06817804",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/lora/mem_pool.py#L740",
+      "label": "LoRAMemoryPool.prepare_lora_batch / 72d5c5bb73"
+    },
+    {
+      "repo": "sgl-project/sglang",
+      "commit": "72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a",
+      "path": "python/sglang/srt/lora/layers.py",
+      "line": 806,
+      "symbol": "RowParallelLinearWithLoRA.forward",
+      "sha256": "9065f1fdee275f5240f5cea35c1d31cfaa152ca7b042b6709318cbb7f6a09170",
+      "url": "https://github.com/sgl-project/sglang/blob/72d5c5bb73cadd7ffbf5114e5f81e29d36b6c61a/python/sglang/srt/lora/layers.py#L806",
+      "label": "RowParallelLinearWithLoRA.forward / 72d5c5bb73"
+    }
+  ],
+  "vllm": [
+    {
+      "repo": "vllm-project/vllm",
+      "commit": "4ba787ec9959e566d3b587a796dff07673324da5",
+      "path": "vllm/v1/engine/input_processor.py",
+      "line": 373,
+      "symbol": "InputProcessor.process_inputs",
+      "sha256": "97f66659814177d3f7b72b959f09201cbdd1794de21ec1542fe8970f18a1a2b6",
+      "url": "https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/engine/input_processor.py#L373",
+      "label": "InputProcessor.process_inputs / 4ba787ec99"
+    },
+    {
+      "repo": "vllm-project/vllm",
+      "commit": "4ba787ec9959e566d3b587a796dff07673324da5",
+      "path": "vllm/v1/core/sched/scheduler.py",
+      "line": 699,
+      "symbol": "Scheduler.schedule",
+      "sha256": "d76cc22257550972137df9c893505d0bd0f5d482374691e6eca4372772de501a",
+      "url": "https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/core/sched/scheduler.py#L699",
+      "label": "Scheduler.schedule / 4ba787ec99"
+    },
+    {
+      "repo": "vllm-project/vllm",
+      "commit": "4ba787ec9959e566d3b587a796dff07673324da5",
+      "path": "vllm/v1/worker/gpu/model_runner.py",
+      "line": 1764,
+      "symbol": "GPUModelRunner.execute_model",
+      "sha256": "9145e2601f9e93db5e6c7e648c6741cff55f2a49f046800f79311e4977550121",
+      "url": "https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L1764",
+      "label": "GPUModelRunner.execute_model / 4ba787ec99"
+    },
+    {
+      "repo": "vllm-project/vllm",
+      "commit": "4ba787ec9959e566d3b587a796dff07673324da5",
+      "path": "vllm/v1/core/kv_cache_manager.py",
+      "line": 380,
+      "symbol": "KVCacheManager.allocate_slots",
+      "sha256": "39ae1c1564a034fd59736a92d962bfab5a0af03529e01349b765422dbd5a355d",
+      "url": "https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/core/kv_cache_manager.py#L380",
+      "label": "KVCacheManager.allocate_slots / 4ba787ec99"
+    },
+    {
+      "repo": "vllm-project/vllm",
+      "commit": "4ba787ec9959e566d3b587a796dff07673324da5",
+      "path": "vllm/v1/engine/core.py",
+      "line": 667,
+      "symbol": "EngineCore.step",
+      "sha256": "d02d32df5d15f0a8b8ffc731ed4bc6f7fcb68b8a9273ec5e4c5d1ab4bd7d7e01",
+      "url": "https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/engine/core.py#L667",
+      "label": "EngineCore.step / 4ba787ec99"
+    },
+    {
+      "repo": "vllm-project/vllm",
+      "commit": "4ba787ec9959e566d3b587a796dff07673324da5",
+      "path": "vllm/v1/worker/gpu/model_runner.py",
+      "line": 2149,
+      "symbol": "GPUModelRunner.sample_tokens",
+      "sha256": "9145e2601f9e93db5e6c7e648c6741cff55f2a49f046800f79311e4977550121",
+      "url": "https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/v1/worker/gpu/model_runner.py#L2149",
+      "label": "GPUModelRunner.sample_tokens / 4ba787ec99"
+    },
+    {
+      "repo": "vllm-project/vllm",
+      "commit": "4ba787ec9959e566d3b587a796dff07673324da5",
+      "path": "vllm/config/vllm.py",
+      "line": 731,
+      "symbol": "VllmConfig.use_v2_model_runner",
+      "sha256": "892088ef8dc5c7fa9d50cdf083dd776fd45e8d148d53b4a3279b2e79abeab0ca",
+      "url": "https://github.com/vllm-project/vllm/blob/4ba787ec9959e566d3b587a796dff07673324da5/vllm/config/vllm.py#L731",
+      "label": "VllmConfig.use_v2_model_runner / 4ba787ec99"
+    }
+  ]
+}

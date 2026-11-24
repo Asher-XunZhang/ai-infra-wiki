@@ -27,6 +27,9 @@
 需要系统读代码时，从下面的课程入口衔接。课程与专题可能采用不同固定提交，阅读前分别核对文首基线。
 
 - [模型注册与权重加载](<../source-study/09-model-specialization/01-模型注册配置与权重加载.md>)
+- [量化交互课程](../../pages/sglang/quantization/index.html)：先用[数值与 scale 算例](../../pages/foundations/hardware.html#quantization-intuition)核算载荷和误差，再追配置、层方法与 kernel 条件。
+- [多模态输入与 Encode 分离](../../pages/sglang/multimodal-input/index.html)：区分占位展开、编码特征、LM KV 与 E/P/D 交接。
+- [Multi-LoRA](../../pages/sglang/multi-lora/index.html)：沿身份、权重槽位和请求行理解装载、混合组批与缓存隔离。
 - [投机解码的 Draft、Verify、Commit](<../source-study/08-advanced-generation/03-投机解码的DraftVerifyCommit.md>)
 
 ## 自测与下一步
